@@ -1,73 +1,79 @@
-package entity;
+package com.mipt.team4.cloudstorage.modules.storage.entity;
 
 import java.util.Collections;
-import java.util.UUID;
 import java.util.List;
 
 public class FileEntity {
-  private String name;
   private final long size;
+  private final String type;
+  private String name;
   private String path;
   private String url;
   private List<String> tags;
-  private final String type;
-  private String key;
   private String bucketName;
 
-  public FileEntity(String name, long size, String path, String url, List<String> tags, String type,  String key, String bucketName) {
+  public FileEntity(
+      String name,
+      String path,
+      String bucketName,
+      String url,
+      String type,
+      long size,
+      List<String> tags) {
     this.name = name;
     this.size = size;
     this.path = path;
     this.url = url;
     this.tags = tags;
     this.type = type;
-    this.key = key;
     this.bucketName = bucketName;
   }
 
-  //геттеры
   public String getName() {
     return name;
   }
-  public long getSize() {
-    return size;
-  }
-  public String getUrl() {
-    return url;
-  }
-  public List<String> getTags() {
-    return tags;
-  }
-  public String getPath() {
-    return path;
-  }
-  public String getKey() {
-    return key;
-  }
-  public String getBucketName() {
-    return bucketName;
-  }
-  public String getType() {
-    return type;
-  }
 
-  //сеттеры
   public void setName(String name) {
     this.name = name;
   }
-  public void setPath(String path) {
-    this.path = path;
+
+  public long getSize() {
+    return size;
   }
+
+  public String getUrl() {
+    return url;
+  }
+
   public void setUrl(String url) {
     this.url = url;
   }
+
+  public List<String> getTags() {
+    return tags;
+  }
+
   public void setTags(String tags) {
     this.tags = Collections.singletonList(tags);
   }
-  public void setKey(String key) {
-    this.key = key;
+
+  public String getPath() {
+    return path;
   }
+
+  public void setPath(String path) {
+    this.path = path;
+  }
+
+  public String getBucketName() {
+    return bucketName;
+  }
+
   public void setBucketName(String bucketName) {
     this.bucketName = bucketName;
+  }
+
+  public String getType() {
+    return type;
   }
 }

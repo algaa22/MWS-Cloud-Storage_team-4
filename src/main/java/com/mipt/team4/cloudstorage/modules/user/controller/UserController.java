@@ -1,51 +1,49 @@
-package controller;
+package com.mipt.team4.cloudstorage.modules.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dto.FileGetDto;
-import dto.FileUploadDto;
-import service.FileService;
+import com.mipt.team4.cloudstorage.modules.user.dto.UserDto;
+import com.mipt.team4.cloudstorage.modules.user.service.UserService;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-public class FileController extends SimpleChannelInboundHandler<FullHttpRequest> {
+public class UserController extends SimpleChannelInboundHandler<FullHttpRequest> {
   private final ObjectMapper mapper = new ObjectMapper();
-  private final FileService service;
+  private final UserService service;
 
-  public FileController(FileService service) {
+  public UserController(UserService service) {
     this.service = service;
   }
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
-    // POST /file/  (создать файл/метаданные)
-    if (req.method() == HttpMethod.POST && req.uri().equals("/file/")) {
+    // POST /user/  (создать пользователя)
+    if (req.method() == HttpMethod.POST && req.uri().equals("/user/")) {
       try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
-        // Передавать FileUploadDto, НЕ FileGetDto!
-        FileUploadDto uploadDto = mapper.readValue((InputStream) in, FileUploadDto.class);
-        FileGetDto created = service.uploadFile(uploadDto);
+        UserDto dto = mapper.readValue((InputStream) in, UserDto.class);
+        UserDto created = service.createUser(dto);
         sendJson(ctx, created);
       }
       return;
     }
-    // GET /file/{id}
-    if (req.method() == HttpMethod.GET && req.uri().startsWith("/file/")) {
-      String idStr = req.uri().substring("/file/".length());
+    // GET /user/{id}
+    if (req.method() == HttpMethod.GET && req.uri().startsWith("/user/")) {
+      String idStr = req.uri().substring("/user/".length());
       UUID id = UUID.fromString(idStr);
-      FileGetDto dto = service.getFileInfo(String.valueOf(id)); // Корректный вызов: getFileInfo, а не uploadFile
+      UserDto dto = service.getUser(id);
       sendJson(ctx, dto);
       return;
     }
-    // DELETE /file/{id}
-    if (req.method() == HttpMethod.DELETE && req.uri().startsWith("/file/")) {
-      String idStr = req.uri().substring("/file/".length());
+
+    // DELETE /user/{id}
+    if (req.method() == HttpMethod.DELETE && req.uri().startsWith("/user/")) {
+      String idStr = req.uri().substring("/user/".length());
       UUID id = UUID.fromString(idStr);
-      service.deleteFile(String.valueOf(id));
-      sendResponse(ctx, HttpResponseStatus.NO_CONTENT, "File deleted");
+      service.deleteUser(id);
+      sendResponse(ctx, HttpResponseStatus.NO_CONTENT, "User deleted");
       return;
     }
 
@@ -72,5 +70,3 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
     ctx.writeAndFlush(res);
   }
 }
-
-

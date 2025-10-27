@@ -1,12 +1,11 @@
 package dto;
 import java.util.List;
 
-public record FileDto(
+public record FileGetDto(
     String name,
-    String path, //key
+    String key,
     long size,
     String url,
     List<String> tags,
-    String bucketName
-
+    String bucketName //нужно ли
 ) {}

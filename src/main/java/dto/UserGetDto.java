@@ -1,6 +1,6 @@
 package dto;
 
-public record UserDto(
+public record UserGetDto(
     String name,
     String email,
     String surname,

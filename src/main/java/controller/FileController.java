@@ -1,13 +1,14 @@
 package controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dto.FileDto;
-import java.io.InputStream;
+import dto.FileGetDto;
+import dto.FileUploadDto;
 import service.FileService;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
@@ -24,8 +25,9 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
     // POST /file/  (создать файл/метаданные)
     if (req.method() == HttpMethod.POST && req.uri().equals("/file/")) {
       try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
-        FileDto dto = mapper.readValue((InputStream) in, FileDto.class);
-        FileDto created = service.createFile(dto);
+        // Передавать FileUploadDto, НЕ FileGetDto!
+        FileUploadDto uploadDto = mapper.readValue((InputStream) in, FileUploadDto.class);
+        FileGetDto created = service.uploadFile(uploadDto);
         sendJson(ctx, created);
       }
       return;
@@ -34,26 +36,15 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
     if (req.method() == HttpMethod.GET && req.uri().startsWith("/file/")) {
       String idStr = req.uri().substring("/file/".length());
       UUID id = UUID.fromString(idStr);
-      FileDto dto = service.getFile(id);
+      FileGetDto dto = service.getFileInfo(String.valueOf(id)); // Корректный вызов: getFileInfo, а не uploadFile
       sendJson(ctx, dto);
-      return;
-    }
-    // PUT /file/{id}
-    if (req.method() == HttpMethod.PUT && req.uri().startsWith("/file/")) {
-      String idStr = req.uri().substring("/file/".length());
-      UUID id = UUID.fromString(idStr);
-      try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
-        FileDto dto = mapper.readValue((InputStream) in, FileDto.class);
-        FileDto updated = service.updateFile(id, dto);
-        sendJson(ctx, updated);
-      }
       return;
     }
     // DELETE /file/{id}
     if (req.method() == HttpMethod.DELETE && req.uri().startsWith("/file/")) {
       String idStr = req.uri().substring("/file/".length());
       UUID id = UUID.fromString(idStr);
-      service.deleteFile(id);
+      service.deleteFile(String.valueOf(id));
       sendResponse(ctx, HttpResponseStatus.NO_CONTENT, "File deleted");
       return;
     }
@@ -81,4 +72,5 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
     ctx.writeAndFlush(res);
   }
 }
+
 

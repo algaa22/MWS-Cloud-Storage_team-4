@@ -1,30 +1,33 @@
 package mapper;
-import dto.FileDto;
+import dto.FileGetDto;
+import dto.FileUploadDto;
 import entity.FileEntity;
-import java.util.UUID;
 
 public class FileMapper {
 
   // DTO -> ENTITY
-  public static FileEntity toEntity(FileDto dto) {
+  public static FileEntity toEntity(FileUploadDto dto) {
     return new FileEntity(
-        UUID.randomUUID(),
         dto.name(),
         dto.size(),
         dto.path(),
-        dto.url(),
-        dto.tags()
+        null,
+        dto.tags(),
+        dto.type(),
+        null,
+        null
     );
   }
 
   // ENTITY -> DTO
-  public static FileDto toDto(FileEntity entity) {
-    return new FileDto(
+  public static FileGetDto toDto(FileEntity entity) {
+    return new FileGetDto(
         entity.getName(),
-        entity.getPath(),
+        entity.getKey(),
         entity.getSize(),
         entity.getUrl(),
-        entity.getTags()
+        entity.getTags(),
+        entity.getBucketName()
     );
   }
 }

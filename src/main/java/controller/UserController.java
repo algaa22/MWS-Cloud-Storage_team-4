@@ -1,15 +1,15 @@
 package controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dto.UserDto;
+import dto.UserGetDto;
 import java.io.InputStream;
-import service.UserService;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import service.UserService;
 
 public class UserController extends SimpleChannelInboundHandler<FullHttpRequest> {
   private final ObjectMapper mapper = new ObjectMapper();
@@ -24,8 +24,8 @@ public class UserController extends SimpleChannelInboundHandler<FullHttpRequest>
     // POST /user/  (создать пользователя)
     if (req.method() == HttpMethod.POST && req.uri().equals("/user/")) {
       try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
-        UserDto dto = mapper.readValue((InputStream) in, UserDto.class);
-        UserDto created = service.createUser(dto);
+        UserGetDto dto = mapper.readValue((InputStream) in, UserGetDto.class);
+        UserGetDto created = service.createUser(dto);
         sendJson(ctx, created);
       }
       return;
@@ -34,21 +34,11 @@ public class UserController extends SimpleChannelInboundHandler<FullHttpRequest>
     if (req.method() == HttpMethod.GET && req.uri().startsWith("/user/")) {
       String idStr = req.uri().substring("/user/".length());
       UUID id = UUID.fromString(idStr);
-      UserDto dto = service.getUser(id);
+      UserGetDto dto = service.getUser(id);
       sendJson(ctx, dto);
       return;
     }
-    // PUT /user/{id}
-    if (req.method() == HttpMethod.PUT && req.uri().startsWith("/user/")) {
-      String idStr = req.uri().substring("/user/".length());
-      UUID id = UUID.fromString(idStr);
-      try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
-        UserDto dto = mapper.readValue((InputStream) in, UserDto.class);
-        UserDto updated = service.updateUser(id, dto);
-        sendJson(ctx, updated);
-      }
-      return;
-    }
+
     // DELETE /user/{id}
     if (req.method() == HttpMethod.DELETE && req.uri().startsWith("/user/")) {
       String idStr = req.uri().substring("/user/".length());

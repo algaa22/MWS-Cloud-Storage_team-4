@@ -5,33 +5,69 @@ import java.util.UUID;
 import java.util.List;
 
 public class FileEntity {
-  private UUID id;
   private String name;
-  private long size;
+  private final long size;
   private String path;
   private String url;
   private List<String> tags;
+  private final String type;
+  private String key;
+  private String bucketName;
 
-  public FileEntity(UUID id, String name, long size, String path, String url, List<String> tags) {
-    this.id = id;
+  public FileEntity(String name, long size, String path, String url, List<String> tags, String type,  String key, String bucketName) {
     this.name = name;
     this.size = size;
     this.path = path;
     this.url = url;
     this.tags = tags;
+    this.type = type;
+    this.key = key;
+    this.bucketName = bucketName;
   }
 
-  public UUID getId() { return id; }
-  public String getName() { return name; }
-  public long getSize() { return size; }
-  public String getUrl() { return url; }
-  public List<String> getTags() { return tags; }
-  public String getPath() { return path; }
+  //геттеры
+  public String getName() {
+    return name;
+  }
+  public long getSize() {
+    return size;
+  }
+  public String getUrl() {
+    return url;
+  }
+  public List<String> getTags() {
+    return tags;
+  }
+  public String getPath() {
+    return path;
+  }
+  public String getKey() {
+    return key;
+  }
+  public String getBucketName() {
+    return bucketName;
+  }
+  public String getType() {
+    return type;
+  }
 
-  public void setId(UUID id) { this.id = id; }
-  public void setName(String name) { this.name = name; }
-  public void setSize(String size) { this.size = Long.parseLong(size); }
-  public void setPath(String path) { this.path = path; }
-  public void setUrl(String url) { this.url = url; }
-  public void setTags(String tags) { this.tags = Collections.singletonList(tags); }
+  //сеттеры
+  public void setName(String name) {
+    this.name = name;
+  }
+  public void setPath(String path) {
+    this.path = path;
+  }
+  public void setUrl(String url) {
+    this.url = url;
+  }
+  public void setTags(String tags) {
+    this.tags = Collections.singletonList(tags);
+  }
+  public void setKey(String key) {
+    this.key = key;
+  }
+  public void setBucketName(String bucketName) {
+    this.bucketName = bucketName;
+  }
 }

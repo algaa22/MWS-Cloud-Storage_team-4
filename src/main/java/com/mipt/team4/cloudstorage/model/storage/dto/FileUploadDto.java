@@ -1,4 +1,4 @@
-package com.mipt.team4.cloudstorage.modules.storage.dto;
+package com.mipt.team4.cloudstorage.model.storage.dto;
 
 import java.util.List;
 

@@ -1,7 +1,7 @@
-package com.mipt.team4.cloudstorage.modules.storage.service;
+package com.mipt.team4.cloudstorage.service.storage;
 
-import com.mipt.team4.cloudstorage.modules.storage.dto.FileDto;
-import com.mipt.team4.cloudstorage.modules.storage.dto.FileUploadDto;
+import com.mipt.team4.cloudstorage.model.storage.dto.FileDto;
+import com.mipt.team4.cloudstorage.model.storage.dto.FileUploadDto;
 import java.util.List;
 
 public interface FileService {

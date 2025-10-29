@@ -1,8 +1,8 @@
-package com.mipt.team4.cloudstorage.modules.user.service;
+package com.mipt.team4.cloudstorage.model.user;
 
-import com.mipt.team4.cloudstorage.modules.user.dto.UserCreateDto;
-import com.mipt.team4.cloudstorage.modules.user.dto.UserDto;
-import com.mipt.team4.cloudstorage.modules.user.entity.UserEntity;
+import com.mipt.team4.cloudstorage.model.user.dto.UserCreateDto;
+import com.mipt.team4.cloudstorage.model.user.dto.UserDto;
+import com.mipt.team4.cloudstorage.model.user.entity.UserEntity;
 import java.util.UUID;
 
 public class UserMapper {

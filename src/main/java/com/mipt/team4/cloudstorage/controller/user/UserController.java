@@ -1,8 +1,8 @@
-package com.mipt.team4.cloudstorage.modules.user.controller;
+package com.mipt.team4.cloudstorage.controller.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mipt.team4.cloudstorage.modules.user.dto.UserDto;
-import com.mipt.team4.cloudstorage.modules.user.service.UserService;
+import com.mipt.team4.cloudstorage.model.user.dto.UserDto;
+import com.mipt.team4.cloudstorage.service.user.UserService;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;

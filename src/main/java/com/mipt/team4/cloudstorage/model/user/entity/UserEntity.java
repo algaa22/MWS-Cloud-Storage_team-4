@@ -1,4 +1,4 @@
-package com.mipt.team4.cloudstorage.modules.user.entity;
+package com.mipt.team4.cloudstorage.model.user.entity;
 
 import java.util.UUID;
 

@@ -1,4 +1,4 @@
-package com.mipt.team4.cloudstorage.modules.storage.entity;
+package com.mipt.team4.cloudstorage.model.storage.entity;
 
 import java.util.Collections;
 import java.util.List;

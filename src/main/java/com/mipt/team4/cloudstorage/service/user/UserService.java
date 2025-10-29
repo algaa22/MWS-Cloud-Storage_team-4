@@ -1,6 +1,6 @@
-package com.mipt.team4.cloudstorage.modules.user.service;
+package com.mipt.team4.cloudstorage.service.user;
 
-import com.mipt.team4.cloudstorage.modules.user.dto.UserDto;
+import com.mipt.team4.cloudstorage.model.user.dto.UserDto;
 import java.util.List;
 import java.util.UUID;
 

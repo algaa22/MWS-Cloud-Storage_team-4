@@ -1,7 +1,7 @@
-package com.mipt.team4.cloudstorage.modules.storage.service;
+package com.mipt.team4.cloudstorage.model.storage;
 
-import com.mipt.team4.cloudstorage.modules.storage.dto.FileDto;
-import com.mipt.team4.cloudstorage.modules.storage.entity.FileEntity;
+import com.mipt.team4.cloudstorage.model.storage.dto.FileDto;
+import com.mipt.team4.cloudstorage.model.storage.entity.FileEntity;
 
 public class FileMapper {
   public static FileEntity toEntity(FileDto dto) {

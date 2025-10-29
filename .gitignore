@@ -1,0 +1,4 @@
+/.idea/
+
+/src/main/resources/database.properties
+/cloud-storage-backend.iml

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class EnvironmentConfigSource implements ConfigSource {
+public class EnvironmentConfigSource extends ConfigSource {
   Map<String, String> envVars = new HashMap<>();
 
   public EnvironmentConfigSource() {
@@ -27,11 +27,17 @@ public class EnvironmentConfigSource implements ConfigSource {
     return Optional.ofNullable(envVars.get(key));
   }
 
+  private String convertToEnvVarName(String path) {
+    return path.toUpperCase()
+            .replace('.', '_')
+            .replace('-', '_');
+  }
+
   private void loadEnvFile(String filePath) {
     Path envPath = Paths.get(filePath);
 
     if (!Files.exists(envPath)) {
-      System.out.println("Error: .env file not found: " + envPath.toAbsolutePath());
+      System.err.println("Error: .env file not found: " + envPath.toAbsolutePath());
       return;
     }
 
@@ -49,7 +55,7 @@ public class EnvironmentConfigSource implements ConfigSource {
 
         if (parts.length == 2) {
           String key = parts[0].trim();
-          String value = parts[1].trim().replace("(^[\"'])|([\"']$)", "");
+          String value = parts[1].trim().replaceAll("(^[\"'])|([\"']$)", "");
 
           envVars.put(key, value);
         }

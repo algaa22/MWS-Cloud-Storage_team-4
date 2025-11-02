@@ -31,11 +31,11 @@ public class PostgresConnection implements DatabaseConnection {
       throw new RuntimeException("Postgres JDBC Driver not found", e);
     }
 
-    // TODO: Безопасное хранение пароля в database.properties
+    // TODO: Создать класс Config, в котором будут методы Config.getDbUrl() и т.п.
 
-    String URL = "jdbc:postgresql://localhost:5432/cloud_storage_db";
+    String URL = "jdbc:postgresql://postgres:5432/cloud_storage_db";
     String username = "postgres";
-    String password = "HPpCKaRQZf7Cu2S3NFfhSPuFqVAdkYVE";
+    String password = "super_secret_password_123";
 
     try {
       connection = DriverManager.getConnection(URL, username, password);

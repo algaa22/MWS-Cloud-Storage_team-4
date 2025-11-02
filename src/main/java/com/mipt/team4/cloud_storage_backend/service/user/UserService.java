@@ -5,15 +5,21 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.UserCreateDto;
 import java.util.List;
 import java.util.UUID;
 
-public interface UserService {
+public class UserService {
 
-  UserCreateDto createUser(UserCreateDto dto);
+  public UserCreateDto createUser(UserCreateDto dto) {
+    return null;
+  }
 
-  UserDto getUser(UUID id);
+  public UserDto getUser(UUID id) {
+    return null;
+  }
 
-  List<UserDto> getAllUsers();
+  public List<UserDto> getAllUsers() {
+    return null;
+  }
 
-  void deleteUser(UUID id);
+  public void deleteUser(UUID id) {}
 
   // UserResponseDto updateUser(UUID id, UserResponseDto dto);
 }

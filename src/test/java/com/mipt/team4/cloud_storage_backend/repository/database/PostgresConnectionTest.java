@@ -5,16 +5,17 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 class PostgresConnectionTest {
-  PostgresConnection postgresConnection = new PostgresConnection();
+  PostgresConnection postgres;
 
   @Test
   public void shouldConnect() {
-    postgresConnection.connect();
+    postgres = PostgresConnection.getInstance();
+    postgres.connect();
 
-    for(String str : postgresConnection.executeQuery(
-            "SELECT * FROM files WHERE file_size = ?;", List.of(560),
-            rs -> rs.getString("owner_id") + " " + rs.getString("storage_path")
-    )) {
+    for(String str : postgres.executeQuery(
+        "SELECT * FROM files WHERE file_size = ?;", List.of(560),
+        rs -> rs.getString("owner_id") + " " + rs.getString("storage_path")
+        )) {
       System.out.println(str);
     }
   }

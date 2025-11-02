@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
+import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
+import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -9,7 +11,7 @@ class PostgresConnectionTest {
 
   @Test
   public void shouldConnect() {
-    postgres = PostgresConnection.getInstance();
+    postgres = new PostgresConnection(DatabaseConfig.from(new EnvironmentConfigSource()));
     postgres.connect();
 
     for(String str : postgres.executeQuery(

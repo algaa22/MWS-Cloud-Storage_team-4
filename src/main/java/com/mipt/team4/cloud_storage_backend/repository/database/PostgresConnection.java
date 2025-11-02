@@ -5,7 +5,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PostgresConnection implements DatabaseConnection {
+  private static volatile PostgresConnection instance = null;
+
   private Connection connection;
+
+  private PostgresConnection() {}
+
+  public static PostgresConnection getInstance() {
+    if (instance == null) {
+      synchronized (PostgresConnection.class) {
+        if (instance == null) {
+          instance = new PostgresConnection();
+        }
+      }
+    }
+
+    return instance;
+  }
 
   @Override
   public void connect() {
@@ -15,7 +31,7 @@ public class PostgresConnection implements DatabaseConnection {
       throw new RuntimeException("Postgres JDBC Driver not found", e);
     }
 
-    // TODO: Secure password storage in database.properties
+    // TODO: Безопасное хранение пароля в database.properties
 
     String URL = "jdbc:postgresql://localhost:5432/cloud_storage_db";
     String username = "postgres";
@@ -23,8 +39,18 @@ public class PostgresConnection implements DatabaseConnection {
 
     try {
       connection = DriverManager.getConnection(URL, username, password);
+      // TODO: создание таблицы
+      // TODO: миграции
     } catch (SQLException e) {
       throw new RuntimeException("Failed to connect to the database", e);
+    }
+  }
+
+  public boolean isConnected() {
+    try {
+      return connection != null && !connection.isClosed();
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to check connection", e);
     }
   }
 

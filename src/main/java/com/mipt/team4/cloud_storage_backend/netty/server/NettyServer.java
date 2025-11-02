@@ -10,10 +10,13 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NettyServer {
-  private final NettyConfig config;
+  private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
   private final HTTPRequestHandler requestHandler;
+  private final NettyConfig config;
 
   public NettyServer(NettyConfig config, HTTPRequestHandler requestHandler) {
     this.config = config;
@@ -33,8 +36,10 @@ public class NettyServer {
           .childHandler(new CustomChannelInitializer());
 
       ChannelFuture future = bootstrap.bind(config.getPort()).sync();
-      System.out.println("Netty server started on port " + config.getPort());
+      logger.info("Netty server started on port " + config.getPort());
+
       future.channel().closeFuture().sync();
+      logger.info("Netty server stopped");
 
     } catch (Exception e) {
       throw new ServerStartException(e);

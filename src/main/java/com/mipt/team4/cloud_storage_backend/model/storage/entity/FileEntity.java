@@ -7,25 +7,27 @@ import java.util.UUID;
 public class FileEntity {
   private final UUID id;
   private final UUID ownerId;
-  private final long size;
   private final String type;
   private String name;
   private String path;
   private String url;
   private String visibility;
-  private boolean isActive;
+  private final long size;
+  private boolean isDeleted;
   private List<String> tags;
   private String bucketName;
 
   public FileEntity(
-      UUID id, UUID ownerId, String name,
+      UUID id,
+      UUID ownerId,
+      String name,
       String path,
       String bucketName,
       String url,
       String type,
-      long size,
       String visibility,
-      boolean isActive,
+      long size,
+      boolean isDeleted,
       List<String> tags) {
     this.id = id;
     this.ownerId = ownerId;
@@ -34,7 +36,7 @@ public class FileEntity {
     this.path = path;
     this.url = url;
     this.visibility = visibility;
-    this.isActive = isActive;
+    this.isDeleted = isDeleted;
     this.tags = tags;
     this.type = type;
     this.bucketName = bucketName;
@@ -68,9 +70,9 @@ public class FileEntity {
 
   public void setVisibility(String visibility) { this.visibility = visibility; }
 
-  public boolean isActive() { return isActive; }
+  public boolean isDeleted() { return isDeleted; }
 
-  public void setActive(boolean isActive) { this.isActive = isActive; }
+  public void setDeleted(boolean isActive) { this.isDeleted = isActive; }
 
   public List<String> getTags() {
     return tags;

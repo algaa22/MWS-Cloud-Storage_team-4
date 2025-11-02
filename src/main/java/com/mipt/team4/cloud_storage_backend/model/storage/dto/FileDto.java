@@ -11,7 +11,7 @@ public record FileDto(
     String bucketName,
     String url,
     String type,
-    long size,
     String visibility,
-    boolean isActive,
+    long size,
+    boolean isDeleted,
     List<String> tags) {}

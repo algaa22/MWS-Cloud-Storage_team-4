@@ -8,22 +8,16 @@ public class FileEntity {
   private final UUID id;
   private final UUID ownerId;
   private final String type;
-  private String name;
   private String path;
-  private String url;
   private String visibility;
   private final long size;
   private boolean isDeleted;
   private List<String> tags;
-  private String bucketName;
 
   public FileEntity(
       UUID id,
       UUID ownerId,
-      String name,
       String path,
-      String bucketName,
-      String url,
       String type,
       String visibility,
       long size,
@@ -31,39 +25,20 @@ public class FileEntity {
       List<String> tags) {
     this.id = id;
     this.ownerId = ownerId;
-    this.name = name;
     this.size = size;
     this.path = path;
-    this.url = url;
     this.visibility = visibility;
     this.isDeleted = isDeleted;
     this.tags = tags;
     this.type = type;
-    this.bucketName = bucketName;
   }
 
   public UUID getId() { return id; }
 
   public UUID getOwnerId() { return ownerId; }
 
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
   public long getSize() {
     return size;
-  }
-
-  public String getUrl() {
-    return url;
-  }
-
-  public void setUrl(String url) {
-    this.url = url;
   }
 
   public String getVisibility() { return visibility; }
@@ -88,14 +63,6 @@ public class FileEntity {
 
   public void setPath(String path) {
     this.path = path;
-  }
-
-  public String getBucketName() {
-    return bucketName;
-  }
-
-  public void setBucketName(String bucketName) {
-    this.bucketName = bucketName;
   }
 
   public String getType() {

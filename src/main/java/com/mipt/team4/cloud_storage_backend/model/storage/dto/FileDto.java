@@ -6,10 +6,7 @@ import java.util.UUID;
 public record FileDto(
     UUID id,
     UUID ownerId,
-    String name,
     String path,
-    String bucketName,
-    String url,
     String type,
     String visibility,
     long size,

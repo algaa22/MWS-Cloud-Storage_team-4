@@ -7,6 +7,6 @@ public class InvalidYamlException extends RuntimeException {
         "Expected configuration "
             + filePath
             + " to be a map, but got: "
-            + loadedYaml.getClass().getSimpleName());
+            + (loadedYaml == null ? "null" : loadedYaml.getClass().getSimpleName()));
   }
 }

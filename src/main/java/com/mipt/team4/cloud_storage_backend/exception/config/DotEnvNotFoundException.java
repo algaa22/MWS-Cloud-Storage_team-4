@@ -4,7 +4,7 @@ import java.nio.file.Path;
 
 public class DotEnvNotFoundException extends RuntimeException {
   public DotEnvNotFoundException(Path path) {
-    super(".env not found at " + path);
+    super(".env not found at path " + path);
   }
 }
 

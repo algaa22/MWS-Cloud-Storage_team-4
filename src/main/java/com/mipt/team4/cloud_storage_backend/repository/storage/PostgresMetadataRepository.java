@@ -8,8 +8,8 @@ import java.util.*;
 public class PostgresMetadataRepository implements FileMetadataRepository {
   PostgresConnection postgres;
 
-  public PostgresMetadataRepository() {
-    postgres = PostgresConnection.getInstance();
+  public PostgresMetadataRepository(PostgresConnection postgres) {
+    this.postgres = postgres;
     postgres.connect(); // TODO: убрать в main class
   }
 

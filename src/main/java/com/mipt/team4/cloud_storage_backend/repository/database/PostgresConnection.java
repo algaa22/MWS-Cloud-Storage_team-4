@@ -1,26 +1,17 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
+import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PostgresConnection implements DatabaseConnection {
-  private static volatile PostgresConnection instance = null;
+  private final DatabaseConfig config;
 
   private Connection connection;
 
-  private PostgresConnection() {}
-
-  public static PostgresConnection getInstance() {
-    if (instance == null) {
-      synchronized (PostgresConnection.class) {
-        if (instance == null) {
-          instance = new PostgresConnection();
-        }
-      }
-    }
-
-    return instance;
+  public PostgresConnection(DatabaseConfig config) {
+    this.config = config;
   }
 
   @Override
@@ -31,14 +22,12 @@ public class PostgresConnection implements DatabaseConnection {
       throw new RuntimeException("Postgres JDBC Driver not found", e);
     }
 
-    // TODO: Создать класс Config, в котором будут методы Config.getDbUrl() и т.п.
-
-    String URL = "jdbc:postgresql://postgres:5432/cloud_storage_db";
-    String username = "postgres";
-    String password = "super_secret_password_123";
+//    String URL = "jdbc:postgresql://postgres:5432/cloud_storage_db";
+//    String username = "postgres";
+//    String password = "super_secret_password_123";
 
     try {
-      connection = DriverManager.getConnection(URL, username, password);
+      connection = DriverManager.getConnection(config.getUrl(), config.getUsername(), config.getPassword());
       // TODO: создание таблицы
       // TODO: миграции
     } catch (SQLException e) {
@@ -55,9 +44,7 @@ public class PostgresConnection implements DatabaseConnection {
   }
 
   @Override
-  public <T> List<T> executeQuery(String query,
-                                  List<Object> params,
-                                  ResultSetMapper<T> mapper) {
+  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 

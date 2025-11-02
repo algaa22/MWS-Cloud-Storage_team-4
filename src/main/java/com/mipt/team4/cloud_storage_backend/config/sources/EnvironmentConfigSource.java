@@ -16,12 +16,13 @@ public class EnvironmentConfigSource extends ConfigSource {
   Map<String, String> envVars = new HashMap<>();
 
   public EnvironmentConfigSource() {
+    // TODO: поддержка не только .env
     loadEnvFile(".env");
   }
 
   @Override
   public Optional<String> getString(String key) {
-    String systemValue = System.getenv(key);
+    String systemValue = System.getenv(convertToEnvVarName(key));
 
     if (systemValue != null) {
       return Optional.of(systemValue);

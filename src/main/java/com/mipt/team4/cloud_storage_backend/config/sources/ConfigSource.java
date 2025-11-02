@@ -96,14 +96,13 @@ public abstract class ConfigSource {
   }
 
   protected InputStream getInputStream(String filePath) {
-    try {
-      return new FileInputStream(filePath);
-    } catch (FileNotFoundException _) {
-    }
-
     InputStream classPathStream = getClass().getClassLoader().getResourceAsStream(filePath);
     if (classPathStream != null) return classPathStream;
 
-    throw new ConfigNotFoundException(filePath);
+    try {
+      return new FileInputStream(filePath);
+    } catch (FileNotFoundException e) {
+      throw new ConfigNotFoundException(filePath);
+    }
   }
 }

@@ -107,7 +107,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>com.cloudstorage.Main</mainClass>
+                            <mainClass>com.mipt.team4.cloud_storage_backend.CloudStorageApplication</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

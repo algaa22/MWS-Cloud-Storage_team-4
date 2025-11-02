@@ -19,16 +19,15 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
     this.service = service;
   }
 
-  // TODO: понять, переработать, разбить на мелкие функции, сделать понятные имена
-
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
-    // POST /file/  (создать файл/метаданные)
-    if (req.method() == HttpMethod.POST && req.uri().equals("/file/")) {
-      try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
-        // Передавать FileUploadDto, НЕ FileGetDto!
-        FileUploadDto uploadDto = mapper.readValue((InputStream) in, FileUploadDto.class);
-        FileDto created = service.uploadFile(uploadDto);
+    // POST /file/
+
+    if (req.method() == HttpMethod.POST && req.uri().equals("/file/upload")) {
+      String fileName = req.headers().get("X-File-Name");
+      String contentType = req.headers().get(HttpHeaderNames.CONTENT_TYPE);
+      try (ByteBufInputStream fileStream = new ByteBufInputStream(req.content())) {
+        FileDto created = service.uploadFile(fileName, contentType, fileStream);
         sendJson(ctx, created);
       }
       return;
@@ -37,7 +36,7 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
     if (req.method() == HttpMethod.GET && req.uri().startsWith("/file/")) {
       String idStr = req.uri().substring("/file/".length());
       UUID id = UUID.fromString(idStr);
-      FileDto dto = service.getFileInfo(String.valueOf(id)); // Корректный вызов: getFileInfo, а не uploadFile
+      FileDto dto = service.getFileInfo(String.valueOf(id));
       sendJson(ctx, dto);
       return;
     }

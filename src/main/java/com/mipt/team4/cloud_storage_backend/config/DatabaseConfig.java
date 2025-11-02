@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
+import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
+
 public class DatabaseConfig {
   private final String url;
   private final String username;

@@ -1,4 +1,7 @@
-package com.mipt.team4.cloud_storage_backend.config;
+package com.mipt.team4.cloud_storage_backend.config.sources;
+
+import com.mipt.team4.cloud_storage_backend.exception.config.DotEnvLoadException;
+import com.mipt.team4.cloud_storage_backend.exception.config.DotEnvNotFoundException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -37,8 +40,7 @@ public class EnvironmentConfigSource extends ConfigSource {
     Path envPath = Paths.get(filePath);
 
     if (!Files.exists(envPath)) {
-      System.err.println("Error: .env file not found: " + envPath.toAbsolutePath());
-      return;
+      throw new DotEnvNotFoundException(envPath);
     }
 
     try {
@@ -61,7 +63,7 @@ public class EnvironmentConfigSource extends ConfigSource {
         }
       }
     } catch (IOException e) {
-      throw new RuntimeException("Failed to load a file with path " + envPath.toAbsolutePath(), e);
+      throw new DotEnvLoadException(envPath, e);
     }
   }
 }

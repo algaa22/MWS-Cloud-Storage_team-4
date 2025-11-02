@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.server;
 
 import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
+import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
 import com.mipt.team4.cloud_storage_backend.netty.handler.HTTPRequestHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -35,11 +36,8 @@ public class NettyServer {
       System.out.println("Netty server started on port " + config.getPort());
       future.channel().closeFuture().sync();
 
-    } catch (InterruptedException e) {
-      // TODO: нормальные эксепшны
-      throw new RuntimeException("Server interrupter", e);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to start server", e);
+      throw new ServerStartException(e);
     }
   }
 

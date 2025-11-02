@@ -1,9 +1,11 @@
-package com.mipt.team4.cloud_storage_backend.config;
+package com.mipt.team4.cloud_storage_backend.config.sources;
+
+import com.mipt.team4.cloud_storage_backend.exception.config.ConfigConvertException;
+import com.mipt.team4.cloud_storage_backend.exception.config.ConfigNotFoundException;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.sql.SQLOutput;
 import java.util.Optional;
 
 public abstract class ConfigSource {
@@ -40,8 +42,7 @@ public abstract class ConfigSource {
               try {
                 return Optional.of(Integer.parseInt(value));
               } catch (NumberFormatException e) {
-                printConvertError("Integer", key, value);
-                return Optional.empty();
+                throw new ConfigConvertException("Integer", key, value);
               }
             });
   }
@@ -53,8 +54,7 @@ public abstract class ConfigSource {
               try {
                 return Optional.of(Float.parseFloat(value));
               } catch (NumberFormatException e) {
-                printConvertError("Float", key, value);
-                return Optional.empty();
+                throw new ConfigConvertException("Float", key, value);
               }
             });
   }
@@ -66,8 +66,7 @@ public abstract class ConfigSource {
               try {
                 return Optional.of(Double.parseDouble(value));
               } catch (NumberFormatException e) {
-                printConvertError("Double", key, value);
-                return Optional.empty();
+                throw new ConfigConvertException("Double", key, value);
               }
             });
   }
@@ -79,8 +78,7 @@ public abstract class ConfigSource {
               try {
                 return Optional.of(Long.parseLong(value));
               } catch (NumberFormatException e) {
-                printConvertError("Long", key, value);
-                return Optional.empty();
+                throw new ConfigConvertException("Long", key, value);
               }
             });
   }
@@ -92,26 +90,20 @@ public abstract class ConfigSource {
               try {
                 return Optional.of(Boolean.parseBoolean(value));
               } catch (NumberFormatException e) {
-                printConvertError("Double", key, value);
-                return Optional.empty();
+                throw new ConfigConvertException("Double", key, value);
               }
             });
-  }
-
-  protected void printConvertError(String expectedType, String key, String value) {
-    System.err.println("Cannot convert value " + value +  " to " + expectedType + " for key " + key);
   }
 
   protected InputStream getInputStream(String filePath) {
     try {
       return new FileInputStream(filePath);
-    } catch (FileNotFoundException _) {}
+    } catch (FileNotFoundException _) {
+    }
 
     InputStream classPathStream = getClass().getClassLoader().getResourceAsStream(filePath);
     if (classPathStream != null) return classPathStream;
 
-    System.err.println("Input stream of file " + filePath + " not found");
-    
-    return null;
+    throw new ConfigNotFoundException(filePath);
   }
 }

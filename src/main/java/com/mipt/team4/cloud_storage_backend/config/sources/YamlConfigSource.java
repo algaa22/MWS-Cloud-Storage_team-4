@@ -1,14 +1,14 @@
-package com.mipt.team4.cloud_storage_backend.config;
+package com.mipt.team4.cloud_storage_backend.config.sources;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
+import com.mipt.team4.cloud_storage_backend.exception.config.ConfigConvertException;
+import com.mipt.team4.cloud_storage_backend.exception.config.InvalidYamlException;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
-
-import javax.print.attribute.standard.MediaSize;
 
 public class YamlConfigSource extends ConfigSource {
   Map<String, Object> configData;
@@ -35,9 +35,7 @@ public class YamlConfigSource extends ConfigSource {
       return super.getInt(key);
     }
 
-    printConvertError("Integer", key, value.toString());
-
-    return Optional.empty();
+    throw new ConfigConvertException("Integer", key, value.toString());
   }
 
   @Override
@@ -50,9 +48,7 @@ public class YamlConfigSource extends ConfigSource {
       return super.getFloat(key);
     }
 
-    printConvertError("Float", key, value.toString());
-
-    return Optional.empty();
+    throw new ConfigConvertException("Float", key, value.toString());
   }
 
   @Override
@@ -65,9 +61,7 @@ public class YamlConfigSource extends ConfigSource {
       return super.getDouble(key);
     }
 
-    printConvertError("Double", key, value.toString());
-
-    return Optional.empty();
+    throw new ConfigConvertException("Double", key, value.toString());
   }
 
   @Override
@@ -80,9 +74,7 @@ public class YamlConfigSource extends ConfigSource {
       return super.getLong(key);
     }
 
-    printConvertError("Long", key, value.toString());
-
-    return Optional.empty();
+    throw new ConfigConvertException("Long", key, value.toString());
   }
 
   @Override
@@ -95,9 +87,7 @@ public class YamlConfigSource extends ConfigSource {
       return super.getBoolean(key);
     }
 
-    printConvertError("Boolean", key, value.toString());
-
-    return Optional.empty();
+    throw new ConfigConvertException("Boolean", key, value.toString());
   }
 
   public Optional<List<String>> getStringList(String key) {
@@ -126,7 +116,7 @@ public class YamlConfigSource extends ConfigSource {
 
   @SuppressWarnings("unchecked")
   public <T> Optional<List<T>> getList(String key, Class<T> elementType) {
-    Object value = getValue(key);
+    Object value = configData.get(key);
 
     if (value instanceof List) {
       List<Object> rawList = (List<Object>) value;
@@ -136,8 +126,7 @@ public class YamlConfigSource extends ConfigSource {
         if (elementType.isInstance(item)) {
           typedList.add((T) item);
         } else {
-          System.err.println("Cannot convert list element " + item + " to " + elementType.getSimpleName());
-          return Optional.empty();
+          throw new ConfigConvertException(elementType.getSimpleName(), key, item.toString());
         }
       }
 
@@ -165,11 +154,11 @@ public class YamlConfigSource extends ConfigSource {
 
           return flatten("", rootMap, flat);
         } else {
-          System.err.println("YAML file " + filePath + " does not contain a map in root");
+          throw new InvalidYamlException(loaded, filePath);
         }
       }
-    } catch (Exception e) {
-      System.err.println("Failed to load YAML from " + filePath + ": " + e.getMessage());
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to load YAML from " + filePath + ": " + e.getMessage());
     }
 
     return new HashMap<>();

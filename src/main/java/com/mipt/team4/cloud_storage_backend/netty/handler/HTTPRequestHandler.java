@@ -6,6 +6,7 @@ import com.mipt.team4.cloud_storage_backend.netty.router.RequestRouter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpResponse;
 
 public class HTTPRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
@@ -18,7 +19,7 @@ public class HTTPRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
   @Override
   protected void channelRead0(
       ChannelHandlerContext ctx, FullHttpRequest request) {
-    HttpResponse response = router.route(request);
+    FullHttpResponse response = router.route(request);
     ctx.writeAndFlush(response);
   }
 

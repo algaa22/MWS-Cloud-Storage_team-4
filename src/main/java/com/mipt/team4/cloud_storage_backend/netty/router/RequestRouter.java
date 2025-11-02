@@ -4,6 +4,7 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.netty.handler.ResponseHelper;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
@@ -18,7 +19,7 @@ public class RequestRouter {
     this.responseHelper = new ResponseHelper();
   }
 
-  public HttpResponse route(FullHttpRequest request) {
+  public FullHttpResponse route(FullHttpRequest request) {
     String uri = request.uri();
 
     try {

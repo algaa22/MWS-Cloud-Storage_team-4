@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mipt.team4.cloud_storage_backend.controller.Controller;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileUploadDto;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
@@ -11,7 +12,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-public class FileController extends SimpleChannelInboundHandler<FullHttpRequest> {
+public class FileController extends Controller {
   private final ObjectMapper mapper = new ObjectMapper();
   private final FileService service;
 
@@ -19,8 +20,54 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
     this.service = service;
   }
 
-  public HttpResponse handleRequest(FullHttpRequest request) {
+  @Override
+  public FullHttpResponse handleRequest(FullHttpRequest request) {
     // TODO: обработка HTTP запроса, возврат HTTP ответа
+
+    // if (req.method() == HttpMethod.POST && req.uri().equals("/file/")) {
+    //      try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
+    //        // Передавать FileUploadDto, НЕ FileGetDto!
+    //        FileUploadDto uploadDto = mapper.readValue((InputStream) in, FileUploadDto.class);
+    //        FileDto created = service.uploadFile(uploadDto);
+    //        sendJson(ctx, created);
+    //      }
+    //      return;
+    //    }
+    //    // GET /file/{id}
+    //    if (req.method() == HttpMethod.GET && req.uri().startsWith("/file/")) {
+    //      String idStr = req.uri().substring("/file/".length());
+    //      UUID id = UUID.fromString(idStr);
+    //      FileDto dto = service.getFileInfo(String.valueOf(id)); // Корректный вызов: getFileInfo,
+    // а не uploadFile
+    //      sendJson(ctx, dto);
+    //      return;
+    //    }
+    //    // DELETE /file/{id}
+    //    if (req.method() == HttpMethod.DELETE && req.uri().startsWith("/file/")) {
+    //      String idStr = req.uri().substring("/file/".length());
+    //      UUID id = UUID.fromString(idStr);
+    //      service.deleteFile(String.valueOf(id));
+    //      sendResponse(ctx, HttpResponseStatus.NO_CONTENT, "File deleted");
+    //      return;
+    //    }
+    //
+    //    sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "Not found");
+
+    return null;
+  }
+
+  @Override
+  protected FullHttpResponse handleGet(FullHttpRequest request, String url) {
+    return null;
+  }
+
+  @Override
+  protected FullHttpResponse handlePost(FullHttpRequest request, String url) {
+    return null;
+  }
+
+  @Override
+  protected FullHttpResponse handleUpdate(FullHttpRequest request, String url) {
     return null;
   }
 

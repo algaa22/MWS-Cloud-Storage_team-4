@@ -19,38 +19,13 @@ public class UserController extends SimpleChannelInboundHandler<FullHttpRequest>
     this.service = service;
   }
 
-  @Override
-  protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
-    // POST /user/
-    if (req.method() == HttpMethod.POST && req.uri().equals("/user/")) {
-      try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
-        UserCreateDto dto = mapper.readValue((InputStream) in, UserCreateDto.class);
-        UserCreateDto created = service.createUser(dto);
-        sendJson(ctx, created);
-      }
-      return;
-    }
-    // GET /user/{id}
-    if (req.method() == HttpMethod.GET && req.uri().startsWith("/user/")) {
-      String idStr = req.uri().substring("/user/".length());
-      UUID id = UUID.fromString(idStr);
-      UserDto dto = service.getUser(id);
-      sendJson(ctx, dto);
-      return;
-    }
-    // DELETE /user/{id}
-    if (req.method() == HttpMethod.DELETE && req.uri().startsWith("/user/")) {
-      String idStr = req.uri().substring("/user/".length());
-      UUID id = UUID.fromString(idStr);
-      service.deleteUser(id);
-      sendResponse(ctx, HttpResponseStatus.NO_CONTENT, "User deleted");
-      return;
-    }
-
-    sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "Not found");
+  public HttpResponse handleRequest(FullHttpRequest request) {
+    // TODO: обработка HTTP запроса, возврат HTTP ответа
+    return null;
   }
 
   private void sendJson(ChannelHandlerContext ctx, Object obj) throws Exception {
+    // TODO: переделать (я сам)
     String json = mapper.writeValueAsString(obj);
     FullHttpResponse res = new DefaultFullHttpResponse(
         HttpVersion.HTTP_1_1,
@@ -62,6 +37,7 @@ public class UserController extends SimpleChannelInboundHandler<FullHttpRequest>
   }
 
   private void sendResponse(ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
+    // TODO: переделать (я сам)
     FullHttpResponse res = new DefaultFullHttpResponse(
         HttpVersion.HTTP_1_1,
         status,

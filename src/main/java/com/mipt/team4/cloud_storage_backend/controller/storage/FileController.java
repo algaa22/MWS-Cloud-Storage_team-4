@@ -19,40 +19,13 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
     this.service = service;
   }
 
-  @Override
-  protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
-    // POST /file/
-
-    if (req.method() == HttpMethod.POST && req.uri().equals("/file/upload")) {
-      String fileName = req.headers().get("X-File-Name");
-      String contentType = req.headers().get(HttpHeaderNames.CONTENT_TYPE);
-      try (ByteBufInputStream fileStream = new ByteBufInputStream(req.content())) {
-        FileDto created = service.uploadFile(fileName, contentType, fileStream);
-        sendJson(ctx, created);
-      }
-      return;
-    }
-    // GET /file/{id}
-    if (req.method() == HttpMethod.GET && req.uri().startsWith("/file/")) {
-      String idStr = req.uri().substring("/file/".length());
-      UUID id = UUID.fromString(idStr);
-      FileDto dto = service.getFileInfo(String.valueOf(id));
-      sendJson(ctx, dto);
-      return;
-    }
-    // DELETE /file/{id}
-    if (req.method() == HttpMethod.DELETE && req.uri().startsWith("/file/")) {
-      String idStr = req.uri().substring("/file/".length());
-      UUID id = UUID.fromString(idStr);
-      service.deleteFile(String.valueOf(id));
-      sendResponse(ctx, HttpResponseStatus.NO_CONTENT, "File deleted");
-      return;
-    }
-
-    sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "Not found");
+  public HttpResponse handleRequest(FullHttpRequest request) {
+    // TODO: обработка HTTP запроса, возврат HTTP ответа
+    return null;
   }
 
   private void sendJson(ChannelHandlerContext ctx, Object obj) throws Exception {
+    // TODO: переделать (я сам), см. ResponseHelper
     String json = mapper.writeValueAsString(obj);
     FullHttpResponse res = new DefaultFullHttpResponse(
         HttpVersion.HTTP_1_1,
@@ -64,6 +37,7 @@ public class FileController extends SimpleChannelInboundHandler<FullHttpRequest>
   }
 
   private void sendResponse(ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
+    // TODO: переделать (я сам), см. ResponseHelper
     FullHttpResponse res = new DefaultFullHttpResponse(
         HttpVersion.HTTP_1_1,
         status,

@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.controller.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.UserCreateDto;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.*;
@@ -20,11 +21,11 @@ public class UserController extends SimpleChannelInboundHandler<FullHttpRequest>
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
-    // POST /user/  (создать пользователя)
+    // POST /user/
     if (req.method() == HttpMethod.POST && req.uri().equals("/user/")) {
       try (ByteBufInputStream in = new ByteBufInputStream(req.content())) {
-        UserDto dto = mapper.readValue((InputStream) in, UserDto.class);
-        UserDto created = service.createUser(dto);
+        UserCreateDto dto = mapper.readValue((InputStream) in, UserCreateDto.class);
+        UserCreateDto created = service.createUser(dto);
         sendJson(ctx, created);
       }
       return;
@@ -37,7 +38,6 @@ public class UserController extends SimpleChannelInboundHandler<FullHttpRequest>
       sendJson(ctx, dto);
       return;
     }
-
     // DELETE /user/{id}
     if (req.method() == HttpMethod.DELETE && req.uri().startsWith("/user/")) {
       String idStr = req.uri().substring("/user/".length());

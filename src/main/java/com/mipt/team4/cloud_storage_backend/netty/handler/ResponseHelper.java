@@ -24,7 +24,7 @@ public class ResponseHelper {
     FullHttpResponse response = new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1,
             status,
-            Unpooled.copiedBuffer(data);
+            Unpooled.copiedBuffer(data)
     );
 
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);

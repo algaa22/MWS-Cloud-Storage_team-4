@@ -1,10 +1,17 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
+import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
+
 import java.io.InputStream;
 import java.util.List;
 
 public class FileService {
+  private final FileRepository repository;
+
+  public FileService(FileRepository repository) {
+    this.repository = repository;
+  }
 
   public FileDto uploadFile(String fileName, String contentType, InputStream fileStream) {
     return null;

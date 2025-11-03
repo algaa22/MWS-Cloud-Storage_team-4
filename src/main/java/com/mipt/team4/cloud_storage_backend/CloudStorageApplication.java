@@ -28,8 +28,10 @@ public class CloudStorageApplication {
     UserController userController = new UserController(userService);
 
     HTTPRequestHandler requestHandler = new HTTPRequestHandler(fileController, userController);
-    NettyServer server = new NettyServer(nettyConfig, requestHandler);
 
+    NettyServer server = new NettyServer(nettyConfig, requestHandler);
     server.start();
+
+    postgres.disconnect();
   }
 }

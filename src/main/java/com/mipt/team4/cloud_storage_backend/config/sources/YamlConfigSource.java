@@ -176,7 +176,8 @@ public class YamlConfigSource extends ConfigSource {
   }
 
   @SuppressWarnings("unchecked")
-  private Map<String, Object> flatten(String prefix, Map<String, Object> nested, Map<String, Object> flat) {
+  private Map<String, Object> flatten(
+      String prefix, Map<String, Object> nested, Map<String, Object> flat) {
     for (Map.Entry<String, Object> entry : nested.entrySet()) {
       String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
 

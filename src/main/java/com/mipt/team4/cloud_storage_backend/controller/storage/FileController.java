@@ -2,15 +2,10 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.controller.Controller;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileUploadDto;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
-import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 
 public class FileController extends Controller {
   private final ObjectMapper mapper = new ObjectMapper();

@@ -1,8 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import java.sql.SQLException;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,7 @@ public class PostgresMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public void addFile(FileEntity fileEntity) throws SQLException {
+  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {
     // TODO: написать проверку, есть ли файл с данным ownerId и path
     postgres.executeUpdate(
         "INSERT INTO files (owner_id, storage_path, file_size, mime_type, visibility, is_deleted) values (?, ?, ?, ?, ?, ?);",
@@ -32,7 +33,7 @@ public class PostgresMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public Optional<FileEntity> getFile(UUID ownerId, String path) throws SQLException {
+  public Optional<FileEntity> getFile(UUID ownerId, String path) throws DbExecuteQueryException {
     List<FileEntity> result;
 
     result =

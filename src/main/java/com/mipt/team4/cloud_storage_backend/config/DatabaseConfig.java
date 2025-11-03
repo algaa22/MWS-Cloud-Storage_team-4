@@ -15,10 +15,9 @@ public class DatabaseConfig {
 
   public static DatabaseConfig from(ConfigSource source) {
     return new DatabaseConfig(
-            source.getString("db.url").orElseThrow(),
-            source.getString("db.username").orElseThrow(),
-            source.getString("db.password").orElseThrow()
-    );
+        source.getString("db.url").orElseThrow(),
+        source.getString("db.username").orElseThrow(),
+        source.getString("db.password").orElseThrow());
   }
 
   public String getUrl() {

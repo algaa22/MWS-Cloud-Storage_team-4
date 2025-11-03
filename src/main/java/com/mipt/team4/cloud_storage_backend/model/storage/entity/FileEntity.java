@@ -8,9 +8,9 @@ public class FileEntity {
   private final UUID id;
   private final UUID ownerId;
   private final String type;
+  private final long size;
   private String path;
   private String visibility;
-  private final long size;
   private boolean isDeleted;
   private List<String> tags;
 

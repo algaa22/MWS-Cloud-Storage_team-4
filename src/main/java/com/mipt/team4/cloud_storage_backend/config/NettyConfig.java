@@ -17,11 +17,10 @@ public class NettyConfig {
 
   public static NettyConfig from(ConfigSource source) {
     return new NettyConfig(
-            source.getInt("netty.port").orElseThrow(),
-            source.getInt("netty.boss-threads").orElseThrow(),
-            source.getInt("netty.worker-threads").orElseThrow(),
-            source.getInt("netty.max-content-length").orElseThrow()
-    );
+        source.getInt("netty.port").orElseThrow(),
+        source.getInt("netty.boss-threads").orElseThrow(),
+        source.getInt("netty.worker-threads").orElseThrow(),
+        source.getInt("netty.max-content-length").orElseThrow());
   }
 
   public int getPort() {

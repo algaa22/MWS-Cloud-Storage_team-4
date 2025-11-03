@@ -22,10 +22,6 @@ public class PostgresConnection implements DatabaseConnection {
       throw new RuntimeException("Postgres JDBC Driver not found", e);
     }
 
-//    String URL = "jdbc:postgresql://postgres:5432/cloud_storage_db";
-//    String username = "postgres";
-//    String password = "super_secret_password_123";
-
     try {
       connection = DriverManager.getConnection(config.getUrl(), config.getUsername(), config.getPassword());
       // TODO: создание таблицы

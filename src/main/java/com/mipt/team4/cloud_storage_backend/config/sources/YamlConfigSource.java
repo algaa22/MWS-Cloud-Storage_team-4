@@ -1,11 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.config.sources;
 
+import com.mipt.team4.cloud_storage_backend.exception.config.ConfigConvertException;
+import com.mipt.team4.cloud_storage_backend.exception.config.InvalidYamlException;
+import com.mipt.team4.cloud_storage_backend.exception.config.YamlLoadException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-
-import com.mipt.team4.cloud_storage_backend.exception.config.ConfigConvertException;
-import com.mipt.team4.cloud_storage_backend.exception.config.InvalidYamlException;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -158,7 +158,7 @@ public class YamlConfigSource extends ConfigSource {
         }
       }
     } catch (IOException e) {
-      throw new RuntimeException("Failed to load YAML from " + filePath + ": " + e.getMessage());
+      throw new YamlLoadException(filePath, e);
     }
 
     return new HashMap<>();

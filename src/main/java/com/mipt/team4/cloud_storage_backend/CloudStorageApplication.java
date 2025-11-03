@@ -16,7 +16,7 @@ import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 public class CloudStorageApplication {
   public static void main(String[] args) {
     DatabaseConfig databaseConfig = DatabaseConfig.from(new EnvironmentConfigSource());
-    NettyConfig nettyConfig = NettyConfig.from(new YamlConfigSource("netty.yml"));
+    NettyConfig nettyConfig = NettyConfig.from(new YamlConfigSource("config/netty.yml"));
 
     PostgresConnection postgres = new PostgresConnection(databaseConfig);
     FileRepository fileRepository = new FileRepository(postgres);

@@ -20,8 +20,8 @@ public class FileMapper {
     return new FileDto(
         entity.getId(),
         entity.getOwnerId(),
-        entity.getPath(),
-        entity.getType(),
+        entity.getStoragePath(),
+        entity.getMimeType(),
         entity.getVisibility(),
         entity.getSize(),
         entity.isDeleted(),

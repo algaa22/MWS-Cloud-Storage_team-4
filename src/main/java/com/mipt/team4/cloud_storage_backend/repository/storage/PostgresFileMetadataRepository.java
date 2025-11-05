@@ -18,19 +18,25 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     this.postgres = postgres;
   }
 
+  // TODO: deleteFile
+
   @Override
   public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {
-    // TODO: написать проверку, есть ли файл с данным ownerId и path
+    // TODO: написать проверку, есть ли файл с данным ownerId и path (не надеяться на сервис): если
+    //       если уже есть файл, то бросать исключение FileAlreadyExistsException
+    // TODO: может быть, стоит возвращать FileEntity?
     postgres.executeUpdate(
-        "INSERT INTO files (id, owner_id, storage_path, file_size, mime_type, visibility, is_deleted) values (?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO files (id, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
+            + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
             fileEntity.getId(),
             fileEntity.getOwnerId(),
-            fileEntity.getPath(),
+            fileEntity.getStoragePath(),
             fileEntity.getSize(),
-            fileEntity.getType(),
+            fileEntity.getMimeType(),
             fileEntity.getVisibility(),
-            fileEntity.isDeleted()));
+            fileEntity.isDeleted(),
+            String.join(",", fileEntity.getTags())));
   }
 
   @Override
@@ -50,7 +56,9 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
                     rs.getString("visibility"),
                     rs.getLong("file_size"),
                     rs.getBoolean("is_deleted"),
-                    Arrays.asList(rs.getString("tags").split(", "))));
+                    Arrays.asList(rs.getString("tags").split(","))));
+
+    if (result.isEmpty()) return Optional.empty();
 
     return Optional.ofNullable(result.getFirst());
   }

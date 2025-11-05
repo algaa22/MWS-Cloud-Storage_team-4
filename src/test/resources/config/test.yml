@@ -1,0 +1,14 @@
+some-string: "some string"
+some-int: 123
+some-fractional-num: 123.123
+some-long: 9223372036854775
+some-boolean: true
+some-string-list:
+  - "1st string"
+  - "2nd string"
+some-int-list:
+  - 1
+  - 2
+some:
+  nested:
+    string: "some nested string"

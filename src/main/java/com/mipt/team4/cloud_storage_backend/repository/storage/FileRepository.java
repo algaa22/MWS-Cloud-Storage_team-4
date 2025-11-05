@@ -8,10 +8,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class FileRepository {
-  PostgresMetadataRepository postgresMetadataRepository;
+  PostgresFileMetadataRepository postgresMetadataRepository;
 
   public FileRepository(PostgresConnection postgres) {
-    postgresMetadataRepository = new PostgresMetadataRepository(postgres);
+    postgresMetadataRepository = new PostgresFileMetadataRepository(postgres);
   }
 
   public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {

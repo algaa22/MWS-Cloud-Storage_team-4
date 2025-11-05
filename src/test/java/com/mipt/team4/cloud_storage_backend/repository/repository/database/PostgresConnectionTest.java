@@ -1,19 +1,12 @@
-package com.mipt.team4.cloud_storage_backend.repository.database;
+package com.mipt.team4.cloud_storage_backend.repository.repository.database;
 
-import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
-import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class PostgresConnectionTest extends AbstractPostgresTest {
+final class PostgresConnectionTest extends AbstractPostgresTest {
   @Test
   public void isConnected_WhenConnected_ReturnsTrue() {
     PostgresConnection postgresConnection = createConnection();

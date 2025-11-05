@@ -17,15 +17,16 @@ public class EnvironmentConfigSource extends ConfigSource {
 
   @Override
   public Optional<String> getString(String key) {
-    String systemValue = System.getenv(convertToEnvVarName(key));
+    key = convertToEnvVarName(key);
 
+    String systemValue = System.getenv(key);
     if (systemValue != null) return Optional.of(systemValue);
 
     return Optional.ofNullable(envVars.get(key));
   }
 
-  private String convertToEnvVarName(String path) {
-    return path.toUpperCase().replace('.', '_').replace('-', '_');
+  private String convertToEnvVarName(String key) {
+    return key.toUpperCase().replace('.', '_').replace('-', '_');
   }
 
   private void loadEnvFile(String filePath) {

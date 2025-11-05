@@ -42,8 +42,8 @@ public class YamlConfigSource extends ConfigSource {
   public Optional<Float> getFloat(String key) {
     Object value = configData.get(key);
 
-    if (value instanceof Float) {
-      return Optional.of((float) value);
+    if (value instanceof Double) {
+      return Optional.of(((Double) value).floatValue());
     } else if (value instanceof String) {
       return super.getFloat(key);
     }
@@ -70,6 +70,8 @@ public class YamlConfigSource extends ConfigSource {
 
     if (value instanceof Long) {
       return Optional.of((long) value);
+    } else if (value instanceof Integer) {
+      return Optional.of(((Integer) value).longValue());
     } else if (value instanceof String) {
       return super.getLong(key);
     }
@@ -112,6 +114,10 @@ public class YamlConfigSource extends ConfigSource {
 
   public Optional<List<Boolean>> getBooleanList(String key) {
     return getList(key, Boolean.class);
+  }
+
+  public Optional<List<Object>> getObjectList(String key) {
+    return getList(key, Object.class);
   }
 
   @SuppressWarnings("unchecked")

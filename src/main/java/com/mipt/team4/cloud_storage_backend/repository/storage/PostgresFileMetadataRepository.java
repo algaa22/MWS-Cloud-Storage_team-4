@@ -8,22 +8,23 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PostgresMetadataRepository implements FileMetadataRepository {
-  private static final Logger logger = LoggerFactory.getLogger(PostgresMetadataRepository.class);
+public class PostgresFileMetadataRepository implements FileMetadataRepository {
+  private static final Logger logger =
+      LoggerFactory.getLogger(PostgresFileMetadataRepository.class);
 
   PostgresConnection postgres;
 
-  public PostgresMetadataRepository(PostgresConnection postgres) {
+  public PostgresFileMetadataRepository(PostgresConnection postgres) {
     this.postgres = postgres;
-    postgres.connect(); // TODO: убрать в main class
   }
 
   @Override
   public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {
     // TODO: написать проверку, есть ли файл с данным ownerId и path
     postgres.executeUpdate(
-        "INSERT INTO files (owner_id, storage_path, file_size, mime_type, visibility, is_deleted) values (?, ?, ?, ?, ?, ?);",
+        "INSERT INTO files (id, owner_id, storage_path, file_size, mime_type, visibility, is_deleted) values (?, ?, ?, ?, ?, ?, ?);",
         List.of(
+            fileEntity.getId(),
             fileEntity.getOwnerId(),
             fileEntity.getPath(),
             fileEntity.getSize(),

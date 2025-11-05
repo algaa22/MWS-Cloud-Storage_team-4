@@ -1,7 +1,8 @@
-package com.mipt.team4.cloud_storage_backend.repository.database;
+package com.mipt.team4.cloud_storage_backend.repository.repository.database;
 
 import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
+import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,20 +12,20 @@ import java.sql.SQLException;
 import java.util.List;
 
 public abstract class AbstractPostgresTest {
-  protected static PostgreSQLContainer<?> postgresContainer =
-      new PostgreSQLContainer<>("postgres:18.0");
+  protected static PostgreSQLContainer<?> postgresContainer;
 
   @BeforeAll
-  static void beforeAll() {
+  protected static void beforeAll() {
+    postgresContainer = new PostgreSQLContainer<>("postgres:18.0");
     postgresContainer.start();
   }
 
   @AfterAll
-  static void afterAll() {
+  protected static void afterAll() {
     postgresContainer.stop();
   }
 
-  protected PostgresConnection createConnection() {
+  protected static PostgresConnection createConnection() {
     DatabaseConfig databaseConfig = new DatabaseConfig(
             postgresContainer.getJdbcUrl(),
             postgresContainer.getDatabaseName(),
@@ -42,7 +43,7 @@ public abstract class AbstractPostgresTest {
   }
 
   // TODO: убрать
-  private void createFilesTable(PostgresConnection postgresConnection) {
+  private static void createFilesTable(PostgresConnection postgresConnection) {
     String createFilesSql = """
             CREATE TABLE IF NOT EXISTS files (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -64,7 +65,7 @@ public abstract class AbstractPostgresTest {
   }
 
   // TODO: убрать
-  private void createUsersTable(PostgresConnection postgresConnection) {
+  private static void createUsersTable(PostgresConnection postgresConnection) {
     String createUsersSql = """
             CREATE TABLE IF NOT EXISTS users (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

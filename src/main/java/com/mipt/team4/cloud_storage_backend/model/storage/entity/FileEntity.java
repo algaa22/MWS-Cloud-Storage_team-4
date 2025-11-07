@@ -6,8 +6,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class FileEntity {
-  private final UUID id;
-  private final UUID ownerId;
+  private final String id;
+  private final String ownerId;
   private final String mimeType;
   private final long size;
   private String storagePath;
@@ -16,8 +16,8 @@ public class FileEntity {
   private List<String> tags;
 
   public FileEntity(
-      UUID id,
-      UUID ownerId,
+      String id,
+      String ownerId,
       String storagePath,
       String mimeType,
       String visibility,
@@ -56,11 +56,11 @@ public class FileEntity {
         && Objects.equals(tags, that.tags);
   }
 
-  public UUID getId() {
+  public String getId() {
     return id;
   }
 
-  public UUID getOwnerId() {
+  public String getOwnerId() {
     return ownerId;
   }
 

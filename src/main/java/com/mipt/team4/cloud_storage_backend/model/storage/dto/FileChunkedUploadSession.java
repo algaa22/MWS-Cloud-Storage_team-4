@@ -7,6 +7,6 @@ public record FileChunkedUploadSession(
     String ownerId,
     long totalFileSize,
     int totalChunks,
-    String filePath,
+    String path,
     List<String> tags,
-    List<FileChunkDto> chunks) {}
+    List<FileChunk> chunks) {}

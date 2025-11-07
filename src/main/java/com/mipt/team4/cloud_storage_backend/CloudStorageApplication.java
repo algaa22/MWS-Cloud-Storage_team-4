@@ -19,11 +19,7 @@ public class CloudStorageApplication {
     EnvironmentConfigSource envConfigSource = new EnvironmentConfigSource();
     YamlConfigSource yamlConfigSource = new YamlConfigSource("config.yml");
 
-    DatabaseConfig databaseConfig = DatabaseConfig.from(envConfigSource);
-    NettyConfig nettyConfig = NettyConfig.from(yamlConfigSource);
-    StorageConfig storageConfig = StorageConfig.from(yamlConfigSource);
-
-    PostgresConnection postgres = new PostgresConnection(databaseConfig);
+    PostgresConnection postgres = new PostgresConnection();
     postgres.connect();
 
     FileRepository fileRepository = new FileRepository(postgres);
@@ -31,7 +27,7 @@ public class CloudStorageApplication {
     FileService fileService = new FileService(fileRepository);
     UserService userService = new UserService();
 
-    FileController fileController = new FileController(fileService, storageConfig);
+    FileController fileController = new FileController(fileService);
     UserController userController = new UserController(userService);
 
     NettyServer server = new NettyServer(nettyConfig, fileController, userController);

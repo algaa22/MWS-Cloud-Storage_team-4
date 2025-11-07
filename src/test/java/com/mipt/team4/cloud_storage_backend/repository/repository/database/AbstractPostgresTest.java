@@ -26,13 +26,7 @@ public abstract class AbstractPostgresTest {
   }
 
   protected static PostgresConnection createConnection() {
-    DatabaseConfig databaseConfig = new DatabaseConfig(
-            postgresContainer.getJdbcUrl(),
-            postgresContainer.getDatabaseName(),
-            postgresContainer.getPassword()
-    );
-
-    PostgresConnection postgresConnection = new PostgresConnection(databaseConfig);
+    PostgresConnection postgresConnection = new PostgresConnection();
     postgresConnection.connect();
 
     // TODO: убрать

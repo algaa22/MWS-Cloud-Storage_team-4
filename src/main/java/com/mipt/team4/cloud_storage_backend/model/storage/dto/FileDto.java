@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.UUID;
 
 public record FileDto(
-    UUID id,
-    UUID ownerId,
+    String id,
+    String ownerId,
     String path,
     String type,
     String visibility,

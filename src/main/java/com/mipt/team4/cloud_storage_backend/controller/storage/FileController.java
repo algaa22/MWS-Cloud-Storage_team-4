@@ -1,9 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileDownloadValidateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.FileUploadValidateException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfo;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import java.util.Map;
 import java.util.UUID;
@@ -15,13 +17,11 @@ public class FileController {
   private static final Logger logger = LoggerFactory.getLogger(FileController.class);
 
   private final FileService service;
-  private final StorageConfig storageConfig;
 
   private Map<String, FileChunkedUploadSession> chunkedUploadSessions;
 
-  public FileController(FileService service, StorageConfig storageConfig) {
+  public FileController(FileService service) {
     this.service = service;
-    this.storageConfig = storageConfig;
   }
 
   public void startChunkedUpload(FileChunkedUploadSession chunkedUploadSession)
@@ -31,16 +31,29 @@ public class FileController {
     chunkedUploadSessions.put(chunkedUploadSession.sessionId(), chunkedUploadSession);
   }
 
-  public void processFileChunk(FileChunkDto fileChunkDto) throws FileUploadValidateException {
-    validateChunkData(fileChunkDto);
-    service.processChunk(fileChunkDto);
+  public void processFileChunk(FileChunk fileChunk) throws FileUploadValidateException {
+    validateChunkData(fileChunk);
+    service.processChunk(fileChunk);
   }
 
-  public UUID finishChunkedUpload(String currentSessionId) {
-    FileChunkedUploadSession chunkedUploadSession = chunkedUploadSessions.get(currentSessionId);
-    chunkedUploadSessions.remove(currentSessionId);
+  public String finishChunkedUpload(String sessionId) {
+    FileChunkedUploadSession chunkedUploadSession = chunkedUploadSessions.get(sessionId);
+    chunkedUploadSessions.remove(sessionId);
 
-    return service.finishChunkedUpload(chunkedUploadSessions);
+    return service.finishChunkedUpload(chunkedUploadSession);
+  }
+
+  public FileDownloadInfo getFileDownloadInfo(String fileId, String userId) throws FileDownloadValidateException {
+    validateChunkedDownloadInfo(fileId, userId);
+    return service.getFileDownloadInfo(fileId, userId);
+  }
+
+  private void validateChunkedDownloadInfo(String fileId, String userId) throws FileDownloadValidateException {
+    if (fileId == null || fileId.trim().isEmpty())
+      throw new FileDownloadValidateException("File ID is required");
+
+    if (userId == null || userId.trim().isEmpty())
+      throw new FileDownloadValidateException("User ID is required");
   }
 
   private void validateChunkedUploadDto(FileChunkedUploadSession chunkedUploadSession)
@@ -52,7 +65,7 @@ public class FileController {
     if (chunkedUploadSession.ownerId() == null || chunkedUploadSession.ownerId().trim().isEmpty())
       throw new FileUploadValidateException("Owner ID is required");
 
-    if (chunkedUploadSession.filePath() == null || chunkedUploadSession.filePath().trim().isEmpty())
+    if (chunkedUploadSession.path() == null || chunkedUploadSession.path().trim().isEmpty())
       throw new FileUploadValidateException("File path is required");
 
     if (chunkedUploadSession.totalFileSize() < 0)
@@ -61,24 +74,24 @@ public class FileController {
     if (chunkedUploadSession.totalChunks() <= 0)
       throw new FileUploadValidateException("Total chunks must be positive");
 
-    if (chunkedUploadSession.totalFileSize() > storageConfig.getMaxFileSize())
+    if (chunkedUploadSession.totalFileSize() > StorageConfig.getInstance().getMaxFileSize())
       throw new FileUploadValidateException("File size exceeds maximum allowed limit");
   }
 
-  private void validateChunkData(FileChunkDto fileChunkDto) throws FileUploadValidateException {
-    if (fileChunkDto.sessionId() == null || fileChunkDto.sessionId().trim().isEmpty())
+  private void validateChunkData(FileChunk fileChunk) throws FileUploadValidateException {
+    if (fileChunk.sessionId() == null || fileChunk.sessionId().trim().isEmpty())
       throw new FileUploadValidateException("Session ID is required");
 
-    if (fileChunkDto.chunkIndex() < 0)
+    if (fileChunk.chunkIndex() < 0)
       throw new FileUploadValidateException("Chunk index cannot be negative");
 
-    if (fileChunkDto.chunkData() == null)
+    if (fileChunk.chunkData() == null)
       throw new FileUploadValidateException("Chunk data cannot be null");
 
-    if (fileChunkDto.chunkData().length == 0)
+    if (fileChunk.chunkData().length == 0)
       throw new FileUploadValidateException("Chunk data cannot be empty");
 
-    if (fileChunkDto.chunkData().length > storageConfig.getMaxFileChunkSize())
+    if (fileChunk.chunkData().length > StorageConfig.getInstance().getMaxFileChunkSize())
       throw new FileUploadValidateException("Chunk size exceeds maximum allowed limit");
   }
 }

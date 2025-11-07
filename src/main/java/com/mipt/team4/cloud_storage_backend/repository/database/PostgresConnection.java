@@ -7,13 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PostgresConnection implements DatabaseConnection {
-  private final DatabaseConfig config;
-
   private Connection connection;
 
-  public PostgresConnection(DatabaseConfig config) {
-    this.config = config;
-  }
+  public PostgresConnection() {}
 
   @Override
   public void connect() {
@@ -25,7 +21,11 @@ public class PostgresConnection implements DatabaseConnection {
 
     try {
       // TODO: если уже коннектед?
-      connection = DriverManager.getConnection(config.getUrl(), config.getUsername(), config.getPassword());
+      connection =
+          DriverManager.getConnection(
+              DatabaseConfig.getInstance().getUrl(),
+              DatabaseConfig.getInstance().getUsername(),
+              DatabaseConfig.getInstance().getPassword());
       // TODO: создание таблицы
       // TODO: миграции
     } catch (SQLException e) {
@@ -42,7 +42,8 @@ public class PostgresConnection implements DatabaseConnection {
   }
 
   @Override
-  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) throws DbExecuteQueryException {
+  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper)
+      throws DbExecuteQueryException {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 

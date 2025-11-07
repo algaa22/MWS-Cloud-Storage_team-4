@@ -1,12 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfo;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import java.io.InputStream;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public class FileService {
@@ -17,15 +17,20 @@ public class FileService {
   }
 
   public void startChunkedUploadSession(FileChunkedUploadSession chunkedUpload) {
-    // TODO
+    // TODO: можно ли юзеру загрузить (квоты)
   }
 
-  public void processChunk(FileChunkDto fileChunkDto) {
-    // TODO
+  public void processChunk(FileChunk fileChunk) {
+    // TODO: поручить FileRepository сохранить чанк, проверять место вообще есть
   }
 
-  public UUID finishChunkedUpload(Map<String, FileChunkedUploadSession> chunkedUploadSessions) {
-    // TODO: возвращает fileId
+  public String finishChunkedUpload(FileChunkedUploadSession chunkedUploadSession) {
+    // TODO: возвращает fileId, поручает FileRepository сохранить последний чанк
+    return null;
+  }
+
+  public FileDownloadInfo getFileDownloadInfo(String fileId, String userId) {
+    // TODO
     return null;
   }
 

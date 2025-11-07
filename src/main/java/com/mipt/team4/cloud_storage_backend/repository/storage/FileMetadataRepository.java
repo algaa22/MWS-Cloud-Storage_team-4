@@ -1,10 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface FileMetadataRepository {
-  // TODO: Безопасное хранение пароля в конфиге
-  void addFile(FileEntity fileEntity);
-  FileEntity getFile(UUID ownerID, String path);
+  void addFile(FileEntity fileEntity) throws DbExecuteUpdateException;
+
+  Optional<FileEntity> getFile(UUID ownerID, String path) throws DbExecuteQueryException;
 }

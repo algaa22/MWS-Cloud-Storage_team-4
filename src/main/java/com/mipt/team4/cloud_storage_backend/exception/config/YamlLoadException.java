@@ -5,4 +5,3 @@ public class YamlLoadException extends RuntimeException {
     super("Failed to load YAML from " + filePath, cause);
   }
 }
-

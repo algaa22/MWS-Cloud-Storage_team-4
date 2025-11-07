@@ -1,5 +1,0 @@
-netty:
-  port: 8080
-  boss-threads: 1
-  worker-threads: 4
-  max-content-length: 65536

@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.model.user.entity;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class UserEntity {
@@ -8,27 +9,32 @@ public class UserEntity {
   private String email;
   private String password;
   private String phoneNumber;
-  private String surname;
-  private long freeSpace;
+  private long storageLimit;
+  private long usedStorage;
+  private LocalDateTime createdAt;
+  boolean isActive;
 
   public UserEntity(
       UUID id,
       String name,
-      String surname,
       String email,
       String password,
       String phoneNumber,
-      Long freeSpace) {
+      long storageLimit,
+      long usedStorage,
+      LocalDateTime createdAt,
+      boolean isActive) {
     this.id = id;
     this.name = name;
     this.email = email;
     this.password = password;
     this.phoneNumber = phoneNumber;
-    this.surname = surname;
-    this.freeSpace = freeSpace;
+    this.storageLimit = storageLimit;
+    this.usedStorage = usedStorage;
+    this.createdAt = createdAt;
+    this.isActive = isActive;
   }
 
-  // геттеры
   public UUID getId() {
     return id;
   }
@@ -37,7 +43,6 @@ public class UserEntity {
     return name;
   }
 
-  // сеттеры
   public void setName(String name) {
     this.name = name;
   }
@@ -48,14 +53,6 @@ public class UserEntity {
 
   public void setEmail(String email) {
     this.email = email;
-  }
-
-  public String getSurname() {
-    return surname;
-  }
-
-  public void setSurname(String surname) {
-    this.surname = surname;
   }
 
   public String getPassword() {
@@ -74,11 +71,35 @@ public class UserEntity {
     this.phoneNumber = phoneNumber;
   }
 
-  public long getFreeSpace() {
-    return freeSpace;
+  public long getStorageLimit() {
+    return storageLimit;
   }
 
-  public void setFreeSpace(long freeSpace) {
-    this.freeSpace = freeSpace;
+  public void setStorageLimit(long storageLimit) {
+    this.storageLimit = storageLimit;
+  }
+
+  public long getUsedStorage() {
+    return usedStorage;
+  }
+
+  public void setUsedStorage(long usedStorage) {
+    this.usedStorage = usedStorage;
+  }
+
+  public LocalDateTime getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(LocalDateTime createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public boolean isActive() {
+    return isActive;
+  }
+
+  public void setActive(boolean active) {
+    isActive = active;
   }
 }

@@ -1,26 +1,30 @@
 package com.mipt.team4.cloud_storage_backend.netty.server;
 
 import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
+import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
-import com.mipt.team4.cloud_storage_backend.netty.handler.HTTPRequestHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handler.HttpRequestHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handler.PipelineSelector;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NettyServer {
   private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
-  private final HTTPRequestHandler requestHandler;
+  private final PipelineSelector pipelineSelector;
   private final NettyConfig config;
 
-  public NettyServer(NettyConfig config, HTTPRequestHandler requestHandler) {
+  public NettyServer(
+      NettyConfig config, FileController fileController, UserController userController) {
     this.config = config;
-    this.requestHandler = requestHandler;
+    this.pipelineSelector = new PipelineSelector(fileController, userController);
   }
 
   public void start() {
@@ -51,9 +55,8 @@ public class NettyServer {
     protected void initChannel(SocketChannel socketChannel) throws Exception {
       ChannelPipeline pipeline = socketChannel.pipeline();
 
-      pipeline.addLast(new HttpServerCodec());
-      pipeline.addLast(new HttpObjectAggregator(config.getMaxContentLength()));
-      pipeline.addLast(requestHandler);
+      pipeline.addLast("httpCodec", new HttpServerCodec());
+      pipeline.addLast("pipeSelector", pipelineSelector);
     }
   }
 }

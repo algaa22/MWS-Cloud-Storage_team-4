@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
 import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
+import com.mipt.team4.cloud_storage_backend.exception.database.*;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,15 +20,16 @@ public class PostgresConnection implements DatabaseConnection {
     try {
       Class.forName("org.postgresql.Driver");
     } catch (ClassNotFoundException e) {
-      throw new RuntimeException("Postgres JDBC Driver not found", e);
+      throw new JdbcNotFoundException(e);
     }
 
     try {
+      // TODO: если уже коннектед?
       connection = DriverManager.getConnection(config.getUrl(), config.getUsername(), config.getPassword());
       // TODO: создание таблицы
       // TODO: миграции
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to connect to the database", e);
+      throw new DbConnectionException(e);
     }
   }
 
@@ -35,12 +37,12 @@ public class PostgresConnection implements DatabaseConnection {
     try {
       return connection != null && !connection.isClosed();
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to check connection", e);
+      throw new DbCheckConnectionException(e);
     }
   }
 
   @Override
-  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) {
+  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) throws DbExecuteQueryException {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 
@@ -53,28 +55,24 @@ public class PostgresConnection implements DatabaseConnection {
 
       return results;
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to execute query: " + query, e);
+      throw new DbExecuteQueryException(query, e);
     }
   }
 
-  public int executeUpdate(String query, List<Object> params) {
+  public int executeUpdate(String query, List<Object> params) throws DbExecuteUpdateException {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 
       return statement.executeUpdate();
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to execute update: " + query, e);
+      throw new DbExecuteUpdateException(query, e);
     }
   }
 
-  private void setParameters(PreparedStatement statement, List<Object> params) {
+  private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {
     if (params != null) {
       for (int i = 0; i < params.size(); i++) {
-        try {
-          statement.setObject(i + 1, params.get(i));
-        } catch (SQLException e) {
-          throw new RuntimeException("Failed to set parameters", e);
-        }
+        statement.setObject(i + 1, params.get(i));
       }
     }
   }
@@ -84,7 +82,7 @@ public class PostgresConnection implements DatabaseConnection {
     try {
       connection.close();
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to close connection", e);
+      throw new DbCloseConnectionException(e);
     }
   }
 

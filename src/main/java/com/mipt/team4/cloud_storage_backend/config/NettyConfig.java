@@ -6,22 +6,18 @@ public class NettyConfig {
   private final int port;
   private final int bossThreads;
   private final int workerThreads;
-  private final int maxContentLength;
 
-  public NettyConfig(int port, int bossThreads, int workerThreads, int maxContentLength) {
+  public NettyConfig(int port, int bossThreads, int workerThreads) {
     this.port = port;
     this.bossThreads = bossThreads;
     this.workerThreads = workerThreads;
-    this.maxContentLength = maxContentLength;
   }
 
   public static NettyConfig from(ConfigSource source) {
     return new NettyConfig(
-            source.getInt("netty.port").orElseThrow(),
-            source.getInt("netty.boss-threads").orElseThrow(),
-            source.getInt("netty.worker-threads").orElseThrow(),
-            source.getInt("netty.max-content-length").orElseThrow()
-    );
+        source.getInt("netty.port").orElseThrow(),
+        source.getInt("netty.boss-threads").orElseThrow(),
+        source.getInt("netty.worker-threads").orElseThrow());
   }
 
   public int getPort() {
@@ -34,9 +30,5 @@ public class NettyConfig {
 
   public int getWorkerThreads() {
     return workerThreads;
-  }
-
-  public int getMaxContentLength() {
-    return maxContentLength;
   }
 }

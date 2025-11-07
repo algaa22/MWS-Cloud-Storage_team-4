@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -8,7 +10,9 @@ public interface DatabaseConnection {
 
   <T> List<T> executeQuery(
       String query, List<Object> params, PostgresConnection.ResultSetMapper<T> mapper)
-      throws SQLException;
+      throws DbExecuteQueryException;
+
+  int executeUpdate(String query, List<Object> params) throws DbExecuteUpdateException;
 
   void disconnect() throws SQLException;
 }

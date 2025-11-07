@@ -1,0 +1,9 @@
+netty:
+  port: 8080
+  boss-threads: 1
+  worker-threads: 4
+
+storage:
+  controller:
+    max-file-size: 10737418240
+    max-file-chunk-size: 10485760

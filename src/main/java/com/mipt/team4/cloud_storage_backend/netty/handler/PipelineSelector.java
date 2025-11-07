@@ -1,7 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.*;
@@ -29,50 +31,26 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
       String transferEncoding = request.headers().get("Transfer-Encoding");
       int contentLength = HttpUtil.getContentLength(request, -1);
 
-      boolean isExplicitChunked = request.headers().contains("X-Chunked-Upload");
-      boolean isHttpChunked = transferEncoding.equalsIgnoreCase("chunked");
-      boolean useChunkedPipeline = isExplicitChunked || isHttpChunked;
+      boolean useChunkedPipeline = transferEncoding.equalsIgnoreCase("chunked");
 
-      if (useChunkedPipeline && contentLength <= MAX_CHUNK_SIZE) {
-        addChunkedWrite(ctx);
-        addChunkedHandler(ctx);
-      } else if (!useChunkedPipeline && contentLength <= MAX_AGGREGATED_SIZE) {
-        addAggregator(ctx);
+      if (useChunkedPipeline) {
+        ctx.pipeline().addLast("chunkedWriter", new ChunkedWriteHandler());
+        ctx.pipeline().addLast("handler", new ChunkedHttpHandler(fileController, userController));
+      } else if (contentLength <= MAX_AGGREGATED_SIZE) {
+        ctx.pipeline()
+            .addLast(
+                "aggregator",
+                new HttpObjectAggregator(
+                    StorageConfig.getInstance().getMaxContentLength()));
         // TODO: handler
       } else {
         handleRequestWithTooLargeContent(ctx, contentLength);
       }
     } else {
-      addChunkedWrite(ctx);
+      handleNotHttpRequest(ctx, msg);
+      return;
     }
 
-    finishSelection(ctx, msg);
-  }
-
-  private void addChunkedHandler(ChannelHandlerContext ctx) {
-    // TODO
-  }
-
-  private void handleRequestWithTooLargeContent(ChannelHandlerContext ctx, int contentLength) {
-    logger.error(
-        "Large file with Content-Length={} not supported. Use chunked upload.", contentLength);
-
-    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, "Large files must use chunked upload");
-  }
-
-  private void addChunkedWrite(ChannelHandlerContext ctx) {
-    ctx.pipeline().addLast("chunkedWriter", new ChunkedWriteHandler());
-  }
-
-  private void addAggregator(ChannelHandlerContext ctx) {
-    ctx.pipeline().addLast("aggregator", new HttpObjectAggregator(65536)); // TODO: hard coding
-  }
-
-  private void addHandler(ChannelHandlerContext ctx) {
-    ctx.pipeline().addLast("handler", new HttpRequestHandler(fileController, userController));
-  }
-
-  private void finishSelection(ChannelHandlerContext ctx, Object msg) {
     ctx.pipeline().remove(this);
 
     try {
@@ -80,5 +58,25 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
     } catch (Exception e) {
       logger.error("Error during read channel in pipe selector", e);
     }
+  }
+
+  private void handleRequestWithTooLargeContent(ChannelHandlerContext ctx, int contentLength) {
+    logger.error(
+        "Large file with Content-Length={} not supported. Use chunked upload.", contentLength);
+
+    ResponseHelper.sendErrorResponse(
+        ctx, HttpResponseStatus.BAD_REQUEST, "Large files must use chunked upload");
+  }
+
+  private void handleNotHttpRequest(ChannelHandlerContext ctx, Object msg) {
+    logger.error(
+        "Unexpected message type before pipeline configuration: {}",
+        msg.getClass().getSimpleName());
+
+    ResponseHelper.sendErrorResponse(
+            ctx,
+            HttpResponseStatus.BAD_REQUEST,
+            msg.getClass().getSimpleName() + " before pipeline configuration with HttpRequest")
+        .addListener(ChannelFutureListener.CLOSE);
   }
 }

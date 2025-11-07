@@ -4,7 +4,6 @@ import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
-import com.mipt.team4.cloud_storage_backend.netty.handler.HttpRequestHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handler.PipelineSelector;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -19,19 +18,16 @@ import org.slf4j.LoggerFactory;
 public class NettyServer {
   private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
   private final PipelineSelector pipelineSelector;
-  private final NettyConfig config;
 
-  public NettyServer(
-      NettyConfig config, FileController fileController, UserController userController) {
-    this.config = config;
+  public NettyServer(FileController fileController, UserController userController) {
     this.pipelineSelector = new PipelineSelector(fileController, userController);
   }
 
   public void start() {
     try (EventLoopGroup bossGroup =
-            new MultiThreadIoEventLoopGroup(config.getBossThreads(), NioIoHandler.newFactory());
+            new MultiThreadIoEventLoopGroup(NettyConfig.getInstance().getBossThreads(), NioIoHandler.newFactory());
         EventLoopGroup workerGroup =
-            new MultiThreadIoEventLoopGroup(config.getWorkerThreads(), NioIoHandler.newFactory())) {
+            new MultiThreadIoEventLoopGroup(NettyConfig.getInstance().getWorkerThreads(), NioIoHandler.newFactory())) {
 
       ServerBootstrap bootstrap = new ServerBootstrap();
       bootstrap
@@ -39,8 +35,8 @@ public class NettyServer {
           .channel(NioServerSocketChannel.class)
           .childHandler(new CustomChannelInitializer());
 
-      ChannelFuture future = bootstrap.bind(config.getPort()).sync();
-      logger.info("Netty server started on port " + config.getPort());
+      ChannelFuture future = bootstrap.bind(NettyConfig.getInstance().getPort()).sync();
+      logger.info("Netty server started on port " + NettyConfig.getInstance().getPort());
 
       future.channel().closeFuture().sync();
       logger.info("Netty server stopped");

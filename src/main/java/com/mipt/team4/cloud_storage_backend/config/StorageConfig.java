@@ -6,11 +6,16 @@ import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSour
 public class StorageConfig {
   private static volatile StorageConfig instance;
   private final long maxFileSize;
-  private final long maxFileChunkSize;
+  private final int maxFileChunkSize;
+  private final int maxContentLength;
 
-  public StorageConfig(long maxFileSize, long maxFileChunkSize) {
+  private final int fileDownloadChunkSize;
+
+  public StorageConfig(long maxFileSize, int maxFileChunkSize, int maxContentLength, int fileDownloadChunkSize) {
     this.maxFileSize = maxFileSize;
     this.maxFileChunkSize = maxFileChunkSize;
+    this.maxContentLength = maxContentLength;
+    this.fileDownloadChunkSize = fileDownloadChunkSize;
   }
 
   public static StorageConfig getInstance() {
@@ -20,8 +25,10 @@ public class StorageConfig {
           ConfigSource source = new EnvironmentConfigSource();
 
           instance = new StorageConfig(
-                  source.getLong("storage.controller.max-file-size").orElseThrow(),
-                  source.getLong("storage.controller.max-file-chunk-size").orElseThrow()
+                  source.getLong("storage.http.max-file-size").orElseThrow(),
+                  source.getInt("storage.http.max-file-chunk-size").orElseThrow(),
+                  source.getInt("storage.http.file-download-chunk-size").orElseThrow(),
+                  source.getInt("storage.http.max-content-length").orElseThrow()
           );
         }
       }
@@ -36,5 +43,13 @@ public class StorageConfig {
 
   public long getMaxFileChunkSize() {
     return maxFileChunkSize;
+  }
+
+  public int getFileDownloadChunkSize() {
+    return fileDownloadChunkSize;
+  }
+
+  public int getMaxContentLength() {
+    return maxContentLength;
   }
 }

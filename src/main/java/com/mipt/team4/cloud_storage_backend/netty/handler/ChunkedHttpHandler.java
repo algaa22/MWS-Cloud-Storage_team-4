@@ -1,18 +1,22 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileDownloadValidateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.FileUploadValidateException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfo;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import java.util.ArrayList;
 import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +26,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
   private final FileController fileController;
   private final UserController userController;
 
-  private class ChunkedUploadInfo {
+  private static class ChunkedUploadInfo {
     public boolean isInProgress = false;
     public String currentSessionId;
     public String currentUserId;
@@ -32,9 +36,8 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     public int receivedChunks = 0;
     public int totalChunks;
   }
-  ;
 
-  private class ChunkedDownloadInfo {
+  private static class ChunkedDownloadInfo {
     public boolean isInProgress = false;
     public String currentSessionId;
     public String currentFileId;
@@ -128,7 +131,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     }
 
     if (logger.isDebugEnabled()) {
-      logger.info(
+      logger.debug(
           "Started chunked upload. Session: {}, user: {}, file: {}, size: {}, chunks: {}",
           chunkedUpload.currentSessionId,
           chunkedUpload.currentUserId,
@@ -148,9 +151,119 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
     parseDownloadRequestMetadata(request);
 
-    FileDownloadInfo fileInfo =
-        fileController.getFileDownloadInfo(
-            chunkedDownload.currentFileId, chunkedDownload.currentUserId);
+    FileDownloadInfo fileInfo;
+
+    try {
+      fileInfo =
+          fileController.getFileDownloadInfo(
+              chunkedDownload.currentFileId, chunkedDownload.currentUserId);
+    } catch (FileDownloadValidateException e) {
+      // TODO: error
+      return;
+    }
+
+    chunkedDownload.isInProgress = true;
+    chunkedDownload.currentSessionId = UUID.randomUUID().toString();
+    chunkedDownload.totalChunks = calculateTotalChunks(fileInfo.size());
+
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Started chunked download. Session: {}, user: {}, file: {}, size: {}, chunks: {}",
+          chunkedDownload.currentSessionId,
+          chunkedDownload.currentUserId,
+          chunkedDownload.currentFileId,
+          chunkedDownload.fileSize,
+          chunkedDownload.totalChunks);
+    }
+
+    sendDownloadStartResponse(ctx, fileInfo);
+    sendNextChunk(ctx);
+  }
+
+  private void sendNextChunk(ChannelHandlerContext ctx) {
+    if (chunkedDownload.sentChunks >= chunkedDownload.totalChunks) {
+      finishChunkedDownload(ctx);
+      return;
+    }
+
+    int chunkIndex = chunkedDownload.totalChunks;
+    int maxChunkSize = StorageConfig.getInstance().getFileDownloadChunkSize();
+    long offset = (long) chunkIndex * maxChunkSize;
+    int chunkSize = (int) Math.min(maxChunkSize, chunkedDownload.fileSize - offset);
+
+    FileChunk fileChunk =
+        fileController.getFileChunk(chunkedDownload.currentFileId, chunkIndex, chunkSize);
+    HttpContent httpChunk = new DefaultHttpContent(Unpooled.copiedBuffer(fileChunk.chunkData()));
+
+    ChannelFutureListener listener = createChunkSendListener(ctx, chunkIndex, chunkSize);
+    ctx.write(httpChunk).addListener(listener);
+  }
+
+  private ChannelFutureListener createChunkSendListener(
+      ChannelHandlerContext ctx, int chunkIndex, int chunkSize) {
+    return future -> {
+      if (future.isSuccess()) {
+        handleChunkSendSuccess(ctx, chunkSize);
+      } else {
+        handleChunkSendFailure(ctx, chunkIndex, future.cause());
+      }
+    };
+  }
+
+  private void handleChunkSendSuccess(ChannelHandlerContext ctx, int chunkSize) {
+    chunkedDownload.sentChunks++;
+    chunkedDownload.sentBytes += chunkSize;
+
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Sent chunk {}/{} for session: {}, size: {}",
+          chunkedDownload.sentChunks,
+          chunkedDownload.totalChunks,
+          chunkedDownload.currentSessionId,
+          chunkSize);
+    }
+
+    ctx.channel().eventLoop().execute(() -> sendNextChunk(ctx));
+  }
+
+  private void finishChunkedDownload(ChannelHandlerContext ctx) {
+    LastHttpContent lastContent = LastHttpContent.EMPTY_LAST_CONTENT;
+
+    ChannelFutureListener listener = createLastContentSendListener(ctx);
+    ctx.writeAndFlush(lastContent).addListener(listener);
+  }
+
+  private void handleChunkSendFailure(ChannelHandlerContext ctx, int chunkIndex, Throwable cause) {
+    logger.error(
+        "Failed to send chunk {} for session: {}", chunkIndex, chunkedDownload.currentSessionId);
+    ResponseHelper.sendErrorResponse(
+            ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, cause.getMessage())
+        .addListener(ChannelFutureListener.CLOSE);
+  }
+
+  private ChannelFutureListener createLastContentSendListener(ChannelHandlerContext ctx) {
+    return future -> {
+      if (future.isSuccess()) {
+        if (logger.isDebugEnabled())
+          logger.debug(
+              "Completed chunked download. Session: {}, file: {}, chunks: {}, bytes: {}",
+              chunkedDownload.currentSessionId,
+              chunkedDownload.currentFileId,
+              chunkedDownload.totalChunks,
+              chunkedDownload.sentChunks);
+      } else {
+        Throwable cause = future.cause();
+
+        logger.error(
+            "Failed to send last content for download session: {}",
+            chunkedDownload.currentSessionId,
+            cause);
+        ResponseHelper.sendErrorResponse(
+                ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, cause.getMessage())
+            .addListener(ChannelFutureListener.CLOSE);
+      }
+      // TODO: reset state?
+    };
   }
 
   private void finishChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content) {
@@ -182,7 +295,11 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
     try {
       fileController.processFileChunk(
-          new FileChunk(chunkedUpload.currentSessionId, chunkedUpload.receivedChunks, chunkBytes));
+          new FileChunk(
+              chunkedUpload.currentSessionId,
+              chunkedUpload.currentFilePath,
+              chunkedUpload.receivedChunks,
+              chunkBytes));
     } catch (FileUploadValidateException e) {
       // TODO
       return;
@@ -206,8 +323,13 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     chunkedUpload.currentSessionId = "";
     chunkedUpload.currentUserId = "";
     chunkedUpload.currentFilePath = "";
-    chunkedUpload.totalFileSize = Long.parseLong(request.headers().get("X-Total-File-Size", "0"));
-    chunkedUpload.totalChunks = Integer.parseInt(request.headers().get("X-Total-Chunks", "1"));
+    chunkedUpload.totalFileSize = Long.parseLong(request.headers().get("X-File-Size"));
+    chunkedUpload.totalChunks = Integer.parseInt(request.headers().get("X-Total-Chunks"));
+  }
+
+  private int calculateTotalChunks(long fileSize) {
+    return (int)
+        Math.ceil((double) fileSize / StorageConfig.getInstance().getFileDownloadChunkSize());
   }
 
   private void parseDownloadRequestMetadata(HttpRequest request) {
@@ -222,6 +344,20 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
   private void handleTransferNotStartedYet(ChannelHandlerContext ctx) {
     handleBadRequest(
         ctx, "HttpContent received without active HttpRequest", "HTTP content without request");
+  }
+
+  private void sendDownloadStartResponse(ChannelHandlerContext ctx, FileDownloadInfo fileInfo) {
+    HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+    response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, "chunked");
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
+    response.headers().set("X-File-Path", fileInfo.path());
+    response.headers().set("X-File-Size", fileInfo.size());
+    response.headers().set("X-File-Type", fileInfo.type());
+    response.headers().set("X-Total-Chunks", chunkedDownload.totalChunks);
+    response.headers().set("X-File-Path", fileInfo.path());
+    response.headers().set("X-Session-Id", chunkedDownload.currentSessionId);
+
+    ctx.writeAndFlush(response);
   }
 
   private void sendProgressResponse(ChannelHandlerContext ctx, String status) {

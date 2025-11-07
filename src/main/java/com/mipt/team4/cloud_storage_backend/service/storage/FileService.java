@@ -38,6 +38,10 @@ public class FileService {
     return null;
   }
 
+  public FileChunk getFileChunk(String currentFileId, int chunkIndex, int chunkSize) {
+    return null;
+  }
+
   public byte[] downloadFile(String fileId) {
     return null;
   }

@@ -4,6 +4,8 @@ netty:
   worker-threads: 4
 
 storage:
-  controller:
+  http:
+    max-content-length: 65536
     max-file-size: 10737418240
     max-file-chunk-size: 10485760
+    file-download-chunk-size: 65536

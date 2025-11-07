@@ -48,6 +48,10 @@ public class FileController {
     return service.getFileDownloadInfo(fileId, userId);
   }
 
+  public FileChunk getFileChunk(String currentFileId, int chunkIndex, int chunkSize) {
+    return service.getFileChunk(currentFileId, chunkIndex, chunkSize);
+  }
+
   private void validateChunkedDownloadInfo(String fileId, String userId) throws FileDownloadValidateException {
     if (fileId == null || fileId.trim().isEmpty())
       throw new FileDownloadValidateException("File ID is required");

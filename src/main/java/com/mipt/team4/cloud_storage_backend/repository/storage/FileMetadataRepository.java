@@ -9,5 +9,5 @@ import java.util.UUID;
 public interface FileMetadataRepository {
   void addFile(FileEntity fileEntity) throws DbExecuteUpdateException;
 
-  Optional<FileEntity> getFile(UUID ownerID, String path) throws DbExecuteQueryException;
+  Optional<FileEntity> getFile(String ownerID, String path) throws DbExecuteQueryException;
 }

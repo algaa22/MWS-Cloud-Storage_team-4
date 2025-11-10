@@ -2,12 +2,11 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfo;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadInfo;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileInfo;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import java.io.InputStream;
 import java.util.List;
-import java.util.UUID;
 
 public class FileService {
   private final FileRepository repository;
@@ -29,12 +28,12 @@ public class FileService {
     return null;
   }
 
-  public FileDownloadInfo getFileDownloadInfo(String fileId, String userId) {
+  public FileChunkedDownloadInfo getFileDownloadInfo(String fileId, String userId) {
     // TODO
     return null;
   }
 
-  public FileDto uploadFile(String fileName, String contentType, InputStream fileStream) {
+  public FileInfo uploadFile(String fileName, String contentType, InputStream fileStream) {
     return null;
   }
 
@@ -48,11 +47,15 @@ public class FileService {
 
   public void deleteFile(String fileId) {}
 
-  public FileDto getFileInfo(String fileId) {
+  public FileInfo getFileInfo(String fileId, String userId) {
     return null;
   }
 
-  public List<FileDto> listFilesByUser(String userId) {
+  public List<FileInfo> listFilesByUser(String userId) {
+    return null;
+  }
+
+  public List<String> getFilePathsList(String userId) {
     return null;
   }
 }

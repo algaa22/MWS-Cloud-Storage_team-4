@@ -88,8 +88,8 @@ public class FileEntity {
     return tags;
   }
 
-  public void setTags(String tags) {
-    this.tags = Collections.singletonList(tags);
+  public void setTags(List<String> tags) {
+    this.tags = tags;
   }
 
   public String getStoragePath() {

@@ -1,10 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.model.storage;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileInfo;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 
 public class FileMapper {
-  public static FileEntity toEntity(FileDto dto) {
+  public static FileEntity toEntity(FileInfo dto) {
     return new FileEntity(
         dto.id(),
         dto.ownerId(),
@@ -16,8 +16,8 @@ public class FileMapper {
         dto.tags());
   }
 
-  public static FileDto toDto(FileEntity entity) {
-    return new FileDto(
+  public static FileInfo toDto(FileEntity entity) {
+    return new FileInfo(
         entity.getId(),
         entity.getOwnerId(),
         entity.getStoragePath(),

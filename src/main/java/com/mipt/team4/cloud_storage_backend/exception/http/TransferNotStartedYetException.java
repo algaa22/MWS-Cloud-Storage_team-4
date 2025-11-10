@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.exception.http.transfer;
+package com.mipt.team4.cloud_storage_backend.exception.http;
 
 public class TransferNotStartedYetException extends Exception {
   public TransferNotStartedYetException() {

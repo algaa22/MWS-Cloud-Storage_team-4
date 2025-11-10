@@ -1,10 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadInfo;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 
 import java.util.List;
@@ -54,5 +51,9 @@ public class FileController {
 
   public List<String> getFilePathsList(String userId) {
     return service.getFilePathsList(userId);
+  }
+
+  public FileInfo getFileInfo(String fileId, String userId) {
+    return service.getFileInfo(fileId, userId);
   }
 }

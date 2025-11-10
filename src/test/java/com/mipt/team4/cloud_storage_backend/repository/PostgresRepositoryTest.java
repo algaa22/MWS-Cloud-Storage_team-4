@@ -22,7 +22,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
 
   private static PostgresFileMetadataRepository fileMetadataRepository;
   private static PostgresConnection postgresConnection;
-  private static UUID testUserUuid;
+  private static String testUserUuid;
 
   @BeforeAll
   protected static void beforeAll() {
@@ -88,7 +88,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
   private static void addTestUser() {
     // TODO: добавить нормально, через интерфейс
 
-    testUserUuid = UUID.randomUUID();
+    testUserUuid = UUID.randomUUID().toString();
 
     try {
       postgresConnection.executeUpdate(
@@ -103,7 +103,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
 
   private static FileEntity createTestFile() {
     return new FileEntity(
-        UUID.randomUUID(),
+        UUID.randomUUID().toString(),
         testUserUuid,
         "some/path.xml",
         "application/xml",

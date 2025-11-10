@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
@@ -148,15 +149,9 @@ public class ChunkedUploadHandler {
     currentSessionId = "";
     currentUserId = "";
     currentFilePath = request.headers().get("X-File-Path");
-    currentFileTags = parseFileTags(request.headers().get("X-File-Tags"));
+    currentFileTags = FileTagsMapper.toList(request.headers().get("X-File-Tags"));
     totalFileSize = Long.parseLong(request.headers().get("X-File-Size"));
     totalChunks = Integer.parseInt(request.headers().get("X-Total-Chunks"));
-  }
-
-  private List<String> parseFileTags(String tags) {
-    return Arrays.stream(tags.split(","))
-            .filter(tag -> !tag.trim().isEmpty())
-            .toList();
   }
 
   private void sendSuccessResponse(ChannelHandlerContext ctx, String fileId, long totalFileSize) {

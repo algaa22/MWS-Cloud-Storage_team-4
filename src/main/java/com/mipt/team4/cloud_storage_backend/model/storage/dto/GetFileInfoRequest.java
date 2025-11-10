@@ -1,18 +1,14 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record FileChunk(String sessionId, String path, int chunkIndex, byte[] chunkData) {
+public record GetFileInfoRequest(String fileId, String userId) {
   public void validate() throws ValidationFailedException {
-    // TODO: доделать валидацию
     ValidationResult result = Validators.all(
-            Validators.notEmpty("Session ID", sessionId),
-            Validators.notNull("Chunk data", chunkData),
-            Validators.mustBePositive("Chunk data", chunkData.length),
-            Validators.cannotBeNegative("Chunk index", chunkIndex)
+            Validators.notEmpty("File ID", fileId),
+            Validators.notEmpty("User ID", userId)
     );
 
     if (!result.isValid())

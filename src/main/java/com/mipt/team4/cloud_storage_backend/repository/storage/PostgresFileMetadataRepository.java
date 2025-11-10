@@ -4,7 +4,11 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryExc
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+
+import java.io.FileNotFoundException;
 import java.util.*;
+
+import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,15 +25,15 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   // TODO: deleteFile
 
   @Override
-  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {
-    // TODO: написать проверку, есть ли файл с данным ownerId и path (не надеяться на сервис): если
+  public void addFile(FileEntity fileEntity) {
+    // TODO: написать проверку, есть ли файл с данным userId и path (не надеяться на сервис): если
     //       если уже есть файл, то бросать исключение FileAlreadyExistsException
     // TODO: может быть, стоит возвращать FileEntity?
     postgres.executeUpdate(
-        "INSERT INTO files (id, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
+        "INSERT INTO files (fileId, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
-            fileEntity.getId(),
+            fileEntity.getFileId(),
             fileEntity.getOwnerId(),
             fileEntity.getStoragePath(),
             fileEntity.getSize(),
@@ -40,7 +44,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public Optional<FileEntity> getFile(UUID ownerId, String path) throws DbExecuteQueryException {
+  public Optional<FileEntity> getFile(UUID ownerId, String path) {
     List<FileEntity> result;
 
     result =
@@ -56,7 +60,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
                     rs.getString("visibility"),
                     rs.getLong("file_size"),
                     rs.getBoolean("is_deleted"),
-                    Arrays.asList(rs.getString("tags").split(","))));
+                    FileTagsMapper.toList(rs.getString("tags"))));
 
     if (result.isEmpty()) return Optional.empty();
 

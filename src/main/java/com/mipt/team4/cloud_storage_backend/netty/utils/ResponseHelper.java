@@ -1,15 +1,25 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.utils;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.netty.handler.ChunkedHttpHandler;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.*;
+
 import java.nio.charset.StandardCharsets;
 
 public class ResponseHelper {
-  public static void sendBadRequestResponse(
-      String uri, HttpMethod method, ChannelHandlerContext ctx) {
+  public static void sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
+    ResponseHelper.sendErrorResponse(
+        ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+  }
+
+  public static void sendMethodNotSupportedResponse(
+      ChannelHandlerContext ctx, String uri, HttpMethod method) {
     sendErrorResponse(
         ctx,
         HttpResponseStatus.BAD_REQUEST,
@@ -19,6 +29,16 @@ public class ResponseHelper {
   public static ChannelFuture sendErrorResponse(
       ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
     return sendResponse(ctx, createErrorResponse(status, message));
+  }
+
+  public static void sendValidationErrorResponse(
+          ChannelHandlerContext ctx, ValidationFailedException exception) {
+    sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.toJson());
+  }
+
+  public static ChannelFuture sendJsonResponse(
+          ChannelHandlerContext ctx, HttpResponseStatus status, JsonNode json) {
+    return sendJsonResponse(ctx, status, json.toString());
   }
 
   public static ChannelFuture sendJsonResponse(
@@ -43,6 +63,7 @@ public class ResponseHelper {
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
     response.headers().set(HttpHeaderNames.CONNECTION, "keep-alive");
+    response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache?
 
     return response;
   }
@@ -54,6 +75,7 @@ public class ResponseHelper {
 
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, data.length);
+    response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache?
 
     return response;
   }

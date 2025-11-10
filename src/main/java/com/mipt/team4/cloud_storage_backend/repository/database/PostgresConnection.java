@@ -7,13 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PostgresConnection implements DatabaseConnection {
-  private final DatabaseConfig config;
-
   private Connection connection;
 
-  public PostgresConnection(DatabaseConfig config) {
-    this.config = config;
-  }
+  public PostgresConnection() {}
 
   @Override
   public void connect() {
@@ -25,7 +21,11 @@ public class PostgresConnection implements DatabaseConnection {
 
     try {
       // TODO: если уже коннектед?
-      connection = DriverManager.getConnection(config.getUrl(), config.getUsername(), config.getPassword());
+      connection =
+          DriverManager.getConnection(
+              DatabaseConfig.getInstance().getUrl(),
+              DatabaseConfig.getInstance().getUsername(),
+              DatabaseConfig.getInstance().getPassword());
       // TODO: создание таблицы
       // TODO: миграции
     } catch (SQLException e) {
@@ -42,7 +42,7 @@ public class PostgresConnection implements DatabaseConnection {
   }
 
   @Override
-  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) throws DbExecuteQueryException {
+  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 
@@ -55,18 +55,28 @@ public class PostgresConnection implements DatabaseConnection {
 
       return results;
     } catch (SQLException e) {
+      handleSqlException(e);
+
       throw new DbExecuteQueryException(query, e);
     }
   }
 
-  public int executeUpdate(String query, List<Object> params) throws DbExecuteUpdateException {
+  public int executeUpdate(String query, List<Object> params) {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 
       return statement.executeUpdate();
     } catch (SQLException e) {
+      handleSqlException(e);
+
       throw new DbExecuteUpdateException(query, e);
     }
+  }
+
+  private void handleSqlException(SQLException e) {
+    // TODO: обработать больше ошибок
+    if (e.getSQLState().startsWith("08"))
+      throw new DbUnavailableException(e);
   }
 
   private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {

@@ -1,21 +1,42 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 
 public class StorageConfig {
+  private static volatile StorageConfig instance;
   private final long maxFileSize;
-  private final long maxFileChunkSize;
+  private final int maxFileChunkSize;
+  private final int maxContentLength;
+  private final int fileDownloadChunkSize;
+  private final int sendUploadProgressInterval;
 
-  public StorageConfig(long maxFileSize, long maxFileChunkSize) {
+  public StorageConfig(long maxFileSize, int maxFileChunkSize, int maxContentLength, int fileDownloadChunkSize, int sendUploadProgressInterval) {
     this.maxFileSize = maxFileSize;
     this.maxFileChunkSize = maxFileChunkSize;
+    this.maxContentLength = maxContentLength;
+    this.fileDownloadChunkSize = fileDownloadChunkSize;
+    this.sendUploadProgressInterval = sendUploadProgressInterval;
   }
 
-  public static StorageConfig from(ConfigSource source) {
-    return new StorageConfig(
-            source.getLong("storage.controller.max-file-size").orElseThrow(),
-            source.getLong("storage.controller.max-file-chunk-size").orElseThrow()
-    );
+  public static StorageConfig getInstance() {
+    if (instance == null) {
+      synchronized (DatabaseConfig.class) {
+        if (instance == null) {
+          ConfigSource source = new EnvironmentConfigSource();
+
+          instance = new StorageConfig(
+                  source.getLong("storage.http.max-file-size").orElseThrow(),
+                  source.getInt("storage.http.max-file-chunk-size").orElseThrow(),
+                  source.getInt("storage.http.file-download-chunk-size").orElseThrow(),
+                  source.getInt("storage.http.max-content-length").orElseThrow(),
+                  source.getInt("storage.http.send-upload-progress-interval").orElseThrow()
+          );
+        }
+      }
+    }
+
+    return instance;
   }
 
   public long getMaxFileSize() {
@@ -24,5 +45,17 @@ public class StorageConfig {
 
   public long getMaxFileChunkSize() {
     return maxFileChunkSize;
+  }
+
+  public int getFileDownloadChunkSize() {
+    return fileDownloadChunkSize;
+  }
+
+  public int getMaxContentLength() {
+    return maxContentLength;
+  }
+
+  public int getSendUploadProgressInterval() {
+    return sendUploadProgressInterval;
   }
 }

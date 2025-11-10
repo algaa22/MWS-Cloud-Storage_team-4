@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record FileDto(
-    UUID id,
+    UUID fileId,
     UUID ownerId,
     String path,
     String type,

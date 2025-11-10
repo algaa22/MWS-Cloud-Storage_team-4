@@ -6,7 +6,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 public class FileMapper {
   public static FileEntity toEntity(FileDto dto) {
     return new FileEntity(
-        dto.id(),
+        dto.fileId(),
         dto.ownerId(),
         dto.path(),
         dto.type(),
@@ -18,7 +18,7 @@ public class FileMapper {
 
   public static FileDto toDto(FileEntity entity) {
     return new FileDto(
-        entity.getId(),
+        entity.getFileId(),
         entity.getOwnerId(),
         entity.getStoragePath(),
         entity.getMimeType(),

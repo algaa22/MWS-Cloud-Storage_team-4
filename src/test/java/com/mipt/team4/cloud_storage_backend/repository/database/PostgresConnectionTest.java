@@ -1,6 +1,5 @@
-package com.mipt.team4.cloud_storage_backend.repository.repository.database;
+package com.mipt.team4.cloud_storage_backend.repository.database;
 
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;

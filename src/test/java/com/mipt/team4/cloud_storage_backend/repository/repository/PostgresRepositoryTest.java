@@ -9,6 +9,8 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.repository.database.AbstractPostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
+
+import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -95,10 +97,24 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
     }
   }
 
-  @Test
-  void shouldAddAndDeleteFile_WithSameId() {
-    // TODO
-  }
+    @Test
+    void shouldAddAndDeleteFile_WithSameId() {
+        FileEntity testFile = createTestFile();
+
+        try {
+            fileMetadataRepository.addFile(testFile);
+
+            assertTrue(fileMetadataRepository.doesFileExist(testFile.getOwnerId(), testFile.getStoragePath()));
+
+            fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getStoragePath());
+
+            assertFalse(fileMetadataRepository.doesFileExist(testFile.getOwnerId(), testFile.getStoragePath()));
+
+        } catch (DbExecuteQueryException | DbExecuteUpdateException | FileAlreadyExistsException |
+                 FileNotFoundException e) {
+            fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
+        }
+    }
 
   private static void addTestUser() {
     // TODO: добавить нормально, через интерфейс

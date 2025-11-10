@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
@@ -85,7 +86,7 @@ public class FileService {
       try {
           // TODO: обработать здесь?
           fileRepository.addFile(entity);
-      } catch (DbExecuteUpdateException e) {
+      } catch (DbExecuteUpdateException | FileAlreadyExistsException | DbExecuteQueryException e) {
           throw new RuntimeException(e);
       }
       return fileId;
@@ -93,7 +94,7 @@ public class FileService {
 
   // Прямая (обычная) загрузка файла
   public FileDto uploadFile(String ownerId, String fileName, InputStream stream, String contentType, long size, List<String> tags)
-      throws DbExecuteUpdateException {
+      throws DbExecuteUpdateException, FileAlreadyExistsException, DbExecuteQueryException {
     UUID fileId = UUID.randomUUID();
     String s3Key = ownerId + "/" + fileName;
     contentRepository.putObject(s3Key, stream, contentType);

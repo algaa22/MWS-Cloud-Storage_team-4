@@ -5,6 +5,8 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateEx
 import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+
+import java.io.FileNotFoundException;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +21,16 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     this.postgres = postgres;
   }
 
-  // TODO: deleteFile
+  public void deleteFile(UUID ownerId, String storagePath) throws DbExecuteQueryException, FileNotFoundException, DbExecuteUpdateException {
+      if (!doesFileExist(ownerId, storagePath)) {
+          throw new FileNotFoundException();
+      }
+
+      postgres.executeUpdate(
+              "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;",
+              List.of(ownerId, storagePath));
+  }
+
   public boolean doesFileExist(UUID ownerId, String storagePath) throws DbExecuteQueryException {
     List<Boolean> result =
         postgres.executeQuery(

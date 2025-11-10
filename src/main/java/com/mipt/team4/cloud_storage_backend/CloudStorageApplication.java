@@ -7,7 +7,6 @@ import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSour
 import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
-import com.mipt.team4.cloud_storage_backend.netty.handler.HttpRequestHandler;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServer;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
@@ -16,9 +15,6 @@ import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 
 public class CloudStorageApplication {
   public static void main(String[] args) {
-    EnvironmentConfigSource envConfigSource = new EnvironmentConfigSource();
-    YamlConfigSource yamlConfigSource = new YamlConfigSource("config.yml");
-
     PostgresConnection postgres = new PostgresConnection();
     postgres.connect();
 

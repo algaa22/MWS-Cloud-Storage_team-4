@@ -2,10 +2,12 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.http.transfer.TransferAlreadyStartedException;
+import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.http.validation.FileDownloadValidationException;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfo;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadInfo;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
@@ -38,11 +40,12 @@ public class ChunkedDownloadHandler {
 
     parseDownloadRequestMetadata(request);
 
-    FileDownloadInfo fileInfo;
+    FileChunkedDownloadInfo fileInfo;
 
     try {
-      fileInfo = fileController.getFileDownloadInfo(currentFileId, currentUserId);
-    } catch (FileDownloadValidationException e) {
+      fileInfo =
+          fileController.getFileDownloadInfo(new GetFileInfoRequest(currentFileId, currentUserId));
+    } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       cleanup();
       return;
@@ -174,7 +177,8 @@ public class ChunkedDownloadHandler {
     currentUserId = request.headers().get("X-User-Id", "");
   }
 
-  private void sendDownloadStartResponse(ChannelHandlerContext ctx, FileDownloadInfo fileInfo) {
+  private void sendDownloadStartResponse(
+      ChannelHandlerContext ctx, FileChunkedDownloadInfo fileInfo) {
     HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
     response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, "chunked");
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");

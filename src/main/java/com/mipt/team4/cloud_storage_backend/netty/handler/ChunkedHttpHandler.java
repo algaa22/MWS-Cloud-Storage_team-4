@@ -1,10 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.http.transfer.TransferAlreadyStartedException;
-import com.mipt.team4.cloud_storage_backend.exception.http.transfer.TransferNotStartedYetException;
+import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStartedException;
+import com.mipt.team4.cloud_storage_backend.exception.http.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
@@ -44,13 +43,13 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
       } else if (uri.startsWith("/api/files/") && method.equals(HttpMethod.GET)) {
         chunkedDownload.startChunkedDownload(ctx, request);
       } else {
-        ResponseHelper.sendMethodNotSupportedResponse(uri, method, ctx);
+        ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       }
     } catch (TransferAlreadyStartedException e) {
       handleBadRequest(
-              ctx,
-              "New HttpRequest received while previous request is in progress",
-              "Previous request not completed");
+          ctx,
+          "New HttpRequest received while previous request is in progress",
+          "Previous request not completed");
     }
   }
 
@@ -68,24 +67,20 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   private void handleTransferNotStartedYet(ChannelHandlerContext ctx) {
     handleBadRequest(
-            ctx, "HttpContent received without active HttpRequest", "HTTP content without request");
+        ctx, "HttpContent received without active HttpRequest", "HTTP content without request");
   }
 
   private void handleBadRequest(
       ChannelHandlerContext ctx, String loggerMessage, String responseMessage) {
     logger.error(loggerMessage);
 
-    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, responseMessage)
-        .addListener(ChannelFutureListener.CLOSE);
+    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, responseMessage);
   }
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     logger.error("Unhandled exception in channel from {}", ctx.channel().remoteAddress(), cause);
-
-    ResponseHelper.sendErrorResponse(
-            ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error")
-        .addListener(ChannelFutureListener.CLOSE);
+    ResponseHelper.sendInternalServerErrorResponse(ctx);
 
     chunkedUpload.cleanup();
     chunkedDownload.cleanup();

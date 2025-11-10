@@ -1,0 +1,119 @@
+package com.mipt.team4.cloud_storage_backend.utils.validation;
+
+import com.mipt.team4.cloud_storage_backend.utils.NumberComparator;
+import java.util.List;
+
+public class Validators {
+  public static ValidationResult all(ValidationResult... results) {
+    ValidationResult combined = ValidationResult.valid();
+
+    for (ValidationResult result : results) {
+      combined = combined.merge(result);
+    }
+
+    return combined;
+  }
+
+  public static ValidationResult notNull(String field, Object value) {
+    return validate(value != null, field, field + " cannot be null", "NOT_NULL");
+  }
+
+  public static ValidationResult notEmpty(String field, String value) {
+    return notEmpty(value != null && !value.trim().isEmpty(), field);
+  }
+
+  public static <T> ValidationResult notEmpty(String field, T[] list) {
+    return notEmpty(list != null && list.length != 0, field);
+  }
+
+  public static <T> ValidationResult notEmpty(String field, List<T> list) {
+    return notEmpty(list != null && !list.isEmpty(), field);
+  }
+
+  private static ValidationResult notEmpty(boolean condition, String field) {
+    return validate(condition, field, field + " cannot be empty", "NOT_EMPTY_LIST");
+  }
+
+  public static ValidationResult lengthRange(
+      String field, String value, int minLength, int maxLength) {
+    return validate(
+        value != null && (value.length() < minLength || value.length() > maxLength),
+        field + " must contain " + minLength + " to " + maxLength + " characters",
+        "MAX_LENGTH_" + maxLength);
+  }
+
+  public static ValidationResult maxLength(String field, String value, int maxLength) {
+    return validate(
+        value != null && value.length() <= maxLength,
+        field + " cannot exceed " + maxLength + " characters",
+        "MAX_LENGTH_" + maxLength);
+  }
+
+  public static ValidationResult minLength(String field, String value, int minLength) {
+    return validate(
+        value != null && value.length() >= minLength,
+        field + " must contain at least " + minLength + " characters",
+        "MIN_LENGTH_" + minLength);
+  }
+
+  public static ValidationResult pattern(String field, String value, String regex) {
+    return validate(
+        value != null && value.matches(regex),
+        field,
+        field + " has invalid format",
+        "PATTERN_" + regex);
+  }
+
+  public static ValidationResult numberRange(
+      String field, Number value, Number minValue, Number maxValue) {
+    return validate(
+        NumberComparator.greaterThanOrEqualsTo(value, minValue)
+            && NumberComparator.lessThanOrEqualsTo(value, maxValue),
+        field,
+        field + " must be between " + minValue + " and " + maxValue,
+        "NUMBER_RANGE_" + minValue + "-" + maxValue);
+  }
+
+  public static ValidationResult numberMax(String field, Number value, Number maxValue) {
+    return validate(
+        NumberComparator.lessThanOrEqualsTo(value, maxValue),
+        field,
+        field + " must be less than or equal to " + maxValue,
+        "NUMBER_MAX_" + maxValue);
+  }
+
+  public static ValidationResult cannotBeNegative(String field, Number value) {
+    return validate(
+        NumberComparator.greaterThanOrEqualsTo(value, 0),
+        field,
+        field + " cannot be negative",
+        "CANNOT_BE_NEGATIVE");
+  }
+
+  public static ValidationResult numberMin(String field, Number value, Number minValue) {
+    return validate(
+        NumberComparator.greaterThanOrEqualsTo(value, minValue),
+        field,
+        field + " must be greater than or equal to  " + minValue,
+        "NUMBER_MIN_" + minValue);
+  }
+
+  public static ValidationResult mustBePositive(String field, Number value) {
+    return validate(
+        NumberComparator.greaterThan(value, 0),
+        field,
+        field + " must be positive",
+        "MUST_BE_POSITIVE");
+  }
+
+  public static ValidationResult validate(boolean condition, String field, String message) {
+    return validate(condition, field, message, null);
+  }
+
+  public static ValidationResult validate(
+      boolean condition, String field, String message, String code) {
+    if (!condition) return ValidationResult.error(field, message);
+
+    return ValidationResult.valid();
+  }
+}

@@ -2,9 +2,9 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.http.transfer.TransferAlreadyStartedException;
-import com.mipt.team4.cloud_storage_backend.exception.http.transfer.TransferNotStartedYetException;
-import com.mipt.team4.cloud_storage_backend.exception.http.validation.FileUploadValidationException;
+import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStartedException;
+import com.mipt.team4.cloud_storage_backend.exception.http.TransferNotStartedYetException;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
@@ -55,7 +55,7 @@ public class ChunkedUploadHandler {
               currentFilePath,
               currentFileTags,
               new ArrayList<>()));
-    } catch (FileUploadValidationException e) {
+    } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       cleanup();
       return;
@@ -111,7 +111,7 @@ public class ChunkedUploadHandler {
     try {
       fileController.processFileChunk(
           new FileChunk(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
-    } catch (FileUploadValidationException e) {
+    } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       return;
     }

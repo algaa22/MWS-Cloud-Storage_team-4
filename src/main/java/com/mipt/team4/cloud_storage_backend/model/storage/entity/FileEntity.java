@@ -1,13 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 public class FileEntity {
-  private final String id;
-  private final String ownerId;
+  private final UUID fileId;
+  private final UUID ownerId;
   private final String mimeType;
   private final long size;
   private String storagePath;
@@ -16,15 +15,15 @@ public class FileEntity {
   private List<String> tags;
 
   public FileEntity(
-      String id,
-      String ownerId,
+      UUID fileId,
+      UUID ownerId,
       String storagePath,
       String mimeType,
       String visibility,
       long size,
       boolean isDeleted,
       List<String> tags) {
-    this.id = id;
+    this.fileId = fileId;
     this.ownerId = ownerId;
     this.size = size;
     this.storagePath = storagePath;
@@ -39,7 +38,7 @@ public class FileEntity {
     if (object == null || getClass() != object.getClass()) return false;
 
     FileEntity that = (FileEntity) object;
-    return Objects.equals(id, that.id);
+    return Objects.equals(fileId, that.fileId);
   }
 
   public boolean fullEquals(Object object) {
@@ -48,7 +47,7 @@ public class FileEntity {
     FileEntity that = (FileEntity) object;
     return size == that.size
         && isDeleted == that.isDeleted
-        && Objects.equals(id, that.id)
+        && Objects.equals(fileId, that.fileId)
         && Objects.equals(ownerId, that.ownerId)
         && Objects.equals(mimeType, that.mimeType)
         && Objects.equals(storagePath, that.storagePath)
@@ -56,11 +55,11 @@ public class FileEntity {
         && Objects.equals(tags, that.tags);
   }
 
-  public String getId() {
-    return id;
+  public UUID getFileId() {
+    return fileId;
   }
 
-  public String getOwnerId() {
+  public UUID getOwnerId() {
     return ownerId;
   }
 

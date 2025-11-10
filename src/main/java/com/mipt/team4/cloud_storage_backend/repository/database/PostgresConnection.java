@@ -42,8 +42,7 @@ public class PostgresConnection implements DatabaseConnection {
   }
 
   @Override
-  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper)
-      throws DbExecuteQueryException {
+  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 
@@ -56,18 +55,28 @@ public class PostgresConnection implements DatabaseConnection {
 
       return results;
     } catch (SQLException e) {
+      handleSqlException(e);
+
       throw new DbExecuteQueryException(query, e);
     }
   }
 
-  public int executeUpdate(String query, List<Object> params) throws DbExecuteUpdateException {
+  public int executeUpdate(String query, List<Object> params) {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 
       return statement.executeUpdate();
     } catch (SQLException e) {
+      handleSqlException(e);
+
       throw new DbExecuteUpdateException(query, e);
     }
+  }
+
+  private void handleSqlException(SQLException e) {
+    // TODO: обработать больше ошибок
+    if (e.getSQLState().startsWith("08"))
+      throw new DbUnavailableException(e);
   }
 
   private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {

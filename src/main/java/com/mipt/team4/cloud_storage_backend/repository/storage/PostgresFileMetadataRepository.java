@@ -4,6 +4,8 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryExc
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+
+import java.io.FileNotFoundException;
 import java.util.*;
 
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
@@ -23,15 +25,15 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   // TODO: deleteFile
 
   @Override
-  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {
+  public void addFile(FileEntity fileEntity) {
     // TODO: написать проверку, есть ли файл с данным userId и path (не надеяться на сервис): если
     //       если уже есть файл, то бросать исключение FileAlreadyExistsException
     // TODO: может быть, стоит возвращать FileEntity?
     postgres.executeUpdate(
-        "INSERT INTO files (id, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
+        "INSERT INTO files (fileId, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
-            fileEntity.getId(),
+            fileEntity.getFileId(),
             fileEntity.getOwnerId(),
             fileEntity.getStoragePath(),
             fileEntity.getSize(),
@@ -42,7 +44,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public Optional<FileEntity> getFile(String ownerId, String path) throws DbExecuteQueryException {
+  public Optional<FileEntity> getFile(UUID ownerId, String path) {
     List<FileEntity> result;
 
     result =
@@ -51,7 +53,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             List.of(ownerId, path),
             rs ->
                 new FileEntity(
-                    rs.getString("id"),
+                    UUID.fromString(rs.getString("id")),
                     ownerId,
                     rs.getString("storage_path"),
                     rs.getString("mime_type"),

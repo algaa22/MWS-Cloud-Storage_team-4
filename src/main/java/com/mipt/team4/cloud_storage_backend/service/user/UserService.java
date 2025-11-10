@@ -21,5 +21,5 @@ public class UserService {
 
   public void deleteUser(UUID id) {}
 
-  // UserResponseDto updateUser(UUID id, UserResponseDto dto);
+  // UserResponseDto updateUser(UUID fileId, UserResponseDto dto);
 }

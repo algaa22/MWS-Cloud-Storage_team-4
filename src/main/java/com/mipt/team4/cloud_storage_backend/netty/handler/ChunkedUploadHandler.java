@@ -5,8 +5,8 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.http.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.buffer.ByteBuf;
@@ -15,10 +15,8 @@ import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,8 +26,8 @@ public class ChunkedUploadHandler {
 
   private boolean isInProgress = false;
   private List<String> currentFileTags;
-  private String currentSessionId;
-  private String currentUserId;
+  private UUID currentSessionId;
+  private UUID currentUserId;
   private String currentFilePath;
   private long totalFileSize;
   private long receivedBytes = 0;
@@ -48,14 +46,13 @@ public class ChunkedUploadHandler {
 
     try {
       fileController.startChunkedUpload(
-          new FileChunkedUploadSession(
+          new FileChunkedUploadDto(
               currentSessionId,
               currentUserId,
               totalFileSize,
               totalChunks,
               currentFilePath,
-              currentFileTags,
-              new ArrayList<>()));
+              currentFileTags));
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       cleanup();
@@ -85,7 +82,7 @@ public class ChunkedUploadHandler {
 
     if (content.content().readableBytes() > 0) handleFileChunk(ctx, content);
 
-    String fileId = fileController.finishChunkedUpload(currentSessionId);
+    UUID fileId = fileController.finishChunkedUpload(currentSessionId);
 
     if (logger.isDebugEnabled())
       logger.debug(
@@ -111,7 +108,7 @@ public class ChunkedUploadHandler {
 
     try {
       fileController.processFileChunk(
-          new FileChunk(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
+          new FileChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       return;
@@ -146,15 +143,15 @@ public class ChunkedUploadHandler {
 
   private void parseUploadRequestMetadata(HttpRequest request) {
     // TODO: парсинг метаданных пользователя, аутентификация
-    currentSessionId = "";
-    currentUserId = "";
+    currentSessionId = UUID.fromString("");
+    currentUserId = UUID.fromString("");
     currentFilePath = request.headers().get("X-File-Path");
     currentFileTags = FileTagsMapper.toList(request.headers().get("X-File-Tags"));
     totalFileSize = Long.parseLong(request.headers().get("X-File-Size"));
     totalChunks = Integer.parseInt(request.headers().get("X-Total-Chunks"));
   }
 
-  private void sendSuccessResponse(ChannelHandlerContext ctx, String fileId, long totalFileSize) {
+  private void sendSuccessResponse(ChannelHandlerContext ctx, UUID fileId, long totalFileSize) {
     String json =
         String.format(
             "{\"status\":\"complete\",\"fileId\":%s,\"fileSize\":%d}", fileId, totalFileSize);

@@ -3,11 +3,10 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStartedException;
-import com.mipt.team4.cloud_storage_backend.exception.http.validation.FileDownloadValidationException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadInfo;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
@@ -23,8 +22,8 @@ public class ChunkedDownloadHandler {
 
   private boolean isInProgress = false;
   private String currentSessionId;
-  private String currentFileId;
-  private String currentUserId;
+  private UUID currentFileId;
+  private UUID currentUserId;
   private long fileSize;
   private long sentBytes = 0;
   private long sentChunks = 0;
@@ -40,11 +39,11 @@ public class ChunkedDownloadHandler {
 
     parseDownloadRequestMetadata(request);
 
-    FileChunkedDownloadInfo fileInfo;
+    FileChunkedDownloadDto fileInfo;
 
     try {
       fileInfo =
-          fileController.getFileDownloadInfo(new GetFileInfoRequest(currentFileId, currentUserId));
+          fileController.getFileDownloadInfo(new GetFileInfoDto(currentFileId, currentUserId));
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       cleanup();
@@ -80,7 +79,7 @@ public class ChunkedDownloadHandler {
     long offset = (long) chunkIndex * maxChunkSize;
     int chunkSize = (int) Math.min(maxChunkSize, fileSize - offset);
 
-    FileChunk fileChunk = fileController.getFileChunk(currentFileId, chunkIndex, chunkSize);
+    FileChunkDto fileChunk = fileController.getFileChunk(currentFileId, chunkIndex, chunkSize);
     HttpContent httpChunk = new DefaultHttpContent(Unpooled.copiedBuffer(fileChunk.chunkData()));
 
     ChannelFutureListener listener = createChunkSendListener(ctx, chunkIndex, chunkSize);
@@ -172,13 +171,13 @@ public class ChunkedDownloadHandler {
     String uri = request.uri();
     String[] uriParts = uri.split("/");
 
-    currentFileId = uriParts[uriParts.length - 1];
+    currentFileId = UUID.fromString(uriParts[uriParts.length - 1]);
     // TODO: аутентификация
-    currentUserId = request.headers().get("X-User-Id", "");
+    currentUserId = UUID.fromString(request.headers().get("X-User-Id", ""));
   }
 
   private void sendDownloadStartResponse(
-      ChannelHandlerContext ctx, FileChunkedDownloadInfo fileInfo) {
+      ChannelHandlerContext ctx, FileChunkedDownloadDto fileInfo) {
     HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
     response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, "chunked");
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");

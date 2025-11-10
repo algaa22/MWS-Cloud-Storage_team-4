@@ -26,8 +26,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
   }
 
   @Override
-  protected void channelRead0(ChannelHandlerContext ctx, HttpRequest request)
-      throws Exception {
+  protected void channelRead0(ChannelHandlerContext ctx, HttpRequest request) {
     method = request.method();
     uri = request.uri();
 

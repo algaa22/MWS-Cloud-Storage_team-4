@@ -4,6 +4,9 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryExc
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,5 +23,17 @@ public class FileRepository {
 
   public Optional<FileEntity> getFile(UUID ownerId, String path) throws DbExecuteQueryException {
     return postgresMetadataRepository.getFile(ownerId, path);
+  }
+
+  public String startMultipartUpload(String s3Key) {
+    // TODO: return upload ID
+  }
+
+  public String uploadPart(String uploadId, int partIndex, byte[] bytes) {
+    // TODO: return eTag
+  }
+
+  public UUID finishMultipartUpload(String s3Key, String uploadId, List<String> eTags) {
+    // TODO: return file ID
   }
 }

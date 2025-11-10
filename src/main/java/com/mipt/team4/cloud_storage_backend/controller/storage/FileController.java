@@ -3,49 +3,41 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
-
 import java.util.List;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.UUID;
 
 public class FileController {
-  private static final Logger logger = LoggerFactory.getLogger(FileController.class);
-
   private final FileService service;
-
-  private Map<String, FileChunkedUploadSession> chunkedUploadSessions;
 
   public FileController(FileService service) {
     this.service = service;
   }
 
-  public void startChunkedUpload(FileChunkedUploadSession chunkedUploadSession)
+  public void startChunkedUpload(FileChunkedUploadDto chunkedUploadRequest)
       throws ValidationFailedException {
-    chunkedUploadSession.validate();
-    service.startChunkedUploadSession(chunkedUploadSession);
-    chunkedUploadSessions.put(chunkedUploadSession.sessionId(), chunkedUploadSession);
+    chunkedUploadRequest.validate();
+    service.startChunkedUploadSession(chunkedUploadRequest);
   }
 
-  public void processFileChunk(FileChunk fileChunk) throws ValidationFailedException {
+  public void processFileChunk(FileChunkDto fileChunk) throws ValidationFailedException {
     fileChunk.validate();
     service.processChunk(fileChunk);
   }
 
-  public String finishChunkedUpload(String sessionId) {
-    FileChunkedUploadSession chunkedUploadSession = chunkedUploadSessions.get(sessionId);
+  public UUID finishChunkedUpload(UUID sessionId) {
+    FileChunkedUploadDto chunkedUploadSession = chunkedUploadSessions.get(sessionId);
     chunkedUploadSessions.remove(sessionId);
 
-    return service.finishChunkedUpload(chunkedUploadSession);
+    return service.finishChunkedUpload(sessionId);
   }
 
-  public FileChunkedDownloadInfo getFileDownloadInfo(GetFileInfoRequest request) throws ValidationFailedException {
+  public FileChunkedDownloadDto getFileDownloadInfo(GetFileInfoDto request)
+      throws ValidationFailedException {
     request.validate();
     return service.getFileDownloadInfo(request.fileId(), request.userId());
   }
 
-  public FileChunk getFileChunk(String currentFileId, int chunkIndex, int chunkSize) {
+  public FileChunkDto getFileChunk(UUID currentFileId, int chunkIndex, int chunkSize) {
     return service.getFileChunk(currentFileId, chunkIndex, chunkSize);
   }
 
@@ -53,7 +45,7 @@ public class FileController {
     return service.getFilePathsList(userId);
   }
 
-  public FileInfo getFileInfo(String fileId, String userId) {
+  public FileDto getFileInfo(String fileId, String userId) {
     return service.getFileInfo(fileId, userId);
   }
 }

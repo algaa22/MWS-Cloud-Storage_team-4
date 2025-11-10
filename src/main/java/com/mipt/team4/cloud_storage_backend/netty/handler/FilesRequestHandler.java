@@ -1,15 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileInfo;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 import java.util.List;
@@ -44,19 +42,19 @@ public class FilesRequestHandler {
 
   public void handleGetFileInfoRequest(
       ChannelHandlerContext ctx, String fileId, String userId) {
-    FileInfo fileInfo = fileController.getFileInfo(fileId, userId);
+    FileDto fileDto = fileController.getFileInfo(fileId, userId);
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
 
-    rootNode.put("ID", fileInfo.id());
-    rootNode.put("OwnerID", fileInfo.ownerId());
-    rootNode.put("Path", fileInfo.path());
-    rootNode.put("Type", fileInfo.type());
-    rootNode.put("Visibility", fileInfo.visibility());
-    rootNode.put("Size", fileInfo.size());
-    rootNode.put("IsDeleted", fileInfo.isDeleted());
-    rootNode.put("Tags", FileTagsMapper.toString(fileInfo.tags()));
+    rootNode.put("ID", fileDto.fileId());
+    rootNode.put("OwnerID", fileDto.ownerId());
+    rootNode.put("Path", fileDto.path());
+    rootNode.put("Type", fileDto.type());
+    rootNode.put("Visibility", fileDto.visibility());
+    rootNode.put("Size", fileDto.size());
+    rootNode.put("IsDeleted", fileDto.isDeleted());
+    rootNode.put("Tags", FileTagsMapper.toString(fileDto.tags()));
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }

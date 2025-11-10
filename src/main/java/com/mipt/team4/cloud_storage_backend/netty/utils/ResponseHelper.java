@@ -1,14 +1,14 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.utils;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.*;
+
 import java.nio.charset.StandardCharsets;
 
 public class ResponseHelper {
-  public static void sendBadRequestResponse(
+  public static void sendMethodNotSupportedResponse(
       String uri, HttpMethod method, ChannelHandlerContext ctx) {
     sendErrorResponse(
         ctx,

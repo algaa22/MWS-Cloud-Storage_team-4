@@ -8,14 +8,15 @@ public class StorageConfig {
   private final long maxFileSize;
   private final int maxFileChunkSize;
   private final int maxContentLength;
-
   private final int fileDownloadChunkSize;
+  private final int sendUploadProgressInterval;
 
-  public StorageConfig(long maxFileSize, int maxFileChunkSize, int maxContentLength, int fileDownloadChunkSize) {
+  public StorageConfig(long maxFileSize, int maxFileChunkSize, int maxContentLength, int fileDownloadChunkSize, int sendUploadProgressInterval) {
     this.maxFileSize = maxFileSize;
     this.maxFileChunkSize = maxFileChunkSize;
     this.maxContentLength = maxContentLength;
     this.fileDownloadChunkSize = fileDownloadChunkSize;
+    this.sendUploadProgressInterval = sendUploadProgressInterval;
   }
 
   public static StorageConfig getInstance() {
@@ -28,7 +29,8 @@ public class StorageConfig {
                   source.getLong("storage.http.max-file-size").orElseThrow(),
                   source.getInt("storage.http.max-file-chunk-size").orElseThrow(),
                   source.getInt("storage.http.file-download-chunk-size").orElseThrow(),
-                  source.getInt("storage.http.max-content-length").orElseThrow()
+                  source.getInt("storage.http.max-content-length").orElseThrow(),
+                  source.getInt("storage.http.send-upload-progress-interval").orElseThrow()
           );
         }
       }
@@ -51,5 +53,9 @@ public class StorageConfig {
 
   public int getMaxContentLength() {
     return maxContentLength;
+  }
+
+  public int getSendUploadProgressInterval() {
+    return sendUploadProgressInterval;
   }
 }

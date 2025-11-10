@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -14,7 +15,6 @@ import org.slf4j.LoggerFactory;
 public class PipelineSelector extends ChannelInboundHandlerAdapter {
   private static final Logger logger = LoggerFactory.getLogger(PipelineSelector.class);
   // TODO: настроить и возможно в кфг
-  private static final int MAX_CHUNK_SIZE = 10 * 1024;
   private static final int MAX_AGGREGATED_SIZE = 64 * 1024;
 
   private final FileController fileController;
@@ -35,13 +35,12 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
 
       if (useChunkedPipeline) {
         ctx.pipeline().addLast("chunkedWriter", new ChunkedWriteHandler());
-        ctx.pipeline().addLast("handler", new ChunkedHttpHandler(fileController, userController));
+        ctx.pipeline().addLast("handler", new ChunkedHttpHandler(fileController));
       } else if (contentLength <= MAX_AGGREGATED_SIZE) {
         ctx.pipeline()
             .addLast(
                 "aggregator",
-                new HttpObjectAggregator(
-                    StorageConfig.getInstance().getMaxContentLength()));
+                new HttpObjectAggregator(StorageConfig.getInstance().getMaxContentLength()));
         // TODO: handler
       } else {
         handleRequestWithTooLargeContent(ctx, contentLength);

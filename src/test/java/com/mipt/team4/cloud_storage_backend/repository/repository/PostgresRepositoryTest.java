@@ -42,6 +42,21 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
   }
 
   @Test
+  void shouldDetectCreatedFile() {
+      FileEntity testFile = createTestFile();
+
+      try {
+          fileMetadataRepository.addFile(testFile);
+
+          boolean doesExist = fileMetadataRepository.doesFileExist(testFile.getOwnerId(), testFile.getStoragePath());
+
+          assertTrue(doesExist);
+      } catch (DbExecuteQueryException | DbExecuteUpdateException e) {
+          fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
+      }
+  }
+
+  @Test
   void shouldAddAndGetFile_WithSameContent() {
     FileEntity testFile = createTestFile();
 

@@ -5,6 +5,7 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateEx
 import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+import java.io.FileNotFoundException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,4 +23,8 @@ public class FileRepository {
   public Optional<FileEntity> getFile(UUID ownerId, String path) throws DbExecuteQueryException {
     return postgresMetadataRepository.getFile(ownerId, path);
   }
+
+  public void deleteFile(UUID ownerId, String path) throws DbExecuteUpdateException, DbExecuteQueryException, FileNotFoundException {
+      postgresMetadataRepository.deleteFile(ownerId, path);
+    }
 }

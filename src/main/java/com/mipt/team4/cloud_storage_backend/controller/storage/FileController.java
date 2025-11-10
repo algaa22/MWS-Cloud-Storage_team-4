@@ -26,7 +26,7 @@ public class FileController {
   }
 
   public void startChunkedUpload(FileChunkedUploadSession chunkedUploadSession)
-      throws FileUploadValidateException, DbExecuteQueryException {
+      throws FileUploadValidateException {
     validateChunkedUploadDto(chunkedUploadSession);
     service.startChunkedUploadSession(chunkedUploadSession);
     chunkedUploadSessions.put(chunkedUploadSession.sessionId(), chunkedUploadSession);

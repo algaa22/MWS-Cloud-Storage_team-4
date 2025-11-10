@@ -68,10 +68,6 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
     ctx.pipeline().addLast("aggregator", new HttpObjectAggregator(65536)); // TODO: hard coding
   }
 
-  private void addHandler(ChannelHandlerContext ctx) {
-    ctx.pipeline().addLast("handler", new HttpRequestHandler(fileController, userController));
-  }
-
   private void finishSelection(ChannelHandlerContext ctx, Object msg) {
     ctx.pipeline().remove(this);
 

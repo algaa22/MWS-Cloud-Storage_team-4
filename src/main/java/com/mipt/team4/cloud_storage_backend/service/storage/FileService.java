@@ -25,12 +25,17 @@ public class FileService {
   }
 
   // Инициализация chunked-upload: никаких записьей в репо, только запоминаем сессию
-  public void startChunkedUploadSession(FileChunkedUploadSession session)
-      throws DbExecuteQueryException {
+  public void startChunkedUploadSession(FileChunkedUploadSession session) {
     UUID ownerUuid = UUID.fromString(session.ownerId());
     String path = session.filePath();
-    Optional<FileEntity> existing = fileRepository.getFile(ownerUuid, path);
-    if (existing.isPresent()) {
+      Optional<FileEntity> existing = null;
+      try {
+          // TODO: обработать здесь
+          existing = fileRepository.getFile(ownerUuid, path);
+      } catch (DbExecuteQueryException e) {
+          throw new RuntimeException(e);
+      }
+      if (existing.isPresent()) {
       throw new RuntimeException("File already exists with this ownerId and path.");
     }
     activeUploads.put(session.sessionId(), new ChunkedUploadState(session));
@@ -48,7 +53,7 @@ public class FileService {
   }
 
   // Финализация multipart-upload, создание записи о файле
-  public UUID finishChunkedUpload(String sessionId) throws DbExecuteUpdateException {
+  public UUID finishChunkedUpload(String sessionId)  {
     ChunkedUploadState upload = activeUploads.remove(sessionId);
     if (upload == null) throw new RuntimeException("No such upload session!");
 
@@ -77,8 +82,13 @@ public class FileService {
         false,
         session.tags()
     );
-    fileRepository.addFile(entity);
-    return fileId;
+      try {
+          // TODO: обработать здесь?
+          fileRepository.addFile(entity);
+      } catch (DbExecuteUpdateException e) {
+          throw new RuntimeException(e);
+      }
+      return fileId;
   }
 
   // Прямая (обычная) загрузка файла

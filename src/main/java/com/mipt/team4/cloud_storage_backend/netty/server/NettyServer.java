@@ -4,7 +4,6 @@ import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
-import com.mipt.team4.cloud_storage_backend.netty.handler.HttpRequestHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handler.PipelineSelector;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;

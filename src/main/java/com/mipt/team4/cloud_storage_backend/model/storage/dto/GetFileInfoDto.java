@@ -6,14 +6,11 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 import java.util.UUID;
 
-public record FileChunkDto(UUID sessionId, String path, int chunkIndex, byte[] chunkData) {
+public record GetFileInfoDto(UUID fileId, UUID userId) {
   public void validate() throws ValidationFailedException {
-    // TODO: доделать валидацию
     ValidationResult result = Validators.all(
-            Validators.notEmpty("Session ID", sessionId.toString()),
-            Validators.notNull("Chunk data", chunkData),
-            Validators.mustBePositive("Chunk data", chunkData.length),
-            Validators.cannotBeNegative("Chunk index", chunkIndex)
+            Validators.notEmpty("File ID", fileId.toString()),
+            Validators.notEmpty("User ID", userId.toString())
     );
 
     if (!result.isValid())

@@ -7,13 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PostgresConnection implements DatabaseConnection {
-  private final DatabaseConfig config;
-
   private Connection connection;
 
-  public PostgresConnection(DatabaseConfig config) {
-    this.config = config;
-  }
+  public PostgresConnection() {}
 
   @Override
   public void connect() {
@@ -26,7 +22,11 @@ public class PostgresConnection implements DatabaseConnection {
     if (isConnected()) return;
 
     try {
-      connection = DriverManager.getConnection(config.getUrl(), config.getUsername(), config.getPassword());
+      connection =
+          DriverManager.getConnection(
+              DatabaseConfig.getInstance().getUrl(),
+              DatabaseConfig.getInstance().getUsername(),
+              DatabaseConfig.getInstance().getPassword());
       createFilesTable();
       createUsersTable();
       // TODO: миграции
@@ -44,7 +44,7 @@ public class PostgresConnection implements DatabaseConnection {
   }
 
   @Override
-  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) throws DbExecuteQueryException {
+  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 
@@ -57,18 +57,27 @@ public class PostgresConnection implements DatabaseConnection {
 
       return results;
     } catch (SQLException e) {
+      handleSqlException(e);
+
       throw new DbExecuteQueryException(query, e);
     }
   }
 
-  public int executeUpdate(String query, List<Object> params) throws DbExecuteUpdateException {
+  public int executeUpdate(String query, List<Object> params) {
     try (PreparedStatement statement = connection.prepareStatement(query)) {
       setParameters(statement, params);
 
       return statement.executeUpdate();
     } catch (SQLException e) {
+      handleSqlException(e);
+
       throw new DbExecuteUpdateException(query, e);
     }
+  }
+
+  private void handleSqlException(SQLException e) {
+    // TODO: обработать больше ошибок
+    if (e.getSQLState().startsWith("08")) throw new DbUnavailableException(e);
   }
 
   private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {
@@ -79,8 +88,9 @@ public class PostgresConnection implements DatabaseConnection {
     }
   }
 
-    private void createFilesTable() {
-        String createFilesSql = """
+  private void createFilesTable() {
+    String createFilesSql =
+        """
             CREATE TABLE IF NOT EXISTS files (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -93,15 +103,16 @@ public class PostgresConnection implements DatabaseConnection {
             )
         """;
 
-        try {
-            executeUpdate(createFilesSql, List.of());
-        } catch (DbExecuteUpdateException e) {
-            throw new DbCreateTableException("files", e);
-        }
+    try {
+      executeUpdate(createFilesSql, List.of());
+    } catch (DbExecuteUpdateException e) {
+      throw new DbCreateTableException("files", e);
     }
+  }
 
-    private void createUsersTable() {
-        String createUsersSql = """
+  private void createUsersTable() {
+    String createUsersSql =
+        """
             CREATE TABLE IF NOT EXISTS users (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 email VARCHAR(255) UNIQUE NOT NULL,
@@ -115,13 +126,12 @@ public class PostgresConnection implements DatabaseConnection {
             )
         """;
 
-        try {
-            executeUpdate(createUsersSql, List.of());
-        } catch (DbExecuteUpdateException e) {
-            throw new DbCreateTableException("users", e);
-        }
-
+    try {
+      executeUpdate(createUsersSql, List.of());
+    } catch (DbExecuteUpdateException e) {
+      throw new DbCreateTableException("users", e);
     }
+  }
 
   @Override
   public void disconnect() {

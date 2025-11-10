@@ -2,12 +2,13 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 
 import java.io.FileNotFoundException;
 import java.util.*;
+
+import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,49 +22,27 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     this.postgres = postgres;
   }
 
-  public boolean fileExists(UUID ownerId, String storagePath) throws DbExecuteQueryException {
-    List<Boolean> result =
-        postgres.executeQuery(
-            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
-            List.of(ownerId, storagePath),
-            rs -> (rs.getBoolean(1)));
-    return result.getFirst();
-  }
-
   @Override
-  public void addFile(FileEntity fileEntity)
-      throws DbExecuteUpdateException, DbExecuteQueryException, FileAlreadyExistsException {
-
-    if (fileExists(fileEntity.getOwnerId(), fileEntity.getStoragePath())) {
-      throw new FileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getStoragePath());
-    }
+  public void addFile(FileEntity fileEntity) {
+    // TODO: написать проверку, есть ли файл с данным userId и path (не надеяться на сервис): если
+    //       если уже есть файл, то бросать исключение FileAlreadyExistsException
+    // TODO: может быть, стоит возвращать FileEntity?
     postgres.executeUpdate(
         "INSERT INTO files (id, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
-            fileEntity.getId(),
+            fileEntity.getFileId(),
             fileEntity.getOwnerId(),
             fileEntity.getStoragePath(),
             fileEntity.getSize(),
             fileEntity.getMimeType(),
             fileEntity.getVisibility(),
             fileEntity.isDeleted(),
-            String.join(",", fileEntity.getTags())));
-  }
-
-  public void deleteFile(UUID ownerId, String storagePath)
-      throws DbExecuteQueryException, FileNotFoundException, DbExecuteUpdateException {
-    if (!fileExists(ownerId, storagePath)) {
-      throw new FileNotFoundException();
-    }
-
-    postgres.executeUpdate(
-        "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;",
-        List.of(ownerId, storagePath));
+            FileTagsMapper.toString(fileEntity.getTags())));
   }
 
   @Override
-  public Optional<FileEntity> getFile(UUID ownerId, String path) throws DbExecuteQueryException {
+  public Optional<FileEntity> getFile(UUID ownerId, String path) {
     List<FileEntity> result;
 
     result =
@@ -79,10 +58,33 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
                     rs.getString("visibility"),
                     rs.getLong("file_size"),
                     rs.getBoolean("is_deleted"),
-                    Arrays.asList(rs.getString("tags").split(","))));
+                    FileTagsMapper.toList(rs.getString("tags"))));
 
     if (result.isEmpty()) return Optional.empty();
 
     return Optional.ofNullable(result.getFirst());
+  }
+
+  // TODO: в интерфейсе?
+  public boolean fileExists(UUID ownerId, String storagePath) throws DbExecuteQueryException {
+    List<Boolean> result =
+        postgres.executeQuery(
+            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
+            List.of(ownerId, storagePath),
+            rs -> (rs.getBoolean(1)));
+    return result.getFirst();
+  }
+
+  // TODO: в интерфейсе?
+  public void deleteFile(UUID ownerId, String storagePath)
+      throws DbExecuteQueryException, FileNotFoundException, DbExecuteUpdateException {
+    if (!fileExists(ownerId, storagePath)) {
+        // TODO: обернуть в StorageFileNotFoundException
+      throw new FileNotFoundException();
+    }
+
+    postgres.executeUpdate(
+        "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;",
+        List.of(ownerId, storagePath));
   }
 }

@@ -2,10 +2,11 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import java.io.FileNotFoundException;
+
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,7 +17,7 @@ public class FileRepository {
     postgresMetadataRepository = new PostgresFileMetadataRepository(postgres);
   }
 
-  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException, FileAlreadyExistsException, DbExecuteQueryException {
+  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {
     postgresMetadataRepository.addFile(fileEntity);
   }
 
@@ -24,7 +25,15 @@ public class FileRepository {
     return postgresMetadataRepository.getFile(ownerId, path);
   }
 
-  public void deleteFile(UUID ownerId, String path) throws DbExecuteUpdateException, DbExecuteQueryException, FileNotFoundException {
-      postgresMetadataRepository.deleteFile(ownerId, path);
-    }
+  public String startMultipartUpload(String s3Key) {
+    // TODO: return upload ID
+  }
+
+  public String uploadPart(String uploadId, int partIndex, byte[] bytes) {
+    // TODO: return eTag
+  }
+
+  public UUID finishMultipartUpload(String s3Key, String uploadId, List<String> eTags) {
+    // TODO: return file ID
+  }
 }

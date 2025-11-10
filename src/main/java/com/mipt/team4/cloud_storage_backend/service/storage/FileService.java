@@ -2,113 +2,98 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.service.MissingFilePartException;
+import com.mipt.team4.cloud_storage_backend.exception.service.TranferSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.model.storage.FileChunkedUploadMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileChunkedUploadEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
-import com.mipt.team4.cloud_storage_backend.repository.storage.FileContentRepository;
+import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FileService {
   private final FileRepository fileRepository;
-  private final FileContentRepository contentRepository;
-  // Карту держим только для uploadId и эритагов — сервис хранит техническую multipart сессию
-  private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
+  private Map<UUID, FileChunkedUploadEntity> chunkedUploadSessions = new ConcurrentHashMap<>();
 
-  public FileService(FileRepository fileRepository, FileContentRepository contentRepository) {
+  public FileService(FileRepository fileRepository) {
     this.fileRepository = fileRepository;
-    this.contentRepository = contentRepository;
   }
 
   // Инициализация chunked-upload: никаких записьей в репо, только запоминаем сессию
-  public void startChunkedUploadSession(FileChunkedUploadSession session) {
-    UUID ownerUuid = UUID.fromString(session.ownerId());
-    String path = session.filePath();
-      Optional<FileEntity> existing = null;
-      try {
-          // TODO: обработать здесь
-          existing = fileRepository.getFile(ownerUuid, path);
-      } catch (DbExecuteQueryException e) {
-          throw new RuntimeException(e);
-      }
-      if (existing.isPresent()) {
-      throw new RuntimeException("File already exists with this ownerId and path.");
-    }
-    activeUploads.put(session.sessionId(), new ChunkedUploadState(session));
+  public void startChunkedUploadSession(FileChunkedUploadDto chunkedUploadDto)
+      throws StorageFileAlreadyExistsException {
+    // TODO: Проверка на квоты
+    UUID ownerId = chunkedUploadDto.ownerId();
+    String path = chunkedUploadDto.path();
+
+    if (fileRepository.fileExists(ownerId, path))
+      throw new StorageFileAlreadyExistsException(ownerId, path);
+
+    chunkedUploadSessions.put(
+        chunkedUploadDto.sessionId(), createChunkedUploadSession(chunkedUploadDto));
   }
 
-  // Обработка чанка — upload в MinIO и запоминание etag
-  public void processChunk(FileChunkDto chunk) {
-    ChunkedUploadState upload = activeUploads.get(chunk.sessionId());
-    if (upload == null) throw new RuntimeException("Upload session not found!");
+  private FileChunkedUploadEntity createChunkedUploadSession(
+      FileChunkedUploadDto chunkedUploadDto) {
+    FileChunkedUploadEntity session = FileChunkedUploadMapper.toEntity(chunkedUploadDto);
 
-    String uploadId = upload.getOrCreateUploadId(contentRepository);
-    int partNum = chunk.chunkIndex() + 1; // MinIO/S3 parts с 1
-    String etag = contentRepository.uploadPart(uploadId, partNum, chunk.chunkData());
-    upload.etags.put(partNum, etag);
+    String fullPath = StoragePaths.getS3Key(session.getOwnerId(), session.getPath());
+    session.setS3UploadId(fileRepository.startMultipartUpload(fullPath));
   }
 
-  // Финализация multipart-upload, создание записи о файле
-  public UUID finishChunkedUpload(String sessionId)  {
-    ChunkedUploadState upload = activeUploads.remove(sessionId);
-    if (upload == null) throw new RuntimeException("No such upload session!");
+  public void processChunk(FileChunkDto chunk) throws TranferSessionNotFoundException {
+    UUID sessionId = chunk.sessionId();
 
-    FileChunkedUploadSession session = upload.session;
-    String s3Key = session.ownerId() + "/" + session.filePath();
+    FileChunkedUploadEntity session = chunkedUploadSessions.get(sessionId);
+    if (session == null) throw new TranferSessionNotFoundException(sessionId);
 
-    // Проверка completeness частей
-    for (int i = 1; i <= session.totalChunks(); i++) {
-      if (!upload.etags.containsKey(i))
-        throw new RuntimeException("Missing chunk #" + i);
-    }
+    String uploadId = session.getS3UploadId();
+    int partIndex = StoragePaths.toS3PartIndex(chunk.chunkIndex());
+    String eTag = fileRepository.uploadPart(uploadId, partIndex, chunk.chunkData());
+
+    session.putETag(partIndex, eTag);
+  }
+
+  public UUID finishChunkedUpload(UUID sessionId)
+      throws TranferSessionNotFoundException, MissingFilePartException {
+    FileChunkedUploadEntity session = chunkedUploadSessions.get(sessionId);
+    if (session == null) throw new TranferSessionNotFoundException(sessionId);
+
+    String s3Key = StoragePaths.getS3Key(session.getOwnerId(), session.getPath());
     List<String> etagList = new ArrayList<>();
-    for (int i = 1; i <= session.totalChunks(); i++) {
-      etagList.add(upload.etags.get(i));
-    }
-    contentRepository.completeMultipartUpload(s3Key, upload.uploadId, etagList);
 
-    UUID fileId = UUID.randomUUID();
-    FileEntity entity = new FileEntity(
-        fileId,
-        UUID.fromString(session.ownerId()),
-        s3Key,
-        guessMimeType(session.filePath()),
-        "private",
-        session.totalFileSize(),
-        false,
-        session.tags()
-    );
-      try {
-          // TODO: обработать здесь?
-          fileRepository.addFile(entity);
-      } catch (DbExecuteUpdateException | FileAlreadyExistsException | DbExecuteQueryException e) {
-          throw new RuntimeException(e);
-      }
-      return fileId;
+    for (int partIndex = 1; partIndex <= session.getTotalChunks(); partIndex++) {
+      if (session.getETag(partIndex) == null) throw new MissingFilePartException(partIndex);
+
+      etagList.add(session.getETag(partIndex));
+    }
+
+    return fileRepository.finishMultipartUpload(s3Key, session.getS3UploadId(), etagList);
   }
 
   // Прямая (обычная) загрузка файла
-  public FileDto uploadFile(String ownerId, String fileName, InputStream stream, String contentType, long size, List<String> tags)
-      throws DbExecuteUpdateException, FileAlreadyExistsException, DbExecuteQueryException {
+  public FileDto uploadFile(
+      String ownerId,
+      String fileName,
+      InputStream stream,
+      String contentType,
+      long size,
+      List<String> tags)
+      throws DbExecuteUpdateException {
     UUID fileId = UUID.randomUUID();
     String s3Key = ownerId + "/" + fileName;
     contentRepository.putObject(s3Key, stream, contentType);
 
-    FileEntity entity = new FileEntity(
-        fileId,
-        UUID.fromString(ownerId),
-        s3Key,
-        contentType,
-        "private",
-        size,
-        false,
-        tags
-    );
+    FileEntity entity =
+        new FileEntity(fileId, ownerId, s3Key, contentType, "private", size, false, tags);
     fileRepository.addFile(entity);
     return FileMapper.toDto(entity);
   }
@@ -128,29 +113,18 @@ public class FileService {
     // TODO: here add/update logic for soft-deleting in repo when implemented
   }
 
-  private static String guessMimeType(String path) {
+  private static String guessMimeType(String path) { // TODO: guess?????????
     if (path.endsWith(".jpg")) return "image/jpeg";
     if (path.endsWith(".png")) return "image/png";
     if (path.endsWith(".pdf")) return "application/pdf";
     return "application/octet-stream";
   }
 
-  // --- multipart upload state ---
-  private static class ChunkedUploadState {
-    final FileChunkedUploadSession session;
-    final Map<Integer, String> etags = new HashMap<>(); // part -> etag
-    String uploadId;
+  public FileChunkedDownloadDto getFileDownloadInfo(UUID fileId, UUID userId) {}
 
-    ChunkedUploadState(FileChunkedUploadSession session) {
-      this.session = session;
-    }
+  public FileChunkDto getFileChunk(UUID currentFileId, int chunkIndex, int chunkSize) {}
 
-    String getOrCreateUploadId(FileContentRepository repo) {
-      if (uploadId == null) {
-        String s3Key = session.ownerId() + "/" + session.filePath();
-        uploadId = repo.startMultipartUpload(s3Key);
-      }
-      return uploadId;
-    }
-  }
+  public List<String> getFilePathsList(UUID userId) {}
+
+  public FileDto getFileInfo(UUID fileId, UUID userId) {}
 }

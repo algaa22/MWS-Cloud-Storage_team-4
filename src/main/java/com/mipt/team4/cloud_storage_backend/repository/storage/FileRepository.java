@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.util.Optional;
@@ -14,7 +15,7 @@ public class FileRepository {
     postgresMetadataRepository = new PostgresFileMetadataRepository(postgres);
   }
 
-  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {
+  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException, FileAlreadyExistsException, DbExecuteQueryException {
     postgresMetadataRepository.addFile(fileEntity);
   }
 

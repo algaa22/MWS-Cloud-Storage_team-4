@@ -7,3 +7,7 @@ storage:
   controller:
     max-file-size: 10737418240
     max-file-chunk-size: 10485760
+
+  repository:
+    user-data-bucket:
+      name: user-data

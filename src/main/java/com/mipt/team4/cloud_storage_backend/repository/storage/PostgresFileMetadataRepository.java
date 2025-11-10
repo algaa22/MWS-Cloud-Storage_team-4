@@ -31,11 +31,12 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException, DbExecuteQueryException, FileAlreadyExistsException {
+  public void addFile(FileEntity fileEntity)
+      throws DbExecuteUpdateException, DbExecuteQueryException, FileAlreadyExistsException {
 
-      if (fileExists(fileEntity.getOwnerId(), fileEntity.getStoragePath())) {
-          throw new FileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getStoragePath());
-      }
+    if (fileExists(fileEntity.getOwnerId(), fileEntity.getStoragePath())) {
+      throw new FileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getStoragePath());
+    }
     postgres.executeUpdate(
         "INSERT INTO files (id, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?);",
@@ -50,15 +51,16 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             String.join(",", fileEntity.getTags())));
   }
 
-    public void deleteFile(UUID ownerId, String storagePath) throws DbExecuteQueryException, FileNotFoundException, DbExecuteUpdateException {
-        if (!fileExists(ownerId, storagePath)) {
-            throw new FileNotFoundException();
-        }
-
-        postgres.executeUpdate(
-                "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;",
-                List.of(ownerId, storagePath));
+  public void deleteFile(UUID ownerId, String storagePath)
+      throws DbExecuteQueryException, FileNotFoundException, DbExecuteUpdateException {
+    if (!fileExists(ownerId, storagePath)) {
+      throw new FileNotFoundException();
     }
+
+    postgres.executeUpdate(
+        "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;",
+        List.of(ownerId, storagePath));
+  }
 
   @Override
   public Optional<FileEntity> getFile(UUID ownerId, String path) throws DbExecuteQueryException {

@@ -4,13 +4,15 @@ import java.io.InputStream;
 import java.util.List;
 
 public interface FileContentRepository {
-    String uploadPart(String uploadId, int partNum, byte[] bytes);
+  public void initialize();
 
-    void completeMultipartUpload(String s3Key, String uploadId, List<String> etagList);
+  String uploadPart(String uploadId, int partNum, byte[] bytes);
 
-    void putObject(String s3Key, InputStream stream, String contentType);
+  void completeMultipartUpload(String s3Key, String uploadId, List<String> etagList);
 
-    InputStream downloadObject(String storagePath);
+  void putObject(String s3Key, InputStream stream, String contentType);
 
-    String startMultipartUpload(String s3Key);
+  InputStream downloadObject(String storagePath);
+
+  String startMultipartUpload(String s3Key);
 }

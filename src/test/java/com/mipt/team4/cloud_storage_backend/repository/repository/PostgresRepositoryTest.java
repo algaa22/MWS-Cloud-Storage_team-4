@@ -50,7 +50,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
       try {
           fileMetadataRepository.addFile(testFile);
 
-          boolean doesExist = fileMetadataRepository.doesFileExist(testFile.getOwnerId(), testFile.getStoragePath());
+          boolean doesExist = fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath());
 
           assertTrue(doesExist);
       } catch (DbExecuteQueryException | DbExecuteUpdateException | FileAlreadyExistsException e) {
@@ -104,11 +104,11 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
         try {
             fileMetadataRepository.addFile(testFile);
 
-            assertTrue(fileMetadataRepository.doesFileExist(testFile.getOwnerId(), testFile.getStoragePath()));
+            assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
 
             fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getStoragePath());
 
-            assertFalse(fileMetadataRepository.doesFileExist(testFile.getOwnerId(), testFile.getStoragePath()));
+            assertFalse(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
 
         } catch (DbExecuteQueryException | DbExecuteUpdateException | FileAlreadyExistsException |
                  FileNotFoundException e) {

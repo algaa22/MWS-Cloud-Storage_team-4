@@ -22,7 +22,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   public void deleteFile(UUID ownerId, String storagePath) throws DbExecuteQueryException, FileNotFoundException, DbExecuteUpdateException {
-      if (!doesFileExist(ownerId, storagePath)) {
+      if (!fileExists(ownerId, storagePath)) {
           throw new FileNotFoundException();
       }
 
@@ -31,7 +31,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
               List.of(ownerId, storagePath));
   }
 
-  public boolean doesFileExist(UUID ownerId, String storagePath) throws DbExecuteQueryException {
+  public boolean fileExists(UUID ownerId, String storagePath) throws DbExecuteQueryException {
     List<Boolean> result =
         postgres.executeQuery(
             "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
@@ -44,7 +44,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   @Override
   public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException, DbExecuteQueryException, FileAlreadyExistsException {
 
-      if (doesFileExist(fileEntity.getOwnerId(), fileEntity.getStoragePath())) {
+      if (fileExists(fileEntity.getOwnerId(), fileEntity.getStoragePath())) {
           throw new FileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getStoragePath());
       }
     postgres.executeUpdate(

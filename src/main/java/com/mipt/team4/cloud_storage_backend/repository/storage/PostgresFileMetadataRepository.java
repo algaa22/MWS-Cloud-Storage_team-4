@@ -19,14 +19,14 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   // TODO: deleteFile
-//  public boolean doesFileExist(UUID ownerId, String storagePath) throws DbExecuteQueryException {
-//    List<Boolean> result =
-//        postgres.executeQuery(
-//            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
-//            List.of(ownerId, storagePath),
-//            rs -> (rs.getBoolean(1)));
-//    return result.getFirst();
-//  }
+  public boolean doesFileExist(UUID ownerId, String storagePath) throws DbExecuteQueryException {
+    List<Boolean> result =
+        postgres.executeQuery(
+            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
+            List.of(ownerId, storagePath),
+            rs -> (rs.getBoolean(1)));
+    return result.getFirst();
+  }
 
 
   @Override

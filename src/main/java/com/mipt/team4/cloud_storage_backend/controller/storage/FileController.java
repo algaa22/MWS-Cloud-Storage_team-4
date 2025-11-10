@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.FileUploadValidateException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
@@ -25,7 +26,7 @@ public class FileController {
   }
 
   public void startChunkedUpload(FileChunkedUploadSession chunkedUploadSession)
-      throws FileUploadValidateException {
+      throws FileUploadValidateException, DbExecuteQueryException {
     validateChunkedUploadDto(chunkedUploadSession);
     service.startChunkedUploadSession(chunkedUploadSession);
     chunkedUploadSessions.put(chunkedUploadSession.sessionId(), chunkedUploadSession);
@@ -40,7 +41,7 @@ public class FileController {
     FileChunkedUploadSession chunkedUploadSession = chunkedUploadSessions.get(currentSessionId);
     chunkedUploadSessions.remove(currentSessionId);
 
-    return service.finishChunkedUpload(chunkedUploadSessions);
+    return service.finishChunkedUpload(currentSessionId);
   }
 
   private void validateChunkedUploadDto(FileChunkedUploadSession chunkedUploadSession)

@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.netty.TransferAlreadyStartedException;
+import com.mipt.team4.cloud_storage_backend.exception.http.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.http.validation.FileDownloadValidationException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfo;
@@ -43,7 +43,8 @@ public class ChunkedDownloadHandler {
     try {
       fileInfo = fileController.getFileDownloadInfo(currentFileId, currentUserId);
     } catch (FileDownloadValidationException e) {
-      // TODO: error
+      ResponseHelper.sendValidationErrorResponse(ctx, e);
+      cleanup();
       return;
     }
 
@@ -156,7 +157,6 @@ public class ChunkedDownloadHandler {
                 ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, cause.getMessage())
             .addListener(ChannelFutureListener.CLOSE);
       }
-      // TODO: reset state?
     };
   }
 

@@ -1,14 +1,10 @@
-package com.mipt.team4.cloud_storage_backend.repository.repository.database;
+package com.mipt.team4.cloud_storage_backend.repository.database;
 
-import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import java.sql.SQLException;
 import java.util.List;
 
 public abstract class AbstractPostgresTest {

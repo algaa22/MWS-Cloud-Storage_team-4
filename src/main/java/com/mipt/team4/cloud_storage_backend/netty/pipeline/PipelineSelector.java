@@ -1,8 +1,9 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.pipeline;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.netty.handler.ChunkedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -20,6 +21,8 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
   private final FileController fileController;
   private final UserController userController;
 
+  private PipelineType previousPipeline = null;
+
   public PipelineSelector(FileController fileController, UserController userController) {
     this.fileController = fileController;
     this.userController = userController;
@@ -28,44 +31,52 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {
     if (msg instanceof HttpRequest request) {
-      String transferEncoding = request.headers().get("Transfer-Encoding");
-      int contentLength = HttpUtil.getContentLength(request, -1);
+      // TODO: защита от атак (валидаторы)
+      PipelineType currentPipeline = PipelineType.from(request);
 
-      boolean useChunkedPipeline = transferEncoding.equalsIgnoreCase("chunked");
+      cleanupPipeline(currentPipeline, ctx);
+      configurePipeline(currentPipeline, ctx);
 
-      if (useChunkedPipeline) {
-        ctx.pipeline().addLast("chunkedWriter", new ChunkedWriteHandler());
-        ctx.pipeline().addLast("handler", new ChunkedHttpHandler(fileController));
-      } else if (contentLength <= MAX_AGGREGATED_SIZE) {
-        ctx.pipeline()
-            .addLast(
-                "aggregator",
-                new HttpObjectAggregator(StorageConfig.getInstance().getMaxContentLength()));
-        // TODO: handler
-      } else {
-        handleRequestWithTooLargeContent(ctx, contentLength);
-      }
+      previousPipeline = currentPipeline;
     } else {
       handleNotHttpRequest(ctx, msg);
       return;
     }
 
-    ctx.pipeline().remove(this);
+    ctx.fireChannelRead(msg);
+  }
 
-    try {
-      super.channelRead(ctx, msg);
-    } catch (Exception e) {
-      logger.error("Error during read channel in pipe selector", e);
+  private void cleanupPipeline(PipelineType currentPipeline, ChannelHandlerContext ctx) {
+    if (previousPipeline == currentPipeline) return;
+
+    if (previousPipeline == PipelineType.CHUNKED) {
+      ctx.pipeline().remove(ChunkedWriteHandler.class);
+      ctx.pipeline().remove(ChunkedHttpHandler.class);
+    }
+
+    if (previousPipeline == PipelineType.AGGREGATED) {
+      ctx.pipeline().remove(HttpObjectAggregator.class);
+      // handler
     }
   }
 
-  private void handleRequestWithTooLargeContent(ChannelHandlerContext ctx, int contentLength) {
-    logger.error(
-        "Large file with Content-Length={} not supported. Use chunked upload.", contentLength);
-
-    ResponseHelper.sendErrorResponse(
-        ctx, HttpResponseStatus.BAD_REQUEST, "Large files must use chunked upload");
+  private void configurePipeline(PipelineType currentPipeline, ChannelHandlerContext ctx) {
+    if (currentPipeline == PipelineType.CHUNKED) {
+      ctx.pipeline().addLast(new ChunkedWriteHandler());
+      ctx.pipeline().addLast(new ChunkedHttpHandler(fileController));
+    } else {
+      ctx.pipeline().addLast(new HttpObjectAggregator(StorageConfig.getInstance().getMaxContentLength()));
+      // TODO: handler
+    }
   }
+
+//  private void handleRequestWithTooLargeContent(ChannelHandlerContext ctx, int contentLength) {
+//    logger.error(
+//        "Large file with Content-Length={} not supported. Use chunked upload.", contentLength);
+//
+//    ResponseHelper.sendErrorResponse(
+//        ctx, HttpResponseStatus.BAD_REQUEST, "Large files must use chunked upload");
+//  }
 
   private void handleNotHttpRequest(ChannelHandlerContext ctx, Object msg) {
     logger.error(

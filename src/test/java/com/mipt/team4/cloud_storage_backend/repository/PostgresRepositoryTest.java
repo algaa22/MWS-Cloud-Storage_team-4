@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.repository.repository;
+package com.mipt.team4.cloud_storage_backend.repository;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -7,7 +7,7 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateEx
 import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import com.mipt.team4.cloud_storage_backend.repository.repository.database.AbstractPostgresTest;
+import com.mipt.team4.cloud_storage_backend.repository.database.AbstractPostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
 import java.util.List;
 import java.util.Optional;

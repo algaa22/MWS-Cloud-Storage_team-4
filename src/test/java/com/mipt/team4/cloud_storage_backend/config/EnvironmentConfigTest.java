@@ -1,8 +1,7 @@
-package com.mipt.team4.cloud_storage_backend.repository.config;
+package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;

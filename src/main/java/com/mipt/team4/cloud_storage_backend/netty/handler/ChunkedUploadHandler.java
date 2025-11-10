@@ -2,8 +2,8 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.netty.TransferAlreadyStartedException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.TransferNotStartedYetException;
+import com.mipt.team4.cloud_storage_backend.exception.http.transfer.TransferAlreadyStartedException;
+import com.mipt.team4.cloud_storage_backend.exception.http.transfer.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.exception.http.validation.FileUploadValidationException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunk;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadSession;
@@ -45,10 +45,6 @@ public class ChunkedUploadHandler {
 
     parseUploadRequestMetadata(request);
 
-    isInProgress = true;
-    receivedChunks = 0;
-    receivedBytes = 0;
-
     try {
       fileController.startChunkedUpload(
           new FileChunkedUploadSession(
@@ -60,9 +56,14 @@ public class ChunkedUploadHandler {
               currentFileTags,
               new ArrayList<>()));
     } catch (FileUploadValidationException e) {
-
+      ResponseHelper.sendValidationErrorResponse(ctx, e);
+      cleanup();
       return;
     }
+
+    isInProgress = true;
+    receivedChunks = 0;
+    receivedBytes = 0;
 
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -107,16 +108,16 @@ public class ChunkedUploadHandler {
     byte[] chunkBytes = new byte[chunkSize];
     chunkData.getBytes(chunkData.readerIndex(), chunkBytes);
 
-    receivedChunks++;
-    receivedBytes += chunkSize;
-
     try {
       fileController.processFileChunk(
           new FileChunk(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
     } catch (FileUploadValidationException e) {
-      // TODO
+      ResponseHelper.sendValidationErrorResponse(ctx, e);
       return;
     }
+
+    receivedChunks++;
+    receivedBytes += chunkSize;
 
     logger.debug(
         "Processed chunk {}/{} for session: {}. Size: {} bytes, total: {} bytes",

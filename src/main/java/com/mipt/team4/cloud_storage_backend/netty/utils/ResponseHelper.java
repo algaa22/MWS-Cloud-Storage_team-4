@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.utils;
 
+import com.mipt.team4.cloud_storage_backend.exception.http.validation.ValidationException;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -14,6 +15,14 @@ public class ResponseHelper {
         ctx,
         HttpResponseStatus.BAD_REQUEST,
         "Request with uri: " + uri + ", method: " + method + " not supported");
+  }
+
+  public static void sendValidationErrorResponse(ChannelHandlerContext ctx, ValidationException exception) {
+    // TODO: более подробное сообщение ошибки валидации
+    sendErrorResponse(
+            ctx,
+            HttpResponseStatus.BAD_REQUEST,
+            "Validation failed: " + exception.getMessage());
   }
 
   public static ChannelFuture sendErrorResponse(

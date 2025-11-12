@@ -25,15 +25,22 @@ public class FileRepository {
     return postgresMetadataRepository.getFile(ownerId, path);
   }
 
+  public boolean fileExists(UUID ownerId, String storagePath) throws DbExecuteQueryException {
+      return postgresMetadataRepository.fileExists(ownerId, storagePath);
+  }
+
   public String startMultipartUpload(String s3Key) {
     // TODO: return upload ID
+      return "";
   }
 
   public String uploadPart(String uploadId, int partIndex, byte[] bytes) {
     // TODO: return eTag
+      return "";
   }
 
   public UUID finishMultipartUpload(String s3Key, String uploadId, List<String> eTags) {
     // TODO: return file ID
+      return null;
   }
 }

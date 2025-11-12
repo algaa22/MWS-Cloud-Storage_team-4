@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 
@@ -24,9 +23,6 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   @Override
   public void addFile(FileEntity fileEntity) {
-    // TODO: написать проверку, есть ли файл с данным userId и path (не надеяться на сервис): если
-    //       если уже есть файл, то бросать исключение FileAlreadyExistsException
-    // TODO: может быть, стоит возвращать FileEntity?
     postgres.executeUpdate(
         "INSERT INTO files (id, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?);",
@@ -65,7 +61,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     return Optional.ofNullable(result.getFirst());
   }
 
-  // TODO: в интерфейсе?
+  @Override
   public boolean fileExists(UUID ownerId, String storagePath) throws DbExecuteQueryException {
     List<Boolean> result =
         postgres.executeQuery(
@@ -75,11 +71,11 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     return result.getFirst();
   }
 
-  // TODO: в интерфейсе?
+  @Override
   public void deleteFile(UUID ownerId, String storagePath)
-      throws DbExecuteQueryException, FileNotFoundException, DbExecuteUpdateException {
+          throws FileNotFoundException {
     if (!fileExists(ownerId, storagePath)) {
-        // TODO: обернуть в StorageFileNotFoundException
+      // TODO: обернуть в StorageFileNotFoundException
       throw new FileNotFoundException();
     }
 

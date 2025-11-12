@@ -4,7 +4,7 @@ import java.io.InputStream;
 import java.util.List;
 
 public interface FileContentRepository {
-  public void initialize();
+  void initialize();
 
   String uploadPart(String uploadId, int partNum, byte[] bytes);
 

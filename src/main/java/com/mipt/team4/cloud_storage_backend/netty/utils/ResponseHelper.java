@@ -2,14 +2,12 @@ package com.mipt.team4.cloud_storage_backend.netty.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.netty.handler.ChunkedHttpHandler;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.*;
-
 import java.nio.charset.StandardCharsets;
 
 public class ResponseHelper {
@@ -26,18 +24,23 @@ public class ResponseHelper {
         "Request with uri: " + uri + ", method: " + method + " not supported");
   }
 
+  public static void sendValidationErrorResponse(
+      ChannelHandlerContext ctx, ValidationFailedException exception) {
+    sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.toJson());
+  }
+
+  public static ChannelFuture sendSuccessResponse(
+      ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
+    return sendResponse(ctx, createSuccessResponse(status, message));
+  }
+
   public static ChannelFuture sendErrorResponse(
       ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
     return sendResponse(ctx, createErrorResponse(status, message));
   }
 
-  public static void sendValidationErrorResponse(
-          ChannelHandlerContext ctx, ValidationFailedException exception) {
-    sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.toJson());
-  }
-
   public static ChannelFuture sendJsonResponse(
-          ChannelHandlerContext ctx, HttpResponseStatus status, JsonNode json) {
+      ChannelHandlerContext ctx, HttpResponseStatus status, JsonNode json) {
     return sendJsonResponse(ctx, status, json.toString());
   }
 
@@ -50,9 +53,29 @@ public class ResponseHelper {
     return ctx.writeAndFlush(response);
   }
 
+  private static FullHttpResponse createSuccessResponse(
+          HttpResponseStatus status, String message) {
+    return createJsonResponse(status, true, message);
+  }
+
   public static FullHttpResponse createErrorResponse(HttpResponseStatus status, String message) {
-    return createJsonResponse(
-        status, "{\"error\": \"" + message + "\", \"status\": " + status + "}");
+    return createJsonResponse(status, false, message);
+  }
+
+  public static FullHttpResponse createJsonResponse(HttpResponseStatus status, boolean success, String message) {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode json = mapper.createObjectNode();
+
+    // TODO: Json injection?
+    json.put("success", success);
+    json.put("message", message);
+    json.put("status", status.code());
+
+    return createJsonResponse(status, json);
+  }
+
+  public static FullHttpResponse createJsonResponse(HttpResponseStatus status, ObjectNode json) {
+    return createJsonResponse(status, json.toString());
   }
 
   public static FullHttpResponse createJsonResponse(HttpResponseStatus status, String json) {

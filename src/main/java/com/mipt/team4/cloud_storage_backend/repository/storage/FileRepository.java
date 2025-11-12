@@ -27,13 +27,20 @@ public class FileRepository {
 
   public String startMultipartUpload(String s3Key) {
     // TODO: return upload ID
+    return null;
   }
 
   public String uploadPart(String uploadId, int partIndex, byte[] bytes) {
     // TODO: return eTag
+    return null;
   }
 
   public UUID finishMultipartUpload(String s3Key, String uploadId, List<String> eTags) {
     // TODO: return file ID
+    return null;
+  }
+
+  public boolean fileExists(UUID ownerId, String path) {
+    return false;
   }
 }

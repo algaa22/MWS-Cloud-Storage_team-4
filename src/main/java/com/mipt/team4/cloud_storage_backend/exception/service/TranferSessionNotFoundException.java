@@ -6,4 +6,8 @@ public class TranferSessionNotFoundException extends Exception {
   public TranferSessionNotFoundException(UUID sessionId) {
     super("Session with ID " + sessionId + " not found");
   }
+
+  public TranferSessionNotFoundException(String sessionId) {
+    super("Session with ID " + sessionId + " not found");
+  }
 }

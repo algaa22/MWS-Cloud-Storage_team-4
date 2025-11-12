@@ -65,7 +65,7 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
       ctx.pipeline().addLast(new ChunkedWriteHandler());
       ctx.pipeline().addLast(new ChunkedHttpHandler(fileController));
     } else {
-      ctx.pipeline().addLast(new HttpObjectAggregator(StorageConfig.getInstance().getMaxContentLength()));
+      ctx.pipeline().addLast(new HttpObjectAggregator(StorageConfig.INSTANCE.getMaxContentLength()));
       // TODO: handler
     }
   }

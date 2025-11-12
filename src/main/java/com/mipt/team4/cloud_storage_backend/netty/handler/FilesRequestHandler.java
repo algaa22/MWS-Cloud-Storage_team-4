@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFilePathsListDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
@@ -21,7 +24,13 @@ public class FilesRequestHandler {
 
   public void handleGetFilePathsListRequest(
       ChannelHandlerContext ctx, String userId) {
-    List<String> paths = fileController.getFilePathsList(userId);
+    List<String> paths;
+
+    try {
+      paths = fileController.getFilePathsList(new GetFilePathsListDto(userId));
+    } catch (ValidationFailedException e) {
+      throw new RuntimeException(e);
+    }
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
@@ -42,13 +51,20 @@ public class FilesRequestHandler {
 
   public void handleGetFileInfoRequest(
       ChannelHandlerContext ctx, String fileId, String userId) {
-    FileDto fileDto = fileController.getFileInfo(fileId, userId);
+    FileDto fileDto;
+
+    try {
+      fileDto = fileController.getFileInfo(new GetFileInfoDto(fileId, userId));
+    } catch (ValidationFailedException e) {
+      handleValidationError(ctx, e);
+      return;
+    }
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
 
-    rootNode.put("ID", fileDto.fileId());
-    rootNode.put("OwnerID", fileDto.ownerId());
+    rootNode.put("ID", fileDto.fileId().toString());
+    rootNode.put("OwnerID", fileDto.ownerId().toString());
     rootNode.put("Path", fileDto.path());
     rootNode.put("Type", fileDto.type());
     rootNode.put("Visibility", fileDto.visibility());
@@ -60,11 +76,14 @@ public class FilesRequestHandler {
   }
 
   public void handleDeleteFileRequest(
-      ChannelHandlerContext ctx, String fileId, String userId) {}
+      ChannelHandlerContext ctx, String fileId, String userId) {
+
+  }
 
   public void handleChangeFileMetadataRequest(
       ChannelHandlerContext ctx, String fileId, String userId) {}
 
-  public void handleGetFileRequest(
-      ChannelHandlerContext ctx, String fileId, String userId) {}
+  private void handleValidationError(ChannelHandlerContext ctx, ValidationFailedException e) {
+    ResponseHelper.sendValidationErrorResponse(ctx, e);
+  }
 }

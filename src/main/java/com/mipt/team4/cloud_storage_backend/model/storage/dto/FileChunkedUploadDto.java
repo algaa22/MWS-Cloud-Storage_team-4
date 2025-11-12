@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.UUID;
 
 public record FileChunkedUploadDto(
-    UUID sessionId,
-    UUID ownerId,
+    String sessionId,
+    String ownerId,
     long totalFileSize,
     int totalChunks,
     String path,
@@ -19,14 +19,14 @@ public record FileChunkedUploadDto(
     // TODO: доделать валидацию
     ValidationResult result =
         Validators.all(
-            Validators.notEmpty("Session ID", sessionId.toString()),
-            Validators.notEmpty("Owner ID", ownerId.toString()),
-            Validators.notEmpty("Path", path),
+            Validators.notBlank("Session ID", sessionId),
+            Validators.notBlank("Owner ID", ownerId),
+            Validators.notBlank("Path", path),
             Validators.mustBePositive("Total file size", totalFileSize),
             Validators.numberMax(
-                "Total file size", totalFileSize, StorageConfig.getInstance().getMaxFileSize()),
+                "Total file size", totalFileSize, StorageConfig.INSTANCE.getMaxFileSize()),
             Validators.mustBePositive("Total chunks", totalChunks));
 
-    if (!result.isValid()) throw new ValidationFailedException(result);
+    Validators.throwExceptionIfNotValid(result);
   }
 }

@@ -1,14 +1,21 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
-import com.mipt.team4.cloud_storage_backend.model.user.dto.UserCreateDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
+
 import java.util.List;
 import java.util.UUID;
 
 public class UserService {
+  public void registerUser(RegisterRequestDto registerRequest) {
+    // TODO
+  }
 
-  public UserCreateDto createUser(UserCreateDto dto) {
-    return null;
+  public void loginUser(LoginRequestDto loginRequest) {
+    // TODO
+  }
+
+  public void logoutUser(LogoutRequestDto logoutRequest) {
+    // TODO
   }
 
   public UserDto getUser(UUID id) {

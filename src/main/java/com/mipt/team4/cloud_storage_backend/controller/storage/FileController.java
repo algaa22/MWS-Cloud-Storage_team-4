@@ -1,8 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
+import com.mipt.team4.cloud_storage_backend.exception.service.MissingFilePartException;
+import com.mipt.team4.cloud_storage_backend.exception.service.TranferSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
+import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,38 +18,43 @@ public class FileController {
   }
 
   public void startChunkedUpload(FileChunkedUploadDto chunkedUploadRequest)
-      throws ValidationFailedException {
+      throws ValidationFailedException, StorageFileAlreadyExistsException {
     chunkedUploadRequest.validate();
     service.startChunkedUploadSession(chunkedUploadRequest);
   }
 
-  public void processFileChunk(FileChunkDto fileChunk) throws ValidationFailedException {
+  public void processFileChunk(FileChunkDto fileChunk)
+      throws ValidationFailedException, TranferSessionNotFoundException {
     fileChunk.validate();
     service.processChunk(fileChunk);
   }
 
-  public UUID finishChunkedUpload(UUID sessionId) {
-    FileChunkedUploadDto chunkedUploadSession = chunkedUploadSessions.get(sessionId);
-    chunkedUploadSessions.remove(sessionId);
+  public UUID finishChunkedUpload(String sessionId)
+      throws MissingFilePartException, TranferSessionNotFoundException, ValidationFailedException {
+    Validators.throwExceptionIfNotValid(Validators.isUUID("Session ID", sessionId));
 
     return service.finishChunkedUpload(sessionId);
   }
 
-  public FileChunkedDownloadDto getFileDownloadInfo(GetFileInfoDto request)
+  public FileChunkedDownloadDto getFileDownloadInfo(GetFileInfoDto fileInfo)
       throws ValidationFailedException {
-    request.validate();
-    return service.getFileDownloadInfo(request.fileId(), request.userId());
+    fileInfo.validate();
+    return service.getFileDownloadInfo(fileInfo.fileId(), fileInfo.userId());
   }
 
-  public FileChunkDto getFileChunk(UUID currentFileId, int chunkIndex, int chunkSize) {
-    return service.getFileChunk(currentFileId, chunkIndex, chunkSize);
+  public FileChunkDto getFileChunk(GetFileChunkDto fileChunk) throws ValidationFailedException {
+    fileChunk.validate();
+    return service.getFileChunk(fileChunk.fileId(), fileChunk.chunkIndex(), fileChunk.chunkSize());
   }
 
-  public List<String> getFilePathsList(String userId) {
-    return service.getFilePathsList(userId);
+  public List<String> getFilePathsList(GetFilePathsListDto filePathsList)
+      throws ValidationFailedException {
+    filePathsList.validate();
+    return service.getFilePathsList(filePathsList.userId());
   }
 
-  public FileDto getFileInfo(String fileId, String userId) {
-    return service.getFileInfo(fileId, userId);
+  public FileDto getFileInfo(GetFileInfoDto fileInfo) throws ValidationFailedException {
+    fileInfo.validate();
+    return service.getFileInfo(fileInfo.fileId(), fileInfo.userId());
   }
 }

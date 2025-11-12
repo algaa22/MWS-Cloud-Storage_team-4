@@ -23,9 +23,9 @@ public class PostgresConnection implements DatabaseConnection {
       // TODO: если уже коннектед?
       connection =
           DriverManager.getConnection(
-              DatabaseConfig.getInstance().getUrl(),
-              DatabaseConfig.getInstance().getUsername(),
-              DatabaseConfig.getInstance().getPassword());
+              DatabaseConfig.INSTANCE.getUrl(),
+              DatabaseConfig.INSTANCE.getUsername(),
+              DatabaseConfig.INSTANCE.getPassword());
       // TODO: создание таблицы
       // TODO: миграции
     } catch (SQLException e) {

@@ -1,7 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.utils.validation;
 
+import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.utils.NumberComparator;
 import java.util.List;
+import java.util.UUID;
 
 public class Validators {
   public static ValidationResult all(ValidationResult... results) {
@@ -18,20 +20,20 @@ public class Validators {
     return validate(value != null, field, field + " cannot be null", "NOT_NULL");
   }
 
-  public static ValidationResult notEmpty(String field, String value) {
-    return notEmpty(value != null && !value.trim().isEmpty(), field);
+  public static ValidationResult notBlank(String field, String value) {
+    return notBlank(value != null && !value.trim().isBlank(), field);
   }
 
-  public static <T> ValidationResult notEmpty(String field, T[] list) {
-    return notEmpty(list != null && list.length != 0, field);
+  public static <T> ValidationResult notBlank(String field, T[] list) {
+    return notBlank(list != null && list.length != 0, field);
   }
 
-  public static <T> ValidationResult notEmpty(String field, List<T> list) {
-    return notEmpty(list != null && !list.isEmpty(), field);
+  public static <T> ValidationResult notBlank(String field, List<T> list) {
+    return notBlank(list != null && !list.isEmpty(), field);
   }
 
-  private static ValidationResult notEmpty(boolean condition, String field) {
-    return validate(condition, field, field + " cannot be empty", "NOT_EMPTY_LIST");
+  private static ValidationResult notBlank(boolean condition, String field) {
+    return validate(condition, field, field + " cannot be blank", "NOT_BLANK");
   }
 
   public static ValidationResult lengthRange(
@@ -104,6 +106,21 @@ public class Validators {
         field,
         field + " must be positive",
         "MUST_BE_POSITIVE");
+  }
+
+  public static ValidationResult isUUID(String field, String uuidStr) {
+    try {
+      UUID.fromString(uuidStr);
+    } catch (IllegalArgumentException e) {
+      return ValidationResult.error(field, field + " is not UUID", "IS_UUID");
+    }
+
+    return ValidationResult.valid();
+  }
+
+  public static void throwExceptionIfNotValid(ValidationResult result)
+      throws ValidationFailedException {
+    if (!result.isValid()) throw new ValidationFailedException(result);
   }
 
   public static ValidationResult validate(boolean condition, String field, String message) {

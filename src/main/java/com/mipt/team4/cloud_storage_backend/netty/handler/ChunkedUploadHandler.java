@@ -1,9 +1,14 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.http.TransferNotStartedYetException;
+import com.mipt.team4.cloud_storage_backend.exception.service.MissingFilePartException;
+import com.mipt.team4.cloud_storage_backend.exception.service.TranferSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
@@ -26,8 +31,8 @@ public class ChunkedUploadHandler {
 
   private boolean isInProgress = false;
   private List<String> currentFileTags;
-  private UUID currentSessionId;
-  private UUID currentUserId;
+  private String currentSessionId;
+  private String currentUserId;
   private String currentFilePath;
   private long totalFileSize;
   private long receivedBytes = 0;
@@ -54,8 +59,10 @@ public class ChunkedUploadHandler {
               currentFilePath,
               currentFileTags));
     } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
-      cleanup();
+      handleValidationError(ctx, e);
+      return;
+    } catch (StorageFileAlreadyExistsException e) {
+      handleFileAlreadyExists(ctx, currentFilePath);
       return;
     }
 
@@ -82,7 +89,20 @@ public class ChunkedUploadHandler {
 
     if (content.content().readableBytes() > 0) handleFileChunk(ctx, content);
 
-    UUID fileId = fileController.finishChunkedUpload(currentSessionId);
+    UUID fileId;
+
+    try {
+      fileId = fileController.finishChunkedUpload(currentSessionId);
+    } catch (ValidationFailedException e) {
+      handleValidationError(ctx, e);
+      return;
+    } catch (MissingFilePartException e) {
+      handleMissingFilePart(ctx, e);
+      return;
+    } catch (TranferSessionNotFoundException e) {
+      handleSessionNotFound(ctx, e);
+      return;
+    }
 
     if (logger.isDebugEnabled())
       logger.debug(
@@ -112,6 +132,9 @@ public class ChunkedUploadHandler {
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       return;
+    } catch (TranferSessionNotFoundException e) {
+      handleSessionNotFound(ctx, e);
+      return;
     }
 
     receivedChunks++;
@@ -125,7 +148,7 @@ public class ChunkedUploadHandler {
         chunkSize,
         totalFileSize);
 
-    if (receivedChunks % StorageConfig.getInstance().getSendUploadProgressInterval() == 0
+    if (receivedChunks % StorageConfig.INSTANCE.getSendUploadProgressInterval() == 0
         || receivedChunks == totalChunks) sendProgressResponse(ctx, "upload_progress");
   }
 
@@ -143,8 +166,8 @@ public class ChunkedUploadHandler {
 
   private void parseUploadRequestMetadata(HttpRequest request) {
     // TODO: парсинг метаданных пользователя, аутентификация
-    currentSessionId = UUID.fromString("");
-    currentUserId = UUID.fromString("");
+    currentSessionId = "";
+    currentUserId = "";
     currentFilePath = request.headers().get("X-File-Path");
     currentFileTags = FileTagsMapper.toList(request.headers().get("X-File-Tags"));
     totalFileSize = Long.parseLong(request.headers().get("X-File-Size"));
@@ -152,19 +175,49 @@ public class ChunkedUploadHandler {
   }
 
   private void sendSuccessResponse(ChannelHandlerContext ctx, UUID fileId, long totalFileSize) {
-    String json =
-        String.format(
-            "{\"status\":\"complete\",\"fileId\":%s,\"fileSize\":%d}", fileId, totalFileSize);
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode json = mapper.createObjectNode();
+
+    json.put("status", "complete");
+    json.put("fileId", fileId.toString());
+    json.put("fileSize", totalFileSize);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
   }
 
   private void sendProgressResponse(ChannelHandlerContext ctx, String status) {
-    String json =
-        String.format(
-            "{\"status\":\"%s\",\"currentChunk\":%d,\"totalChunks\":%d,\"bytesReceived\":%d,\"sessionId\":\"%s\"}",
-            status, receivedChunks, totalChunks, receivedBytes, currentSessionId);
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode json = mapper.createObjectNode();
+
+    json.put("status", status);
+    json.put("currentChunk", receivedChunks);
+    json.put("totalChunks", totalChunks);
+    json.put("bytesReceived", receivedBytes);
+    json.put("sessionId", currentSessionId);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
+  }
+
+  private void handleSessionNotFound(ChannelHandlerContext ctx, TranferSessionNotFoundException e) {
+    ResponseHelper.sendErrorResponse(
+            ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+    cleanup();
+  }
+
+  private void handleMissingFilePart(ChannelHandlerContext ctx, MissingFilePartException e) {
+    ResponseHelper.sendErrorResponse(
+            ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+    cleanup();
+  }
+
+  private void handleValidationError(ChannelHandlerContext ctx, ValidationFailedException e) {
+    ResponseHelper.sendValidationErrorResponse(ctx, e);
+    cleanup();
+  }
+
+  private void handleFileAlreadyExists(ChannelHandlerContext ctx, String filePath) {
+    ResponseHelper.sendErrorResponse(
+        ctx, HttpResponseStatus.BAD_REQUEST, "File " + filePath + " already exists");
+    cleanup();
   }
 }

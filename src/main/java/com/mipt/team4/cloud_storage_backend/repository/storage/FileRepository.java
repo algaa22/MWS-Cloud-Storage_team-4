@@ -36,4 +36,8 @@ public class FileRepository {
   public UUID finishMultipartUpload(String s3Key, String uploadId, List<String> eTags) {
     // TODO: return file ID
   }
+
+  public boolean fileExists(UUID ownerId, String path) {
+
+  }
 }

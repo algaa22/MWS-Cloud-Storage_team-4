@@ -6,7 +6,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record GetFilePathsListDto(String userId) {
   public void validate() throws ValidationFailedException {
-    ValidationResult result = Validators.all(Validators.isUUID("User ID", userId));
+    ValidationResult result = Validators.all(Validators.isUuid("User ID", userId));
 
     Validators.throwExceptionIfNotValid(result);
   }

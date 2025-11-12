@@ -81,10 +81,10 @@ public class FileService {
       throws DbExecuteUpdateException {
     UUID fileId = UUID.randomUUID();
     String s3Key = ownerId + "/" + fileName;
-    contentRepository.putObject(s3Key, stream, contentType);
+    //contentRepository.putObject(s3Key, stream, contentType);
 
     FileEntity entity =
-        new FileEntity(fileId, ownerId, s3Key, contentType, "private", size, false, tags);
+        new FileEntity(fileId, null, s3Key, contentType, "private", size, false, tags);
     fileRepository.addFile(entity);
     return FileMapper.toDto(entity);
   }
@@ -93,7 +93,7 @@ public class FileService {
     UUID ownerUuid = UUID.fromString(ownerId);
     Optional<FileEntity> entityOpt = fileRepository.getFile(ownerUuid, path);
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
-    return contentRepository.downloadObject(entity.getStoragePath());
+    return null;
   }
 
   // Soft delete (если появится метод в FileRepository)
@@ -104,13 +104,21 @@ public class FileService {
     // TODO: here add/update logic for soft-deleting in repo when implemented
   }
 
-  public FileChunkedDownloadDto getFileDownloadInfo(String fileId, String userId) {}
+  public FileChunkedDownloadDto getFileDownloadInfo(String fileId, String userId) {
+    return null;
+  }
 
-  public FileChunkDto getFileChunk(String fileId, int chunkIndex, int chunkSize) {}
+  public FileChunkDto getFileChunk(String fileId, int chunkIndex, int chunkSize) {
+    return null;
+  }
 
-  public List<String> getFilePathsList(String userId) {}
+  public List<String> getFilePathsList(String userId) {
+    return null;
+  }
 
-  public FileDto getFileInfo(String fileId, String userId) {}
+  public FileDto getFileInfo(String fileId, String userId) {
+    return null;
+  }
 
   private FileChunkedUploadEntity createChunkedUploadSession(
           FileChunkedUploadDto chunkedUploadDto) {

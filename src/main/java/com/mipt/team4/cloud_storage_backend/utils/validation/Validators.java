@@ -38,8 +38,12 @@ public class Validators {
 
   public static ValidationResult lengthRange(
       String field, String value, int minLength, int maxLength) {
+    if (NumberComparator.greaterThan(minLength, maxLength))
+      throw new IllegalArgumentException(
+              String.format("maxLength (%s) cannot be less than minLength (%s)", maxLength, minLength));
+
     return validate(
-        value != null && (value.length() < minLength || value.length() > maxLength),
+        value != null && value.length() >= minLength && value.length() <= maxLength,
         field + " must contain " + minLength + " to " + maxLength + " characters",
         "MAX_LENGTH_" + maxLength);
   }
@@ -68,6 +72,10 @@ public class Validators {
 
   public static ValidationResult numberRange(
       String field, Number value, Number minValue, Number maxValue) {
+    if (NumberComparator.greaterThan(minValue, maxValue))
+      throw new IllegalArgumentException(
+          String.format("maxValue (%s) cannot be less than minValue (%s)", maxValue, minValue));
+
     return validate(
         NumberComparator.greaterThanOrEqualsTo(value, minValue)
             && NumberComparator.lessThanOrEqualsTo(value, maxValue),
@@ -84,20 +92,20 @@ public class Validators {
         "NUMBER_MAX_" + maxValue);
   }
 
-  public static ValidationResult cannotBeNegative(String field, Number value) {
-    return validate(
-        NumberComparator.greaterThanOrEqualsTo(value, 0),
-        field,
-        field + " cannot be negative",
-        "CANNOT_BE_NEGATIVE");
-  }
-
   public static ValidationResult numberMin(String field, Number value, Number minValue) {
     return validate(
         NumberComparator.greaterThanOrEqualsTo(value, minValue),
         field,
         field + " must be greater than or equal to  " + minValue,
         "NUMBER_MIN_" + minValue);
+  }
+
+  public static ValidationResult cannotBeNegative(String field, Number value) {
+    return validate(
+            NumberComparator.greaterThanOrEqualsTo(value, 0),
+            field,
+            field + " cannot be negative",
+            "CANNOT_BE_NEGATIVE");
   }
 
   public static ValidationResult mustBePositive(String field, Number value) {
@@ -108,7 +116,7 @@ public class Validators {
         "MUST_BE_POSITIVE");
   }
 
-  public static ValidationResult isUUID(String field, String uuidStr) {
+  public static ValidationResult isUuid(String field, String uuidStr) {
     try {
       UUID.fromString(uuidStr);
     } catch (IllegalArgumentException e) {

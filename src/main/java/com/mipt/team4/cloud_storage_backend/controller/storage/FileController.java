@@ -31,7 +31,7 @@ public class FileController {
 
   public UUID finishChunkedUpload(String sessionId)
       throws MissingFilePartException, TranferSessionNotFoundException, ValidationFailedException {
-    Validators.throwExceptionIfNotValid(Validators.isUUID("Session ID", sessionId));
+    Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));
 
     return service.finishChunkedUpload(sessionId);
   }

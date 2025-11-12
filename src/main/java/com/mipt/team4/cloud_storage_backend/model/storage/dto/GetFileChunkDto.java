@@ -9,7 +9,7 @@ public record GetFileChunkDto(String fileId, int chunkIndex, int chunkSize) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.isUUID("File ID", fileId),
+            Validators.isUuid("File ID", fileId),
             Validators.cannotBeNegative("Chunk index", chunkIndex),
             Validators.numberMax(
                 "Chunk size", chunkSize, StorageConfig.INSTANCE.getMaxFileChunkSize()));

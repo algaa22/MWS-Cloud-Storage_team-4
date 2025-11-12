@@ -109,7 +109,7 @@ public class FileChunkedUploadEntity {
     return eTags.get(partIndex);
   }
   
-  public void addETag(int partIndex, String eTag) {
+  public void putETag(int partIndex, String eTag) {
     this.eTags.put(partIndex, eTag);
   }
 }

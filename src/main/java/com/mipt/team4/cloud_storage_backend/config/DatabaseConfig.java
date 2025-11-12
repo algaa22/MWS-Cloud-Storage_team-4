@@ -3,34 +3,19 @@ package com.mipt.team4.cloud_storage_backend.config;
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 
-public class DatabaseConfig {
-  private static volatile DatabaseConfig instance;
+public enum DatabaseConfig {
+  INSTANCE;
 
   private final String url;
   private final String username;
   private final String password;
 
-  private DatabaseConfig(String url, String username, String password) {
-    this.url = url;
-    this.username = username;
-    this.password = password;
-  }
+  DatabaseConfig() {
+    ConfigSource source = new EnvironmentConfigSource();
 
-  public static DatabaseConfig getInstance() {
-    if (instance == null) {
-      synchronized (DatabaseConfig.class) {
-        if (instance == null) {
-          ConfigSource source = new EnvironmentConfigSource();
-
-          instance = new DatabaseConfig(
-                  source.getString("db.url").orElseThrow(),
-                  source.getString("db.username").orElseThrow(),
-                  source.getString("db.password").orElseThrow()
-          );
-        }
-      }
-    }
-    return instance;
+    this.url = source.getString("db.url").orElseThrow();
+    this.username = source.getString("db.username").orElseThrow();
+    this.password = source.getString("db.password").orElseThrow();
   }
 
   public String getUrl() {

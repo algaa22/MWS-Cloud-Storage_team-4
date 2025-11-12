@@ -6,11 +6,13 @@ import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStarte
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.EventLoop;
 import io.netty.handler.codec.http.*;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -22,8 +24,8 @@ public class ChunkedDownloadHandler {
 
   private boolean isInProgress = false;
   private String currentSessionId;
-  private UUID currentFileId;
-  private UUID currentUserId;
+  private String currentFileId;
+  private String currentUserId;
   private long fileSize;
   private long sentBytes = 0;
   private long sentChunks = 0;
@@ -75,15 +77,29 @@ public class ChunkedDownloadHandler {
     }
 
     int chunkIndex = totalChunks;
-    int maxChunkSize = StorageConfig.getInstance().getFileDownloadChunkSize();
+    int maxChunkSize = StorageConfig.INSTANCE.getFileDownloadChunkSize();
     long offset = (long) chunkIndex * maxChunkSize;
     int chunkSize = (int) Math.min(maxChunkSize, fileSize - offset);
 
-    FileChunkDto fileChunk = fileController.getFileChunk(currentFileId, chunkIndex, chunkSize);
+    FileChunkDto fileChunk;
+
+    try {
+      fileChunk =
+          fileController.getFileChunk(new GetFileChunkDto(currentFileId, chunkIndex, chunkSize));
+    } catch (ValidationFailedException e) {
+      handleValidationFailed(ctx, e);
+      return;
+    }
+
     HttpContent httpChunk = new DefaultHttpContent(Unpooled.copiedBuffer(fileChunk.chunkData()));
 
     ChannelFutureListener listener = createChunkSendListener(ctx, chunkIndex, chunkSize);
     ctx.write(httpChunk).addListener(listener);
+  }
+
+  private void handleValidationFailed(ChannelHandlerContext ctx, ValidationFailedException e) {
+    ResponseHelper.sendValidationErrorResponse(ctx, e);
+    cleanup();
   }
 
   private ChannelFutureListener createChunkSendListener(
@@ -110,7 +126,9 @@ public class ChunkedDownloadHandler {
           chunkSize);
     }
 
-    ctx.channel().eventLoop().execute(() -> sendNextChunk(ctx));
+    try (EventLoop eventLoop = ctx.channel().eventLoop()) {
+      eventLoop.execute(() -> sendNextChunk(ctx));
+    }
   }
 
   private void finishChunkedDownload(ChannelHandlerContext ctx) {
@@ -148,8 +166,8 @@ public class ChunkedDownloadHandler {
               "Completed chunked download. Session: {}, file: {}, chunks: {}, bytes: {}",
               currentSessionId,
               currentFileId,
-              totalChunks,
-              sentChunks);
+              sentChunks,
+              sentBytes);
       } else {
         Throwable cause = future.cause();
 
@@ -164,16 +182,16 @@ public class ChunkedDownloadHandler {
 
   private int calculateTotalChunks(long fileSize) {
     return (int)
-        Math.ceil((double) fileSize / StorageConfig.getInstance().getFileDownloadChunkSize());
+        Math.ceil((double) fileSize / StorageConfig.INSTANCE.getFileDownloadChunkSize());
   }
 
   private void parseDownloadRequestMetadata(HttpRequest request) {
     String uri = request.uri();
     String[] uriParts = uri.split("/");
 
-    currentFileId = UUID.fromString(uriParts[uriParts.length - 1]);
+    currentFileId = uriParts[uriParts.length - 1];
     // TODO: аутентификация
-    currentUserId = UUID.fromString(request.headers().get("X-User-Id", ""));
+    currentUserId = request.headers().get("X-User-Id", "");
   }
 
   private void sendDownloadStartResponse(

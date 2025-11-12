@@ -31,12 +31,12 @@ public class FileRepository {
 
   public String startMultipartUpload(String s3Key) {
     // TODO: return upload ID
-      return "";
+    return null;
   }
 
   public String uploadPart(String uploadId, int partIndex, byte[] bytes) {
     // TODO: return eTag
-      return "";
+    return null;
   }
 
   public UUID finishMultipartUpload(String s3Key, String uploadId, List<String> eTags) {

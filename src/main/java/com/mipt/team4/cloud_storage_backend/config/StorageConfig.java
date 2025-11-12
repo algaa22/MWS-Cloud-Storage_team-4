@@ -2,69 +2,67 @@ package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 
-public class StorageConfig {
-  private static volatile StorageConfig instance;
+public enum StorageConfig {
+  INSTANCE;
+
+  private final String jwtSecretKey;
   private final long maxFileSize;
   private final int maxFileChunkSize;
   private final int maxContentLength;
   private final int fileDownloadChunkSize;
   private final int sendUploadProgressInterval;
+  private final int jwtTokenExpirationMs;
   private final String userDataBucketName;
 
-  public StorageConfig(
-      long maxFileSize,
-      int maxFileChunkSize,
-      int maxContentLength,
-      int fileDownloadChunkSize,
-      int sendUploadProgressInterval,
-      String userDataBucketName) {
-    this.maxFileSize = maxFileSize;
-    this.maxFileChunkSize = maxFileChunkSize;
-    this.maxContentLength = maxContentLength;
-    this.fileDownloadChunkSize = fileDownloadChunkSize;
-    this.sendUploadProgressInterval = sendUploadProgressInterval;
-    this.userDataBucketName = userDataBucketName;
+  StorageConfig() {
+    ConfigSource yamlSource = new YamlConfigSource("config.yml");
+    ConfigSource envSource = new EnvironmentConfigSource();
+
+    this.maxFileSize = yamlSource.getLong("storage.http.max-file-size").orElseThrow();
+    this.maxFileChunkSize = yamlSource.getInt("storage.http.max-file-chunk-size").orElseThrow();
+    this.maxContentLength = yamlSource.getInt("storage.http.max-content-length").orElseThrow();
+    this.fileDownloadChunkSize =
+        yamlSource.getInt("storage.http.file-download-chunk-size").orElseThrow();
+    this.sendUploadProgressInterval =
+        yamlSource.getInt("storage.http.send-upload-progress-interval").orElseThrow();
+    this.userDataBucketName =
+        yamlSource.getString("storage.repository.user-data-bucket.name").orElseThrow();
+    this.jwtTokenExpirationMs =
+        yamlSource.getInt("storage.jwt.jwt-token-expiration-ms").orElseThrow();
+
+    this.jwtSecretKey =
+        envSource.getString("jwt.secret.key").orElseThrow(); // TODO: оставить здесь?
   }
 
-  public static StorageConfig getInstance() {
-    if (instance == null) {
-      synchronized (DatabaseConfig.class) {
-        if (instance == null) {
-          ConfigSource source = new EnvironmentConfigSource();
-
-          instance =
-              new StorageConfig(
-                  source.getLong("storage.http.max-file-size").orElseThrow(),
-                  source.getInt("storage.http.max-file-chunk-size").orElseThrow(),
-                  source.getInt("storage.http.file-download-chunk-size").orElseThrow(),
-                  source.getInt("storage.http.max-content-length").orElseThrow(),
-                  source.getInt("storage.http.send-upload-progress-interval").orElseThrow(),
-                  source.getString("storage.repository.user-data-bucket.name").orElseThrow());
-        }
-      }
-    }
-
-    return instance;
+  public String getJwtSecretKey() {
+    return jwtSecretKey;
   }
 
   public long getMaxFileSize() {
     return maxFileSize;
   }
 
-  public long getMaxFileChunkSize() {
-    return maxFileChunkSize;
+  public int getJwtTokenExpirationMs() {
+    return jwtTokenExpirationMs;
   }
 
-  public int getFileDownloadChunkSize() {
-    return fileDownloadChunkSize;
+  public int getMaxFileChunkSize() {
+    return maxFileChunkSize;
   }
 
   public int getMaxContentLength() {
     return maxContentLength;
   }
 
+  public int getFileDownloadChunkSize() {
+    return fileDownloadChunkSize;
+  }
+
   public int getSendUploadProgressInterval() {
     return sendUploadProgressInterval;
   }
+
+
 }

@@ -2,11 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.HttpMethod;
@@ -16,13 +12,17 @@ import org.slf4j.LoggerFactory;
 
 public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpRequest> {
   private static final Logger logger = LoggerFactory.getLogger(AggregatedHttpHandler.class);
+  private final FoldersRequestHandler foldersRequestHandler;
   private final FilesRequestHandler filesRequestHandler;
+  private final UsersRequestHandler usersRequestHandler;
 
   private HttpMethod method;
   private String uri;
 
-  public AggregatedHttpHandler(FileController fileController, UserController userController, FilesRequestHandler filesRequestHandler) {
+  public AggregatedHttpHandler(FileController fileController, UserController userController) {
+    this.foldersRequestHandler = new FoldersRequestHandler(fileController);
     this.filesRequestHandler = new FilesRequestHandler(fileController);
+    this.usersRequestHandler = new UsersRequestHandler(userController);
   }
 
   @Override
@@ -44,13 +44,6 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
   private void handleFilesRequest(ChannelHandlerContext ctx, HttpRequest request) {
     String userId = extractUserIdFromRequest(request);
 
-    try {
-      validateUserId(userId);
-    } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
-      return;
-    }
-
     if (uri.equals("/api/files") && method.equals(HttpMethod.GET))
       filesRequestHandler.handleGetFilePathsListRequest(ctx, userId);
     else {
@@ -64,10 +57,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
           filesRequestHandler.handleDeleteFileRequest(ctx, fileId, userId);
         else if (method.equals(HttpMethod.PUT))
           filesRequestHandler.handleChangeFileMetadataRequest(ctx, fileId, userId);
-        else if (method.equals(HttpMethod.GET))
-          filesRequestHandler.handleGetFileRequest(ctx, fileId, userId);
-        else
-          ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+        else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       } else {
         ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       }
@@ -75,18 +65,41 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
   }
 
   private void handleFoldersRequest(ChannelHandlerContext ctx, HttpRequest request) {
+    String userId = extractUserIdFromRequest(request);
 
+    if (uri.equals("/api/folders") && method.equals(HttpMethod.POST))
+      foldersRequestHandler.handleCreateFolderRequest(ctx, userId);
+    else {
+      String[] uriPaths = uri.split("/");
+      String folderId = uriPaths[uriPaths.length - 1];
+
+      if (uri.startsWith("/api/files/move/") && method.equals(HttpMethod.POST))
+        foldersRequestHandler.handleMoveFolderRequest(ctx, folderId, userId);
+      else if (uri.length() == 4) {
+        if (method.equals(HttpMethod.GET))
+          foldersRequestHandler.handleGetFolderContentRequest(ctx, folderId, userId);
+        else if (method.equals(HttpMethod.PUT))
+          foldersRequestHandler.handleRenameFolderRequest(ctx, folderId, userId);
+        else if (method.equals(HttpMethod.DELETE))
+          foldersRequestHandler.handleDeleteFolderRequest(ctx, folderId, userId);
+        else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      } else {
+        ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      }
+    }
   }
 
   private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request) {
-
-  }
-
-  private void validateUserId(String userId) throws ValidationFailedException {
-    ValidationResult validationResult = Validators.notEmpty("User ID", userId);
-
-    if (!validationResult.isValid())
-      throw new ValidationFailedException(validationResult.getErrors());
+    if (method.equals(HttpMethod.POST)) {
+      if (uri.equals("/api/users/auth/login")) usersRequestHandler.handleLoginRequest(ctx, request);
+      else if (uri.equals("/api/users/auth/register"))
+        usersRequestHandler.handleRegisterRequest(ctx, request);
+      else if (uri.equals("/api/users/auth/logout"))
+        usersRequestHandler.handleLogoutRequest(ctx, request);
+      else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+    } else {
+      ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+    }
   }
 
   private String extractUserIdFromRequest(HttpRequest request) {

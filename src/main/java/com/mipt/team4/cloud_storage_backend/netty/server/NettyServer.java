@@ -24,9 +24,9 @@ public class NettyServer {
 
   public void start() {
     try (EventLoopGroup bossGroup =
-            new MultiThreadIoEventLoopGroup(NettyConfig.getInstance().getBossThreads(), NioIoHandler.newFactory());
+            new MultiThreadIoEventLoopGroup(NettyConfig.INSTANCE.getBossThreads(), NioIoHandler.newFactory());
         EventLoopGroup workerGroup =
-            new MultiThreadIoEventLoopGroup(NettyConfig.getInstance().getWorkerThreads(), NioIoHandler.newFactory())) {
+            new MultiThreadIoEventLoopGroup(NettyConfig.INSTANCE.getWorkerThreads(), NioIoHandler.newFactory())) {
 
       ServerBootstrap bootstrap = new ServerBootstrap();
       bootstrap
@@ -34,8 +34,8 @@ public class NettyServer {
           .channel(NioServerSocketChannel.class)
           .childHandler(new CustomChannelInitializer());
 
-      ChannelFuture future = bootstrap.bind(NettyConfig.getInstance().getPort()).sync();
-      logger.info("Netty server started on port " + NettyConfig.getInstance().getPort());
+      ChannelFuture future = bootstrap.bind(NettyConfig.INSTANCE.getPort()).sync();
+      logger.info("Netty server started on port " + NettyConfig.INSTANCE.getPort());
 
       future.channel().closeFuture().sync();
       logger.info("Netty server stopped");

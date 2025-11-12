@@ -3,33 +3,19 @@ package com.mipt.team4.cloud_storage_backend.config;
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 
-public class NettyConfig {
-  private static volatile NettyConfig instance;
+public enum NettyConfig {
+  INSTANCE;
+
   private final int port;
   private final int bossThreads;
   private final int workerThreads;
 
-  private NettyConfig(int port, int bossThreads, int workerThreads) {
-    this.port = port;
-    this.bossThreads = bossThreads;
-    this.workerThreads = workerThreads;
-  }
+  NettyConfig() {
+    ConfigSource source = new EnvironmentConfigSource();
 
-  public static NettyConfig getInstance() {
-    if (instance == null) {
-      synchronized (DatabaseConfig.class) {
-        if (instance == null) {
-          ConfigSource source = new EnvironmentConfigSource();
-
-          instance = new NettyConfig(
-                  source.getInt("netty.port").orElseThrow(),
-                  source.getInt("netty.boss-threads").orElseThrow(),
-                  source.getInt("netty.worker-threads").orElseThrow());
-        }
-      }
-    }
-
-    return instance;
+    this.port = source.getInt("netty.port").orElseThrow();
+    this.bossThreads = source.getInt("netty.boss-threads").orElseThrow();
+    this.workerThreads = source.getInt("netty.worker-threads").orElseThrow();
   }
 
   public int getPort() {

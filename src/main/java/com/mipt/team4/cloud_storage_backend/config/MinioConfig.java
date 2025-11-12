@@ -3,45 +3,30 @@ package com.mipt.team4.cloud_storage_backend.config;
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 
-public class MinioConfig {
-    private static volatile MinioConfig instance;
+public enum MinioConfig {
+  INSTANCE;
 
-    private final String url;
-    private final String username;
-    private final String password;
+  private final String url;
+  private final String username;
+  private final String password;
 
-    private MinioConfig(String url, String username, String password) {
-        this.url = url;
-        this.username = username;
-        this.password = password;
-    }
+  MinioConfig() {
+    ConfigSource source = new EnvironmentConfigSource();
 
-    public static MinioConfig getInstance() {
-        if (instance == null) {
-            synchronized (MinioConfig.class) {
-                if (instance == null) {
-                    ConfigSource source = new EnvironmentConfigSource();
-                    instance =
-                            new MinioConfig(
-                                    source.getString("minio.url").orElseThrow(),
-                                    source.getString("minio.username").orElseThrow(),
-                                    source.getString("minio.password").orElseThrow());
-                }
-            }
-        }
-        return instance;
-    }
+    this.url = source.getString("minio.url").orElseThrow();
+    this.username = source.getString("minio.username").orElseThrow();
+    this.password = source.getString("minio.password").orElseThrow();
+  }
 
+  public String getUrl() {
+    return url;
+  }
 
-    public String getUrl() {
-        return url;
-    }
+  public String getUsername() {
+    return username;
+  }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
+  public String getPassword() {
+    return password;
+  }
 }

@@ -64,5 +64,7 @@ public enum StorageConfig {
     return sendUploadProgressInterval;
   }
 
-
+  public String getUserDataBucketName() {
+    return userDataBucketName;
+  }
 }

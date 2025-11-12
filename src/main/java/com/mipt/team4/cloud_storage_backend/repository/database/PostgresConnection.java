@@ -24,9 +24,9 @@ public class PostgresConnection implements DatabaseConnection {
     try {
       connection =
           DriverManager.getConnection(
-              DatabaseConfig.getInstance().getUrl(),
-              DatabaseConfig.getInstance().getUsername(),
-              DatabaseConfig.getInstance().getPassword());
+              DatabaseConfig.INSTANCE.getUrl(),
+              DatabaseConfig.INSTANCE.getUsername(),
+              DatabaseConfig.INSTANCE.getPassword());
       createFilesTable();
       createUsersTable();
       // TODO: миграции

@@ -39,7 +39,7 @@ public class FileRepository {
     return null;
   }
 
-  public UUID finishMultipartUpload(String s3Key, String uploadId, List<String> eTags) {
+  public UUID finishMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
     // TODO: return file ID
       return null;
   }

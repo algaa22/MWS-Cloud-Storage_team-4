@@ -50,4 +50,4 @@ node_modules/
 
 /src/main/resources/database.properties
 /cloud-storage-backend.iml
-/.env
+/src/main/resources/.env

@@ -8,8 +8,21 @@ import java.util.List;
 
 public class PostgresConnection implements DatabaseConnection {
   private Connection connection;
+  private String databaseUrl;
+  private String databaseUsername;
+  private String databasePassword;
 
-  public PostgresConnection() {}
+  public PostgresConnection(String databaseUrl, String databaseUsername, String databasePassword) {
+    this.databaseUrl = databaseUrl;
+    this.databaseUsername = databaseUsername;
+    this.databasePassword = databasePassword;
+  }
+
+  public PostgresConnection() {
+    this.databaseUrl = DatabaseConfig.INSTANCE.getUrl();
+    this.databaseUsername = DatabaseConfig.INSTANCE.getName();
+    this.databasePassword = DatabaseConfig.INSTANCE.getPassword();
+  }
 
   @Override
   public void connect() {
@@ -22,13 +35,9 @@ public class PostgresConnection implements DatabaseConnection {
     if (isConnected()) return;
 
     try {
-      connection =
-          DriverManager.getConnection(
-              DatabaseConfig.INSTANCE.getUrl(),
-              DatabaseConfig.INSTANCE.getUsername(),
-              DatabaseConfig.INSTANCE.getPassword());
-      createFilesTable();
+      connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword);
       createUsersTable();
+      createFilesTable();
       // TODO: миграции
     } catch (SQLException e) {
       throw new DbConnectionException(e);

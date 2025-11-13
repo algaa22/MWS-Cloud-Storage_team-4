@@ -22,7 +22,7 @@ logs/
 *.tmp
 *.temp
 
-.env
+src/main/resources/.env
 .env.local
 .env.production
 

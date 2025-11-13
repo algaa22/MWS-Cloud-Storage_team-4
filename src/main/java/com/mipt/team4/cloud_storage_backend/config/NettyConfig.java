@@ -11,7 +11,7 @@ public enum NettyConfig {
   private final int workerThreads;
 
   NettyConfig() {
-    ConfigSource source = new EnvironmentConfigSource();
+    ConfigSource source = new EnvironmentConfigSource(".env");
 
     this.port = source.getInt("netty.port").orElseThrow();
     this.bossThreads = source.getInt("netty.boss-threads").orElseThrow();

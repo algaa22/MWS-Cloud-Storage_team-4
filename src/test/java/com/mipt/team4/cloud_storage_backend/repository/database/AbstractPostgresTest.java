@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
+import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,7 +23,11 @@ public abstract class AbstractPostgresTest {
   }
 
   protected static PostgresConnection createConnection() {
-    PostgresConnection postgresConnection = new PostgresConnection();
+    PostgresConnection postgresConnection =
+        new PostgresConnection(
+            postgresContainer.getJdbcUrl(),
+            postgresContainer.getUsername(),
+            postgresContainer.getPassword());
     postgresConnection.connect();
 
     return postgresConnection;

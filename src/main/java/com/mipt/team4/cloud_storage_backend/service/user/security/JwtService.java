@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 public class JwtService {
-  // Получай значения из конфига/среды или внедряй через конструктор
+
   private final String jwtSecretKey;
   private final long jwtTokenExpirationMs;
 
@@ -52,4 +52,14 @@ public class JwtService {
         .getBody();
     return claims.getSubject();
   }
+  //срок дейтсвия токена
+  public long getExpiration(String token) {
+    Claims claims = Jwts.parserBuilder()
+        .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
+        .build()
+        .parseClaimsJws(token)
+        .getBody();
+    return claims.getExpiration().getTime();
+  }
+
 }

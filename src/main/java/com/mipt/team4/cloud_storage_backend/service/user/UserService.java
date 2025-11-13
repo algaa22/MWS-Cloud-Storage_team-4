@@ -27,7 +27,6 @@ public class UserService {
 
   // Регистрация нового пользователя
   public void registerUser(RegisterRequestDto registerRequest) {
-    // 1. Проверяем, нет ли такого логина
     if (userRepository.findByEmail(registerRequest.email()).isPresent()) {
       throw new UserAlreadyExistsException("User already exists", registerRequest.email());
     }
@@ -51,13 +50,14 @@ public class UserService {
       throw new WrongPasswordException("Password incorrect");
     }
     String jwt = jwtService.generateToken(user);
-    // Можно добавить refresh-токен и логику сессий по необходимости
+    //TODO: Добавляем refresh-токены?
     return new LoginResponseDto(jwt, user.getId(), user.getEmail());
   }
 
   // Логаут (обычно для refresh-токенов/сессий)
   public void logoutUser(LogoutRequestDto logoutRequest) {
-
+    long expirationTime = jwtService.getExpiration(logoutRequest.token());
+    sessionService.blacklistToken(logoutRequest.token(), expirationTime);
   }
 
   public UserDto getUser(UUID id) {
@@ -78,13 +78,12 @@ public class UserService {
     userRepository.deleteById(id); // soft- или hard-delete по архитектуре
   }
 
-  // Пример обновления пользователя
   public UserDto updateUser(UUID userId, UserDto dto) {
     UserEntity user = userRepository.findById(userId)
         .orElseThrow(() -> new RuntimeException("User not found"));
-    // Обновляем профиль, кроме пароля/логина (или делай логику, которая тебе нужна)
-    user.setSomeField(dto.someField());
+    // TODO: подумать, что еще можно будет обновлять
+    user.setName(dto.name());
     userRepository.update(user);
-    return UserMapper.toResponseDto(user);
+    return UserMapper.toDto(user);
   }
 }

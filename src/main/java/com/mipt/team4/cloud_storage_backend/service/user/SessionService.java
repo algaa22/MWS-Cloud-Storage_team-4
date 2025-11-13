@@ -7,17 +7,27 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class SessionService {
+  // Ключ — токен (например, JWT), значение — сессия пользователя
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
 
+  // Создание новой сессии
   public void createSession(UUID userId, String token) {
-    // TODO
+    SessionDto session = new SessionDto(userId, token, System.currentTimeMillis());
+    activeSessions.put(token, session);
   }
 
-  public void isValidSession(UUID userId, String token) {
-    // TODO: активна ли сессия
+  // Проверка, что сессия (токен) действительна для данного пользователя
+  public boolean isValidSession(UUID userId, String token) {
+    SessionDto session = activeSessions.get(token);
+    return session != null && session.userId().equals(userId);
   }
 
+  // Завершить сессию (logout) — удалить по токену
   public void invalidateSession(UUID userId, String token) {
-    // TODO: завершить сессию
+    SessionDto session = activeSessions.get(token);
+    if (session != null && session.userId().equals(userId)) {
+      activeSessions.remove(token);
+    }
   }
 }
+

@@ -14,6 +14,18 @@ public class UserEntity {
   private LocalDateTime createdAt;
   boolean isActive;
 
+  public UserEntity(UUID id, String name, String email, String password, String phoneNumber) {
+    this.id = id;
+    this.name = name;
+    this.email = email;
+    this.password = password;
+    this.phoneNumber = phoneNumber;
+    this.storageLimit = 10737418240L; // 10 ГБ по умолчанию?
+    this.usedStorage = 0L;
+    this.createdAt = LocalDateTime.now();
+    this.isActive = true;
+  }
+
   public UserEntity(
       UUID id,
       String name,

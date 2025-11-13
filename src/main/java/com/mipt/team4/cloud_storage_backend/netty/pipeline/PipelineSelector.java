@@ -3,11 +3,13 @@ package com.mipt.team4.cloud_storage_backend.netty.pipeline;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.netty.handler.AggregatedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handler.ChunkedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
@@ -30,6 +32,11 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    if (!(msg instanceof HttpObject)) {
+      handleNotHttpRequest(ctx, msg);
+      return;
+    }
+
     if (msg instanceof HttpRequest request) {
       // TODO: защита от атак (валидаторы)
       PipelineType currentPipeline = PipelineType.from(request);
@@ -38,9 +45,6 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
       configurePipeline(currentPipeline, ctx);
 
       previousPipeline = currentPipeline;
-    } else {
-      handleNotHttpRequest(ctx, msg);
-      return;
     }
 
     ctx.fireChannelRead(msg);
@@ -49,24 +53,28 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
   private void cleanupPipeline(PipelineType currentPipeline, ChannelHandlerContext ctx) {
     if (previousPipeline == currentPipeline) return;
 
+    ChannelPipeline pipeline = ctx.pipeline();
+
     if (previousPipeline == PipelineType.CHUNKED) {
-      ctx.pipeline().remove(ChunkedWriteHandler.class);
-      ctx.pipeline().remove(ChunkedHttpHandler.class);
+      pipeline.remove(ChunkedWriteHandler.class);
+      pipeline.remove(ChunkedHttpHandler.class);
     }
 
     if (previousPipeline == PipelineType.AGGREGATED) {
-      ctx.pipeline().remove(HttpObjectAggregator.class);
-      // handler
+      pipeline.remove(HttpObjectAggregator.class);
+      pipeline.remove(AggregatedHttpHandler.class);
     }
   }
 
   private void configurePipeline(PipelineType currentPipeline, ChannelHandlerContext ctx) {
+    ChannelPipeline pipeline = ctx.pipeline();
+
     if (currentPipeline == PipelineType.CHUNKED) {
-      ctx.pipeline().addLast(new ChunkedWriteHandler());
-      ctx.pipeline().addLast(new ChunkedHttpHandler(fileController));
+      pipeline.addLast(new ChunkedWriteHandler());
+      pipeline.addLast(new ChunkedHttpHandler(fileController));
     } else {
-      ctx.pipeline().addLast(new HttpObjectAggregator(StorageConfig.INSTANCE.getMaxContentLength()));
-      // TODO: handler
+      pipeline.addLast(new HttpObjectAggregator(StorageConfig.INSTANCE.getMaxContentLength()));
+      pipeline.addLast(new AggregatedHttpHandler(fileController, userController));
     }
   }
 

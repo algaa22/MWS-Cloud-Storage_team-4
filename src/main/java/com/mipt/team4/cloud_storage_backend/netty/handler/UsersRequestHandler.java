@@ -2,6 +2,9 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LogoutRequestDto;
@@ -25,7 +28,6 @@ public class UsersRequestHandler {
       userController.registerUser(
           new RegisterRequestDto(
               RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
-              RequestUtils.getRequiredHeader(request, "X-Auth-Phone-Number"),
               RequestUtils.getRequiredHeader(request, "X-Auth-Password-Hash"),
               RequestUtils.getRequiredHeader(request, "X-Auth-Username")));
     } catch (ValidationFailedException e) {
@@ -34,6 +36,8 @@ public class UsersRequestHandler {
     } catch (HeaderNotFoundException e) {
       ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
       return;
+    } catch (UserAlreadyExistsException e) {
+      // TODO
     }
 
     ResponseHelper.sendSuccessResponse(
@@ -53,6 +57,10 @@ public class UsersRequestHandler {
     } catch (HeaderNotFoundException e) {
       ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
       return;
+    } catch (InvalidEmailOrPassword e) {
+      // TODO
+    } catch (WrongPasswordException e) {
+      // TODO
     }
 
     ResponseHelper.sendSuccessResponse(

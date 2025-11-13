@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SessionDto;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SessionService {
 
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
-  private final Map<String, Long> blacklistedTokens = new ConcurrentHashMap<>();
+  private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
 
   public void createSession(UUID userId, String token) {
     SessionDto session = new SessionDto(userId, token, System.currentTimeMillis());
@@ -21,14 +22,15 @@ public class SessionService {
     return session != null && session.userId().equals(userId);
   }
 
-  public void blacklistToken(String token, long expirationTime) {
+  public void blacklistToken(String token, LocalDateTime expirationTime) {
     blacklistedTokens.put(token, expirationTime);
   }
 
   public boolean isBlacklisted(String token) {
-    Long expiry = blacklistedTokens.get(token);
+    LocalDateTime expiry = blacklistedTokens.get(token);
     if (expiry == null) return false;
-    if (System.currentTimeMillis() > expiry) {
+
+    if (LocalDateTime.now().isAfter(expiry)) {
       blacklistedTokens.remove(token); // очистка мусора
       return false;
     }

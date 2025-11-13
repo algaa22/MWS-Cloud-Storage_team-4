@@ -5,6 +5,7 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateEx
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,5 +43,18 @@ public class FileRepository {
 
   public boolean fileExists(UUID ownerId, String path) {
     return false;
+  }
+
+  public InputStream downloadObject(String storagePath) {
+    // TODO
+    return null;
+  }
+
+  public void putObject(String s3Key, InputStream stream, String contentType) {
+
+  }
+
+  public void completeMultipartUpload(String s3Key, String uploadId, List<String> etagList) {
+
   }
 }

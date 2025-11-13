@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
+import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.service.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.service.TranferSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
@@ -18,7 +19,7 @@ public class FileController {
   }
 
   public void startChunkedUpload(FileChunkedUploadDto chunkedUploadRequest)
-      throws ValidationFailedException, StorageFileAlreadyExistsException {
+      throws ValidationFailedException, StorageFileAlreadyExistsException, StorageIllegalAccessException {
     chunkedUploadRequest.validate();
     service.startChunkedUploadSession(chunkedUploadRequest);
   }
@@ -66,8 +67,8 @@ public class FileController {
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
-      throws ValidationFailedException {
+      throws ValidationFailedException, StorageIllegalAccessException {
     deleteFileRequest.validate();
-    return service.deleteFile(deleteFileRequest);
+    service.deleteFile(deleteFileRequest.userId(), deleteFileRequest.filePath());// TODO: в дто
   }
 }

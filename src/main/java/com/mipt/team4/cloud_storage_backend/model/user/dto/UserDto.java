@@ -8,7 +8,6 @@ public record UserDto(
     String name,
     String email,
     String password,
-    String phoneNumber,
     long storageLimit,
     long used_storage,
     LocalDateTime createdAt,

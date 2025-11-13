@@ -10,6 +10,7 @@ import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServer;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 
@@ -19,9 +20,10 @@ public class CloudStorageApplication {
     postgres.connect();
 
     FileRepository fileRepository = new FileRepository(postgres);
+    UserRepository userRepository = new UserRepository();
 
     FileService fileService = new FileService(fileRepository);
-    UserService userService = new UserService();
+    UserService userService = new UserService(userRepository);
 
     FileController fileController = new FileController(fileService);
     UserController userController = new UserController(userService);

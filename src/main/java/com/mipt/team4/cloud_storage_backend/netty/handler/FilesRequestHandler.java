@@ -4,16 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFilePathsListDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpResponseStatus;
-
 import java.util.List;
 
 public class FilesRequestHandler {
@@ -78,7 +77,13 @@ public class FilesRequestHandler {
 
   public void handleDeleteFileRequest(
       ChannelHandlerContext ctx, String fileId, String userId) {
-    fileController.deleteFile(fileId, userId);
+    try {
+      fileController.deleteFile(new SimpleFileOperationDto(fileId, userId));
+    } catch (ValidationFailedException e) {
+      // TODO
+    } catch (StorageIllegalAccessException e) {
+      // TODO
+    }
   }
 
   public void handleChangeFileMetadataRequest(

@@ -13,7 +13,8 @@ public enum StorageConfig {
   private final int maxContentLength;
   private final int fileDownloadChunkSize;
   private final int sendUploadProgressInterval;
-  private final int jwtTokenExpirationMs;
+  private final int jwtTokenExpirationSec;
+  private final int defaultStorageLimit;
 
   StorageConfig() {
     ConfigSource yamlSource = new YamlConfigSource("config.yml");
@@ -26,11 +27,17 @@ public enum StorageConfig {
         yamlSource.getInt("storage.http.file-download-chunk-size").orElseThrow();
     this.sendUploadProgressInterval =
         yamlSource.getInt("storage.http.send-upload-progress-interval").orElseThrow();
-    this.jwtTokenExpirationMs =
+    this.defaultStorageLimit =
+        yamlSource.getInt("storage.quotas.default-storage-limit").orElseThrow();
+    this.jwtTokenExpirationSec =
         yamlSource.getInt("storage.jwt.jwt-token-expiration-ms").orElseThrow();
 
     this.jwtSecretKey =
         envSource.getString("jwt.secret.key").orElseThrow(); // TODO: оставить здесь?
+  }
+
+  public int getDefaultStorageLimit() {
+    return defaultStorageLimit;
   }
 
   public String getJwtSecretKey() {
@@ -41,8 +48,8 @@ public enum StorageConfig {
     return maxFileSize;
   }
 
-  public int getJwtTokenExpirationMs() {
-    return jwtTokenExpirationMs;
+  public int getJwtTokenExpirationSec() {
+    return jwtTokenExpirationSec;
   }
 
   public int getMaxFileChunkSize() {

@@ -4,21 +4,22 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 public class JwtService {
 
   private final String jwtSecretKey;
-  private final long jwtTokenExpirationMs;
+  private final long jwtTokenExpirationSec;
 
-  public JwtService(String jwtSecretKey, long jwtTokenExpirationMs) {
+  public JwtService(String jwtSecretKey, long jwtTokenExpirationSec) {
     this.jwtSecretKey = jwtSecretKey;
-    this.jwtTokenExpirationMs = jwtTokenExpirationMs;
+    this.jwtTokenExpirationSec = jwtTokenExpirationSec;
   }
 
   public String generateToken(UserEntity user) {
     Date now = new Date();
-    Date expiryDate = new Date(now.getTime() + jwtTokenExpirationMs);
+    Date expiryDate = new Date(now.getTime() + jwtTokenExpirationSec);
 
     return Jwts.builder()
         .setSubject(user.getId().toString())
@@ -52,14 +53,12 @@ public class JwtService {
         .getBody();
     return claims.getSubject();
   }
-  //срок дейтсвия токена
-  public long getExpiration(String token) {
-    Claims claims = Jwts.parserBuilder()
-        .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
-        .build()
-        .parseClaimsJws(token)
-        .getBody();
-    return claims.getExpiration().getTime();
+
+  public LocalDateTime getTokenExpiredDateTime() {
+    return LocalDateTime.now().plusSeconds(jwtTokenExpirationSec);
   }
 
+  public long getTokenExpirationTime() {
+    return jwtTokenExpirationSec;
+  }
 }

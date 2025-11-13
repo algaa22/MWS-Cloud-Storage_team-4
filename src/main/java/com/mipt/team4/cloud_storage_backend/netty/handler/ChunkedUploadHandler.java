@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.service.MissingFilePartException;
@@ -72,6 +73,8 @@ public class ChunkedUploadHandler {
     } catch (StorageFileAlreadyExistsException e) {
       handleFileAlreadyExists(ctx, currentFilePath);
       return;
+    } catch (StorageIllegalAccessException e) {
+      // TODO
     }
 
     isInProgress = true;

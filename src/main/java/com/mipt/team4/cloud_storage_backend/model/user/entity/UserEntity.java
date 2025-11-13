@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.user.entity;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -8,19 +10,17 @@ public class UserEntity {
   private String name;
   private String email;
   private String password;
-  private String phoneNumber;
   private long storageLimit;
   private long usedStorage;
   private LocalDateTime createdAt;
   boolean isActive;
 
-  public UserEntity(UUID id, String name, String email, String password, String phoneNumber) {
+  public UserEntity(UUID id, String name, String email, String password) {
     this.id = id;
     this.name = name;
     this.email = email;
     this.password = password;
-    this.phoneNumber = phoneNumber;
-    this.storageLimit = 10737418240L; // 10 ГБ по умолчанию?
+    this.storageLimit = StorageConfig.INSTANCE.getDefaultStorageLimit();
     this.usedStorage = 0L;
     this.createdAt = LocalDateTime.now();
     this.isActive = true;
@@ -31,7 +31,6 @@ public class UserEntity {
       String name,
       String email,
       String password,
-      String phoneNumber,
       long storageLimit,
       long usedStorage,
       LocalDateTime createdAt,
@@ -40,7 +39,6 @@ public class UserEntity {
     this.name = name;
     this.email = email;
     this.password = password;
-    this.phoneNumber = phoneNumber;
     this.storageLimit = storageLimit;
     this.usedStorage = usedStorage;
     this.createdAt = createdAt;
@@ -73,14 +71,6 @@ public class UserEntity {
 
   public void setPassword(String password) {
     this.password = password;
-  }
-
-  public String getPhoneNumber() {
-    return phoneNumber;
-  }
-
-  public void setPhoneNumber(String phoneNumber) {
-    this.phoneNumber = phoneNumber;
   }
 
   public long getStorageLimit() {

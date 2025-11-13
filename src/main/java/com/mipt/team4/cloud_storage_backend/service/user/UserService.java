@@ -1,7 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.user.UserMapper;
@@ -9,6 +11,8 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -18,72 +22,59 @@ public class UserService {
   private final JwtService jwtService;    // сервис для работы с JWT
   private final SessionService sessionService;
 
-  public UserService(UserRepository userRepository, JwtService jwtService,
-      SessionService sessionService) {
+  public UserService(UserRepository userRepository) {
     this.userRepository = userRepository;
-    this.jwtService = jwtService;
-    this.sessionService = sessionService;
+    this.jwtService =
+        new JwtService(
+            StorageConfig.INSTANCE.getJwtSecretKey(),
+            StorageConfig.INSTANCE.getJwtTokenExpirationSec());
+    this.sessionService = new SessionService();
   }
 
   // Регистрация нового пользователя
-  public void registerUser(RegisterRequestDto registerRequest) {
-    if (userRepository.findByEmail(registerRequest.email()).isPresent()) {
-      throw new UserAlreadyExistsException("User already exists", registerRequest.email());
-    }
+  public void registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
+    // 1. Проверяем, нет ли такого логина
+    if (userRepository.findByEmail(registerRequest.email()).isPresent())
+      throw new UserAlreadyExistsException(registerRequest.email());
+
     String hash = PasswordHasher.hash(registerRequest.password());
     UserEntity entity = new UserEntity(
         UUID.randomUUID(),
         registerRequest.userName(),
         registerRequest.email(),
-        hash,
-        registerRequest.phoneNumber()
+        hash
     );
-    userRepository.save(entity);
+
+    userRepository.saveUser(entity);
   }
 
   // Логин: возвращает токен при успехе
-  public LoginResponseDto loginUser(LoginRequestDto loginRequest) {
+  public LoginResponseDto loginUser(LoginRequestDto loginRequest) throws WrongPasswordException, InvalidEmailOrPassword {
     Optional<UserEntity> userOpt = userRepository.findByEmail(loginRequest.email());
-    if (userOpt.isEmpty()) throw new InvalidEmailOrPassword("No such user");
+    if (userOpt.isEmpty()) throw new InvalidEmailOrPassword();
+
     UserEntity user = userOpt.get();
     if (!PasswordHasher.verify(loginRequest.password(), user.getPassword())) {
-      throw new WrongPasswordException("Password incorrect");
+      throw new WrongPasswordException();
     }
+
     String jwt = jwtService.generateToken(user);
-    //TODO: Добавляем refresh-токены?
+    // TODO: Можно добавить refresh-токен и логику сессий по необходимости
     return new LoginResponseDto(jwt, user.getId(), user.getEmail());
   }
 
   // Логаут (обычно для refresh-токенов/сессий)
   public void logoutUser(LogoutRequestDto logoutRequest) {
-    long expirationTime = jwtService.getExpiration(logoutRequest.token());
+    LocalDateTime expirationTime = jwtService.getTokenExpiredDateTime();
     sessionService.blacklistToken(logoutRequest.token(), expirationTime);
   }
 
-  public UserDto getUser(UUID id) {
-    return userRepository
-        .findById(id)
-        .map(UserMapper::toDto)
-        .orElseThrow(() -> new RuntimeException("User not found"));
-  }
-
-  public List<UserDto> getAllUsers() {
-    return userRepository.findAll()
-        .stream()
-        .map(UserMapper::toDto)
-        .collect(Collectors.toList());
-  }
-
-  public void deleteUser(UUID id) {
-    userRepository.deleteById(id); // soft- или hard-delete по архитектуре
-  }
-
-  public UserDto updateUser(UUID userId, UserDto dto) {
-    UserEntity user = userRepository.findById(userId)
-        .orElseThrow(() -> new RuntimeException("User not found"));
+  public UserDto updateUser(String userId, UserDto dto) throws UserNotFoundException {
+    UserEntity user = userRepository.findById(UUID.fromString(userId))
+        .orElseThrow(() -> new UserNotFoundException(dto.email()));
     // TODO: подумать, что еще можно будет обновлять
     user.setName(dto.name());
-    userRepository.update(user);
+    userRepository.updateUser(user);
     return UserMapper.toDto(user);
   }
 }

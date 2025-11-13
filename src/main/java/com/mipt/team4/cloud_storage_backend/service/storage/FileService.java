@@ -7,10 +7,7 @@ import com.mipt.team4.cloud_storage_backend.exception.service.TranferSessionNotF
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.FileChunkedUploadMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileChunkedUploadEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
@@ -96,14 +93,6 @@ public class FileService {
     return contentRepository.downloadObject(entity.getStoragePath());
   }
 
-  // Soft delete (если появится метод в FileRepository)
-  public void deleteFile(String ownerId, String path) throws DbExecuteQueryException {
-    UUID ownerUuid = UUID.fromString(ownerId);
-    Optional<FileEntity> entityOpt = fileRepository.getFile(ownerUuid, path);
-    FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
-    // TODO: here add/update logic for soft-deleting in repo when implemented
-  }
-
   public FileChunkedDownloadDto getFileDownloadInfo(String fileId, String userId) {}
 
   public FileChunkDto getFileChunk(String fileId, int chunkIndex, int chunkSize) {}
@@ -111,6 +100,13 @@ public class FileService {
   public List<String> getFilePathsList(String userId) {}
 
   public FileDto getFileInfo(String fileId, String userId) {}
+
+  public void deleteFile(SimpleFileOperationDto deleteFileRequest) {
+    UUID ownerUuid = UUID.fromString(deleteFileRequest.userId());
+    Optional<FileEntity> entityOpt = fileRepository.getFile(ownerUuid, deleteFileRequest.filePath());
+    FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
+    // TODO: here add/update logic for soft-deleting in repo when implemented
+  }
 
   private FileChunkedUploadEntity createChunkedUploadSession(
           FileChunkedUploadDto chunkedUploadDto) {

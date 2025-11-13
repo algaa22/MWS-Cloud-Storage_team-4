@@ -1,8 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStartedException;
-import com.mipt.team4.cloud_storage_backend.exception.http.TransferNotStartedYetException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;

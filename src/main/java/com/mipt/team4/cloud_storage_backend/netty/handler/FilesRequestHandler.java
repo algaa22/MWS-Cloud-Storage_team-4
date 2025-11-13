@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFilePathsListDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
@@ -50,11 +51,11 @@ public class FilesRequestHandler {
   }
 
   public void handleGetFileInfoRequest(
-      ChannelHandlerContext ctx, String fileId, String userId) {
+      ChannelHandlerContext ctx, String filePath, String userId) {
     FileDto fileDto;
 
     try {
-      fileDto = fileController.getFileInfo(new GetFileInfoDto(fileId, userId));
+      fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userId));
     } catch (ValidationFailedException e) {
       handleValidationError(ctx, e);
       return;
@@ -77,7 +78,7 @@ public class FilesRequestHandler {
 
   public void handleDeleteFileRequest(
       ChannelHandlerContext ctx, String fileId, String userId) {
-
+    fileController.deleteFile(fileId, userId);
   }
 
   public void handleChangeFileMetadataRequest(

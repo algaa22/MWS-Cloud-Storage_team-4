@@ -36,25 +36,38 @@ public class FileController {
     return service.finishChunkedUpload(sessionId);
   }
 
-  public FileChunkedDownloadDto getFileDownloadInfo(GetFileInfoDto fileInfo)
+  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo)
       throws ValidationFailedException {
     fileInfo.validate();
-    return service.getFileDownloadInfo(fileInfo.fileId(), fileInfo.userId());
+    // TODO: Передавать DTO
+    return service.getFileDownloadInfo(fileInfo.filePath(), fileInfo.userId());
   }
 
-  public FileChunkDto getFileChunk(GetFileChunkDto fileChunk) throws ValidationFailedException {
-    fileChunk.validate();
-    return service.getFileChunk(fileChunk.fileId(), fileChunk.chunkIndex(), fileChunk.chunkSize());
-  }
-
-  public List<String> getFilePathsList(GetFilePathsListDto filePathsList)
+  public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
       throws ValidationFailedException {
-    filePathsList.validate();
-    return service.getFilePathsList(filePathsList.userId());
+    fileChunkRequest.validate();
+    // TODO: Передавать DTO
+    return service.getFileChunk(
+        fileChunkRequest.fileId(), fileChunkRequest.chunkIndex(), fileChunkRequest.chunkSize());
   }
 
-  public FileDto getFileInfo(GetFileInfoDto fileInfo) throws ValidationFailedException {
-    fileInfo.validate();
-    return service.getFileInfo(fileInfo.fileId(), fileInfo.userId());
+  public List<String> getFilePathsList(GetFilePathsListDto filePathsListRequest)
+      throws ValidationFailedException {
+    filePathsListRequest.validate();
+    // TODO: Передавать DTO
+    return service.getFilePathsList(filePathsListRequest.userId());
+  }
+
+  public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
+      throws ValidationFailedException {
+    fileInfoRequest.validate();
+    // TODO: Передавать DTO
+    return service.getFileInfo(fileInfoRequest.filePath(), fileInfoRequest.userId());
+  }
+
+  public void deleteFile(SimpleFileOperationDto deleteFileRequest)
+      throws ValidationFailedException {
+    deleteFileRequest.validate();
+    return service.deleteFile(deleteFileRequest);
   }
 }

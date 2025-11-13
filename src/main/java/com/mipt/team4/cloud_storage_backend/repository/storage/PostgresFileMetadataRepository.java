@@ -30,7 +30,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     //       если уже есть файл, то бросать исключение FileAlreadyExistsException
     // TODO: может быть, стоит возвращать FileEntity?
     postgres.executeUpdate(
-        "INSERT INTO files (fileId, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
+        "INSERT INTO files (filePath, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
             fileEntity.getFileId(),

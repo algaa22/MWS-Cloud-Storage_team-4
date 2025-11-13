@@ -1,15 +1,14 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LogoutRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
+import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -22,17 +21,18 @@ public class UsersRequestHandler {
   }
 
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    HttpHeaders headers = request.headers();
-
     try {
       userController.registerUser(
           new RegisterRequestDto(
-              headers.get("X-Auth-Email"),
-              headers.get("X-Auth-Phone-Number"),
-              headers.get("X-Auth-Password-Hash"),
-              headers.get("X-Auth-Username")));
+              RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
+              RequestUtils.getRequiredHeader(request, "X-Auth-Phone-Number"),
+              RequestUtils.getRequiredHeader(request, "X-Auth-Password-Hash"),
+              RequestUtils.getRequiredHeader(request, "X-Auth-Username")));
     } catch (ValidationFailedException e) {
       handleValidationError(ctx, e);
+      return;
+    } catch (HeaderNotFoundException e) {
+      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
       return;
     }
 
@@ -41,16 +41,17 @@ public class UsersRequestHandler {
   }
 
   public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    HttpHeaders headers = request.headers();
-
     try {
       userController.loginUser(
           new LoginRequestDto(
-              headers.get("X-Auth-Email"),
-              headers.get("X-Auth-Phone-Number"),
-              headers.get("X-Auth-Password-Hash")));
+              RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
+              RequestUtils.getRequiredHeader(request, "X-Auth-Phone-Number"),
+              RequestUtils.getRequiredHeader(request, "X-Auth-Password-Hash")));
     } catch (ValidationFailedException e) {
       handleValidationError(ctx, e);
+      return;
+    } catch (HeaderNotFoundException e) {
+      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
       return;
     }
 
@@ -59,12 +60,14 @@ public class UsersRequestHandler {
   }
 
   public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    HttpHeaders headers = request.headers();
-
     try {
-      userController.logoutUser(new LogoutRequestDto(headers.get("X-Auth-Token")));
+      userController.logoutUser(
+          new LogoutRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
     } catch (ValidationFailedException e) {
       handleValidationError(ctx, e);
+      return;
+    } catch (HeaderNotFoundException e) {
+      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
       return;
     }
 

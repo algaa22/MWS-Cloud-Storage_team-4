@@ -92,7 +92,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
 
     try {
       postgresConnection.executeUpdate(
-          "INSERT INTO users (fileId, email, password_hash, username, storage_limit, used_storage, is_active) "
+          "INSERT INTO users (filePath, email, password_hash, username, storage_limit, used_storage, is_active) "
               + "VALUES (?, ?, ?, ?, ?, ?, ?)",
           List.of(
               testUserUuid, "test@example.com", "password", "test_user", 10737418240L, 0, true));

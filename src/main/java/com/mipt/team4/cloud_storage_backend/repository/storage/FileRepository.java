@@ -8,9 +8,11 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class FileRepository {
   PostgresFileMetadataRepository postgresMetadataRepository;
+  MinioContentRepository minioContentRepository;
 
   public FileRepository(PostgresConnection postgres) {
     postgresMetadataRepository = new PostgresFileMetadataRepository(postgres);
@@ -28,19 +30,19 @@ public class FileRepository {
     return postgresMetadataRepository.fileExists(ownerId, storagePath);
   }
 
-  public String startMultipartUpload(String s3Key) {
-    // TODO: return upload ID
-    return null;
+  public CompletableFuture<String> startMultipartUpload(String s3Key) {
+    return minioContentRepository.startMultipartUpload(s3Key);
   }
 
-  public String uploadPart(String uploadId, int partIndex, byte[] bytes) {
-    // TODO: return eTag
-    return null;
+  public CompletableFuture<String> uploadPart(CompletableFuture<String> uploadId, String s3Key, int partIndex, byte[] bytes) {
+    return minioContentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
   }
 
-  public UUID completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
-    // TODO: return file ID
-    return null;
+  public void completeMultipartUpload(
+          String s3Key,
+          CompletableFuture<String> uploadId,
+          Map<Integer, CompletableFuture<String>> eTags) {
+       minioContentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
   }
 
   public InputStream downloadObject(String storagePath) {

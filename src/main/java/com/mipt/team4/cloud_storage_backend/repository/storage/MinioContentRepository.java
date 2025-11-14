@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import io.minio.*;
@@ -11,21 +12,19 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class MinioContentRepository implements FileContentRepository {
-  private MinioClient minioClient;
+  private MinioAsyncClient minioClient;
 
   public void createBucket() {
     try {
-      boolean bucketFound = minioClient.bucketExists(BucketExistsArgs.builder().bucket("").build());
-    } catch (ErrorResponseException
-        | InsufficientDataException
+      CompletableFuture<Boolean> bucketFound = minioClient.bucketExists(BucketExistsArgs.builder().bucket("").build());
+    } catch (InsufficientDataException
         | InternalException
         | InvalidKeyException
-        | InvalidResponseException
         | IOException
         | NoSuchAlgorithmException
-        | ServerException
         | XmlParserException e) {
       throw new RuntimeException(e);
     }
@@ -33,14 +32,11 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient.makeBucket(
           MakeBucketArgs.builder().bucket(StorageConfig.INSTANCE.getUserDataBucketName()).build());
-    } catch (ErrorResponseException
-        | InsufficientDataException
+    } catch (InsufficientDataException
         | InternalException
         | InvalidKeyException
-        | InvalidResponseException
         | IOException
         | NoSuchAlgorithmException
-        | ServerException
         | XmlParserException e) {
       // TODO: exceptions
       throw new RuntimeException(e);
@@ -51,7 +47,7 @@ public class MinioContentRepository implements FileContentRepository {
   public void initialize() {
     try {
       minioClient =
-          MinioClient.builder()
+          MinioAsyncClient.builder()
               .endpoint(MinioConfig.INSTANCE.getUrl())
               .credentials(MinioConfig.INSTANCE.getUsername(), MinioConfig.INSTANCE.getPassword())
               .build();
@@ -62,7 +58,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public String startMultipartUpload(String s3Key) {
-    // minioClient.putObject(PutObjectArgs.builder().build().bucket();
     // TODO: return uploadId
 
     return "";

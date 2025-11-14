@@ -65,7 +65,7 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public String startMultipartUpload(String s3Key) {
-
+      // minioClient.putObject(PutObjectArgs.builder().build().bucket();
     // TODO: return uploadId
     return "";
   }

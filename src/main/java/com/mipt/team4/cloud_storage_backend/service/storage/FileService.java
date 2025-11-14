@@ -110,7 +110,7 @@ public class FileService {
     Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, path);
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
     checkFileAccess(userUuid, entity);
-    return fileRepository.downloadObject(entity.getStoragePath());
+    return fileRepository.downloadFile(entity.getStoragePath());
   }
 
   public void deleteFile(String userId, String path) throws StorageIllegalAccessException {

@@ -45,9 +45,8 @@ public class FileRepository {
        minioContentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
   }
 
-  public InputStream downloadObject(String storagePath) {
-    // TODO
-    return null;
+  public InputStream downloadFile(String storagePath) {
+    return minioContentRepository.downloadFile(storagePath);
   }
 
   public void putObject(String s3Key, InputStream stream, String contentType) {}

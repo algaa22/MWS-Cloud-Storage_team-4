@@ -62,7 +62,7 @@ public class MinioContentRepository implements FileContentRepository {
     }
   }
 
-  public Multimap<String, String> createEmptyHeader() {
+  private Multimap<String, String> createEmptyHeader() {
     return MultimapBuilder.hashKeys().arrayListValues().build();
   }
 
@@ -190,7 +190,7 @@ public class MinioContentRepository implements FileContentRepository {
             });
   }
 
-  public Part[] createPartArray(Map<Integer, CompletableFuture<String>> eTags) {
+  private Part[] createPartArray(Map<Integer, CompletableFuture<String>> eTags) {
     List<Part> partsList = new ArrayList<>(eTags.size());
 
     for (Map.Entry<Integer, CompletableFuture<String>> entry : eTags.entrySet()) {
@@ -207,7 +207,25 @@ public class MinioContentRepository implements FileContentRepository {
   public void putObject(String s3Key, InputStream stream, String contentType) {}
 
   @Override
-  public InputStream downloadFile(String storagePath) {
-    return null;
+  public InputStream downloadFile(String s3Key) {
+    try {
+      return minioClient
+          .getObject(
+              GetObjectArgs.builder()
+                  .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
+                  .object(s3Key)
+                  .build())
+          .get();
+
+    } catch (InsufficientDataException
+        | XmlParserException
+        | NoSuchAlgorithmException
+        | IOException
+        | InvalidKeyException
+        | InternalException
+        | ExecutionException
+        | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

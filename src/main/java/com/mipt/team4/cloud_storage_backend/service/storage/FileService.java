@@ -11,6 +11,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FileService {
@@ -44,9 +45,9 @@ public class FileService {
   public void processChunk(FileChunkDto chunk) {
     ChunkedUploadState upload = activeUploads.get(chunk.sessionId());
     if (upload == null) throw new RuntimeException("Upload session not found!");
-    String uploadId = upload.getOrCreateUploadId(fileRepository);
+    CompletableFuture<String> uploadId = upload.getOrCreateUploadId(fileRepository);
     int partNum = chunk.chunkIndex() + 1;
-    String etag = fileRepository.uploadPart(uploadId, partNum, chunk.chunkData());
+    CompletableFuture<String> etag = fileRepository.uploadPart(uploadId, upload.session.path(), partNum, chunk.chunkData());
     upload.etags.put(partNum, etag);
   }
 
@@ -109,7 +110,7 @@ public class FileService {
     Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, path);
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
     checkFileAccess(userUuid, entity);
-    return fileRepository.downloadObject(entity.getStoragePath());
+    return fileRepository.downloadFile(entity.getStoragePath());
   }
 
   public void deleteFile(String userId, String path) throws StorageIllegalAccessException {
@@ -154,14 +155,14 @@ public class FileService {
   // multipart upload state
   private static class ChunkedUploadState {
     final FileChunkedUploadDto session;
-    final Map<Integer, String> etags = new HashMap<>();
-    String uploadId;
+    final Map<Integer, CompletableFuture<String>> etags = new HashMap<>();
+    CompletableFuture<String> uploadId;
 
     ChunkedUploadState(FileChunkedUploadDto session) {
       this.session = session;
     }
 
-    String getOrCreateUploadId(FileRepository repo) {
+    CompletableFuture<String> getOrCreateUploadId(FileRepository repo) {
       if (uploadId == null) {
         String s3Key = session.ownerId() + "/" + session.path();
         uploadId = repo.startMultipartUpload(s3Key);

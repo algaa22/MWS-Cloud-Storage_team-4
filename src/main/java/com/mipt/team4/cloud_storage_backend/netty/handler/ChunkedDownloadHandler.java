@@ -2,12 +2,14 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.http.TransferAlreadyStartedException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileChunkDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileInfoDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
+import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
@@ -24,7 +26,7 @@ public class ChunkedDownloadHandler {
 
   private boolean isInProgress = false;
   private String currentSessionId;
-  private String currentFileId;
+  private String currentFilePath;
   private String currentUserId;
   private long fileSize;
   private long sentBytes = 0;
@@ -39,13 +41,19 @@ public class ChunkedDownloadHandler {
       throws TransferAlreadyStartedException {
     if (isInProgress) throw new TransferAlreadyStartedException();
 
-    parseDownloadRequestMetadata(request);
+    try {
+      parseDownloadRequestMetadata(request);
+    } catch (QueryParameterNotFoundException e) {
+      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+      return;
+    }
 
     FileChunkedDownloadDto fileInfo;
 
     try {
       fileInfo =
-          fileController.getFileDownloadInfo(new GetFileInfoDto(currentFileId, currentUserId));
+          fileController.getFileDownloadInfo(
+              new SimpleFileOperationDto(currentFilePath, currentUserId));
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       cleanup();
@@ -61,7 +69,7 @@ public class ChunkedDownloadHandler {
           "Started chunked download. Session: {}, user: {}, file: {}, size: {}, chunks: {}",
           currentSessionId,
           currentUserId,
-          currentFileId,
+          currentFilePath,
           fileSize,
           totalChunks);
     }
@@ -85,7 +93,7 @@ public class ChunkedDownloadHandler {
 
     try {
       fileChunk =
-          fileController.getFileChunk(new GetFileChunkDto(currentFileId, chunkIndex, chunkSize));
+          fileController.getFileChunk(new GetFileChunkDto(currentFilePath, chunkIndex, chunkSize));
     } catch (ValidationFailedException e) {
       handleValidationFailed(ctx, e);
       return;
@@ -143,7 +151,7 @@ public class ChunkedDownloadHandler {
   public void cleanup() {
     isInProgress = false;
     currentSessionId = null;
-    currentFileId = null;
+    currentFilePath = null;
     currentUserId = null;
     fileSize = 0;
     sentBytes = 0;
@@ -165,7 +173,7 @@ public class ChunkedDownloadHandler {
           logger.debug(
               "Completed chunked download. Session: {}, file: {}, chunks: {}, bytes: {}",
               currentSessionId,
-              currentFileId,
+              currentFilePath,
               sentChunks,
               sentBytes);
       } else {
@@ -181,15 +189,12 @@ public class ChunkedDownloadHandler {
   }
 
   private int calculateTotalChunks(long fileSize) {
-    return (int)
-        Math.ceil((double) fileSize / StorageConfig.INSTANCE.getFileDownloadChunkSize());
+    return (int) Math.ceil((double) fileSize / StorageConfig.INSTANCE.getFileDownloadChunkSize());
   }
 
-  private void parseDownloadRequestMetadata(HttpRequest request) {
-    String uri = request.uri();
-    String[] uriParts = uri.split("/");
-
-    currentFileId = uriParts[uriParts.length - 1];
+  private void parseDownloadRequestMetadata(HttpRequest request)
+      throws QueryParameterNotFoundException {
+    currentFilePath = RequestUtils.getRequiredQueryParam(request, "File path");
     // TODO: аутентификация
     currentUserId = request.headers().get("X-User-Id", "");
   }

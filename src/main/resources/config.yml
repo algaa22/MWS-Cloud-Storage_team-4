@@ -16,4 +16,7 @@ storage:
       name: user-data
 
   auth:
-    jwt-token-expiration-ms: 86400000 # 24 hours
+    jwt-token-expiration-sec: 86400 # 24 hours
+
+  quotas:
+    default-storage-limit: 10737418240

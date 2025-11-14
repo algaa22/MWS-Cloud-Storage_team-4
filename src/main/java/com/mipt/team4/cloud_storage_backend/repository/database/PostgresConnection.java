@@ -36,8 +36,8 @@ public class PostgresConnection implements DatabaseConnection {
 
     try {
       connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword);
-      createUsersTable();
-      createFilesTable();
+      createUsersTable(); // TODO: переместить в userRepository
+      createFilesTable(); // TODO: переместить в fileRepository
       // TODO: миграции
     } catch (SQLException e) {
       throw new DbConnectionException(e);

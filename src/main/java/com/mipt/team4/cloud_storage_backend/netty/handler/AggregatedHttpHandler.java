@@ -2,11 +2,14 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
+import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,15 +51,22 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
       filesRequestHandler.handleGetFilePathsListRequest(ctx, userId);
     else {
       String[] uriPaths = uri.split("/");
-      String fileId = uriPaths[uriPaths.length - 1];
+      String filePath;
+
+      try {
+        filePath = RequestUtils.getRequiredQueryParam(request, "File path");
+      } catch (QueryParameterNotFoundException e) {
+        ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+        return;
+      }
 
       if (uri.startsWith("/api/files/info/") && method.equals(HttpMethod.GET))
-        filesRequestHandler.handleGetFileInfoRequest(ctx, fileId, userId);
+        filesRequestHandler.handleGetFileInfoRequest(ctx, filePath, userId);
       else if (uriPaths.length == 4) {
         if (method.equals(HttpMethod.DELETE))
-          filesRequestHandler.handleDeleteFileRequest(ctx, fileId, userId);
+          filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userId);
         else if (method.equals(HttpMethod.PUT))
-          filesRequestHandler.handleChangeFileMetadataRequest(ctx, fileId, userId);
+          filesRequestHandler.handleChangeFileMetadataRequest(ctx, filePath, userId);
         else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       } else {
         ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);

@@ -25,7 +25,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.util.List;
-import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,16 +94,14 @@ public class ChunkedUploadHandler {
     sendProgressResponse(ctx, "upload_started");
   }
 
-  public void finishChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
+  public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
       throws TransferNotStartedYetException {
     if (!isInProgress) throw new TransferNotStartedYetException();
 
     if (content.content().readableBytes() > 0) handleFileChunk(ctx, content);
 
-    UUID fileId;
-
     try {
-      fileId = fileController.finishChunkedUpload(currentSessionId);
+      fileController.completeChunkedUpload(currentSessionId);
     } catch (ValidationFailedException e) {
       handleValidationError(ctx, e);
       return;
@@ -113,17 +111,19 @@ public class ChunkedUploadHandler {
     } catch (TranferSessionNotFoundException e) {
       handleSessionNotFound(ctx, e);
       return;
+    } catch (StorageFileAlreadyExistsException e) {
+      // TODO
     }
 
     if (logger.isDebugEnabled())
       logger.debug(
           "Completed chunk upload. Session: {}, filePath: {}, chunks: {}, bytes: {}",
-          fileId,
           currentSessionId,
+          currentFilePath,
           receivedChunks,
           receivedBytes);
 
-    sendSuccessResponse(ctx, fileId, totalFileSize);
+    sendSuccessResponse(ctx, currentFilePath, totalFileSize);
     cleanup();
   }
 
@@ -186,12 +186,12 @@ public class ChunkedUploadHandler {
     totalChunks = Integer.parseInt(RequestUtils.getRequiredHeader(request, "X-Total-Chunks"));
   }
 
-  private void sendSuccessResponse(ChannelHandlerContext ctx, UUID fileId, long totalFileSize) {
+  private void sendSuccessResponse(ChannelHandlerContext ctx, String filePath, long totalFileSize) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
-    json.put("filePath", fileId.toString());
+    json.put("filePath", filePath);
     json.put("fileSize", totalFileSize);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);

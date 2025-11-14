@@ -1,15 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
-import com.mipt.team4.cloud_storage_backend.repository.storage.FileContentRepository;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import java.io.InputStream;
 import java.util.*;
@@ -52,7 +50,7 @@ public class FileService {
     upload.etags.put(partNum, etag);
   }
 
-  public UUID finishChunkedUpload(String sessionId) {
+  public void completeChunkedUpload(String sessionId) throws StorageFileAlreadyExistsException {
     ChunkedUploadState upload = activeUploads.remove(sessionId);
     if (upload == null) throw new RuntimeException("No such upload session!");
 
@@ -61,12 +59,8 @@ public class FileService {
     for (int i = 1; i <= session.totalChunks(); i++) {
       if (!upload.etags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
     }
-    List<String> etagList = new ArrayList<>();
-    for (int i = 1; i <= session.totalChunks(); i++) {
-      etagList.add(upload.etags.get(i));
-    }
 
-    fileRepository.completeMultipartUpload(s3Key, upload.uploadId, etagList);
+    fileRepository.completeMultipartUpload(s3Key, upload.uploadId, upload.etags);
 
     UUID fileId = UUID.randomUUID();
     FileEntity entity =
@@ -80,7 +74,6 @@ public class FileService {
             false,
             session.tags());
     fileRepository.addFile(entity);
-    return fileId;
   }
 
   // Обычная загрузка файла
@@ -93,7 +86,7 @@ public class FileService {
       long size,
       List<String> tags,
       String actualUserId)
-      throws StorageIllegalAccessException {
+      throws StorageIllegalAccessException, StorageFileAlreadyExistsException {
     UUID fileId = UUID.randomUUID();
     UUID realUserUuid = UUID.fromString(actualUserId);
     UUID pathOwnerUuid = UUID.fromString(ownerId);

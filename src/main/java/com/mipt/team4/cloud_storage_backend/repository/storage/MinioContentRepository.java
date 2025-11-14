@@ -2,10 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
-import io.minio.MinioClient;
-import io.minio.BucketExistsArgs;
-import io.minio.MakeBucketArgs;
-import io.minio.PutObjectArgs;
+import io.minio.*;
 import io.minio.errors.*;
 
 import java.io.IOException;
@@ -67,6 +64,7 @@ public class MinioContentRepository implements FileContentRepository {
   public String startMultipartUpload(String s3Key) {
     // minioClient.putObject(PutObjectArgs.builder().build().bucket();
     // TODO: return uploadId
+
     return "";
   }
 
@@ -87,7 +85,7 @@ public class MinioContentRepository implements FileContentRepository {
   public void putObject(String s3Key, InputStream stream, String contentType) {}
 
   @Override
-  public InputStream downloadObject(String storagePath) {
+  public InputStream downloadFile(String storagePath) {
     return null;
   }
 }

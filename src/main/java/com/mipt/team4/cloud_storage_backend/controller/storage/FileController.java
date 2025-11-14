@@ -9,7 +9,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
-import java.util.UUID;
 
 public class FileController {
   private final FileService service;
@@ -32,11 +31,14 @@ public class FileController {
     service.processChunk(fileChunk);
   }
 
-  public UUID finishChunkedUpload(String sessionId)
-      throws MissingFilePartException, TranferSessionNotFoundException, ValidationFailedException {
+  public void completeChunkedUpload(String sessionId)
+      throws MissingFilePartException,
+          TranferSessionNotFoundException,
+          ValidationFailedException,
+          StorageFileAlreadyExistsException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));
 
-    return service.finishChunkedUpload(sessionId);
+    service.completeChunkedUpload(sessionId);
   }
 
   public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo)

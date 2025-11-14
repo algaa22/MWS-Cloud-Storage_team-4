@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 
@@ -78,10 +79,10 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public void deleteFile(UUID ownerId, String storagePath) throws FileNotFoundException {
+  public void deleteFile(UUID ownerId, String storagePath) throws StorageFileNotFoundException {
     if (!fileExists(ownerId, storagePath)) {
       // TODO: обернуть в StorageFileNotFoundException
-      throw new FileNotFoundException();
+      throw new StorageFileNotFoundException(ownerId, storagePath);
     }
 
     postgres.executeUpdate(

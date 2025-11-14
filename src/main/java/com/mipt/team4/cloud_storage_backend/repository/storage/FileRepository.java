@@ -1,13 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 
 import java.io.InputStream;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,7 +38,7 @@ public class FileRepository {
     return null;
   }
 
-  public UUID finishMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
+  public UUID completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
     // TODO: return file ID
     return null;
   }
@@ -52,6 +49,4 @@ public class FileRepository {
   }
 
   public void putObject(String s3Key, InputStream stream, String contentType) {}
-
-  public void completeMultipartUpload(String s3Key, String uploadId, List<String> etagList) {}
 }

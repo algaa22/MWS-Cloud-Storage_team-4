@@ -56,7 +56,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
   private void handleHttpContent(ChannelHandlerContext ctx, HttpContent content) {
     try {
       if (content instanceof LastHttpContent) {
-        chunkedUpload.finishChunkedUpload(ctx, (LastHttpContent) content);
+        chunkedUpload.completeChunkedUpload(ctx, (LastHttpContent) content);
       } else {
         chunkedUpload.handleFileChunk(ctx, content);
       }

@@ -7,8 +7,7 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.service.MissingFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.service.TranferSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
@@ -108,9 +107,6 @@ public class ChunkedUploadHandler {
     } catch (MissingFilePartException e) {
       handleMissingFilePart(ctx, e);
       return;
-    } catch (TranferSessionNotFoundException e) {
-      handleSessionNotFound(ctx, e);
-      return;
     } catch (StorageFileAlreadyExistsException e) {
       // TODO
     }
@@ -142,9 +138,6 @@ public class ChunkedUploadHandler {
           new FileChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
-      return;
-    } catch (TranferSessionNotFoundException e) {
-      handleSessionNotFound(ctx, e);
       return;
     }
 
@@ -208,11 +201,6 @@ public class ChunkedUploadHandler {
     json.put("sessionId", currentSessionId);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
-  }
-
-  private void handleSessionNotFound(ChannelHandlerContext ctx, TranferSessionNotFoundException e) {
-    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
-    cleanup();
   }
 
   private void handleMissingFilePart(ChannelHandlerContext ctx, MissingFilePartException e) {

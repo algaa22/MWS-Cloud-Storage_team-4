@@ -19,7 +19,7 @@ public enum StorageConfig {
 
   StorageConfig() {
     ConfigSource yamlSource = new YamlConfigSource("config.yml");
-    ConfigSource envSource = new EnvironmentConfigSource(".env");
+    ConfigSource envSource = new EnvironmentConfigSource();
 
     this.maxFileSize = yamlSource.getLong("storage.http.max-file-size").orElseThrow();
     this.maxFileChunkSize = yamlSource.getInt("storage.http.max-file-chunk-size").orElseThrow();

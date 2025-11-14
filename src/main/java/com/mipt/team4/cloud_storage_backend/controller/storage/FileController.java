@@ -1,8 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
-import com.mipt.team4.cloud_storage_backend.exception.service.MissingFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.service.TranferSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
@@ -26,14 +25,13 @@ public class FileController {
   }
 
   public void processFileChunk(FileChunkDto fileChunk)
-      throws ValidationFailedException, TranferSessionNotFoundException {
+      throws ValidationFailedException {
     fileChunk.validate();
     service.processChunk(fileChunk);
   }
 
   public void completeChunkedUpload(String sessionId)
       throws MissingFilePartException,
-          TranferSessionNotFoundException,
           ValidationFailedException,
           StorageFileAlreadyExistsException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));

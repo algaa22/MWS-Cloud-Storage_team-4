@@ -40,7 +40,7 @@ public class Validators {
       String field, String value, int minLength, int maxLength) {
     if (NumberComparator.greaterThan(minLength, maxLength))
       throw new IllegalArgumentException(
-              String.format("maxLength (%s) cannot be less than minLength (%s)", maxLength, minLength));
+          String.format("maxLength (%s) cannot be less than minLength (%s)", maxLength, minLength));
 
     return validate(
         value != null && value.length() >= minLength && value.length() <= maxLength,
@@ -102,10 +102,10 @@ public class Validators {
 
   public static ValidationResult cannotBeNegative(String field, Number value) {
     return validate(
-            NumberComparator.greaterThanOrEqualsTo(value, 0),
-            field,
-            field + " cannot be negative",
-            "CANNOT_BE_NEGATIVE");
+        NumberComparator.greaterThanOrEqualsTo(value, 0),
+        field,
+        field + " cannot be negative",
+        "CANNOT_BE_NEGATIVE");
   }
 
   public static ValidationResult mustBePositive(String field, Number value) {

@@ -3,29 +3,23 @@ package com.mipt.team4.cloud_storage_backend.config;
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 
-public enum DatabaseConfig {
+public enum MinioConfig {
   INSTANCE;
 
   private final String url;
-  private final String name;
   private final String username;
   private final String password;
 
-  DatabaseConfig() {
+  MinioConfig() {
     ConfigSource source = new EnvironmentConfigSource(".env");
 
-    this.url = source.getString("db.url").orElseThrow();
-    this.name = source.getString("db.name").orElseThrow();
-    this.username = source.getString("db.username").orElseThrow();
-    this.password = source.getString("db.password").orElseThrow();
+    this.url = source.getString("minio.url").orElseThrow();
+    this.username = source.getString("minio.username").orElseThrow();
+    this.password = source.getString("minio.password").orElseThrow();
   }
 
   public String getUrl() {
     return url;
-  }
-
-  public String getName() {
-    return name;
   }
 
   public String getUsername() {

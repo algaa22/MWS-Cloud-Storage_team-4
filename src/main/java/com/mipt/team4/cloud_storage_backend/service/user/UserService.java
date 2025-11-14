@@ -7,19 +7,16 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.user.UserMapper;
-import com.mipt.team4.cloud_storage_backend.repository.storage.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
-
 
 public class UserService {
   private final UserRepository userRepository;
-  private final JwtService jwtService;    // сервис для работы с JWT
+  private final JwtService jwtService; // сервис для работы с JWT
   private final SessionService sessionService;
 
   public UserService(UserRepository userRepository) {
@@ -38,18 +35,16 @@ public class UserService {
       throw new UserAlreadyExistsException(registerRequest.email());
 
     String hash = PasswordHasher.hash(registerRequest.password());
-    UserEntity entity = new UserEntity(
-        UUID.randomUUID(),
-        registerRequest.userName(),
-        registerRequest.email(),
-        hash
-    );
+    UserEntity entity =
+        new UserEntity(
+            UUID.randomUUID(), registerRequest.userName(), registerRequest.email(), hash);
 
     userRepository.saveUser(entity);
   }
 
   // Логин: возвращает токен при успехе
-  public LoginResponseDto loginUser(LoginRequestDto loginRequest) throws WrongPasswordException, InvalidEmailOrPassword {
+  public LoginResponseDto loginUser(LoginRequestDto loginRequest)
+      throws WrongPasswordException, InvalidEmailOrPassword {
     Optional<UserEntity> userOpt = userRepository.findByEmail(loginRequest.email());
     if (userOpt.isEmpty()) throw new InvalidEmailOrPassword();
 
@@ -70,8 +65,10 @@ public class UserService {
   }
 
   public UserDto updateUser(String userId, UserDto dto) throws UserNotFoundException {
-    UserEntity user = userRepository.findById(UUID.fromString(userId))
-        .orElseThrow(() -> new UserNotFoundException(dto.email()));
+    UserEntity user =
+        userRepository
+            .findById(UUID.fromString(userId))
+            .orElseThrow(() -> new UserNotFoundException(dto.email()));
     // TODO: подумать, что еще можно будет обновлять
     user.setName(dto.name());
     userRepository.updateUser(user);

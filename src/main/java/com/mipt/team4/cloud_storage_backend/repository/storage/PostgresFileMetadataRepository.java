@@ -2,6 +2,8 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 
@@ -9,6 +11,7 @@ import java.io.FileNotFoundException;
 import java.util.*;
 
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import kotlin.io.FileAlreadyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,25 +25,23 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     this.postgres = postgres;
   }
 
-  // TODO: deleteFile
-
   @Override
-  public void addFile(FileEntity fileEntity) {
-    // TODO: написать проверку, есть ли файл с данным userId и path (не надеяться на сервис): если
-    //       если уже есть файл, то бросать исключение FileAlreadyExistsException
-    // TODO: может быть, стоит возвращать FileEntity?
+  public void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException {
+    if (fileExists(fileEntity.getOwnerId(), fileEntity.getStoragePath()))
+      throw new StorageFileAlreadyExistsException(
+          fileEntity.getOwnerId(), fileEntity.getStoragePath());
+
     postgres.executeUpdate(
-        "INSERT INTO files (filePath, owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
+        "INSERT INTO files (owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
-            fileEntity.getFileId(),
             fileEntity.getOwnerId(),
             fileEntity.getStoragePath(),
             fileEntity.getSize(),
             fileEntity.getMimeType(),
             fileEntity.getVisibility(),
             fileEntity.isDeleted(),
-            String.join(",", fileEntity.getTags())));
+            FileTagsMapper.toString(fileEntity.getTags())));
   }
 
   @Override
@@ -65,5 +66,27 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     if (result.isEmpty()) return Optional.empty();
 
     return Optional.ofNullable(result.getFirst());
+  }
+
+  @Override
+  public boolean fileExists(UUID ownerId, String storagePath) {
+    List<Boolean> result =
+        postgres.executeQuery(
+            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
+            List.of(ownerId, storagePath),
+            rs -> (rs.getBoolean(1)));
+    return result.getFirst();
+  }
+
+  @Override
+  public void deleteFile(UUID ownerId, String storagePath) throws StorageFileNotFoundException {
+    if (!fileExists(ownerId, storagePath)) {
+      // TODO: обернуть в StorageFileNotFoundException
+      throw new StorageFileNotFoundException(ownerId, storagePath);
+    }
+
+    postgres.executeUpdate(
+        "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;",
+        List.of(ownerId, storagePath));
   }
 }

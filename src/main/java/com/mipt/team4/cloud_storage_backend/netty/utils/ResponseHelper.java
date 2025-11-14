@@ -53,8 +53,7 @@ public class ResponseHelper {
     return ctx.writeAndFlush(response);
   }
 
-  private static FullHttpResponse createSuccessResponse(
-          HttpResponseStatus status, String message) {
+  private static FullHttpResponse createSuccessResponse(HttpResponseStatus status, String message) {
     return createJsonResponse(status, true, message);
   }
 
@@ -62,7 +61,8 @@ public class ResponseHelper {
     return createJsonResponse(status, false, message);
   }
 
-  public static FullHttpResponse createJsonResponse(HttpResponseStatus status, boolean success, String message) {
+  public static FullHttpResponse createJsonResponse(
+      HttpResponseStatus status, boolean success, String message) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 

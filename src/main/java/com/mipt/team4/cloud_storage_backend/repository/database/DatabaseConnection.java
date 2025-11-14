@@ -9,10 +9,9 @@ public interface DatabaseConnection {
   void connect() throws SQLException;
 
   <T> List<T> executeQuery(
-      String query, List<Object> params, PostgresConnection.ResultSetMapper<T> mapper)
-      throws DbExecuteQueryException;
+      String query, List<Object> params, PostgresConnection.ResultSetMapper<T> mapper);
 
-  int executeUpdate(String query, List<Object> params) throws DbExecuteUpdateException;
+  int executeUpdate(String query, List<Object> params);
 
   void disconnect() throws SQLException;
 }

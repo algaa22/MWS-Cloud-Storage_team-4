@@ -27,7 +27,9 @@ public class JwtService {
         .claim("role", "USER") // если есть роль - добавляй здесь
         .setIssuedAt(now)
         .setExpiration(expiryDate)
-        .signWith(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
+        .signWith(
+            Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)),
+            SignatureAlgorithm.HS256)
         .compact();
   }
 
@@ -46,11 +48,12 @@ public class JwtService {
 
   // Получает userId (subject) из токена
   public String getUserIdFromToken(String token) {
-    Claims claims = Jwts.parserBuilder()
-        .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
-        .build()
-        .parseClaimsJws(token)
-        .getBody();
+    Claims claims =
+        Jwts.parserBuilder()
+            .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
+            .build()
+            .parseClaimsJws(token)
+            .getBody();
     return claims.getSubject();
   }
 

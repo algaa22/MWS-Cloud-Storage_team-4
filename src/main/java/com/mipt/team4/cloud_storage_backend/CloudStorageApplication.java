@@ -1,16 +1,10 @@
 package com.mipt.team4.cloud_storage_backend;
 
-import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
-import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
-import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServer;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
-import com.mipt.team4.cloud_storage_backend.repository.storage.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 import org.flywaydb.core.Flyway;

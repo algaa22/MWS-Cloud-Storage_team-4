@@ -5,10 +5,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.database.AbstractPostgresTest;
+import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
+
+import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,6 +44,36 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
     postgresConnection.disconnect();
   }
 
+  // TODO: refactor
+
+  @Test
+  void fileExists_ShouldReturnTrue_WhenFileExists() {
+    FileEntity testFile = createTestFile();
+
+    try {
+      fileMetadataRepository.addFile(testFile);
+
+      assertTrue(
+          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
+    } catch (StorageFileAlreadyExistsException e) {
+      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
+    }
+  }
+
+  @Test
+  void fileExists_ShouldReturnFalse_WhenFileNotFound() {
+    FileEntity testFile = createTestFile();
+
+    try {
+      assertTrue(
+          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
+
+      fileMetadataRepository.addFile(testFile);
+    } catch (StorageFileAlreadyExistsException e) {
+      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
+    }
+  }
+
   @Test
   void shouldAddAndGetFile_WithSameContent() {
     FileEntity testFile = createTestFile();
@@ -53,7 +86,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
 
       assertTrue(receivedTestFile.isPresent());
       assertTrue(receivedTestFile.get().fullEquals(testFile));
-    } catch (DbExecuteQueryException | DbExecuteUpdateException e) {
+    } catch (StorageFileAlreadyExistsException e) {
       fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
     }
   }
@@ -73,16 +106,31 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
 
     try {
       fileMetadataRepository.addFile(file);
-
-      assertThrows(StorageFileAlreadyExistsException.class, () -> fileMetadataRepository.addFile(file));
-    } catch (DbExecuteUpdateException e) {
+    } catch (StorageFileAlreadyExistsException e) {
       fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
     }
+
+    assertThrows(
+        StorageFileAlreadyExistsException.class, () -> fileMetadataRepository.addFile(file));
   }
 
   @Test
   void shouldAddAndDeleteFile_WithSameId() {
-    // TODO
+    FileEntity testFile = createTestFile();
+
+    try {
+      fileMetadataRepository.addFile(testFile);
+
+      assertTrue(
+          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
+
+      fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getStoragePath());
+
+      assertFalse(
+          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
+    } catch (StorageFileAlreadyExistsException | StorageFileNotFoundException e) {
+      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
+    }
   }
 
   private static void addTestUser() {

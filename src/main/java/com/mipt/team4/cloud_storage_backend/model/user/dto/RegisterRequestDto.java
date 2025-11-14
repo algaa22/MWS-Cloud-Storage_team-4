@@ -4,14 +4,13 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record RegisterRequestDto(
-    String email, String password, String userName) {
+public record RegisterRequestDto(String email, String password, String userName) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
-            Validators.all(
-                    Validators.notBlank("Email", email), // TODO: pattern
-                    Validators.notBlank("Password hash", password),
-                    Validators.notBlank("User name", userName));
+        Validators.all(
+            Validators.notBlank("Email", email), // TODO: pattern
+            Validators.notBlank("Password hash", password),
+            Validators.notBlank("User name", userName));
 
     Validators.throwExceptionIfNotValid(result);
   }

@@ -21,12 +21,14 @@ public class UserController {
     this.service = service;
   }
 
-  public void registerUser(RegisterRequestDto registerRequest) throws ValidationFailedException, UserAlreadyExistsException {
+  public void registerUser(RegisterRequestDto registerRequest)
+      throws ValidationFailedException, UserAlreadyExistsException {
     registerRequest.validate();
     service.registerUser(registerRequest);
   }
 
-  public void loginUser(LoginRequestDto loginRequest) throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException {
+  public void loginUser(LoginRequestDto loginRequest)
+      throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException {
     loginRequest.validate();
     // TODO: return LoginResponseDto
     service.loginUser(loginRequest);

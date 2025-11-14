@@ -22,8 +22,7 @@ public class FilesRequestHandler {
     this.fileController = fileController;
   }
 
-  public void handleGetFilePathsListRequest(
-      ChannelHandlerContext ctx, String userId) {
+  public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, String userId) {
     List<String> paths;
 
     try {
@@ -49,8 +48,7 @@ public class FilesRequestHandler {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleGetFileInfoRequest(
-      ChannelHandlerContext ctx, String filePath, String userId) {
+  public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userId) {
     FileDto fileDto;
 
     try {
@@ -75,8 +73,7 @@ public class FilesRequestHandler {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleDeleteFileRequest(
-      ChannelHandlerContext ctx, String fileId, String userId) {
+  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String fileId, String userId) {
     try {
       fileController.deleteFile(new SimpleFileOperationDto(fileId, userId));
     } catch (ValidationFailedException e) {

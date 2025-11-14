@@ -36,6 +36,4 @@ public class SessionService {
     }
     return true;
   }
-
 }
-

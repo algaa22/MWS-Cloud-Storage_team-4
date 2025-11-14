@@ -33,16 +33,15 @@ public class NumberComparator implements Comparator<Number> {
   }
 
   private int compareWithConversion(Number a, Number b) {
-    if (isIntegerType(a) && isIntegerType(b))
-      return Long.compare(a.longValue(), b.longValue());
+    if (isIntegerType(a) && isIntegerType(b)) return Long.compare(a.longValue(), b.longValue());
 
     return Double.compare(a.doubleValue(), b.doubleValue());
   }
 
   private boolean isIntegerType(Number number) {
-    return number instanceof Integer ||
-            number instanceof Long ||
-            number instanceof Short ||
-            number instanceof Byte;
+    return number instanceof Integer
+        || number instanceof Long
+        || number instanceof Short
+        || number instanceof Byte;
   }
 }

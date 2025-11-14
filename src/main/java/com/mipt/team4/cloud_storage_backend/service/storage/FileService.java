@@ -26,7 +26,7 @@ public class FileService {
   // Для chunked upload
 
   public void startChunkedUploadSession(FileChunkedUploadDto session)
-      throws DbExecuteQueryException, StorageIllegalAccessException {
+      throws StorageIllegalAccessException {
     UUID ownerUuid = UUID.fromString(session.ownerId());
     // TODO: actualUserId получать из репозитория
     UUID realUserUuid = UUID.fromString(null);
@@ -43,7 +43,7 @@ public class FileService {
     activeUploads.put(session.sessionId(), new ChunkedUploadState(session));
   }
 
-  public void processChunk(FileChunkDto chunk) throws DbExecuteQueryException {
+  public void processChunk(FileChunkDto chunk) {
     ChunkedUploadState upload = activeUploads.get(chunk.sessionId());
     if (upload == null) throw new RuntimeException("Upload session not found!");
     String uploadId = upload.getOrCreateUploadId(fileRepository);
@@ -52,8 +52,7 @@ public class FileService {
     upload.etags.put(partNum, etag);
   }
 
-  public UUID finishChunkedUpload(String sessionId)
-      throws DbExecuteUpdateException, DbExecuteQueryException {
+  public UUID finishChunkedUpload(String sessionId) {
     ChunkedUploadState upload = activeUploads.remove(sessionId);
     if (upload == null) throw new RuntimeException("No such upload session!");
 
@@ -94,7 +93,7 @@ public class FileService {
       long size,
       List<String> tags,
       String actualUserId)
-      throws DbExecuteUpdateException, StorageIllegalAccessException {
+      throws StorageIllegalAccessException {
     UUID fileId = UUID.randomUUID();
     UUID realUserUuid = UUID.fromString(actualUserId);
     UUID pathOwnerUuid = UUID.fromString(ownerId);
@@ -112,8 +111,7 @@ public class FileService {
 
   // Скачивание файла (только если userId == ownerId)
 
-  public InputStream downloadFile(String userId, String path)
-      throws DbExecuteQueryException, StorageIllegalAccessException {
+  public InputStream downloadFile(String userId, String path) throws StorageIllegalAccessException {
     UUID userUuid = UUID.fromString(userId);
     Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, path);
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
@@ -121,8 +119,7 @@ public class FileService {
     return fileRepository.downloadObject(entity.getStoragePath());
   }
 
-  public void deleteFile(String userId, String path)
-      throws DbExecuteQueryException, StorageIllegalAccessException {
+  public void deleteFile(String userId, String path) throws StorageIllegalAccessException {
     UUID userUuid = UUID.fromString(userId);
     Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, path);
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));

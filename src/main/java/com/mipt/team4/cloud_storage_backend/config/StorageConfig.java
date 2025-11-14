@@ -15,7 +15,7 @@ public enum StorageConfig {
   private final int sendUploadProgressInterval;
   private final int jwtTokenExpirationSec;
   private final int defaultStorageLimit;
-    private final String userDataBucketName;
+  private final String userDataBucketName;
 
   StorageConfig() {
     ConfigSource yamlSource = new YamlConfigSource("config.yml");
@@ -28,8 +28,8 @@ public enum StorageConfig {
         yamlSource.getInt("storage.http.file-download-chunk-size").orElseThrow();
     this.sendUploadProgressInterval =
         yamlSource.getInt("storage.http.send-upload-progress-interval").orElseThrow();
-      this.userDataBucketName =
-              yamlSource.getString("storage.repository.user-data-bucket.name").orElseThrow();
+    this.userDataBucketName =
+        yamlSource.getString("storage.repository.user-data-bucket.name").orElseThrow();
     this.defaultStorageLimit =
         yamlSource.getInt("storage.quotas.default-storage-limit").orElseThrow();
     this.jwtTokenExpirationSec =

@@ -78,13 +78,13 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
     }
   }
 
-//  private void handleRequestWithTooLargeContent(ChannelHandlerContext ctx, int contentLength) {
-//    logger.error(
-//        "Large file with Content-Length={} not supported. Use chunked upload.", contentLength);
-//
-//    ResponseHelper.sendErrorResponse(
-//        ctx, HttpResponseStatus.BAD_REQUEST, "Large files must use chunked upload");
-//  }
+  //  private void handleRequestWithTooLargeContent(ChannelHandlerContext ctx, int contentLength) {
+  //    logger.error(
+  //        "Large file with Content-Length={} not supported. Use chunked upload.", contentLength);
+  //
+  //    ResponseHelper.sendErrorResponse(
+  //        ctx, HttpResponseStatus.BAD_REQUEST, "Large files must use chunked upload");
+  //  }
 
   private void handleNotHttpRequest(ChannelHandlerContext ctx, Object msg) {
     logger.error(

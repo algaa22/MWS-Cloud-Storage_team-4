@@ -24,9 +24,11 @@ public class NettyServer {
 
   public void start() {
     try (EventLoopGroup bossGroup =
-            new MultiThreadIoEventLoopGroup(NettyConfig.INSTANCE.getBossThreads(), NioIoHandler.newFactory());
+            new MultiThreadIoEventLoopGroup(
+                NettyConfig.INSTANCE.getBossThreads(), NioIoHandler.newFactory());
         EventLoopGroup workerGroup =
-            new MultiThreadIoEventLoopGroup(NettyConfig.INSTANCE.getWorkerThreads(), NioIoHandler.newFactory())) {
+            new MultiThreadIoEventLoopGroup(
+                NettyConfig.INSTANCE.getWorkerThreads(), NioIoHandler.newFactory())) {
 
       ServerBootstrap bootstrap = new ServerBootstrap();
       bootstrap

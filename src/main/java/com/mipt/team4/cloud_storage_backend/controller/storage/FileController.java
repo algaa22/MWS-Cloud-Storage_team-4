@@ -19,7 +19,9 @@ public class FileController {
   }
 
   public void startChunkedUpload(FileChunkedUploadDto chunkedUploadRequest)
-      throws ValidationFailedException, StorageFileAlreadyExistsException, StorageIllegalAccessException {
+      throws ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          StorageIllegalAccessException {
     chunkedUploadRequest.validate();
     service.startChunkedUploadSession(chunkedUploadRequest);
   }
@@ -69,6 +71,6 @@ public class FileController {
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
       throws ValidationFailedException, StorageIllegalAccessException {
     deleteFileRequest.validate();
-    service.deleteFile(deleteFileRequest.userId(), deleteFileRequest.filePath());// TODO: в дто
+    service.deleteFile(deleteFileRequest.userId(), deleteFileRequest.filePath()); // TODO: в дто
   }
 }

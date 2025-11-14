@@ -6,9 +6,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record LogoutRequestDto(String token) {
   public void validate() throws ValidationFailedException {
-    ValidationResult result = Validators.all(
-            Validators.notBlank("Token", token)
-    );
+    ValidationResult result = Validators.all(Validators.notBlank("Token", token));
 
     Validators.throwExceptionIfNotValid(result);
   }

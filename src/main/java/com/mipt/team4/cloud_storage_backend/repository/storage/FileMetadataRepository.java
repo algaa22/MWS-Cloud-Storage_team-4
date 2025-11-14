@@ -9,9 +9,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface FileMetadataRepository {
-  void addFile(FileEntity fileEntity) throws DbExecuteUpdateException, DbExecuteQueryException, StorageFileAlreadyExistsException;
+  void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException;
 
-  Optional<FileEntity> getFile(UUID ownerID, String path) throws DbExecuteQueryException;
+  Optional<FileEntity> getFile(UUID ownerID, String path);
 
   boolean fileExists(UUID ownerId, String storagePath);
 

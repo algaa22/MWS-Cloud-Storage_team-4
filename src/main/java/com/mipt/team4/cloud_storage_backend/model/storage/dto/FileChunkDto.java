@@ -7,12 +7,12 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 public record FileChunkDto(String sessionId, String path, int chunkIndex, byte[] chunkData) {
   public void validate() throws ValidationFailedException {
     // TODO: доделать валидацию
-    ValidationResult result = Validators.all(
+    ValidationResult result =
+        Validators.all(
             Validators.isUuid("Session ID", sessionId),
             Validators.notNull("Chunk data", chunkData),
             Validators.mustBePositive("Chunk data", chunkData.length),
-            Validators.cannotBeNegative("Chunk index", chunkIndex)
-    );
+            Validators.cannotBeNegative("Chunk index", chunkIndex));
 
     Validators.throwExceptionIfNotValid(result);
   }

@@ -14,74 +14,72 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class UserRepository {
-    private static final Logger logger =
-            LoggerFactory.getLogger(UserRepository.class);
+  private static final Logger logger = LoggerFactory.getLogger(UserRepository.class);
 
-    PostgresConnection postgres;
+  PostgresConnection postgres;
 
-    public UserRepository(PostgresConnection postgres) {
-        this.postgres = postgres;
+  public UserRepository(PostgresConnection postgres) {
+    this.postgres = postgres;
+  }
+
+  public void addUser(UserEntity userEntity) throws UserAlreadyExistsException {
+
+    if (userExists(userEntity.getId())) throw new UserAlreadyExistsException(userEntity.getId());
+
+    postgres.executeUpdate(
+        "INSERT INTO users (id, email, phone_number, password_hash, username, storage_limit, used_storage, created_at, is_active)"
+            + " values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        List.of(
+            userEntity.getId(),
+            userEntity.getEmail(),
+            userEntity.getPassword(),
+            userEntity.getName(),
+            userEntity.getStorageLimit(),
+            userEntity.getUsedStorage(),
+            userEntity.getCreatedAt(),
+            userEntity.isActive()));
+  }
+
+  public void deleteUser(UUID id) throws UserNotFoundException {
+    if (!userExists(id)) {
+      throw new UserNotFoundException(id);
     }
 
-    public boolean userExists(UUID id) throws DbExecuteQueryException {
-        List<Boolean> result =
-                postgres.executeQuery(
-                        "SELECT EXISTS (SELECT 1 FROM files WHERE id = ?);",
-                        List.of(id),
-                        rs -> (rs.getBoolean(1)));
-        return result.getFirst();
-    }
+    postgres.executeUpdate("DELETE FROM users WHERE id = ?;", List.of(id));
+  }
 
-    public void addUser(UserEntity userEntity) throws DbExecuteUpdateException, DbExecuteQueryException, UserAlreadyExistsException {
+  public Optional<UserEntity> getUser(UUID id) {
+    List<UserEntity> result;
+    result =
+        postgres.executeQuery(
+            "SELECT * FROM users WHERE id = ?;",
+            List.of(id),
+            rs ->
+                new UserEntity(
+                    id,
+                    rs.getString("username"),
+                    rs.getString("email"),
+                    rs.getString("password_hash"),
+                    rs.getLong("storage_limit"),
+                    rs.getLong("used_storage"),
+                    rs.getTimestamp("created_at").toLocalDateTime(),
+                    rs.getBoolean("is_active")));
 
-        if (userExists(userEntity.getId())) {
-            throw new UserAlreadyExistsException(userEntity.getId());
-        }
-        postgres.executeUpdate(
-                "INSERT INTO users (id, email, phone_number, password_hash, username, storage_limit, used_storage, created_at, is_active)"
-                        + " values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
-                List.of(
-                        userEntity.getId(),
-                        userEntity.getEmail(),
-                        userEntity.getPhoneNumber(),
-                        userEntity.getPassword(),
-                        userEntity.getName(),
-                        userEntity.getStorageLimit(),
-                        userEntity.getUsedStorage(),
-                        userEntity.getCreatedAt(),
-                        userEntity.isActive()));
-    }
+    if (result.isEmpty()) return Optional.empty();
 
-    public void deleteUser(UUID id) throws DbExecuteQueryException, DbExecuteUpdateException {
-        if (!userExists(id)) {
-            throw new UserNotFoundException(id);
-        }
+    return Optional.ofNullable(result.getFirst());
+  }
 
-        postgres.executeUpdate(
-                "DELETE FROM users WHERE id = ?;",
-                List.of(id));
-    }
+  public boolean userExists(UUID id) {
+    List<Boolean> result =
+        postgres.executeQuery(
+            "SELECT EXISTS (SELECT 1 FROM files WHERE id = ?);",
+            List.of(id),
+            rs -> (rs.getBoolean(1)));
+    return result.getFirst();
+  }
 
-    public Optional<UserEntity> getUser(UUID id) throws DbExecuteQueryException {
-        List<UserEntity> result;
-        result = postgres.executeQuery(
-                        "SELECT * FROM users WHERE id = ?;",
-                        List.of(id),
-                        rs ->
-                                new UserEntity(
-                                        id,
-                                        rs.getString("username"),
-                                        rs.getString("email"),
-                                        rs.getString("password_hash"),
-                                        rs.getString("phone_number"),
-                                        rs.getLong("storage_limit"),
-                                        rs.getLong("used_storage"),
-                                        rs.getTimestamp("created_at").toLocalDateTime(),
-                                        rs.getBoolean("is_active")));
-
-        if (result.isEmpty()) return Optional.empty();
-
-        return Optional.ofNullable(result.getFirst());
-    }
-
+  public void updateUser(UserEntity user) {
+    // TODO
+  }
 }

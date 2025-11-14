@@ -65,7 +65,7 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public String startMultipartUpload(String s3Key) {
-      // minioClient.putObject(PutObjectArgs.builder().build().bucket();
+    // minioClient.putObject(PutObjectArgs.builder().build().bucket();
     // TODO: return uploadId
     return "";
   }
@@ -80,7 +80,7 @@ public class MinioContentRepository implements FileContentRepository {
   public UUID completeMultipartUpload(
       String s3Key, String uploadId, Map<Integer, String> eTagList) {
     // TODO: return file id
-      return null;
+    return null;
   }
 
   @Override

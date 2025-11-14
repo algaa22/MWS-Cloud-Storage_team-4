@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 
@@ -18,16 +19,16 @@ public class FileRepository {
     postgresMetadataRepository = new PostgresFileMetadataRepository(postgres);
   }
 
-  public void addFile(FileEntity fileEntity) throws DbExecuteUpdateException {
+  public void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException {
     postgresMetadataRepository.addFile(fileEntity);
   }
 
-  public Optional<FileEntity> getFile(UUID ownerId, String path) throws DbExecuteQueryException {
+  public Optional<FileEntity> getFile(UUID ownerId, String path) {
     return postgresMetadataRepository.getFile(ownerId, path);
   }
 
-  public boolean fileExists(UUID ownerId, String storagePath) throws DbExecuteQueryException {
-      return postgresMetadataRepository.fileExists(ownerId, storagePath);
+  public boolean fileExists(UUID ownerId, String storagePath) {
+    return postgresMetadataRepository.fileExists(ownerId, storagePath);
   }
 
   public String startMultipartUpload(String s3Key) {
@@ -42,7 +43,7 @@ public class FileRepository {
 
   public UUID finishMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
     // TODO: return file ID
-      return null;
+    return null;
   }
 
   public InputStream downloadObject(String storagePath) {
@@ -50,11 +51,7 @@ public class FileRepository {
     return null;
   }
 
-  public void putObject(String s3Key, InputStream stream, String contentType) {
+  public void putObject(String s3Key, InputStream stream, String contentType) {}
 
-  }
-
-  public void completeMultipartUpload(String s3Key, String uploadId, List<String> etagList) {
-
-  }
+  public void completeMultipartUpload(String s3Key, String uploadId, List<String> etagList) {}
 }

@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 
 public enum NettyConfig {
   INSTANCE;
@@ -11,7 +12,7 @@ public enum NettyConfig {
   private final int workerThreads;
 
   NettyConfig() {
-    ConfigSource source = new EnvironmentConfigSource();
+    ConfigSource source = new YamlConfigSource("config.yml");
 
     this.port = source.getInt("netty.port").orElseThrow();
     this.bossThreads = source.getInt("netty.boss-threads").orElseThrow();

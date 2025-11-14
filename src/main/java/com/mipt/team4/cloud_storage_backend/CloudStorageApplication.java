@@ -13,14 +13,16 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import com.mipt.team4.cloud_storage_backend.repository.storage.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
+import org.flywaydb.core.Flyway;
 
 public class CloudStorageApplication {
   public static void main(String[] args) {
+
     PostgresConnection postgres = new PostgresConnection();
     postgres.connect();
 
     FileRepository fileRepository = new FileRepository(postgres);
-    UserRepository userRepository = new UserRepository();
+    UserRepository userRepository = new UserRepository(postgres);
 
     FileService fileService = new FileService(fileRepository);
     UserService userService = new UserService(userRepository);

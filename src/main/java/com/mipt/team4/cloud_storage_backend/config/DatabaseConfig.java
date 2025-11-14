@@ -11,7 +11,7 @@ public enum DatabaseConfig {
   private final String password;
 
   DatabaseConfig() {
-    ConfigSource source = new EnvironmentConfigSource();
+    ConfigSource source = new EnvironmentConfigSource(".env");
 
     this.url = source.getString("db.url").orElseThrow();
     this.username = source.getString("db.username").orElseThrow();

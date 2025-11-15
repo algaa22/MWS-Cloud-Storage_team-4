@@ -25,7 +25,10 @@ public class MinioContentRepository implements FileContentRepository {
   public void createBucket() {
     try {
       CompletableFuture<Boolean> bucketFound =
-          minioClient.bucketExists(BucketExistsArgs.builder().bucket("").build());
+          minioClient.bucketExists(
+              BucketExistsArgs.builder()
+                  .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
+                  .build());
     } catch (InsufficientDataException
         | InternalException
         | InvalidKeyException
@@ -208,7 +211,7 @@ public class MinioContentRepository implements FileContentRepository {
     InputStream stream = new ByteArrayInputStream(data);
 
     try {
-        minioClient.putObject(
+      minioClient.putObject(
           PutObjectArgs.builder()
               .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
               .object(s3Key)

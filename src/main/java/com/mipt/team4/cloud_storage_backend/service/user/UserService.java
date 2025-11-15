@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.user.UserMapper;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;

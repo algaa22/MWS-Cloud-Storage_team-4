@@ -12,6 +12,7 @@ public enum DatabaseConfig {
   private final String password;
 
   DatabaseConfig() {
+    // TODO: не находит .env
     ConfigSource source = new EnvironmentConfigSource(".env");
 
     this.url = source.getString("db.url").orElseThrow();

@@ -17,8 +17,6 @@ import org.slf4j.LoggerFactory;
 
 public class PipelineSelector extends ChannelInboundHandlerAdapter {
   private static final Logger logger = LoggerFactory.getLogger(PipelineSelector.class);
-  // TODO: настроить и возможно в кфг
-  private static final int MAX_AGGREGATED_SIZE = 64 * 1024;
 
   private final FileController fileController;
   private final UserController userController;

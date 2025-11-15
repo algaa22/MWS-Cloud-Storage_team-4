@@ -55,6 +55,7 @@ public class MinioContentRepository implements FileContentRepository {
               .endpoint(MinioConfig.INSTANCE.getUrl())
               .credentials(MinioConfig.INSTANCE.getUsername(), MinioConfig.INSTANCE.getPassword())
               .build();
+
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -64,7 +65,6 @@ public class MinioContentRepository implements FileContentRepository {
   public String startMultipartUpload(String s3Key) {
     // minioClient.putObject(PutObjectArgs.builder().build().bucket();
     // TODO: return uploadId
-
     return "";
   }
 

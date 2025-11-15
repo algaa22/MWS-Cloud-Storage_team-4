@@ -29,7 +29,7 @@ public class SessionService {
   public boolean isBlacklisted(String token) {
     LocalDateTime expiry = blacklistedTokens.get(token);
     if (expiry == null) return false;
-
+    
     if (LocalDateTime.now().isAfter(expiry)) {
       blacklistedTokens.remove(token); // очистка мусора
       return false;

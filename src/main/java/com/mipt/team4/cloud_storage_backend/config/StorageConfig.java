@@ -72,6 +72,7 @@ public enum StorageConfig {
   }
 
   public String getUserDataBucketName() {
+    // TODO: in Minio
     return userDataBucketName;
   }
 }

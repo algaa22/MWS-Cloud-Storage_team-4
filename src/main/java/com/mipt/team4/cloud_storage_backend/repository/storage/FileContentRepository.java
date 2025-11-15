@@ -5,8 +5,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public interface FileContentRepository {
-  void initialize();
-
   CompletableFuture<String> startMultipartUpload(String s3Key);
 
   CompletableFuture<String> uploadPart(CompletableFuture<String> uploadId, String s3Key, int partNum, byte[] bytes);

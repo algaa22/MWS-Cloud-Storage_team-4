@@ -132,6 +132,7 @@ public class FileService {
 
   private void checkFileAccess(UUID userId, FileEntity entity)
       throws StorageIllegalAccessException {
+    // TODO: а нужен ли?
     if (!entity.getOwnerId().equals(userId)) {
       throw new StorageIllegalAccessException();
     }

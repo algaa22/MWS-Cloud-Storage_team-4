@@ -4,10 +4,10 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.messages.Part;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,35 +22,15 @@ import java.util.concurrent.ExecutionException;
 public class MinioContentRepository implements FileContentRepository {
   private MinioAsyncClient minioClient;
 
-  public void createBucket() {
-    try {
-      CompletableFuture<Boolean> bucketFound =
-          minioClient.bucketExists(BucketExistsArgs.builder().bucket("").build());
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException e) {
-      throw new RuntimeException(e);
-    }
-
-    try {
-      minioClient.makeBucket(
-          MakeBucketArgs.builder().bucket(StorageConfig.INSTANCE.getUserDataBucketName()).build());
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException e) {
-      // TODO: exceptions
-      throw new RuntimeException(e);
-    }
+  public MinioContentRepository() {
+    initialize();
   }
 
-  @Override
-  public void initialize() {
+  private void initialize() {
+    try {
+      createBucket(StorageConfig.INSTANCE.getUserDataBucketName());
+    } catch (BucketAlreadyExistsException _) {}
+
     try {
       minioClient =
           MinioAsyncClient.builder()
@@ -62,8 +42,35 @@ public class MinioContentRepository implements FileContentRepository {
     }
   }
 
+  public void createBucket(String bucketName) throws BucketAlreadyExistsException {
+    if (bucketExists(bucketName))
+      throw new BucketAlreadyExistsException(bucketName);
+
+    try {
+      minioClient.makeBucket(
+              MakeBucketArgs.builder().bucket(StorageConfig.INSTANCE.getUserDataBucketName()).build());
+    } catch (InsufficientDataException
+             | InternalException
+             | InvalidKeyException
+             | IOException
+             | NoSuchAlgorithmException
+             | XmlParserException e) {
+      // TODO: exceptions
+      throw new RuntimeException(e);
+    }
+  }
+
   private Multimap<String, String> createEmptyHeader() {
     return MultimapBuilder.hashKeys().arrayListValues().build();
+  }
+
+  public boolean bucketExists(String bucketName) {
+    try {
+      return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build()).get();
+    } catch (InsufficientDataException | InternalException | InvalidKeyException | IOException |
+             NoSuchAlgorithmException | XmlParserException | ExecutionException | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

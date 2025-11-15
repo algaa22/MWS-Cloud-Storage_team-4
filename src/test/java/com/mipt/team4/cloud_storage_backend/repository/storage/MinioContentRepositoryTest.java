@@ -9,6 +9,5 @@ class MinioContentRepositoryTest {
     @Test
     public void shouldInitialize() {
         MinioContentRepository minioContentRepository = new MinioContentRepository();
-        minioContentRepository.initialize();
     }
 }

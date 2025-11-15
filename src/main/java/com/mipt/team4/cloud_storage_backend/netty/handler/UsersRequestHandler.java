@@ -38,7 +38,7 @@ public class UsersRequestHandler {
       handleValidationError(ctx, e);
       return;
     } catch (HeaderNotFoundException | UserAlreadyExistsException e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
       return;
     }
 
@@ -55,6 +55,7 @@ public class UsersRequestHandler {
     String token;
 
     try {
+      // TODO: получать хешированный пароль?
       token =
           userController.loginUser(
               new LoginRequestDto(
@@ -64,7 +65,7 @@ public class UsersRequestHandler {
       handleValidationError(ctx, e);
       return;
     } catch (HeaderNotFoundException | InvalidEmailOrPassword | WrongPasswordException e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
       return;
     }
 
@@ -85,7 +86,7 @@ public class UsersRequestHandler {
       handleValidationError(ctx, e);
       return;
     } catch (HeaderNotFoundException | UserNotFoundException e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
       return;
     }
 

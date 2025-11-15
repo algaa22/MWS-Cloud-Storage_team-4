@@ -24,6 +24,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,7 @@ public class ChunkedUploadHandler {
     try {
       parseUploadRequestMetadata(request);
     } catch (QueryParameterNotFoundException | HeaderNotFoundException e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
       return;
     }
 
@@ -170,8 +171,8 @@ public class ChunkedUploadHandler {
 
   private void parseUploadRequestMetadata(HttpRequest request)
       throws QueryParameterNotFoundException, HeaderNotFoundException {
+    currentSessionId = UUID.randomUUID().toString();
     // TODO: парсинг метаданных пользователя, аутентификация
-    currentSessionId = "";
     currentUserId = "";
     currentFilePath = RequestUtils.getRequiredQueryParam(request, "File path");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));

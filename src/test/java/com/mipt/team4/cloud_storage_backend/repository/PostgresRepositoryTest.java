@@ -11,7 +11,6 @@ import com.mipt.team4.cloud_storage_backend.repository.database.AbstractPostgres
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
 
-import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,7 +53,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
       fileMetadataRepository.addFile(testFile);
 
       assertTrue(
-          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
+          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
     } catch (StorageFileAlreadyExistsException e) {
       fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
     }
@@ -66,7 +65,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
 
     try {
       assertTrue(
-          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
+          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
 
       fileMetadataRepository.addFile(testFile);
     } catch (StorageFileAlreadyExistsException e) {
@@ -122,12 +121,12 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
       fileMetadataRepository.addFile(testFile);
 
       assertTrue(
-          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
+          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
 
-      fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getStoragePath());
+      fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getS3Key());
 
       assertFalse(
-          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getStoragePath()));
+          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
     } catch (StorageFileAlreadyExistsException | StorageFileNotFoundException e) {
       fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
     }

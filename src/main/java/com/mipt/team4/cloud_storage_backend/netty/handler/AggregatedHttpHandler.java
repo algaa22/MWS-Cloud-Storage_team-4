@@ -7,15 +7,14 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpRequest> {
+public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
   private static final Logger logger = LoggerFactory.getLogger(AggregatedHttpHandler.class);
   private final FoldersRequestHandler foldersRequestHandler;
+  private final AggregatedUploadHandler fileUploadHandler;
   private final FilesRequestHandler filesRequestHandler;
   private final UsersRequestHandler usersRequestHandler;
 
@@ -24,21 +23,28 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
 
   public AggregatedHttpHandler(FileController fileController, UserController userController) {
     this.foldersRequestHandler = new FoldersRequestHandler(fileController);
+    this.fileUploadHandler = new AggregatedUploadHandler(fileController);
     this.filesRequestHandler = new FilesRequestHandler(fileController);
     this.usersRequestHandler = new UsersRequestHandler(userController);
   }
 
   @Override
-  protected void channelRead0(ChannelHandlerContext ctx, HttpRequest request) {
-    method = request.method();
-    uri = request.uri();
+  protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
+    if (msg instanceof HttpRequest request) {
+      method = request.method();
+      uri = request.uri();
 
-    if (uri.startsWith("/api/files")) {
-      handleFilesRequest(ctx, request);
-    } else if (uri.startsWith("/api/folders")) {
-      handleFoldersRequest(ctx, request);
-    } else if (uri.startsWith("/api/users")) {
-      handleUsersRequest(ctx, request);
+      if (uri.startsWith("/api/files")) {
+        handleFilesRequest(ctx, request);
+      } else if (uri.startsWith("/api/folders")) {
+        handleFoldersRequest(ctx, request);
+      } else if (uri.startsWith("/api/users")) {
+        handleUsersRequest(ctx, request);
+      } else {
+        ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      }
+    } else if (msg instanceof LastHttpContent content) {
+      fileUploadHandler.handleContent(ctx, content);
     } else {
       ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
     }
@@ -56,7 +62,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
       try {
         filePath = RequestUtils.getRequiredQueryParam(request, "File path");
       } catch (QueryParameterNotFoundException e) {
-        ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+        ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
         return;
       }
 
@@ -65,6 +71,8 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
       else if (uriPaths.length == 4) {
         if (method.equals(HttpMethod.DELETE))
           filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userId);
+        else if (method.equals(HttpMethod.POST))
+          fileUploadHandler.handleRequest(ctx, request, userId);
         else if (method.equals(HttpMethod.PUT))
           filesRequestHandler.handleChangeFileMetadataRequest(ctx, filePath, userId);
         else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
@@ -83,7 +91,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpReque
       String[] uriPaths = uri.split("/");
       String folderId = uriPaths[uriPaths.length - 1];
 
-      if (uri.startsWith("/api/files/move/") && method.equals(HttpMethod.POST))
+      if (uri.startsWith("/api/folders/move/") && method.equals(HttpMethod.POST))
         foldersRequestHandler.handleMoveFolderRequest(ctx, folderId, userId);
       else if (uri.length() == 4) {
         if (method.equals(HttpMethod.GET))

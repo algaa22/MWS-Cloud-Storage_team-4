@@ -73,4 +73,9 @@ public class FileController {
     deleteFileRequest.validate();
     service.deleteFile(deleteFileRequest.userId(), deleteFileRequest.filePath()); // TODO: в дто
   }
+
+  public void uploadFile(FileUploadDto fileUploadRequest) throws StorageFileAlreadyExistsException, ValidationFailedException {
+    fileUploadRequest.validate();
+    service.uploadFile(fileUploadRequest);
+  }
 }

@@ -9,7 +9,7 @@ public class FileEntity {
   private final UUID ownerId;
   private final String mimeType;
   private final long size;
-  private String storagePath;
+  private String s3Key;
   private String visibility;
   private boolean isDeleted;
   private List<String> tags;
@@ -17,7 +17,7 @@ public class FileEntity {
   public FileEntity(
       UUID fileId,
       UUID ownerId,
-      String storagePath,
+      String s3Key,
       String mimeType,
       String visibility,
       long size,
@@ -26,7 +26,7 @@ public class FileEntity {
     this.fileId = fileId;
     this.ownerId = ownerId;
     this.size = size;
-    this.storagePath = storagePath;
+    this.s3Key = s3Key;
     this.visibility = visibility;
     this.isDeleted = isDeleted;
     this.tags = tags;
@@ -50,7 +50,7 @@ public class FileEntity {
         && Objects.equals(fileId, that.fileId)
         && Objects.equals(ownerId, that.ownerId)
         && Objects.equals(mimeType, that.mimeType)
-        && Objects.equals(storagePath, that.storagePath)
+        && Objects.equals(s3Key, that.s3Key)
         && Objects.equals(visibility, that.visibility)
         && Objects.equals(tags, that.tags);
   }
@@ -91,12 +91,12 @@ public class FileEntity {
     this.tags = tags;
   }
 
-  public String getStoragePath() {
-    return storagePath;
+  public String getS3Key() {
+    return s3Key;
   }
 
-  public void setStoragePath(String storagePath) {
-    this.storagePath = storagePath;
+  public void setS3Key(String s3Key) {
+    this.s3Key = s3Key;
   }
 
   public String getMimeType() {

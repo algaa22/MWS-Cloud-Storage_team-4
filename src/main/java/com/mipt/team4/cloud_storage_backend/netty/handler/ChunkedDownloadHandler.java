@@ -44,7 +44,7 @@ public class ChunkedDownloadHandler {
     try {
       parseDownloadRequestMetadata(request);
     } catch (QueryParameterNotFoundException e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
       return;
     }
 

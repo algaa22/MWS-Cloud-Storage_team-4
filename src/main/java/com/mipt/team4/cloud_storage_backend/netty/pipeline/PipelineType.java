@@ -9,6 +9,7 @@ public enum PipelineType {
 
   public static PipelineType from(HttpRequest request) {
     String transferEncoding = RequestUtils.getHeader(request, "Transfer-Encoding", "");
+    String uri = request.uri();
 
     if (transferEncoding.equalsIgnoreCase("chunked")) return CHUNKED;
     else return AGGREGATED;

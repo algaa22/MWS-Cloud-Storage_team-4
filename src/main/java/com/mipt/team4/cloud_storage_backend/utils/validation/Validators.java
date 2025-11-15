@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.utils.validation;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.NumberComparator;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +15,10 @@ public class Validators {
     }
 
     return combined;
+  }
+
+  public static ValidationResult validToken(String token) {
+    return validate(JwtService.isTokenValid(token), "User token", "User token expired", "VALID_TOKEN");
   }
 
   public static ValidationResult notNull(String field, Object value) {

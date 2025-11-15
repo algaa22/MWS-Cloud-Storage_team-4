@@ -10,42 +10,46 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class FileRepository {
-  PostgresFileMetadataRepository postgresMetadataRepository;
-  MinioContentRepository minioContentRepository;
+  FileMetadataRepository metadataRepository;
+  FileContentRepository contentRepository;
 
-  public FileRepository(PostgresConnection postgres) {
-    postgresMetadataRepository = new PostgresFileMetadataRepository(postgres);
+  public FileRepository(PostgresConnection postgresConnection) {
+    metadataRepository = new PostgresFileMetadataRepository(postgresConnection);
+    contentRepository = new MinioContentRepository();
   }
 
   public void addFile(FileEntity fileEntity, byte[] data) throws StorageFileAlreadyExistsException {
-    postgresMetadataRepository.addFile(fileEntity);
+    metadataRepository.addFile(fileEntity);
+    contentRepository.putObject(fileEntity.getS3Key(), data, fileEntity.getMimeType());
   }
 
   public Optional<FileEntity> getFile(UUID ownerId, String path) {
-    return postgresMetadataRepository.getFile(ownerId, path);
+    return metadataRepository.getFile(ownerId, path);
   }
 
   public boolean fileExists(UUID ownerId, String storagePath) {
-    return postgresMetadataRepository.fileExists(ownerId, storagePath);
+    return metadataRepository.fileExists(ownerId, storagePath);
   }
 
   public CompletableFuture<String> startMultipartUpload(String s3Key) {
-    return minioContentRepository.startMultipartUpload(s3Key);
+    return contentRepository.startMultipartUpload(s3Key);
   }
 
   public CompletableFuture<String> uploadPart(
       CompletableFuture<String> uploadId, String s3Key, int partIndex, byte[] bytes) {
-    return minioContentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
+    // TODO: параметры в дто?
+    return contentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
   }
 
   public void completeMultipartUpload(
-      String s3Key,
+      FileEntity fileEntity,
       CompletableFuture<String> uploadId,
-      Map<Integer, CompletableFuture<String>> eTags) {
-    minioContentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
+      Map<Integer, CompletableFuture<String>> eTags) throws StorageFileAlreadyExistsException {
+    metadataRepository.addFile(fileEntity);
+    contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
   }
 
   public InputStream downloadFile(String storagePath) {
-    return minioContentRepository.downloadFile(storagePath);
+    return contentRepository.downloadFile(storagePath);
   }
 }

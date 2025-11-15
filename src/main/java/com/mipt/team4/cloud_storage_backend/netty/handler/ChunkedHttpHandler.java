@@ -47,10 +47,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
         ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       }
     } catch (TransferAlreadyStartedException e) {
-      handleBadRequest(
-          ctx,
-          "New HttpRequest received while previous request is in progress",
-          "Previous request not completed");
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
   }
 
@@ -62,13 +59,8 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
         chunkedUpload.handleFileChunk(ctx, content);
       }
     } catch (TransferNotStartedYetException e) {
-      handleTransferNotStartedYet(ctx);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
-  }
-
-  private void handleTransferNotStartedYet(ChannelHandlerContext ctx) {
-    handleBadRequest(
-        ctx, "HttpContent received without active HttpRequest", "HTTP content without request");
   }
 
   private void handleBadRequest(

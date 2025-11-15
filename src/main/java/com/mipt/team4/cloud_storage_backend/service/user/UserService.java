@@ -19,13 +19,9 @@ public class UserService {
   private final UserRepository userRepository;
   private final SessionService sessionService;
   //TODO: getUserInfo
-  public UserService(UserRepository userRepository) {
+  public UserService(UserRepository userRepository, SessionService sessionService) {
     this.userRepository = userRepository;
-    this.sessionService =
-        new SessionService(
-            new JwtService(
-                StorageConfig.INSTANCE.getJwtSecretKey(),
-                StorageConfig.INSTANCE.getJwtTokenExpirationSec()));
+    this.sessionService = sessionService;
   }
 
   // Регистрация нового пользователя

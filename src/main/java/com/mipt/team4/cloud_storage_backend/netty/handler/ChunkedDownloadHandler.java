@@ -27,7 +27,7 @@ public class ChunkedDownloadHandler {
   private boolean isInProgress = false;
   private String currentSessionId;
   private String currentFilePath;
-  private String currentUserId;
+  private String currentUserToken;
   private long fileSize;
   private long sentBytes = 0;
   private long sentChunks = 0;
@@ -44,7 +44,7 @@ public class ChunkedDownloadHandler {
     try {
       parseDownloadRequestMetadata(request);
     } catch (QueryParameterNotFoundException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -53,7 +53,7 @@ public class ChunkedDownloadHandler {
     try {
       fileInfo =
           fileController.getFileDownloadInfo(
-              new SimpleFileOperationDto(currentFilePath, currentUserId));
+              new SimpleFileOperationDto(currentFilePath, currentUserToken));
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       cleanup();
@@ -68,7 +68,7 @@ public class ChunkedDownloadHandler {
       logger.debug(
           "Started chunked download. Session: {}, user: {}, file: {}, size: {}, chunks: {}",
           currentSessionId,
-          currentUserId,
+              currentUserToken,
           currentFilePath,
           fileSize,
           totalChunks);
@@ -95,7 +95,8 @@ public class ChunkedDownloadHandler {
       fileChunk =
           fileController.getFileChunk(new GetFileChunkDto(currentFilePath, chunkIndex, chunkSize));
     } catch (ValidationFailedException e) {
-      handleValidationFailed(ctx, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      cleanup();
       return;
     }
 
@@ -103,11 +104,6 @@ public class ChunkedDownloadHandler {
 
     ChannelFutureListener listener = createChunkSendListener(ctx, chunkIndex, chunkSize);
     ctx.write(httpChunk).addListener(listener);
-  }
-
-  private void handleValidationFailed(ChannelHandlerContext ctx, ValidationFailedException e) {
-    ResponseHelper.sendValidationErrorResponse(ctx, e);
-    cleanup();
   }
 
   private ChannelFutureListener createChunkSendListener(
@@ -152,7 +148,7 @@ public class ChunkedDownloadHandler {
     isInProgress = false;
     currentSessionId = null;
     currentFilePath = null;
-    currentUserId = null;
+    currentUserToken = null;
     fileSize = 0;
     sentBytes = 0;
     sentChunks = 0;
@@ -195,8 +191,7 @@ public class ChunkedDownloadHandler {
   private void parseDownloadRequestMetadata(HttpRequest request)
       throws QueryParameterNotFoundException {
     currentFilePath = RequestUtils.getRequiredQueryParam(request, "File path");
-    // TODO: аутентификация
-    currentUserId = request.headers().get("X-User-Id", "");
+    currentUserToken = request.headers().get("X-Auth-Token", "");
   }
 
   private void sendDownloadStartResponse(

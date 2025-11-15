@@ -16,7 +16,7 @@ public interface FileContentRepository {
           CompletableFuture<String> uploadId,
           Map<Integer, CompletableFuture<String>> eTags);
 
-  void putObject(String s3Key, byte[] data, String contentType);
+  void putObject(String s3Key, byte[] data, String mimeType);
 
   InputStream downloadFile(String storagePath);
 }

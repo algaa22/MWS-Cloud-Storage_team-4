@@ -17,13 +17,13 @@ public class ValidationFailedException extends Exception {
   }
 
   public ValidationFailedException(List<ValidationError> errors) {
-    super();
+    super(toJsonString(errors));
 
     this.errors = errors;
   }
 
   public ValidationFailedException(ValidationError error) {
-    super();
+    super(toJsonString(List.of(error)));
 
     this.errors = List.of(error);
   }
@@ -32,11 +32,7 @@ public class ValidationFailedException extends Exception {
     return errors;
   }
 
-  public String toJsonString() {
-    return toJson().toString();
-  }
-
-  public JsonNode toJson() {
+  private static String toJsonString(List<ValidationError> errors) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode root = mapper.createObjectNode();
     root.put("error", "Validation failed");
@@ -48,6 +44,6 @@ public class ValidationFailedException extends Exception {
 
     root.set("details", details);
 
-    return root;
+    return root.toString();
   }
 }

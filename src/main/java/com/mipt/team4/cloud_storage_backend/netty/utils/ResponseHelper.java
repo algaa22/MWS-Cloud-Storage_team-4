@@ -13,10 +13,6 @@ import io.netty.handler.stream.ChunkedNioFile;
 import java.nio.charset.StandardCharsets;
 
 public class ResponseHelper {
-  public static void sendExceptionResponse(ChannelHandlerContext ctx, HttpResponseStatus status, Exception e) {
-    ResponseHelper.sendErrorResponse(ctx, status, e.getMessage());
-  }
-
   public static void sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
     ResponseHelper.sendErrorResponse(
         ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error");
@@ -32,7 +28,15 @@ public class ResponseHelper {
 
   public static void sendValidationErrorResponse(
       ChannelHandlerContext ctx, ValidationFailedException exception) {
-    sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.toJson());
+    sendBadRequestExceptionResponse(ctx, exception);
+  }
+
+  public static void sendBadRequestExceptionResponse(ChannelHandlerContext ctx, Exception exception) {
+    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.getMessage());
+  }
+
+  public static void sendExceptionResponse(ChannelHandlerContext ctx, HttpResponseStatus status, Exception e) {
+    ResponseHelper.sendErrorResponse(ctx, status, e.getMessage());
   }
 
   public static ChannelFuture sendSuccessResponse(

@@ -6,6 +6,7 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileUploadDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
@@ -21,7 +22,7 @@ public class AggregatedUploadHandler {
   private final FileController fileController;
 
   private boolean isInProgress = false;
-  private String currentUserId;
+  private String currentUserToken;
   private String currentFilePath;
   private List<String> currentFileTags;
 
@@ -29,19 +30,19 @@ public class AggregatedUploadHandler {
     this.fileController = fileController;
   }
 
-  public void handleRequest(ChannelHandlerContext ctx, HttpRequest request, String userId) {
+  public void handleRequest(ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     if (isInProgress) {
       ResponseHelper.sendErrorResponse(
           ctx, HttpResponseStatus.BAD_REQUEST, "Upload already started");
       return;
     }
 
-    this.currentUserId = userId;
+    this.currentUserToken = userToken;
 
     try {
       parseUploadMetadata(request);
     } catch (QueryParameterNotFoundException | HeaderNotFoundException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -60,9 +61,9 @@ public class AggregatedUploadHandler {
 
     try {
       fileController.uploadFile(
-          new FileUploadDto(currentFilePath, currentUserId, currentFileTags, data));
-    } catch (StorageFileAlreadyExistsException | ValidationFailedException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+          new FileUploadDto(currentFilePath, currentUserToken, currentFileTags, data));
+    } catch (UserNotFoundException | StorageFileAlreadyExistsException | ValidationFailedException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 

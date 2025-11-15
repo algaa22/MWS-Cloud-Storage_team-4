@@ -51,10 +51,10 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   }
 
   private void handleFilesRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    String userId = extractUserIdFromRequest(request);
+    String userToken = extractUserTokenFromRequest(request);
 
     if (uri.equals("/api/files") && method.equals(HttpMethod.GET))
-      filesRequestHandler.handleGetFilePathsListRequest(ctx, userId);
+      filesRequestHandler.handleGetFilePathsListRequest(ctx, userToken);
     else {
       String[] uriPaths = uri.split("/");
       String filePath;
@@ -62,19 +62,19 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       try {
         filePath = RequestUtils.getRequiredQueryParam(request, "File path");
       } catch (QueryParameterNotFoundException e) {
-        ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+        ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
         return;
       }
 
       if (uri.startsWith("/api/files/info/") && method.equals(HttpMethod.GET))
-        filesRequestHandler.handleGetFileInfoRequest(ctx, filePath, userId);
+        filesRequestHandler.handleGetFileInfoRequest(ctx, filePath, userToken);
       else if (uriPaths.length == 4) {
         if (method.equals(HttpMethod.DELETE))
-          filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userId);
+          filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userToken);
         else if (method.equals(HttpMethod.POST))
-          fileUploadHandler.handleRequest(ctx, request, userId);
+          fileUploadHandler.handleRequest(ctx, request, userToken);
         else if (method.equals(HttpMethod.PUT))
-          filesRequestHandler.handleChangeFileMetadataRequest(ctx, filePath, userId);
+          filesRequestHandler.handleChangeFileMetadataRequest(ctx, filePath, userToken);
         else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       } else {
         ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
@@ -83,23 +83,23 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   }
 
   private void handleFoldersRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    String userId = extractUserIdFromRequest(request);
+    String userToken = extractUserTokenFromRequest(request);
 
     if (uri.equals("/api/folders") && method.equals(HttpMethod.POST))
-      foldersRequestHandler.handleCreateFolderRequest(ctx, userId);
+      foldersRequestHandler.handleCreateFolderRequest(ctx, userToken);
     else {
       String[] uriPaths = uri.split("/");
       String folderId = uriPaths[uriPaths.length - 1];
 
       if (uri.startsWith("/api/folders/move/") && method.equals(HttpMethod.POST))
-        foldersRequestHandler.handleMoveFolderRequest(ctx, folderId, userId);
+        foldersRequestHandler.handleMoveFolderRequest(ctx, folderId, userToken);
       else if (uri.length() == 4) {
         if (method.equals(HttpMethod.GET))
-          foldersRequestHandler.handleGetFolderContentRequest(ctx, folderId, userId);
+          foldersRequestHandler.handleGetFolderContentRequest(ctx, folderId, userToken);
         else if (method.equals(HttpMethod.PUT))
-          foldersRequestHandler.handleRenameFolderRequest(ctx, folderId, userId);
+          foldersRequestHandler.handleRenameFolderRequest(ctx, folderId, userToken);
         else if (method.equals(HttpMethod.DELETE))
-          foldersRequestHandler.handleDeleteFolderRequest(ctx, folderId, userId);
+          foldersRequestHandler.handleDeleteFolderRequest(ctx, folderId, userToken);
         else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       } else {
         ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
@@ -120,9 +120,8 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     }
   }
 
-  private String extractUserIdFromRequest(HttpRequest request) {
-    // TODO: аутентификация
-    return request.headers().get("X-User-Id", "");
+  private String extractUserTokenFromRequest(HttpRequest request) {
+    return request.headers().get("X-Auth-Token", "");
   }
 
   @Override

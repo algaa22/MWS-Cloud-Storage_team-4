@@ -10,16 +10,16 @@ public class FoldersRequestHandler {
     this.fileController = fileController;
   }
 
-  public void handleCreateFolderRequest(ChannelHandlerContext ctx, String userId) {}
+  public void handleCreateFolderRequest(ChannelHandlerContext ctx, String userToken) {}
 
-  public void handleMoveFolderRequest(ChannelHandlerContext ctx, String folderId, String userId) {}
+  public void handleMoveFolderRequest(ChannelHandlerContext ctx, String folderId, String userToken) {}
 
   public void handleGetFolderContentRequest(
-      ChannelHandlerContext ctx, String folderId, String userId) {}
+      ChannelHandlerContext ctx, String folderId, String userToken) {}
 
   public void handleRenameFolderRequest(
-      ChannelHandlerContext ctx, String folderId, String userId) {}
+      ChannelHandlerContext ctx, String folderId, String userToken) {}
 
   public void handleDeleteFolderRequest(
-      ChannelHandlerContext ctx, String folderId, String userId) {}
+      ChannelHandlerContext ctx, String folderId, String userToken) {}
 }

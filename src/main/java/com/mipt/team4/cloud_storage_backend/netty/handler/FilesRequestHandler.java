@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFilePathsListDto;
@@ -24,13 +25,14 @@ public class FilesRequestHandler {
     this.fileController = fileController;
   }
 
-  public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, String userId) {
+  public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, String userToken) {
     List<String> paths;
 
     try {
-      paths = fileController.getFilePathsList(new GetFilePathsListDto(userId));
+      paths = fileController.getFilePathsList(new GetFilePathsListDto(userToken));
     } catch (ValidationFailedException e) {
-      throw new RuntimeException(e);
+      ResponseHelper.sendValidationErrorResponse(ctx, e);
+      return;
     }
 
     ObjectMapper mapper = new ObjectMapper();
@@ -50,13 +52,14 @@ public class FilesRequestHandler {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userId) {
+  public void handleGetFileInfoRequest(
+      ChannelHandlerContext ctx, String filePath, String userToken) {
     FileDto fileDto;
 
     try {
-      fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userId));
+      fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
     } catch (ValidationFailedException e) {
-      handleValidationError(ctx, e);
+      ResponseHelper.sendValidationErrorResponse(ctx, e);
       return;
     }
 
@@ -75,25 +78,14 @@ public class FilesRequestHandler {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String fileId, String userId) {
+  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String fileId, String userToken) {
     try {
-      fileController.deleteFile(new SimpleFileOperationDto(fileId, userId));
-    } catch (ValidationFailedException e) {
-      // TODO
-    } catch (StorageIllegalAccessException e) {
-      // TODO
+      fileController.deleteFile(new SimpleFileOperationDto(fileId, userToken));
+    } catch (UserNotFoundException | ValidationFailedException | StorageIllegalAccessException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
   }
 
   public void handleChangeFileMetadataRequest(
-      ChannelHandlerContext ctx, String fileId, String userId) {}
-
-  private void handleValidationError(ChannelHandlerContext ctx, ValidationFailedException e) {
-    ResponseHelper.sendValidationErrorResponse(ctx, e);
-  }
-
-  public void handleUploadFileRequest(
-      ChannelHandlerContext ctx, HttpRequest request, String filePath, String userId) {
-
-  }
+      ChannelHandlerContext ctx, String fileId, String userToken) {}
 }

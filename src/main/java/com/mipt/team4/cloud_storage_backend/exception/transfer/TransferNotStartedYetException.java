@@ -2,6 +2,6 @@ package com.mipt.team4.cloud_storage_backend.exception.transfer;
 
 public class TransferNotStartedYetException extends Exception {
   public TransferNotStartedYetException() {
-    super();
+    super("HttpContent received without active HttpRequest");
   }
 }

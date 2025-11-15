@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user.security;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
@@ -9,11 +10,9 @@ import java.time.LocalDateTime;
 import java.util.Date;
 
 public class JwtService {
-  private final String jwtSecretKey;
   private final long jwtTokenExpirationSec;
 
-  public JwtService(String jwtSecretKey, long jwtTokenExpirationSec) {
-    this.jwtSecretKey = jwtSecretKey;
+  public JwtService(long jwtTokenExpirationSec) {
     this.jwtTokenExpirationSec = jwtTokenExpirationSec;
   }
 
@@ -28,16 +27,16 @@ public class JwtService {
         .setIssuedAt(now)
         .setExpiration(expiryDate)
         .signWith(
-            Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)),
+            Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())),
             SignatureAlgorithm.HS256)
         .compact();
   }
 
   // Проверяет подпись и срок действия токена
-  public boolean validateToken(String token) {
+  public static boolean isTokenValid(String token) {
     try {
       Jwts.parserBuilder()
-          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
+          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
           .build()
           .parseClaimsJws(token);
       return true;
@@ -46,19 +45,24 @@ public class JwtService {
     }
   }
 
-  // Получает userId (subject) из токена
-  public String getUserIdFromToken(String token) {
-    Claims claims =
-        Jwts.parserBuilder()
-            .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
-            .build()
-            .parseClaimsJws(token)
-            .getBody();
-    return claims.getSubject();
-  }
+//  public String getUserIdFromToken(String token) {
+//    String jwtSecretKey = StorageConfig.INSTANCE.getJwtSecretKey();
+//
+//    Claims claims =
+//        Jwts.parserBuilder()
+//            .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
+//            .build()
+//            .parseClaimsJws(token)
+//            .getBody();
+//
+//    return claims.getSubject();
+//  }
 
   public LocalDateTime getTokenExpiredDateTime() {
     return LocalDateTime.now().plusSeconds(jwtTokenExpirationSec);
   }
 
+  private static String getJwtSecretKey() {
+    return StorageConfig.INSTANCE.getJwtSecretKey();
+  }
 }

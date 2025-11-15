@@ -38,7 +38,7 @@ public class UsersRequestHandler {
       handleValidationError(ctx, e);
       return;
     } catch (HeaderNotFoundException | UserAlreadyExistsException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -65,7 +65,7 @@ public class UsersRequestHandler {
       handleValidationError(ctx, e);
       return;
     } catch (HeaderNotFoundException | InvalidEmailOrPassword | WrongPasswordException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -86,7 +86,7 @@ public class UsersRequestHandler {
       handleValidationError(ctx, e);
       return;
     } catch (HeaderNotFoundException | UserNotFoundException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 

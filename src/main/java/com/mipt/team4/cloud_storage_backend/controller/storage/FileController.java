@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
@@ -19,13 +20,13 @@ public class FileController {
   public void startChunkedUpload(FileChunkedUploadDto chunkedUploadRequest)
       throws ValidationFailedException,
           StorageFileAlreadyExistsException,
-          StorageIllegalAccessException {
+          StorageIllegalAccessException,
+          UserNotFoundException {
     chunkedUploadRequest.validate();
     service.startChunkedUploadSession(chunkedUploadRequest);
   }
 
-  public void processFileChunk(FileChunkDto fileChunk)
-      throws ValidationFailedException {
+  public void processFileChunk(FileChunkDto fileChunk) throws ValidationFailedException {
     fileChunk.validate();
     service.processChunk(fileChunk);
   }
@@ -33,7 +34,8 @@ public class FileController {
   public void completeChunkedUpload(String sessionId)
       throws MissingFilePartException,
           ValidationFailedException,
-          StorageFileAlreadyExistsException {
+          StorageFileAlreadyExistsException,
+          UserNotFoundException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));
 
     service.completeChunkedUpload(sessionId);
@@ -43,7 +45,7 @@ public class FileController {
       throws ValidationFailedException {
     fileInfo.validate();
     // TODO: Передавать DTO
-    return service.getFileDownloadInfo(fileInfo.filePath(), fileInfo.userId());
+    return service.getFileDownloadInfo(fileInfo.filePath(), fileInfo.userToken());
   }
 
   public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
@@ -58,23 +60,24 @@ public class FileController {
       throws ValidationFailedException {
     filePathsListRequest.validate();
     // TODO: Передавать DTO
-    return service.getFilePathsList(filePathsListRequest.userId());
+    return service.getFilePathsList(filePathsListRequest.userToken());
   }
 
   public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
       throws ValidationFailedException {
     fileInfoRequest.validate();
     // TODO: Передавать DTO
-    return service.getFileInfo(fileInfoRequest.filePath(), fileInfoRequest.userId());
+    return service.getFileInfo(fileInfoRequest.filePath(), fileInfoRequest.userToken());
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
-      throws ValidationFailedException, StorageIllegalAccessException {
+      throws ValidationFailedException, StorageIllegalAccessException, UserNotFoundException {
     deleteFileRequest.validate();
-    service.deleteFile(deleteFileRequest.userId(), deleteFileRequest.filePath()); // TODO: в дто
+    service.deleteFile(deleteFileRequest.userToken(), deleteFileRequest.filePath()); // TODO: в дто
   }
 
-  public void uploadFile(FileUploadDto fileUploadRequest) throws StorageFileAlreadyExistsException, ValidationFailedException {
+  public void uploadFile(FileUploadDto fileUploadRequest)
+      throws StorageFileAlreadyExistsException, ValidationFailedException, UserNotFoundException {
     fileUploadRequest.validate();
     service.uploadFile(fileUploadRequest);
   }

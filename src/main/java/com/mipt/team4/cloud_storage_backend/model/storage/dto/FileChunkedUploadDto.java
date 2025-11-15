@@ -5,11 +5,10 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
-import java.util.UUID;
 
 public record FileChunkedUploadDto(
     String sessionId,
-    String ownerId,
+    String userToken,
     long totalFileSize,
     int totalChunks,
     String path,
@@ -20,7 +19,7 @@ public record FileChunkedUploadDto(
     ValidationResult result =
         Validators.all(
             Validators.notBlank("Session ID", sessionId),
-            Validators.notBlank("Owner ID", ownerId),
+            Validators.validToken(userToken),
             Validators.notBlank("Path", path),
             Validators.mustBePositive("Total file size", totalFileSize),
             Validators.numberMax(

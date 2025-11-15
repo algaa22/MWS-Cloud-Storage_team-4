@@ -2,11 +2,17 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.SessionDto;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
+import com.mipt.team4.cloud_storage_backend.service.user.SessionService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
+
 import java.io.InputStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,30 +20,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FileService {
   private final FileRepository fileRepository;
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
+  private final SessionService sessionService;
 
-  public FileService(FileRepository fileRepository) {
+  public FileService(FileRepository fileRepository, SessionService sessionService) {
     this.fileRepository = fileRepository;
+    this.sessionService = sessionService;
   }
 
-  // Для chunked upload
+  public void startChunkedUploadSession(FileChunkedUploadDto session) throws UserNotFoundException, StorageFileAlreadyExistsException {
+    // TODO: разделить session'ы на юзеровский и файловский
+    UUID userId = extractUserIdFromToken(session.userToken());
 
-  public void startChunkedUploadSession(FileChunkedUploadDto session)
-      throws StorageIllegalAccessException {
-    UUID ownerUuid = UUID.fromString(session.ownerId());
-    // TODO: actualUserId получать из репозитория
-    UUID realUserUuid = UUID.fromString(null);
-
-    if (!ownerUuid.equals(realUserUuid)) {
-      throw new StorageIllegalAccessException();
-    }
-
-    // TODO: если с таким sessionId уже есть сессия в activeUploads?
+    // TODO: если с таким session.sessionId() уже есть сессия в activeUploads?
 
     String path = session.path();
-    Optional<FileEntity> existing = fileRepository.getFile(ownerUuid, path);
-    if (existing.isPresent()) {
-      throw new RuntimeException("File already exists with this ownerId and path.");
-    }
+    Optional<FileEntity> fileEntity = fileRepository.getFile(userId, path);
+
+    if (fileEntity.isPresent())
+      throw new StorageFileAlreadyExistsException(userId, path);
+
     activeUploads.put(session.sessionId(), new ChunkedUploadState(session));
   }
 
@@ -51,20 +52,21 @@ public class FileService {
     upload.eTags.put(partNum, etag);
   }
 
-  public void completeChunkedUpload(String sessionId) throws StorageFileAlreadyExistsException {
+  public void completeChunkedUpload(String sessionId) throws StorageFileAlreadyExistsException, UserNotFoundException {
     ChunkedUploadState upload = activeUploads.remove(sessionId);
     if (upload == null) throw new RuntimeException("No such upload session!");
 
     FileChunkedUploadDto session = upload.session;
-    String s3Key = session.ownerId() + "/" + session.path();
     for (int i = 1; i <= session.totalChunks(); i++) {
       if (!upload.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
     }
 
-    fileRepository.completeMultipartUpload(s3Key, upload.uploadId, upload.eTags);
-
     UUID fileId = UUID.randomUUID();
-    FileEntity entity =
+    UUID userId = extractUserIdFromToken(session.userToken());
+
+    String s3Key = StoragePaths.getS3Key(userId, session.path());
+
+    FileEntity fileEntity =
         new FileEntity(
             fileId,
             null, // TODO: get actualUserId
@@ -74,32 +76,15 @@ public class FileService {
             session.totalFileSize(),
             false,
             session.tags());
-    fileRepository.addFile(entity);
+
+    fileRepository.completeMultipartUpload(fileEntity, upload.uploadId, upload.eTags);
   }
 
-  // Обычная загрузка файла
-
-  public FileDto uploadFile(
-      String ownerId,
-      String fileName,
-      InputStream stream,
-      String contentType,
-      long size,
-      List<String> tags,
-      String actualUserId)
-      throws StorageIllegalAccessException, StorageFileAlreadyExistsException {
+  public void uploadFile(FileUploadDto fileUploadRequest) throws StorageFileAlreadyExistsException, UserNotFoundException {
     UUID fileId = UUID.randomUUID();
-    UUID realUserUuid = UUID.fromString(actualUserId);
-    UUID pathOwnerUuid = UUID.fromString(ownerId);
+    UUID userId = extractUserIdFromToken(fileUploadRequest.userToken());
 
-    if (!realUserUuid.equals(pathOwnerUuid)) throw new StorageIllegalAccessException();
-  }
-
-  public void uploadFile(FileUploadDto fileUploadRequest) throws StorageFileAlreadyExistsException {
-    UUID fileId = UUID.randomUUID();
-    UUID userId = UUID.fromString(fileUploadRequest.userId());
-
-    String s3Key = userId + "/" + fileUploadRequest.path();
+    String s3Key = StoragePaths.getS3Key(userId, fileUploadRequest.path());
     String mimeType = guessMimeType(fileUploadRequest.path());
     byte[] data = fileUploadRequest.data();
 
@@ -117,22 +102,32 @@ public class FileService {
     fileRepository.addFile(entity, data);
   }
 
-  // Скачивание файла (только если userId == ownerId)
 
-  public InputStream downloadFile(String userId, String path) throws StorageIllegalAccessException {
-    UUID userUuid = UUID.fromString(userId);
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, path);
+  public InputStream downloadFile(String userToken, String path) throws StorageIllegalAccessException, UserNotFoundException {
+    UUID userId = extractUserIdFromToken(userToken);
+
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, path);
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
-    checkFileAccess(userUuid, entity);
+    checkFileAccess(userId, entity);
+
     return fileRepository.downloadFile(entity.getS3Key());
   }
 
-  public void deleteFile(String userId, String path) throws StorageIllegalAccessException {
-    UUID userUuid = UUID.fromString(userId);
+  public void deleteFile(String userToken, String path) throws StorageIllegalAccessException, UserNotFoundException {
+    UUID userUuid = extractUserIdFromToken(userToken);
+
     Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, path);
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
     checkFileAccess(userUuid, entity);
     // TODO: реализовать логику soft delete в репозитории
+  }
+
+  private UUID extractUserIdFromToken(String token) throws UserNotFoundException {
+    Optional<SessionDto> userSession = sessionService.getSession(token);
+
+    if (userSession.isEmpty()) throw new UserNotFoundException(token);
+
+    return userSession.get().userId();
   }
 
   private void checkFileAccess(UUID userId, FileEntity entity)
@@ -178,7 +173,7 @@ public class FileService {
 
     CompletableFuture<String> getOrCreateUploadId(FileRepository repo) {
       if (uploadId == null) {
-        String s3Key = session.ownerId() + "/" + session.path();
+        String s3Key = session.userToken() + "/" + session.path();
         uploadId = repo.startMultipartUpload(s3Key);
       }
       return uploadId;

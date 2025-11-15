@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServer;
@@ -7,12 +8,9 @@ import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnecti
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
+import com.mipt.team4.cloud_storage_backend.service.user.SessionService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Encoders;
-import io.jsonwebtoken.security.Keys;
-import javax.crypto.SecretKey;
-import org.flywaydb.core.Flyway;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 
 public class CloudStorageApplication {
   public static void main(String[] args) {
@@ -22,8 +20,10 @@ public class CloudStorageApplication {
     FileRepository fileRepository = new FileRepository(postgres);
     UserRepository userRepository = new UserRepository(postgres);
 
-    FileService fileService = new FileService(fileRepository);
-    UserService userService = new UserService(userRepository);
+    SessionService sessionService =
+        new SessionService(new JwtService(StorageConfig.INSTANCE.getJwtTokenExpirationSec()));
+    FileService fileService = new FileService(fileRepository, sessionService);
+    UserService userService = new UserService(userRepository, sessionService);
 
     FileController fileController = new FileController(fileService);
     UserController userController = new UserController(userService);

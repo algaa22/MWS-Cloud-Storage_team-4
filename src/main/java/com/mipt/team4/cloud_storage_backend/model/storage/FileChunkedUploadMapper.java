@@ -10,7 +10,7 @@ public class FileChunkedUploadMapper {
   public static FileChunkedUploadEntity toEntity(FileChunkedUploadDto dto) {
     return new FileChunkedUploadEntity(
         UUID.fromString(dto.sessionId()),
-        UUID.fromString(dto.ownerId()),
+        UUID.fromString(dto.userToken()),
         dto.totalFileSize(),
         dto.totalChunks(),
         null,

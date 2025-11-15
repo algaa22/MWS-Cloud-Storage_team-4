@@ -2,13 +2,13 @@ package com.mipt.team4.cloud_storage_backend.service.user.security;
 
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Date;
 
 public class JwtService {
-
   private final String jwtSecretKey;
   private final long jwtTokenExpirationSec;
 
@@ -28,7 +28,7 @@ public class JwtService {
         .setIssuedAt(now)
         .setExpiration(expiryDate)
         .signWith(
-            Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)),
+            Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)),
             SignatureAlgorithm.HS256)
         .compact();
   }
@@ -37,7 +37,7 @@ public class JwtService {
   public boolean validateToken(String token) {
     try {
       Jwts.parserBuilder()
-          .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
+          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
           .build()
           .parseClaimsJws(token);
       return true;
@@ -61,7 +61,4 @@ public class JwtService {
     return LocalDateTime.now().plusSeconds(jwtTokenExpirationSec);
   }
 
-  public long getTokenExpirationTime() {
-    return jwtTokenExpirationSec;
-  }
 }

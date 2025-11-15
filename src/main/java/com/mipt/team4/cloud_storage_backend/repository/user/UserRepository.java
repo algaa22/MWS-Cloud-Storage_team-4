@@ -27,8 +27,8 @@ public class UserRepository {
     if (userExists(userEntity.getId())) throw new UserAlreadyExistsException(userEntity.getId());
 
     postgres.executeUpdate(
-        "INSERT INTO users (id, email, phone_number, password_hash, username, storage_limit, used_storage, created_at, is_active)"
-            + " values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO users (id, email, password_hash, username, storage_limit, used_storage, created_at, is_active)"
+            + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
             userEntity.getId(),
             userEntity.getEmail(),
@@ -48,15 +48,15 @@ public class UserRepository {
     postgres.executeUpdate("DELETE FROM users WHERE id = ?;", List.of(id));
   }
 
-  public Optional<UserEntity> getUser(UUID id) {
+  public Optional<UserEntity> getUser(String email) {
     List<UserEntity> result;
     result =
         postgres.executeQuery(
-            "SELECT * FROM users WHERE id = ?;",
-            List.of(id),
+            "SELECT * FROM users WHERE email = ?;",
+            List.of(email),
             rs ->
                 new UserEntity(
-                    id,
+                    UUID.fromString(rs.getString("id")),
                     rs.getString("username"),
                     rs.getString("email"),
                     rs.getString("password_hash"),

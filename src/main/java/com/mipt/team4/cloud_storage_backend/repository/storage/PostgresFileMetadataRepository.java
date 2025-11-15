@@ -1,17 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 
-import java.io.FileNotFoundException;
 import java.util.*;
 
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
-import kotlin.io.FileAlreadyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,16 +23,16 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   @Override
   public void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException {
-    if (fileExists(fileEntity.getOwnerId(), fileEntity.getStoragePath()))
+    if (fileExists(fileEntity.getOwnerId(), fileEntity.getS3Key()))
       throw new StorageFileAlreadyExistsException(
-          fileEntity.getOwnerId(), fileEntity.getStoragePath());
+          fileEntity.getOwnerId(), fileEntity.getS3Key());
 
     postgres.executeUpdate(
         "INSERT INTO files (owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
             fileEntity.getOwnerId(),
-            fileEntity.getStoragePath(),
+            fileEntity.getS3Key(),
             fileEntity.getSize(),
             fileEntity.getMimeType(),
             fileEntity.getVisibility(),

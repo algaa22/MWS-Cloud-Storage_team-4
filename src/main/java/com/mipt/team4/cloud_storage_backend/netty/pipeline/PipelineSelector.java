@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.netty.handler.AggregatedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handler.ChunkedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
@@ -15,10 +16,9 @@ import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Sharable
 public class PipelineSelector extends ChannelInboundHandlerAdapter {
   private static final Logger logger = LoggerFactory.getLogger(PipelineSelector.class);
-  // TODO: настроить и возможно в кфг
-  private static final int MAX_AGGREGATED_SIZE = 64 * 1024;
 
   private final FileController fileController;
   private final UserController userController;

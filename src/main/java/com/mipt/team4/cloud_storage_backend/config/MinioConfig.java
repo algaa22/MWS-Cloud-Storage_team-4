@@ -11,7 +11,7 @@ public enum MinioConfig {
   private final String password;
 
   MinioConfig() {
-    ConfigSource source = new EnvironmentConfigSource(".env");
+    ConfigSource source = new EnvironmentConfigSource();
 
     this.url = source.getString("minio.url").orElseThrow();
     this.username = source.getString("minio.username").orElseThrow();

@@ -3,7 +3,6 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-
 import java.io.InputStream;
 import java.util.Map;
 import java.util.Optional;
@@ -18,7 +17,7 @@ public class FileRepository {
     postgresMetadataRepository = new PostgresFileMetadataRepository(postgres);
   }
 
-  public void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException {
+  public void addFile(FileEntity fileEntity, byte[] data) throws StorageFileAlreadyExistsException {
     postgresMetadataRepository.addFile(fileEntity);
   }
 
@@ -34,20 +33,19 @@ public class FileRepository {
     return minioContentRepository.startMultipartUpload(s3Key);
   }
 
-  public CompletableFuture<String> uploadPart(CompletableFuture<String> uploadId, String s3Key, int partIndex, byte[] bytes) {
+  public CompletableFuture<String> uploadPart(
+      CompletableFuture<String> uploadId, String s3Key, int partIndex, byte[] bytes) {
     return minioContentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
   }
 
   public void completeMultipartUpload(
-          String s3Key,
-          CompletableFuture<String> uploadId,
-          Map<Integer, CompletableFuture<String>> eTags) {
-       minioContentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
+      String s3Key,
+      CompletableFuture<String> uploadId,
+      Map<Integer, CompletableFuture<String>> eTags) {
+    minioContentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
   }
 
   public InputStream downloadFile(String storagePath) {
     return minioContentRepository.downloadFile(storagePath);
   }
-
-  public void putObject(String s3Key, InputStream stream, String contentType) {}
 }

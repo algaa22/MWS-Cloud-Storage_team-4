@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.user.UserMapper;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
@@ -16,36 +17,37 @@ import java.util.*;
 
 public class UserService {
   private final UserRepository userRepository;
-  private final JwtService jwtService; // сервис для работы с JWT
   private final SessionService sessionService;
-
+  //TODO: getUserInfo
   public UserService(UserRepository userRepository) {
     this.userRepository = userRepository;
-    this.jwtService =
-        new JwtService(
-            StorageConfig.INSTANCE.getJwtSecretKey(),
-            StorageConfig.INSTANCE.getJwtTokenExpirationSec());
-    this.sessionService = new SessionService();
+    this.sessionService =
+        new SessionService(
+            new JwtService(
+                StorageConfig.INSTANCE.getJwtSecretKey(),
+                StorageConfig.INSTANCE.getJwtTokenExpirationSec()));
   }
 
   // Регистрация нового пользователя
-  public void registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
+  public String registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
     // 1. Проверяем, нет ли такого логина
-    if (userRepository.findByEmail(registerRequest.email()).isPresent())
+    if (userRepository.getUser(registerRequest.email()).isPresent())
       throw new UserAlreadyExistsException(registerRequest.email());
 
     String hash = PasswordHasher.hash(registerRequest.password());
-    UserEntity entity =
+    UserEntity userEntity =
         new UserEntity(
             UUID.randomUUID(), registerRequest.userName(), registerRequest.email(), hash);
 
-    userRepository.saveUser(entity);
+    userRepository.addUser(userEntity);
+    SessionDto session = sessionService.createSession(userEntity);
+
+    return session.token();
   }
 
-  // Логин: возвращает токен при успехе
-  public LoginResponseDto loginUser(LoginRequestDto loginRequest)
+  public String loginUser(LoginRequestDto loginRequest)
       throws WrongPasswordException, InvalidEmailOrPassword {
-    Optional<UserEntity> userOpt = userRepository.findByEmail(loginRequest.email());
+    Optional<UserEntity> userOpt = userRepository.getUser(loginRequest.email());
     if (userOpt.isEmpty()) throw new InvalidEmailOrPassword();
 
     UserEntity user = userOpt.get();
@@ -53,25 +55,32 @@ public class UserService {
       throw new WrongPasswordException();
     }
 
-    String jwt = jwtService.generateToken(user);
+    Optional<SessionDto> session = sessionService.findSessionByEmail(user.getEmail());
+    String token;
+
+    if (session.isPresent()) token = session.get().token();
+    else token = sessionService.createSession(user).token();
+
     // TODO: Можно добавить refresh-токен и логику сессий по необходимости
-    return new LoginResponseDto(jwt, user.getId(), user.getEmail());
+    return token;
   }
 
   // Логаут (обычно для refresh-токенов/сессий)
-  public void logoutUser(LogoutRequestDto logoutRequest) {
-    LocalDateTime expirationTime = jwtService.getTokenExpiredDateTime();
-    sessionService.blacklistToken(logoutRequest.token(), expirationTime);
+  public void logoutUser(LogoutRequestDto logoutRequest) throws UserNotFoundException {
+    String token = logoutRequest.token();
+
+    if (sessionService.tokenExists(token))
+      sessionService.blacklistToken(token);
+    else
+      throw new UserNotFoundException(token);
   }
 
-  public UserDto updateUser(String userId, UserDto dto) throws UserNotFoundException {
-    UserEntity user =
-        userRepository
-            .findById(UUID.fromString(userId))
-            .orElseThrow(() -> new UserNotFoundException(dto.email()));
-    // TODO: подумать, что еще можно будет обновлять
-    user.setName(dto.name());
-    userRepository.updateUser(user);
-    return UserMapper.toDto(user);
-  }
+//  public UserDto updateUser(String email, UserDto dto) throws UserNotFoundException {
+//    UserEntity user =
+//        userRepository.getUser(email).orElseThrow(() -> new UserNotFoundException(dto.email()));
+//    // TODO: подумать, что еще можно будет обновлять
+//    user.setName(dto.name());
+//    userRepository.updateUser(user);
+//    return UserMapper.toDto(user);
+//  }
 }

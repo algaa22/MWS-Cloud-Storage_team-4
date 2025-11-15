@@ -12,6 +12,8 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperatio
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.List;
 
@@ -88,5 +90,10 @@ public class FilesRequestHandler {
 
   private void handleValidationError(ChannelHandlerContext ctx, ValidationFailedException e) {
     ResponseHelper.sendValidationErrorResponse(ctx, e);
+  }
+
+  public void handleUploadFileRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String filePath, String userId) {
+
   }
 }

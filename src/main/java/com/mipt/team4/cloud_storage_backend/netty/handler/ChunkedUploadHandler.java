@@ -7,8 +7,7 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.service.MissingFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.service.TranferSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
@@ -25,6 +24,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +54,7 @@ public class ChunkedUploadHandler {
     try {
       parseUploadRequestMetadata(request);
     } catch (QueryParameterNotFoundException | HeaderNotFoundException e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
+      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
       return;
     }
 
@@ -108,9 +108,6 @@ public class ChunkedUploadHandler {
     } catch (MissingFilePartException e) {
       handleMissingFilePart(ctx, e);
       return;
-    } catch (TranferSessionNotFoundException e) {
-      handleSessionNotFound(ctx, e);
-      return;
     } catch (StorageFileAlreadyExistsException e) {
       // TODO
     }
@@ -143,9 +140,6 @@ public class ChunkedUploadHandler {
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
       return;
-    } catch (TranferSessionNotFoundException e) {
-      handleSessionNotFound(ctx, e);
-      return;
     }
 
     receivedChunks++;
@@ -177,8 +171,8 @@ public class ChunkedUploadHandler {
 
   private void parseUploadRequestMetadata(HttpRequest request)
       throws QueryParameterNotFoundException, HeaderNotFoundException {
+    currentSessionId = UUID.randomUUID().toString();
     // TODO: парсинг метаданных пользователя, аутентификация
-    currentSessionId = "";
     currentUserId = "";
     currentFilePath = RequestUtils.getRequiredQueryParam(request, "File path");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
@@ -208,11 +202,6 @@ public class ChunkedUploadHandler {
     json.put("sessionId", currentSessionId);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
-  }
-
-  private void handleSessionNotFound(ChannelHandlerContext ctx, TranferSessionNotFoundException e) {
-    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
-    cleanup();
   }
 
   private void handleMissingFilePart(ChannelHandlerContext ctx, MissingFilePartException e) {

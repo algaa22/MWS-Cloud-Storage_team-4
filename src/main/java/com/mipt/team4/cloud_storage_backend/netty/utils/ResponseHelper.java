@@ -8,9 +8,15 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.*;
+import io.netty.handler.stream.ChunkedNioFile;
+
 import java.nio.charset.StandardCharsets;
 
 public class ResponseHelper {
+  public static void sendExceptionResponse(ChannelHandlerContext ctx, HttpResponseStatus status, Exception e) {
+    ResponseHelper.sendErrorResponse(ctx, status, e.getMessage());
+  }
+
   public static void sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
     ResponseHelper.sendErrorResponse(
         ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error");
@@ -63,6 +69,10 @@ public class ResponseHelper {
 
   public static FullHttpResponse createJsonResponse(
       HttpResponseStatus status, boolean success, String message) {
+    return createJsonResponse(status, createJsonResponseNode(status, success, message));
+  }
+
+  public static ObjectNode createJsonResponseNode(HttpResponseStatus status, boolean success, String message) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
@@ -71,7 +81,7 @@ public class ResponseHelper {
     json.put("message", message);
     json.put("status", status.code());
 
-    return createJsonResponse(status, json);
+    return json;
   }
 
   public static FullHttpResponse createJsonResponse(HttpResponseStatus status, ObjectNode json) {

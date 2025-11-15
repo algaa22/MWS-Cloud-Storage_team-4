@@ -204,7 +204,26 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public void putObject(String s3Key, InputStream stream, String contentType) {}
+  public void putObject(String s3Key, byte[] data, String mimeType) {
+    InputStream stream = new ByteArrayInputStream(data);
+
+    try {
+        minioClient.putObject(
+          PutObjectArgs.builder()
+              .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
+              .object(s3Key)
+              .stream(stream, data.length, data.length)
+              .contentType(mimeType)
+              .build());
+    } catch (InsufficientDataException
+        | XmlParserException
+        | NoSuchAlgorithmException
+        | IOException
+        | InvalidKeyException
+        | InternalException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   @Override
   public InputStream downloadFile(String s3Key) {

@@ -8,6 +8,11 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Encoders;
+import io.jsonwebtoken.security.Keys;
+import javax.crypto.SecretKey;
+import org.flywaydb.core.Flyway;
 
 public class CloudStorageApplication {
   public static void main(String[] args) {
@@ -15,7 +20,7 @@ public class CloudStorageApplication {
     postgres.connect();
 
     FileRepository fileRepository = new FileRepository(postgres);
-    UserRepository userRepository = new UserRepository();
+    UserRepository userRepository = new UserRepository(postgres);
 
     FileService fileService = new FileService(fileRepository);
     UserService userService = new UserService(userRepository);

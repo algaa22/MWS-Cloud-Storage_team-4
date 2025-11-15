@@ -63,6 +63,10 @@ public class ResponseHelper {
 
   public static FullHttpResponse createJsonResponse(
       HttpResponseStatus status, boolean success, String message) {
+    return createJsonResponse(status, createJsonResponseNode(status, success, message));
+  }
+
+  public static ObjectNode createJsonResponseNode(HttpResponseStatus status, boolean success, String message) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
@@ -71,7 +75,7 @@ public class ResponseHelper {
     json.put("message", message);
     json.put("status", status.code());
 
-    return createJsonResponse(status, json);
+    return json;
   }
 
   public static FullHttpResponse createJsonResponse(HttpResponseStatus status, ObjectNode json) {

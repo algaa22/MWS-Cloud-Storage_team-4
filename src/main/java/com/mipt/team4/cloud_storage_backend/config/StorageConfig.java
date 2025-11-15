@@ -14,12 +14,12 @@ public enum StorageConfig {
   private final int fileDownloadChunkSize;
   private final int sendUploadProgressInterval;
   private final int jwtTokenExpirationSec;
-  private final int defaultStorageLimit;
   private final String userDataBucketName;
+  private final long defaultStorageLimit;
 
   StorageConfig() {
     ConfigSource yamlSource = new YamlConfigSource("config.yml");
-    ConfigSource envSource = new EnvironmentConfigSource(".env");
+    ConfigSource envSource = new EnvironmentConfigSource();
 
     this.maxFileSize = yamlSource.getLong("storage.http.max-file-size").orElseThrow();
     this.maxFileChunkSize = yamlSource.getInt("storage.http.max-file-chunk-size").orElseThrow();
@@ -31,15 +31,15 @@ public enum StorageConfig {
     this.userDataBucketName =
         yamlSource.getString("storage.repository.user-data-bucket.name").orElseThrow();
     this.defaultStorageLimit =
-        yamlSource.getInt("storage.quotas.default-storage-limit").orElseThrow();
+        yamlSource.getLong("storage.quotas.default-storage-limit").orElseThrow();
     this.jwtTokenExpirationSec =
-        yamlSource.getInt("storage.jwt.jwt-token-expiration-ms").orElseThrow();
+        yamlSource.getInt("storage.auth.jwt-token-expiration-sec").orElseThrow();
 
     this.jwtSecretKey =
         envSource.getString("jwt.secret.key").orElseThrow(); // TODO: оставить здесь?
   }
 
-  public int getDefaultStorageLimit() {
+  public long getDefaultStorageLimit() {
     return defaultStorageLimit;
   }
 

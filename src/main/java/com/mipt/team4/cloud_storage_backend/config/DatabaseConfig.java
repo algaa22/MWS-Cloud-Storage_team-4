@@ -13,7 +13,7 @@ public enum DatabaseConfig {
 
   DatabaseConfig() {
     // TODO: не находит .env
-    ConfigSource source = new EnvironmentConfigSource(".env");
+    ConfigSource source = new EnvironmentConfigSource();
 
     this.url = source.getString("db.url").orElseThrow();
     this.name = source.getString("db.name").orElseThrow();

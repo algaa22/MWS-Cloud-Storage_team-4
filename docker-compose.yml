@@ -7,12 +7,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file:
-      - src/main/resources/.env
     environment:
       - DB_URL=${DB_URL}
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
 #    volumes:
 #      - file-storage:/app/storage
 
@@ -20,7 +20,7 @@ services:
     image: postgres:18.0
     container_name: cloud-storage-db
     env_file:
-      - src/main/resources/.env
+      - .env
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USERNAME}

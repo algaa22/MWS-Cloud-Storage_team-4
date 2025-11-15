@@ -13,18 +13,10 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperatio
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.List;
 
-public class FilesRequestHandler {
-  private final FileController fileController;
-
-  public FilesRequestHandler(FileController fileController) {
-    this.fileController = fileController;
-  }
-
+public record FilesRequestHandler(FileController fileController) {
   public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, String userToken) {
     List<String> paths;
 

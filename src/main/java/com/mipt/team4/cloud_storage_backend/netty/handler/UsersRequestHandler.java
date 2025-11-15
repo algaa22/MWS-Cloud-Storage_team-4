@@ -17,13 +17,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
-public class UsersRequestHandler {
-  private final UserController userController;
-
-  public UsersRequestHandler(UserController userController) {
-    this.userController = userController;
-  }
-
+public record UsersRequestHandler(UserController userController) {
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request) {
     String token;
 

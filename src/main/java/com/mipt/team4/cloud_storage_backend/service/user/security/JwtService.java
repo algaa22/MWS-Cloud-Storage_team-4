@@ -23,7 +23,7 @@ public class JwtService {
     return Jwts.builder()
         .setSubject(user.getId().toString())
         .claim("email", user.getEmail())
-        .claim("role", "USER") // если есть роль - добавляй здесь
+        .claim("role", "USER") // TODO: если есть роль - добавляй здесь
         .setIssuedAt(now)
         .setExpiration(expiryDate)
         .signWith(

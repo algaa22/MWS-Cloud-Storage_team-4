@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -18,16 +19,33 @@ import java.util.*;
 public class UserService {
   private final UserRepository userRepository;
   private final SessionService sessionService;
-  //TODO: getUserInfo
   public UserService(UserRepository userRepository, SessionService sessionService) {
     this.userRepository = userRepository;
     this.sessionService = sessionService;
   }
 
-  // Регистрация нового пользователя
+  public UserEntity getUserInfo(String email) throws UserNotFoundException {
+    Optional<UserEntity> userOpt = userRepository.getUserByEmail(email);
+
+    if (userOpt.isEmpty()) {
+      throw new UserNotFoundException(email);
+    }
+    UserEntity user = userOpt.get();
+    return new UserEntity(
+        null,
+        user.getName(),
+        user.getEmail(),
+        null,
+        user.getStorageLimit(),
+        user.getUsedStorage(),
+        null,
+        user.isActive()
+    );
+  }
+
   public String registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
-    // 1. Проверяем, нет ли такого логина
-    if (userRepository.getUser(registerRequest.email()).isPresent())
+
+    if (userRepository.getUserByEmail(registerRequest.email()).isPresent())
       throw new UserAlreadyExistsException(registerRequest.email());
 
     String hash = PasswordHasher.hash(registerRequest.password());
@@ -43,7 +61,7 @@ public class UserService {
 
   public String loginUser(LoginRequestDto loginRequest)
       throws WrongPasswordException, InvalidEmailOrPassword {
-    Optional<UserEntity> userOpt = userRepository.getUser(loginRequest.email());
+    Optional<UserEntity> userOpt = userRepository.getUserByEmail(loginRequest.email());
     if (userOpt.isEmpty()) throw new InvalidEmailOrPassword();
 
     UserEntity user = userOpt.get();
@@ -57,12 +75,11 @@ public class UserService {
     if (session.isPresent()) token = session.get().token();
     else token = sessionService.createSession(user).token();
 
-    // TODO: Можно добавить refresh-токен и логику сессий по необходимости
+    // TODO: refresh-токены?
     return token;
   }
 
-  // Логаут (обычно для refresh-токенов/сессий)
-  public void logoutUser(LogoutRequestDto logoutRequest) throws UserNotFoundException {
+  public void logoutUser(LogoutRequestDto logoutRequest) throws UserNotFoundException, InvalidSessionException {
     String token = logoutRequest.token();
 
     if (sessionService.tokenExists(token))
@@ -71,12 +88,12 @@ public class UserService {
       throw new UserNotFoundException(token);
   }
 
-//  public UserDto updateUser(String email, UserDto dto) throws UserNotFoundException {
-//    UserEntity user =
-//        userRepository.getUser(email).orElseThrow(() -> new UserNotFoundException(dto.email()));
-//    // TODO: подумать, что еще можно будет обновлять
-//    user.setName(dto.name());
-//    userRepository.updateUser(user);
-//    return UserMapper.toDto(user);
-//  }
+  public void updateUserInfo(String token, String newName) throws UserNotFoundException {
+    UUID id = sessionService.extractUserIdFromToken(token);
+    Optional<UserEntity> userOpt = userRepository.getUserById(id);
+    if (userOpt.isEmpty()) {
+      throw new UserNotFoundException(id);
+    }
+    userRepository.updateInfo(id, newName);
+  }
 }

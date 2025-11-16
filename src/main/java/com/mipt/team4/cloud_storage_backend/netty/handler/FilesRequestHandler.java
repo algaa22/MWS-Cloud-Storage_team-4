@@ -5,14 +5,23 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileUploadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFilePathsListDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
+import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.List;
 
@@ -24,6 +33,9 @@ public record FilesRequestHandler(FileController fileController) {
       paths = fileController.getFilePathsList(new GetFilePathsListDto(userToken));
     } catch (ValidationFailedException e) {
       ResponseHelper.sendValidationErrorResponse(ctx, e);
+      return;
+    } catch (UserNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -51,7 +63,11 @@ public record FilesRequestHandler(FileController fileController) {
     try {
       fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
     } catch (ValidationFailedException e) {
+      // TODO: и в других так же
       ResponseHelper.sendValidationErrorResponse(ctx, e);
+      return;
+    } catch (StorageFileNotFoundException | UserNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -80,4 +96,41 @@ public record FilesRequestHandler(FileController fileController) {
 
   public void handleChangeFileMetadataRequest(
       ChannelHandlerContext ctx, String fileId, String userToken) {}
+
+  public void handleUploadFileRequest(
+      ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken) {
+    List<String> fileTags;
+
+    try {
+      fileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
+    } catch (HeaderNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    // TODO: проверка на размер
+
+    ByteBuf fileByteBuf = request.content();
+
+    // TODO: correct?
+    if (request.content().readableBytes() == 0) {
+      ResponseHelper.sendErrorResponse(
+          ctx, HttpResponseStatus.BAD_REQUEST, "Upload request does not contain content");
+      return;
+    }
+
+    byte[] fileData = new byte[fileByteBuf.readableBytes()];
+    fileByteBuf.readBytes(fileData);
+
+    try {
+      fileController.uploadFile(new FileUploadDto(filePath, userToken, fileTags, fileData));
+    } catch (UserNotFoundException
+        | StorageFileAlreadyExistsException
+        | ValidationFailedException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    ResponseHelper.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
+  }
 }

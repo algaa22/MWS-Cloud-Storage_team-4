@@ -1,9 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,16 +22,16 @@ public class FileRepository {
   }
 
   public void addFile(FileEntity fileEntity, byte[] data) throws StorageFileAlreadyExistsException {
-    metadataRepository.addFile(fileEntity);
+    metadataRepository.addFile(fileEntity); // TODO: если ошибка в putObject
     contentRepository.putObject(fileEntity.getS3Key(), data, fileEntity.getMimeType());
   }
 
-  public Optional<FileEntity> getFile(UUID ownerId, String path) {
-    return metadataRepository.getFile(ownerId, path);
+  public Optional<FileEntity> getFile(UUID ownerId, String s3Key) {
+    return metadataRepository.getFile(ownerId, s3Key);
   }
 
-  public boolean fileExists(UUID ownerId, String storagePath) {
-    return metadataRepository.fileExists(ownerId, storagePath);
+  public boolean fileExists(UUID ownerId, String s3Key) {
+    return metadataRepository.fileExists(ownerId, s3Key);
   }
 
   public CompletableFuture<String> startMultipartUpload(String s3Key) {
@@ -41,6 +44,10 @@ public class FileRepository {
     return contentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
   }
 
+  public List<String> getFilePathsList(UUID userId) {
+    return metadataRepository.getFilesPathsList(userId);
+  }
+
   public void completeMultipartUpload(
       FileEntity fileEntity,
       CompletableFuture<String> uploadId,
@@ -51,5 +58,10 @@ public class FileRepository {
 
   public InputStream downloadFile(String storagePath) {
     return contentRepository.downloadFile(storagePath);
+  }
+
+  public void deleteFile(UUID ownerId, String path)
+      throws StorageFileNotFoundException, FileNotFoundException {
+    metadataRepository.deleteFile(ownerId, path);
   }
 }

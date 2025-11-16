@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
@@ -57,17 +58,17 @@ public class FileController {
   }
 
   public List<String> getFilePathsList(GetFilePathsListDto filePathsListRequest)
-      throws ValidationFailedException {
+      throws ValidationFailedException, UserNotFoundException {
     filePathsListRequest.validate();
     // TODO: Передавать DTO
     return service.getFilePathsList(filePathsListRequest.userToken());
   }
 
   public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
-      throws ValidationFailedException {
+      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
     fileInfoRequest.validate();
     // TODO: Передавать DTO
-    return service.getFileInfo(fileInfoRequest.filePath(), fileInfoRequest.userToken());
+    return service.getFileInfo(fileInfoRequest.userToken(), fileInfoRequest.filePath());
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)

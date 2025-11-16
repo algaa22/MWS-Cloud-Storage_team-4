@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -82,6 +83,9 @@ public record UsersRequestHandler(UserController userController) {
     } catch (HeaderNotFoundException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
+    } catch (InvalidSessionException e) {
+      throw new RuntimeException(e);
+      //TODO: разобраться с InvalidSessionException здесь
     }
 
     ResponseHelper.sendSuccessResponse(

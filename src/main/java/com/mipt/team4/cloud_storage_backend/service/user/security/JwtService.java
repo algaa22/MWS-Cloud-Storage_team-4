@@ -8,6 +8,7 @@ import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Locale;
 
 public class JwtService {
   private final long jwtTokenExpirationSec;
@@ -18,7 +19,7 @@ public class JwtService {
 
   public String generateToken(UserEntity user) {
     Date now = new Date();
-    Date expiryDate = new Date(now.getTime() + jwtTokenExpirationSec);
+    Date expiryDate = new Date(now.getTime() + jwtTokenExpirationSec * 1000L);
 
     return Jwts.builder()
         .setSubject(user.getId().toString())

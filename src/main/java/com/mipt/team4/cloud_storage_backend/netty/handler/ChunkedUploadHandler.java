@@ -67,8 +67,10 @@ public class ChunkedUploadHandler {
               totalChunks,
               currentFilePath,
               currentFileTags));
-    } catch (ValidationFailedException
-        | StorageFileAlreadyExistsException
+    } catch (ValidationFailedException e) {
+      ResponseHelper.sendValidationErrorResponse(ctx,  e);
+      cleanup();
+    } catch (StorageFileAlreadyExistsException
         | StorageIllegalAccessException
         | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);

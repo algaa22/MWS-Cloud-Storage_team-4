@@ -28,10 +28,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   private void initialize() {
     try {
-      createBucket(StorageConfig.INSTANCE.getUserDataBucketName());
-    } catch (BucketAlreadyExistsException _) {}
-
-    try {
       minioClient =
           MinioAsyncClient.builder()
               .endpoint(MinioConfig.INSTANCE.getUrl())
@@ -40,6 +36,10 @@ public class MinioContentRepository implements FileContentRepository {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+
+    try {
+      createBucket(StorageConfig.INSTANCE.getUserDataBucketName());
+    } catch (BucketAlreadyExistsException _) {}
   }
 
   public void createBucket(String bucketName) throws BucketAlreadyExistsException {
@@ -219,7 +219,7 @@ public class MinioContentRepository implements FileContentRepository {
           PutObjectArgs.builder()
               .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
               .object(s3Key)
-              .stream(stream, data.length, data.length)
+              .stream(stream, data.length, -1)
               .contentType(mimeType)
               .build());
     } catch (InsufficientDataException

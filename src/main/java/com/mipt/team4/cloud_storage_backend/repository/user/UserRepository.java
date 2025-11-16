@@ -48,12 +48,34 @@ public class UserRepository {
     postgres.executeUpdate("DELETE FROM users WHERE id = ?;", List.of(id));
   }
 
-  public Optional<UserEntity> getUser(String email) {
+  public Optional<UserEntity> getUserByEmail(String email) {
     List<UserEntity> result;
     result =
         postgres.executeQuery(
             "SELECT * FROM users WHERE email = ?;",
             List.of(email),
+            rs ->
+                new UserEntity(
+                    UUID.fromString(rs.getString("id")),
+                    rs.getString("username"),
+                    rs.getString("email"),
+                    rs.getString("password_hash"),
+                    rs.getLong("storage_limit"),
+                    rs.getLong("used_storage"),
+                    rs.getTimestamp("created_at").toLocalDateTime(),
+                    rs.getBoolean("is_active")));
+
+    if (result.isEmpty()) return Optional.empty();
+
+    return Optional.ofNullable(result.getFirst());
+  }
+
+  public Optional<UserEntity> getUserById(UUID id) {
+    List<UserEntity> result;
+    result =
+        postgres.executeQuery(
+            "SELECT * FROM users WHERE id = ?;",
+            List.of(id.toString()),
             rs ->
                 new UserEntity(
                     UUID.fromString(rs.getString("id")),
@@ -79,7 +101,10 @@ public class UserRepository {
     return result.getFirst();
   }
 
-  public void updateUser(UserEntity user) {
-    // TODO
+  public void updateInfo(UUID id, String newName) throws UserNotFoundException {
+    int rowsUpdated = postgres.executeUpdate(
+        "UPDATE users SET username = ? WHERE email = ?;",
+        List.of(newName, id));
+    if (rowsUpdated == 0) throw new UserNotFoundException(id);
   }
 }

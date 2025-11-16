@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -32,7 +33,7 @@ public class UserController {
   }
 
   public void logoutUser(LogoutRequestDto logoutRequest)
-      throws ValidationFailedException, UserNotFoundException {
+      throws ValidationFailedException, UserNotFoundException, InvalidSessionException {
     logoutRequest.validate();
     service.logoutUser(logoutRequest);
   }

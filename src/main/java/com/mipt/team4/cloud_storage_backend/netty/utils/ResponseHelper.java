@@ -28,7 +28,7 @@ public class ResponseHelper {
 
   public static void sendValidationErrorResponse(
       ChannelHandlerContext ctx, ValidationFailedException exception) {
-    sendBadRequestExceptionResponse(ctx, exception);
+    sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.getMessage());
   }
 
   public static void sendBadRequestExceptionResponse(ChannelHandlerContext ctx, Exception exception) {

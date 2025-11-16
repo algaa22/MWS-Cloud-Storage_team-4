@@ -140,23 +140,8 @@ public class FileService {
     return "application/octet-stream";
   }
   //TODO: переделать
-  public FileChunkDto getFileChunk(String userToken, String path, int chunkIndex, int chunkSize) throws UserNotFoundException, StorageIllegalAccessException, StorageFileNotFoundException {
-    UUID userUuid = sessionService.extractUserIdFromToken(userToken);
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, path);
-    FileEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(path));
-    checkFileAccess(userUuid, entity);
-    InputStream input = fileRepository.downloadFile(entity.getS3Key());
-    try {
-      input.skip((long) chunkIndex * chunkSize);
-      byte[] buffer = new byte[chunkSize];
-      int read = input.read(buffer);
-      if (read < chunkSize) {
-        buffer = Arrays.copyOf(buffer, read);
-      }
-      return new FileChunkDto(path, path, chunkIndex, buffer);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to read file chunk", e);
-    }
+  public FileChunkDto getFileChunk(String fileId, int chunkIndex, int chunkSize) throws UserNotFoundException, StorageIllegalAccessException, StorageFileNotFoundException {
+    return null;
   }
 
   public List<String> getFilePathsList(String token) throws UserNotFoundException {

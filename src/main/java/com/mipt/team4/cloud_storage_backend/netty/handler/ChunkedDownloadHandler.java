@@ -2,8 +2,11 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
@@ -38,7 +41,7 @@ public class ChunkedDownloadHandler {
   }
 
   public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
-      throws TransferAlreadyStartedException {
+      throws TransferAlreadyStartedException, UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
     if (isInProgress) throw new TransferAlreadyStartedException();
 
     try {
@@ -94,7 +97,7 @@ public class ChunkedDownloadHandler {
     try {
       fileChunk =
           fileController.getFileChunk(new GetFileChunkDto(currentFilePath, chunkIndex, chunkSize));
-    } catch (ValidationFailedException e) {
+    } catch (ValidationFailedException | UserNotFoundException | StorageFileNotFoundException | StorageIllegalAccessException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       cleanup();
       return;

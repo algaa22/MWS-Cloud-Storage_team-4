@@ -9,6 +9,7 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 public class FileController {
@@ -43,14 +44,14 @@ public class FileController {
   }
 
   public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo)
-      throws ValidationFailedException {
+      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
     fileInfo.validate();
     // TODO: Передавать DTO
     return service.getFileDownloadInfo(fileInfo.filePath(), fileInfo.userToken());
   }
 
   public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
-      throws ValidationFailedException {
+      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
     fileChunkRequest.validate();
     // TODO: Передавать DTO
     return service.getFileChunk(
@@ -72,7 +73,7 @@ public class FileController {
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
-      throws ValidationFailedException, StorageIllegalAccessException, UserNotFoundException {
+      throws ValidationFailedException, StorageIllegalAccessException, UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
     deleteFileRequest.validate();
     service.deleteFile(deleteFileRequest.userToken(), deleteFileRequest.filePath()); // TODO: в дто
   }

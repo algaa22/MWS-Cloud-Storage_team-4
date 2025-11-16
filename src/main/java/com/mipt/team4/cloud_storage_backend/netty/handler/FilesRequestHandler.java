@@ -23,6 +23,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 public record FilesRequestHandler(FileController fileController) {
@@ -89,7 +90,7 @@ public record FilesRequestHandler(FileController fileController) {
   public void handleDeleteFileRequest(ChannelHandlerContext ctx, String fileId, String userToken) {
     try {
       fileController.deleteFile(new SimpleFileOperationDto(fileId, userToken));
-    } catch (UserNotFoundException | ValidationFailedException | StorageIllegalAccessException e) {
+    } catch (UserNotFoundException | ValidationFailedException | StorageIllegalAccessException | StorageFileNotFoundException | FileNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
   }

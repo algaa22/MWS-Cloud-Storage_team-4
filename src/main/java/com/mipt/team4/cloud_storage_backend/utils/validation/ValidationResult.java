@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.utils.validation;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -12,17 +11,6 @@ public class ValidationResult {
   public ValidationResult(boolean valid, List<ValidationError> errors) {
     this.valid = valid;
     this.errors = Collections.unmodifiableList(errors);
-  }
-
-  public ValidationResult merge(ValidationResult other) {
-    if (this.valid && other.valid) {
-      return valid();
-    }
-
-    List<ValidationError> mergedErrors = new ArrayList<>(this.errors);
-    mergedErrors.addAll(other.errors);
-
-    return errors(mergedErrors);
   }
 
   public static ValidationResult valid() {
@@ -40,6 +28,17 @@ public class ValidationResult {
 
   public static ValidationResult errors(List<ValidationError> errors) {
     return new ValidationResult(false, errors);
+  }
+
+  public ValidationResult merge(ValidationResult other) {
+    if (this.valid && other.valid) {
+      return valid();
+    }
+
+    List<ValidationError> mergedErrors = new ArrayList<>(this.errors);
+    mergedErrors.addAll(other.errors);
+
+    return errors(mergedErrors);
   }
 
   public boolean isValid() {

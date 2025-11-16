@@ -7,7 +7,6 @@ public class UserNotFoundException extends Exception {
     super("User with ID " + id + " not found");
   }
 
-
   public UserNotFoundException(String token) {
     super("User with token " + token + " not found");
   }

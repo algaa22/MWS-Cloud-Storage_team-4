@@ -5,10 +5,8 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Date;
-import java.util.Locale;
 
 public class JwtService {
   private final long jwtTokenExpirationSec;
@@ -16,6 +14,36 @@ public class JwtService {
   public JwtService(long jwtTokenExpirationSec) {
     this.jwtTokenExpirationSec = jwtTokenExpirationSec;
   }
+
+  // Проверяет подпись и срок действия токена
+  public static boolean isTokenValid(String token) {
+    try {
+      Jwts.parserBuilder()
+          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+          .build()
+          .parseClaimsJws(token);
+      return true;
+    } catch (JwtException | IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  private static String getJwtSecretKey() {
+    return StorageConfig.INSTANCE.getJwtSecretKey();
+  }
+
+//  public String getUserIdFromToken(String token) {
+//    String jwtSecretKey = StorageConfig.INSTANCE.getJwtSecretKey();
+//
+//    Claims claims =
+//        Jwts.parserBuilder()
+//            .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
+//            .build()
+//            .parseClaimsJws(token)
+//            .getBody();
+//
+//    return claims.getSubject();
+//  }
 
   public String generateToken(UserEntity user) {
     Date now = new Date();
@@ -33,37 +61,7 @@ public class JwtService {
         .compact();
   }
 
-  // Проверяет подпись и срок действия токена
-  public static boolean isTokenValid(String token) {
-    try {
-      Jwts.parserBuilder()
-          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
-          .build()
-          .parseClaimsJws(token);
-      return true;
-    } catch (JwtException | IllegalArgumentException e) {
-      return false;
-    }
-  }
-
-//  public String getUserIdFromToken(String token) {
-//    String jwtSecretKey = StorageConfig.INSTANCE.getJwtSecretKey();
-//
-//    Claims claims =
-//        Jwts.parserBuilder()
-//            .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
-//            .build()
-//            .parseClaimsJws(token)
-//            .getBody();
-//
-//    return claims.getSubject();
-//  }
-
   public LocalDateTime getTokenExpiredDateTime() {
     return LocalDateTime.now().plusSeconds(jwtTokenExpirationSec);
-  }
-
-  private static String getJwtSecretKey() {
-    return StorageConfig.INSTANCE.getJwtSecretKey();
   }
 }

@@ -80,12 +80,9 @@ public record UsersRequestHandler(UserController userController) {
     } catch (ValidationFailedException e) {
       handleValidationError(ctx, e);
       return;
-    } catch (HeaderNotFoundException | UserNotFoundException e) {
+    } catch (InvalidSessionException | HeaderNotFoundException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
-    } catch (InvalidSessionException e) {
-      throw new RuntimeException(e);
-      //TODO: разобраться с InvalidSessionException здесь
     }
 
     ResponseHelper.sendSuccessResponse(

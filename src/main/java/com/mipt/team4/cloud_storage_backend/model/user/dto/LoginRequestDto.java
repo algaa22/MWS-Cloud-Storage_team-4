@@ -8,8 +8,7 @@ public record LoginRequestDto(String email, String password) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.notBlank("Email", email),
-            Validators.notBlank("Password hash", password));
+            Validators.notBlank("Email", email), Validators.notBlank("Password hash", password));
 
     Validators.throwExceptionIfNotValid(result);
   }

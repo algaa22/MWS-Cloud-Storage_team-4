@@ -18,7 +18,11 @@ public class Validators {
   }
 
   public static ValidationResult validToken(String token) {
-    return validate(JwtService.isTokenValid(token), "User token", "User token expired", "VALID_TOKEN");
+    return validate(
+        JwtService.isTokenValid(token),
+        "User token",
+        "User token expired or not valid",
+        "VALID_TOKEN");
   }
 
   public static ValidationResult notNull(String field, Object value) {

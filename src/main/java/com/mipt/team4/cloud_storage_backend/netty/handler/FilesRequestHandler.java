@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -21,7 +20,6 @@ import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.FileNotFoundException;
 import java.util.List;
@@ -75,8 +73,6 @@ public record FilesRequestHandler(FileController fileController) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
 
-    rootNode.put("ID", fileDto.fileId().toString());
-    rootNode.put("OwnerID", fileDto.ownerId().toString());
     rootNode.put("Path", fileDto.path());
     rootNode.put("Type", fileDto.type());
     rootNode.put("Visibility", fileDto.visibility());
@@ -96,7 +92,9 @@ public record FilesRequestHandler(FileController fileController) {
   }
 
   public void handleChangeFileMetadataRequest(
-      ChannelHandlerContext ctx, String fileId, String userToken) {}
+      ChannelHandlerContext ctx, String fileId, String userToken) {
+
+  }
 
   public void handleUploadFileRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken) {

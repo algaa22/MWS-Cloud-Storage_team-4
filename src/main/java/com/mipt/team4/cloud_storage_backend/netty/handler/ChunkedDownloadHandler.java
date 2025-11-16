@@ -41,7 +41,10 @@ public class ChunkedDownloadHandler {
   }
 
   public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
-      throws TransferAlreadyStartedException, UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
+      throws TransferAlreadyStartedException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          StorageIllegalAccessException {
     if (isInProgress) throw new TransferAlreadyStartedException();
 
     try {
@@ -71,7 +74,7 @@ public class ChunkedDownloadHandler {
       logger.debug(
           "Started chunked download. Session: {}, user: {}, file: {}, size: {}, chunks: {}",
           currentSessionId,
-              currentUserToken,
+          currentUserToken,
           currentFilePath,
           fileSize,
           totalChunks);
@@ -97,7 +100,10 @@ public class ChunkedDownloadHandler {
     try {
       fileChunk =
           fileController.getFileChunk(new GetFileChunkDto(currentFilePath, chunkIndex, chunkSize));
-    } catch (ValidationFailedException | UserNotFoundException | StorageFileNotFoundException | StorageIllegalAccessException e) {
+    } catch (ValidationFailedException
+        | UserNotFoundException
+        | StorageFileNotFoundException
+        | StorageIllegalAccessException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       cleanup();
       return;

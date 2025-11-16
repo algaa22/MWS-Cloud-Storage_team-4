@@ -1,19 +1,14 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
-import com.mipt.team4.cloud_storage_backend.model.user.UserMapper;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
-import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-
-import java.time.LocalDateTime;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import java.util.*;
 
 public class UserService {

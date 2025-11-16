@@ -51,7 +51,8 @@ public class FileRepository {
   public void completeMultipartUpload(
       FileEntity fileEntity,
       CompletableFuture<String> uploadId,
-      Map<Integer, CompletableFuture<String>> eTags) throws StorageFileAlreadyExistsException {
+      Map<Integer, CompletableFuture<String>> eTags)
+      throws StorageFileAlreadyExistsException {
     metadataRepository.addFile(fileEntity);
     contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
   }

@@ -8,11 +8,11 @@ import java.util.List;
 
 public record FileUploadDto(String path, String userToken, List<String> tags, byte[] data) {
   public void validate() throws ValidationFailedException {
-    ValidationResult result = Validators.all(
+    ValidationResult result =
+        Validators.all(
             Validators.notBlank("File path", path),
             Validators.validToken(userToken),
-            Validators.mustBePositive("File size", data.length)
-    );
+            Validators.mustBePositive("File size", data.length));
 
     Validators.throwExceptionIfNotValid(result);
   }

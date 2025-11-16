@@ -44,14 +44,20 @@ public class FileController {
   }
 
   public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo)
-      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
+      throws ValidationFailedException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          StorageIllegalAccessException {
     fileInfo.validate();
     // TODO: Передавать DTO
     return service.getFileDownloadInfo(fileInfo.filePath(), fileInfo.userToken());
   }
 
   public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
-      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
+      throws ValidationFailedException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          StorageIllegalAccessException {
     fileChunkRequest.validate();
     // TODO: Передавать DTO
     return service.getFileChunk(
@@ -73,7 +79,11 @@ public class FileController {
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
-      throws ValidationFailedException, StorageIllegalAccessException, UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
+      throws ValidationFailedException,
+          StorageIllegalAccessException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          FileNotFoundException {
     deleteFileRequest.validate();
     service.deleteFile(deleteFileRequest.userToken(), deleteFileRequest.filePath()); // TODO: в дто
   }

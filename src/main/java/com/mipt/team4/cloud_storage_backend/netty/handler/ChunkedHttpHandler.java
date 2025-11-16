@@ -49,7 +49,10 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
       } else {
         ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       }
-    } catch (TransferAlreadyStartedException | UserNotFoundException | StorageFileNotFoundException | StorageIllegalAccessException e) {
+    } catch (TransferAlreadyStartedException
+        | UserNotFoundException
+        | StorageFileNotFoundException
+        | StorageIllegalAccessException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
   }

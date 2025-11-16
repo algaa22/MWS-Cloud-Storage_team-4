@@ -43,12 +43,14 @@ public class SessionService {
 
   public void blacklistToken(String token) throws InvalidSessionException {
     Optional<SessionDto> session = getSession(token);
+
     if (session.isEmpty()) {
       throw new InvalidSessionException(token);
     }
+
     cleanExpiredBlacklistedTokens();
     blacklistedTokens.put(token, jwtService.getTokenExpiredDateTime());
-    //session.remove(token);
+    // session.remove(token);
   }
 
   private void cleanExpiredBlacklistedTokens() {
@@ -65,6 +67,7 @@ public class SessionService {
   public Optional<SessionDto> getSession(String token) {
     return Optional.ofNullable(activeSessions.get(token));
   }
+
   public boolean isBlacklisted(String token) {
     LocalDateTime expiry = blacklistedTokens.get(token);
     if (expiry == null) return false;
@@ -78,8 +81,7 @@ public class SessionService {
   public Optional<SessionDto> findSessionByEmail(String email) {
     for (Map.Entry<String, SessionDto> entry : activeSessions.entrySet()) {
       SessionDto session = entry.getValue();
-      if (session.email().equals(email))
-        return Optional.of(session);
+      if (session.email().equals(email)) return Optional.of(session);
     }
     return Optional.empty();
   }

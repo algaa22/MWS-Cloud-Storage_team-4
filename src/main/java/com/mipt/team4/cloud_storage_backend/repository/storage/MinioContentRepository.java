@@ -39,36 +39,38 @@ public class MinioContentRepository implements FileContentRepository {
 
     try {
       createBucket(StorageConfig.INSTANCE.getUserDataBucketName());
-    } catch (BucketAlreadyExistsException _) {}
+    } catch (BucketAlreadyExistsException _) {
+    }
   }
 
   public void createBucket(String bucketName) throws BucketAlreadyExistsException {
-    if (bucketExists(bucketName))
-      throw new BucketAlreadyExistsException(bucketName);
+    if (bucketExists(bucketName)) throw new BucketAlreadyExistsException(bucketName);
 
     try {
       minioClient.makeBucket(
-              MakeBucketArgs.builder().bucket(StorageConfig.INSTANCE.getUserDataBucketName()).build());
+          MakeBucketArgs.builder().bucket(StorageConfig.INSTANCE.getUserDataBucketName()).build());
     } catch (InsufficientDataException
-             | InternalException
-             | InvalidKeyException
-             | IOException
-             | NoSuchAlgorithmException
-             | XmlParserException e) {
+        | InternalException
+        | InvalidKeyException
+        | IOException
+        | NoSuchAlgorithmException
+        | XmlParserException e) {
       // TODO: exceptions
       throw new RuntimeException(e);
     }
   }
 
-  private Multimap<String, String> createEmptyHeader() {
-    return MultimapBuilder.hashKeys().arrayListValues().build();
-  }
-
   public boolean bucketExists(String bucketName) {
     try {
       return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build()).get();
-    } catch (InsufficientDataException | InternalException | InvalidKeyException | IOException |
-             NoSuchAlgorithmException | XmlParserException | ExecutionException | InterruptedException e) {
+    } catch (InsufficientDataException
+        | InternalException
+        | InvalidKeyException
+        | IOException
+        | NoSuchAlgorithmException
+        | XmlParserException
+        | ExecutionException
+        | InterruptedException e) {
       throw new RuntimeException(e);
     }
   }
@@ -197,6 +199,10 @@ public class MinioContentRepository implements FileContentRepository {
             });
   }
 
+  private Multimap<String, String> createEmptyHeader() {
+    return MultimapBuilder.hashKeys().arrayListValues().build();
+  }
+
   private Part[] createPartArray(Map<Integer, CompletableFuture<String>> eTags) {
     List<Part> partsList = new ArrayList<>(eTags.size());
 
@@ -215,7 +221,7 @@ public class MinioContentRepository implements FileContentRepository {
     InputStream stream = new ByteArrayInputStream(data);
 
     try {
-        minioClient.putObject(
+      minioClient.putObject(
           PutObjectArgs.builder()
               .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
               .object(s3Key)

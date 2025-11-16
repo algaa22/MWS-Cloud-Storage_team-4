@@ -68,7 +68,7 @@ public class ChunkedUploadHandler {
               currentFilePath,
               currentFileTags));
     } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx,  e);
+      ResponseHelper.sendValidationErrorResponse(ctx, e);
       cleanup();
     } catch (StorageFileAlreadyExistsException
         | StorageIllegalAccessException
@@ -103,7 +103,9 @@ public class ChunkedUploadHandler {
 
     try {
       fileController.completeChunkedUpload(currentSessionId);
-    } catch (UserNotFoundException | StorageFileAlreadyExistsException | ValidationFailedException e) {
+    } catch (UserNotFoundException
+        | StorageFileAlreadyExistsException
+        | ValidationFailedException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       cleanup();
       return;

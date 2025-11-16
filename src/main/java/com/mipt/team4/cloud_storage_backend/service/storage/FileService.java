@@ -7,15 +7,11 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.SessionDto;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.SessionService;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
-
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,6 +24,14 @@ public class FileService {
   public FileService(FileRepository fileRepository, SessionService sessionService) {
     this.fileRepository = fileRepository;
     this.sessionService = sessionService;
+  }
+
+  private static String guessMimeType(String path) {
+    // TODO: peredelat :))))))))))
+    if (path.endsWith(".jpg")) return "image/jpeg";
+    if (path.endsWith(".png")) return "image/png";
+    if (path.endsWith(".pdf")) return "application/pdf";
+    return "application/octet-stream";
   }
 
   public void startChunkedUploadSession(FileChunkedUploadDto session) throws UserNotFoundException, StorageFileAlreadyExistsException {
@@ -105,7 +109,6 @@ public class FileService {
     fileRepository.addFile(entity, data);
   }
 
-
   public InputStream downloadFile(String userToken, String path) throws StorageIllegalAccessException, UserNotFoundException {
     UUID userId = sessionService.extractUserIdFromToken(userToken);
 
@@ -132,13 +135,6 @@ public class FileService {
     }
   }
 
-  private static String guessMimeType(String path) {
-    // TODO: peredelat :))))))))))
-    if (path.endsWith(".jpg")) return "image/jpeg";
-    if (path.endsWith(".png")) return "image/png";
-    if (path.endsWith(".pdf")) return "application/pdf";
-    return "application/octet-stream";
-  }
   //TODO: переделать
   public FileChunkDto getFileChunk(String fileId, int chunkIndex, int chunkSize) throws UserNotFoundException, StorageIllegalAccessException, StorageFileNotFoundException {
     return null;

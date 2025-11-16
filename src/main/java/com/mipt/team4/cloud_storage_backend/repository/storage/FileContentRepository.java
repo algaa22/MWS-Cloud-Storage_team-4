@@ -7,12 +7,13 @@ import java.util.concurrent.CompletableFuture;
 public interface FileContentRepository {
   CompletableFuture<String> startMultipartUpload(String s3Key);
 
-  CompletableFuture<String> uploadPart(CompletableFuture<String> uploadId, String s3Key, int partNum, byte[] bytes);
+  CompletableFuture<String> uploadPart(
+      CompletableFuture<String> uploadId, String s3Key, int partNum, byte[] bytes);
 
   void completeMultipartUpload(
-          String s3Key,
-          CompletableFuture<String> uploadId,
-          Map<Integer, CompletableFuture<String>> eTags);
+      String s3Key,
+      CompletableFuture<String> uploadId,
+      Map<Integer, CompletableFuture<String>> eTags);
 
   void putObject(String s3Key, byte[] data, String mimeType);
 

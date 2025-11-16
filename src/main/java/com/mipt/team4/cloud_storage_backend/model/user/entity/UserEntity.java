@@ -1,19 +1,18 @@
 package com.mipt.team4.cloud_storage_backend.model.user.entity;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class UserEntity {
   private final UUID id;
+  boolean isActive;
   private String name;
   private String email;
   private String password;
   private long storageLimit;
   private long usedStorage;
   private LocalDateTime createdAt;
-  boolean isActive;
 
   public UserEntity(UUID id, String name, String email, String password) {
     this.id = id;

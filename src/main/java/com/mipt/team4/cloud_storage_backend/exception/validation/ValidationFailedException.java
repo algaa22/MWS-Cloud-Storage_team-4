@@ -1,12 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.exception.validation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-
 import java.util.List;
 
 public class ValidationFailedException extends Exception {
@@ -28,10 +26,6 @@ public class ValidationFailedException extends Exception {
     this.errors = List.of(error);
   }
 
-  public List<ValidationError> getErrors() {
-    return errors;
-  }
-
   private static String toJsonString(List<ValidationError> errors) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode root = mapper.createObjectNode();
@@ -45,5 +39,9 @@ public class ValidationFailedException extends Exception {
     root.set("details", details);
 
     return root.toString();
+  }
+
+  public List<ValidationError> getErrors() {
+    return errors;
   }
 }

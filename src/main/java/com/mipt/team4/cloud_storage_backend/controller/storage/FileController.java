@@ -49,8 +49,7 @@ public class FileController {
           StorageFileNotFoundException,
           StorageIllegalAccessException {
     fileInfo.validate();
-    // TODO: Передавать DTO
-    return service.getFileDownloadInfo(fileInfo.filePath(), fileInfo.userToken());
+    return service.getFileDownloadInfo(fileInfo);
   }
 
   public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
@@ -75,7 +74,7 @@ public class FileController {
       throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
     fileInfoRequest.validate();
     // TODO: Передавать DTO
-    return service.getFileInfo(fileInfoRequest.userToken(), fileInfoRequest.filePath());
+    return service.getFileInfo(fileInfoRequest.userToken(), fileInfoRequest.path());
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
@@ -85,7 +84,7 @@ public class FileController {
           StorageFileNotFoundException,
           FileNotFoundException {
     deleteFileRequest.validate();
-    service.deleteFile(deleteFileRequest.userToken(), deleteFileRequest.filePath()); // TODO: в дто
+    service.deleteFile(deleteFileRequest.userToken(), deleteFileRequest.path()); // TODO: в дто
   }
 
   public void uploadFile(FileUploadDto fileUploadRequest)

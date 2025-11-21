@@ -38,7 +38,7 @@ public class MinioContentRepository implements FileContentRepository {
     }
 
     try {
-      createBucket(StorageConfig.INSTANCE.getUserDataBucketName());
+      createBucket(MinioConfig.INSTANCE.getUserDataBucketName());
     } catch (BucketAlreadyExistsException _) {
     }
   }
@@ -48,7 +48,7 @@ public class MinioContentRepository implements FileContentRepository {
 
     try {
       minioClient.makeBucket(
-          MakeBucketArgs.builder().bucket(StorageConfig.INSTANCE.getUserDataBucketName()).build());
+          MakeBucketArgs.builder().bucket(MinioConfig.INSTANCE.getUserDataBucketName()).build());
     } catch (InsufficientDataException
         | InternalException
         | InvalidKeyException
@@ -86,7 +86,7 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       futureResponse =
           minioClient.createMultipartUploadAsync(
-              StorageConfig.INSTANCE.getUserDataBucketName(),
+              MinioConfig.INSTANCE.getUserDataBucketName(),
               "eu-central-1",
               s3Key,
               headers,
@@ -123,7 +123,7 @@ public class MinioContentRepository implements FileContentRepository {
                   try {
                     return minioClient
                         .uploadPartAsync(
-                            StorageConfig.INSTANCE.getUserDataBucketName(),
+                            MinioConfig.INSTANCE.getUserDataBucketName(),
                             "eu-central-1",
                             s3Key,
                             inputStream,
@@ -173,7 +173,7 @@ public class MinioContentRepository implements FileContentRepository {
               try {
                 minioClient
                     .completeMultipartUploadAsync(
-                        StorageConfig.INSTANCE.getUserDataBucketName(),
+                        MinioConfig.INSTANCE.getUserDataBucketName(),
                         "eu-central-1",
                         s3Key,
                         uploadIdStr,
@@ -223,7 +223,7 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient.putObject(
           PutObjectArgs.builder()
-              .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
+              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
               .object(s3Key)
               .stream(stream, data.length, -1)
               .contentType(mimeType)
@@ -244,7 +244,7 @@ public class MinioContentRepository implements FileContentRepository {
       return minioClient
           .getObject(
               GetObjectArgs.builder()
-                  .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
+                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
                   .object(s3Key)
                   .build())
           .get();

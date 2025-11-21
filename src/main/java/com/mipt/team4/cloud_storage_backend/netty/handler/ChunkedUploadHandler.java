@@ -117,7 +117,7 @@ public class ChunkedUploadHandler {
 
     if (logger.isDebugEnabled())
       logger.debug(
-          "Completed chunk upload. Session: {}, filePath: {}, chunks: {}, bytes: {}",
+          "Completed chunk upload. Session: {}, path: {}, chunks: {}, bytes: {}",
           currentSessionId,
           currentFilePath,
           receivedChunks,
@@ -188,7 +188,7 @@ public class ChunkedUploadHandler {
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
-    json.put("filePath", filePath);
+    json.put("path", filePath);
     json.put("fileSize", totalFileSize);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);

@@ -153,14 +153,14 @@ public class FileService {
     return FileMapper.toDto(entityOpt.get());
   }
 
-  public FileChunkedDownloadDto getFileDownloadInfo(String userToken, String path) throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
-    UUID userUuid = sessionService.extractUserIdFromToken(userToken);
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, path);
-    FileEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(path));
+  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo) throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
+    UUID userUuid = sessionService.extractUserIdFromToken(fileInfo.userToken());
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, fileInfo.path());
+    FileEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileInfo.path()));
     checkFileAccess(userUuid, entity);
     int chunkSize = 2 * 1024 * 1024; //TODO: какой по умолчанию?
     int chunks = (int) Math.ceil(entity.getSize() / (double) chunkSize);
-    return new FileChunkedDownloadDto(entity.getFileId(), path, entity.getMimeType(), entity.getSize());
+    return new FileChunkedDownloadDto(entity.getFileId(), fileInfo.path(), entity.getMimeType(), entity.getSize());
   }
 
 

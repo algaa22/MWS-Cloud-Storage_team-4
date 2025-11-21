@@ -14,7 +14,6 @@ public enum StorageConfig {
   private final int fileDownloadChunkSize;
   private final int sendUploadProgressInterval;
   private final int jwtTokenExpirationSec;
-  private final String userDataBucketName;
   private final long defaultStorageLimit;
 
   StorageConfig() {
@@ -28,15 +27,13 @@ public enum StorageConfig {
         yamlSource.getInt("storage.http.file-download-chunk-size").orElseThrow();
     this.sendUploadProgressInterval =
         yamlSource.getInt("storage.http.send-upload-progress-interval").orElseThrow();
-    this.userDataBucketName =
-        yamlSource.getString("storage.repository.user-data-bucket.name").orElseThrow();
     this.defaultStorageLimit =
         yamlSource.getLong("storage.quotas.default-storage-limit").orElseThrow();
     this.jwtTokenExpirationSec =
         yamlSource.getInt("storage.auth.jwt-token-expiration-sec").orElseThrow();
 
     this.jwtSecretKey =
-        envSource.getString("jwt.secret.key").orElseThrow(); // TODO: оставить здесь?
+        envSource.getString("jwt.secret.key").orElseThrow();
   }
 
   public long getDefaultStorageLimit() {
@@ -69,10 +66,5 @@ public enum StorageConfig {
 
   public int getSendUploadProgressInterval() {
     return sendUploadProgressInterval;
-  }
-
-  public String getUserDataBucketName() {
-    // TODO: in Minio
-    return userDataBucketName;
   }
 }

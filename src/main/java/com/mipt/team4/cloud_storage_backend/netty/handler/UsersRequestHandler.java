@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
@@ -37,6 +38,7 @@ public record UsersRequestHandler(UserController userController) {
       return;
     }
 
+    // TODO: шо не так...................................................... (дто в маппер??)
     ObjectNode rootNode =
         ResponseHelper.createJsonResponseNode(
             HttpResponseStatus.CREATED, true, "Account created successfully.");

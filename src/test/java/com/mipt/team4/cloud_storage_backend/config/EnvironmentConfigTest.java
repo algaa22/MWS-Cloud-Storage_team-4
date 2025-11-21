@@ -16,8 +16,6 @@ public final class EnvironmentConfigTest {
     source = new EnvironmentConfigSource("config/test.env");
   }
 
-  // TODO: дублирование убрать
-
   @Test
   void shouldGetEnvVar() {
     Optional<String> value = source.getString("USER");

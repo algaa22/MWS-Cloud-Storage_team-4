@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 
 public enum MinioConfig {
   INSTANCE;
@@ -9,13 +10,18 @@ public enum MinioConfig {
   private final String url;
   private final String username;
   private final String password;
+  private final String userDataBucketName;
 
   MinioConfig() {
-    ConfigSource source = new EnvironmentConfigSource();
+    ConfigSource envSource = new EnvironmentConfigSource();
+    YamlConfigSource yamlSource = new YamlConfigSource("config.yml");
 
-    this.url = source.getString("minio.url").orElseThrow();
-    this.username = source.getString("minio.username").orElseThrow();
-    this.password = source.getString("minio.password").orElseThrow();
+    this.url = envSource.getString("minio.url").orElseThrow();
+    this.username = envSource.getString("minio.username").orElseThrow();
+    this.password = envSource.getString("minio.password").orElseThrow();
+
+    this.userDataBucketName =
+        yamlSource.getString("storage.repository.user-data-bucket.name").orElseThrow();
   }
 
   public String getUrl() {
@@ -28,5 +34,9 @@ public enum MinioConfig {
 
   public String getPassword() {
     return password;
+  }
+
+  public String getUserDataBucketName() {
+    return userDataBucketName;
   }
 }

@@ -58,23 +58,19 @@ public class FileController {
           StorageFileNotFoundException,
           StorageIllegalAccessException {
     fileChunkRequest.validate();
-    // TODO: Передавать DTO
-    return service.getFileChunk(
-        fileChunkRequest.fileId(), fileChunkRequest.chunkIndex(), fileChunkRequest.chunkSize());
+    return service.getFileChunk(fileChunkRequest);
   }
 
   public List<String> getFilePathsList(GetFilePathsListDto filePathsListRequest)
       throws ValidationFailedException, UserNotFoundException {
     filePathsListRequest.validate();
-    // TODO: Передавать DTO
-    return service.getFilePathsList(filePathsListRequest.userToken());
+    return service.getFilePathsList(filePathsListRequest);
   }
 
   public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
       throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
     fileInfoRequest.validate();
-    // TODO: Передавать DTO
-    return service.getFileInfo(fileInfoRequest.userToken(), fileInfoRequest.path());
+    return service.getFileInfo(fileInfoRequest);
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
@@ -84,12 +80,17 @@ public class FileController {
           StorageFileNotFoundException,
           FileNotFoundException {
     deleteFileRequest.validate();
-    service.deleteFile(deleteFileRequest.userToken(), deleteFileRequest.path()); // TODO: в дто
+    service.deleteFile(deleteFileRequest);
   }
 
   public void uploadFile(FileUploadDto fileUploadRequest)
       throws StorageFileAlreadyExistsException, ValidationFailedException, UserNotFoundException {
     fileUploadRequest.validate();
     service.uploadFile(fileUploadRequest);
+  }
+
+  public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadataRequest) throws ValidationFailedException {
+    changeFileMetadataRequest.validate();
+    service.changeFileMetadata(changeFileMetadataRequest);
   }
 }

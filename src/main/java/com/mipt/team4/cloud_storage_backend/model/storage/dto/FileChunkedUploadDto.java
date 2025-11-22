@@ -15,7 +15,6 @@ public record FileChunkedUploadDto(
     List<String> tags) {
 
   public void validate() throws ValidationFailedException {
-    // TODO: доделать валидацию
     ValidationResult result =
         Validators.all(
             Validators.notBlank("Session ID", sessionId),

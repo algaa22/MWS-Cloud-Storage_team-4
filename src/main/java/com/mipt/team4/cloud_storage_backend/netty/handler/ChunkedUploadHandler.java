@@ -12,12 +12,14 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
@@ -53,7 +55,7 @@ public class ChunkedUploadHandler {
 
     try {
       parseUploadRequestMetadata(request);
-    } catch (QueryParameterNotFoundException | HeaderNotFoundException e) {
+    } catch (QueryParameterNotFoundException | HeaderNotFoundException | ParseException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
@@ -173,14 +175,16 @@ public class ChunkedUploadHandler {
   }
 
   private void parseUploadRequestMetadata(HttpRequest request)
-      throws QueryParameterNotFoundException, HeaderNotFoundException {
+      throws QueryParameterNotFoundException, HeaderNotFoundException, ParseException {
     currentSessionId = UUID.randomUUID().toString();
-    // TODO: парсинг метаданных пользователя, аутентификация
-    currentUserToken = "";
-    currentFilePath = RequestUtils.getRequiredQueryParam(request, "File path");
+    currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
-    totalFileSize = Long.parseLong(RequestUtils.getRequiredHeader(request, "X-File-Size"));
-    totalChunks = Integer.parseInt(RequestUtils.getRequiredHeader(request, "X-Total-Chunks"));
+    totalFileSize =
+        SafeParser.parseLong("File size", RequestUtils.getRequiredHeader(request, "X-File-Size"));
+    totalChunks =
+        SafeParser.parseInt(
+            "Total chunks", RequestUtils.getRequiredHeader(request, "X-Total-Chunks"));
   }
 
   private void sendSuccessResponse(ChannelHandlerContext ctx, String filePath, long totalFileSize) {
@@ -205,16 +209,5 @@ public class ChunkedUploadHandler {
     json.put("sessionId", currentSessionId);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
-  }
-
-  private void handleMissingFilePart(ChannelHandlerContext ctx, MissingFilePartException e) {
-    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-    cleanup();
-  }
-
-  private void handleFileAlreadyExists(ChannelHandlerContext ctx, String filePath) {
-    ResponseHelper.sendErrorResponse(
-        ctx, HttpResponseStatus.BAD_REQUEST, "File " + filePath + " already exists");
-    cleanup();
   }
 }

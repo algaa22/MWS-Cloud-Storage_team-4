@@ -4,9 +4,19 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.NumberComparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public class Validators {
+  public static ValidationResult any(
+      String groupName, String message, ValidationResult... results) {
+    for (ValidationResult result : results) {
+      if (result.isValid()) return ValidationResult.valid();
+    }
+
+    return new ValidationResult(false, List.of(new ValidationError(groupName, message)));
+  }
+
   public static ValidationResult all(ValidationResult... results) {
     ValidationResult combined = ValidationResult.valid();
 
@@ -69,6 +79,10 @@ public class Validators {
         value != null && value.length() >= minLength,
         field + " must contain at least " + minLength + " characters",
         "MIN_LENGTH_" + minLength);
+  }
+
+  public static ValidationResult isEmail(String email) {
+    return pattern("Email", email, "");
   }
 
   public static ValidationResult pattern(String field, String value, String regex) {
@@ -144,9 +158,13 @@ public class Validators {
     return validate(condition, field, message, null);
   }
 
+  public static ValidationResult validate(boolean condition, String field) {
+    return validate(condition, field, null, null);
+  }
+
   public static ValidationResult validate(
       boolean condition, String field, String message, String code) {
-    if (!condition) return ValidationResult.error(field, message);
+    if (!condition) return ValidationResult.error(field, message, code);
 
     return ValidationResult.valid();
   }

@@ -68,8 +68,10 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       else {
         if (method.equals(HttpMethod.DELETE))
           filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userToken);
+        else if (method.equals(HttpMethod.GET))
+          filesRequestHandler.handleDownloadFileRequest(ctx, filePath, userToken);
         else if (method.equals(HttpMethod.POST))
-          filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
+        filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
         else if (method.equals(HttpMethod.PUT))
           filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, filePath, userToken);
         else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);

@@ -32,10 +32,7 @@ public record FilesRequestHandler(FileController fileController) {
 
     try {
       paths = fileController.getFilePathsList(new GetFilePathsListDto(userToken));
-    } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
-      return;
-    } catch (UserNotFoundException e) {
+    } catch (ValidationFailedException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
@@ -63,10 +60,7 @@ public record FilesRequestHandler(FileController fileController) {
 
     try {
       fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
-    } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
-      return;
-    } catch (StorageFileNotFoundException | UserNotFoundException e) {
+    } catch (ValidationFailedException | StorageFileNotFoundException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
@@ -107,7 +101,7 @@ public record FilesRequestHandler(FileController fileController) {
               SafeParser.parseBoolean(
                   "File visibility", RequestUtils.getHeader(request, "X-File-Visibility", null)));
     } catch (ParseException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -119,7 +113,7 @@ public record FilesRequestHandler(FileController fileController) {
       fileController.changeFileMetadata(
           new ChangeFileMetadataDto(userToken, filePath, fileVisibility, fileTags));
     } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -162,5 +156,19 @@ public record FilesRequestHandler(FileController fileController) {
     }
 
     ResponseHelper.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
+  }
+
+  public void handleDownloadFileRequest(
+      ChannelHandlerContext ctx, String filePath, String userToken) {
+    FileDownloadDto fileDownload;
+
+    try {
+      fileDownload = fileController.downloadFile(new SimpleFileOperationDto(userToken, filePath));
+    } catch (UserNotFoundException | StorageIllegalAccessException | ValidationFailedException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    ResponseHelper.sendBinaryResponse(ctx, fileDownload.mimeType(), fileDownload.data());
   }
 }

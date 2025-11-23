@@ -11,7 +11,6 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.SessionService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -111,10 +110,10 @@ public class FileService {
     fileRepository.addFile(entity, data);
   }
 
-  public InputStream downloadFile(String userToken, String path) throws StorageIllegalAccessException, UserNotFoundException {
-    UUID userId = sessionService.extractUserIdFromToken(userToken);
+  public FileDownloadDto downloadFile(SimpleFileOperationDto fileDownload) throws StorageIllegalAccessException, UserNotFoundException {
+    UUID userId = sessionService.extractUserIdFromToken(fileDownload.userToken());
 
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, path);
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, fileDownload.path());
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
     checkFileAccess(userId, entity);
 

@@ -61,7 +61,7 @@ public class ChunkedDownloadHandler {
           fileController.getFileDownloadInfo(
               new SimpleFileOperationDto(currentFilePath, currentUserToken));
     } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       cleanup();
       return;
     }

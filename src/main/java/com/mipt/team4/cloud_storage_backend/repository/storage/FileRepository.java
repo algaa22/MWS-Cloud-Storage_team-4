@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.io.FileNotFoundException;
@@ -16,9 +17,9 @@ public class FileRepository {
   FileMetadataRepository metadataRepository;
   FileContentRepository contentRepository;
 
-  public FileRepository(PostgresConnection postgresConnection) {
+  public FileRepository(PostgresConnection postgresConnection, String minioUrl) {
     metadataRepository = new PostgresFileMetadataRepository(postgresConnection);
-    contentRepository = new MinioContentRepository();
+    contentRepository = new MinioContentRepository(minioUrl);
   }
 
   public void addFile(FileEntity fileEntity, byte[] data) throws StorageFileAlreadyExistsException {
@@ -57,7 +58,7 @@ public class FileRepository {
     contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
   }
 
-  public InputStream downloadFile(String storagePath) {
+  public FileDownloadDto downloadFile(String storagePath) {
     return contentRepository.downloadFile(storagePath);
   }
 

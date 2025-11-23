@@ -69,10 +69,8 @@ public class ChunkedUploadHandler {
               totalChunks,
               currentFilePath,
               currentFileTags));
-    } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
-      cleanup();
-    } catch (StorageFileAlreadyExistsException
+    } catch (ValidationFailedException
+        | StorageFileAlreadyExistsException
         | StorageIllegalAccessException
         | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
@@ -143,7 +141,7 @@ public class ChunkedUploadHandler {
       fileController.processFileChunk(
           new FileChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
     } catch (ValidationFailedException e) {
-      ResponseHelper.sendValidationErrorResponse(ctx, e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 

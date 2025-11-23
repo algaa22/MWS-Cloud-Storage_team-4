@@ -22,15 +22,15 @@ import java.util.concurrent.ExecutionException;
 public class MinioContentRepository implements FileContentRepository {
   private MinioAsyncClient minioClient;
 
-  public MinioContentRepository() {
-    initialize();
+  public MinioContentRepository(String minioUrl) {
+    initialize(minioUrl);
   }
 
-  private void initialize() {
+  private void initialize(String minioUrl) {
     try {
       minioClient =
           MinioAsyncClient.builder()
-              .endpoint(MinioConfig.INSTANCE.getUrl())
+              .endpoint(minioUrl)
               .credentials(MinioConfig.INSTANCE.getUsername(), MinioConfig.INSTANCE.getPassword())
               .build();
     } catch (Exception e) {

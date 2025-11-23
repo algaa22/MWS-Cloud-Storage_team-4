@@ -13,7 +13,7 @@ public enum MinioConfig {
   private final String userDataBucketName;
 
   MinioConfig() {
-    ConfigSource envSource = new EnvironmentConfigSource();
+    ConfigSource envSource = new EnvironmentConfigSource(".env");
     YamlConfigSource yamlSource = new YamlConfigSource("config.yml");
 
     this.url = envSource.getString("minio.url").orElseThrow();

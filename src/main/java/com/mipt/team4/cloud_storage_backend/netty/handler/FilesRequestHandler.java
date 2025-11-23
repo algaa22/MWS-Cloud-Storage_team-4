@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Optional;
 
 public record FilesRequestHandler(FileController fileController) {
+  // TODO: параметры vs заголовки
+
   public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, String userToken) {
     List<String> paths;
 

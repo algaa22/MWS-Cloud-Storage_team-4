@@ -19,78 +19,93 @@ public class FileController {
     this.service = service;
   }
 
-  public void startChunkedUpload(FileChunkedUploadDto chunkedUploadRequest)
+  public void startChunkedUpload(FileChunkedUploadDto request)
       throws ValidationFailedException,
           StorageFileAlreadyExistsException,
           StorageIllegalAccessException,
           UserNotFoundException {
-    chunkedUploadRequest.validate();
-    service.startChunkedUploadSession(chunkedUploadRequest);
+    request.validate();
+    service.startChunkedUploadSession(request);
   }
 
-  public void processFileChunk(FileChunkDto fileChunk) throws ValidationFailedException {
-    fileChunk.validate();
-    service.processChunk(fileChunk);
+  public void processFileChunk(FileChunkDto request) throws ValidationFailedException {
+    request.validate();
+    service.processChunk(request);
   }
 
-  public void completeChunkedUpload(String sessionId)
+  public void completeChunkedUpload(String request)
       throws MissingFilePartException,
           ValidationFailedException,
           StorageFileAlreadyExistsException,
           UserNotFoundException {
-    Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));
+    Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", request));
 
-    service.completeChunkedUpload(sessionId);
+    service.completeChunkedUpload(request);
   }
 
-  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo)
+  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto request)
       throws ValidationFailedException,
           UserNotFoundException,
           StorageFileNotFoundException,
           StorageIllegalAccessException {
-    fileInfo.validate();
-    return service.getFileDownloadInfo(fileInfo);
+    request.validate();
+    return service.getFileDownloadInfo(request);
   }
 
-  public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
+  public FileChunkDto getFileChunk(GetFileChunkDto request)
       throws ValidationFailedException,
           UserNotFoundException,
           StorageFileNotFoundException,
           StorageIllegalAccessException {
-    fileChunkRequest.validate();
-    return service.getFileChunk(fileChunkRequest);
+    request.validate();
+    return service.getFileChunk(request);
   }
 
-  public List<String> getFilePathsList(GetFilePathsListDto filePathsListRequest)
+  public List<String> getFilePathsList(GetFilePathsListDto request)
       throws ValidationFailedException, UserNotFoundException {
-    filePathsListRequest.validate();
-    return service.getFilePathsList(filePathsListRequest);
+    request.validate();
+    return service.getFilePathsList(request);
   }
 
-  public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
+  public FileDto getFileInfo(SimpleFileOperationDto request)
       throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
-    fileInfoRequest.validate();
-    return service.getFileInfo(fileInfoRequest);
+    request.validate();
+    return service.getFileInfo(request);
   }
 
-  public void deleteFile(SimpleFileOperationDto deleteFileRequest)
+  public void deleteFile(SimpleFileOperationDto request)
       throws ValidationFailedException,
           StorageIllegalAccessException,
           UserNotFoundException,
           StorageFileNotFoundException,
           FileNotFoundException {
-    deleteFileRequest.validate();
-    service.deleteFile(deleteFileRequest);
+    request.validate();
+    service.deleteFile(request);
   }
 
-  public void uploadFile(FileUploadDto fileUploadRequest)
+  public void uploadFile(FileUploadDto request)
       throws StorageFileAlreadyExistsException, ValidationFailedException, UserNotFoundException {
-    fileUploadRequest.validate();
-    service.uploadFile(fileUploadRequest);
+    request.validate();
+    service.uploadFile(request);
   }
 
-  public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadataRequest) throws ValidationFailedException {
-    changeFileMetadataRequest.validate();
-    service.changeFileMetadata(changeFileMetadataRequest);
+  public void changeFileMetadata(ChangeFileMetadataDto request) throws ValidationFailedException {
+    request.validate();
+    service.changeFileMetadata(request);
+  }
+
+  public void createFolder(SimpleFolderOperationDto request) throws ValidationFailedException {
+    request.validate();
+    service.createFolder(request);
+  }
+
+  public void changeFolderPath(ChangeFolderPathDto request) throws ValidationFailedException {
+    request.validate();
+    service.changeFolderPath(request);
+  }
+
+  public void deleteFolder(SimpleFolderOperationDto request) throws ValidationFailedException {
+    request.validate();
+    service.deleteFolder(request);
   }
 }

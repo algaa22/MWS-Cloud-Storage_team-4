@@ -20,21 +20,21 @@ public class UserController {
     this.service = service;
   }
 
-  public String registerUser(RegisterRequestDto registerRequest)
+  public String registerUser(RegisterRequestDto request)
       throws ValidationFailedException, UserAlreadyExistsException {
-    registerRequest.validate();
-    return service.registerUser(registerRequest);
+    request.validate();
+    return service.registerUser(request);
   }
 
-  public String loginUser(LoginRequestDto loginRequest)
+  public String loginUser(LoginRequestDto request)
       throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException {
-    loginRequest.validate();
-    return service.loginUser(loginRequest);
+    request.validate();
+    return service.loginUser(request);
   }
 
-  public void logoutUser(LogoutRequestDto logoutRequest)
+  public void logoutUser(LogoutRequestDto request)
       throws ValidationFailedException, UserNotFoundException, InvalidSessionException {
-    logoutRequest.validate();
-    service.logoutUser(logoutRequest);
+    request.validate();
+    service.logoutUser(request);
   }
 }

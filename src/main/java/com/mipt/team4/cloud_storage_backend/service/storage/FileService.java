@@ -168,6 +168,18 @@ public class FileService {
     // TODO
   }
 
+  public void createFolder(SimpleFolderOperationDto createFolder) {
+    // TODO
+  }
+
+  public void changeFolderPath(ChangeFolderPathDto changeFolder) {
+    // TODO
+  }
+
+  public void deleteFolder(SimpleFolderOperationDto request) {
+    // TODO
+  }
+
   private static class ChunkedUploadState {
     final FileChunkedUploadDto session;
     final Map<Integer, CompletableFuture<String>> eTags = new HashMap<>();

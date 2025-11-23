@@ -61,7 +61,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         return;
       }
 
-      // TODO: экранировать /
+      // TODO: экранировать /, проверка на uri.length
 
       if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET))
         filesRequestHandler.handleGetFileInfoRequest(ctx, filePath, userToken);
@@ -80,25 +80,17 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   private void handleFoldersRequest(ChannelHandlerContext ctx, HttpRequest request) {
     String userToken = extractUserTokenFromRequest(request);
 
-    if (uri.equals("/api/folders") && method.equals(HttpMethod.POST))
-      foldersRequestHandler.handleCreateFolderRequest(ctx, userToken);
+    if (uri.startsWith("/api/folders/") && method.equals(HttpMethod.POST))
+      foldersRequestHandler.handleChangeFolderPathRequest(ctx, request, userToken);
     else {
       String[] uriPaths = uri.split("/");
-      String folderId = uriPaths[uriPaths.length - 1];
+      String folderPath = uriPaths[uriPaths.length - 1];
 
-      if (uri.startsWith("/api/folders/move/") && method.equals(HttpMethod.POST))
-        foldersRequestHandler.handleMoveFolderRequest(ctx, folderId, userToken);
-      else if (uri.length() == 4) {
-        if (method.equals(HttpMethod.GET))
-          foldersRequestHandler.handleGetFolderContentRequest(ctx, folderId, userToken);
-        else if (method.equals(HttpMethod.PUT))
-          foldersRequestHandler.handleRenameFolderRequest(ctx, folderId, userToken);
-        else if (method.equals(HttpMethod.DELETE))
-          foldersRequestHandler.handleDeleteFolderRequest(ctx, folderId, userToken);
-        else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
-      } else {
-        ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
-      }
+      if (uri.equals("/api/folders") && method.equals(HttpMethod.POST))
+        foldersRequestHandler.handleCreateFolderRequest(ctx, folderPath, userToken);
+      else if (method.equals(HttpMethod.DELETE))
+        foldersRequestHandler.handleDeleteFolderRequest(ctx, folderPath, userToken);
+      else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }
 

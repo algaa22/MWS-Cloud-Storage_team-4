@@ -66,8 +66,6 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
                     rs.getBoolean("is_deleted"),
                     FileTagsMapper.toList(rs.getString("tags"))));
 
-    if (result.isEmpty()) return Optional.empty();
-
     return Optional.ofNullable(result.getFirst());
   }
 

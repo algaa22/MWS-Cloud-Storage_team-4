@@ -158,13 +158,18 @@ public record FilesRequestHandler(FileController fileController) {
     ResponseHelper.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
   }
 
+  // TODO: выбор метода скачивания
+
   public void handleDownloadFileRequest(
       ChannelHandlerContext ctx, String filePath, String userToken) {
     FileDownloadDto fileDownload;
 
     try {
       fileDownload = fileController.downloadFile(new SimpleFileOperationDto(userToken, filePath));
-    } catch (UserNotFoundException | StorageIllegalAccessException | ValidationFailedException e) {
+    } catch (UserNotFoundException
+        | StorageIllegalAccessException
+        | ValidationFailedException
+        | FileNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }

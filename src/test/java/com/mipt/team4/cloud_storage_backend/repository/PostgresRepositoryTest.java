@@ -28,6 +28,8 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   private static PostgresConnection postgresConnection;
   private static UUID testUserUuid;
 
+  // TODO: dodelat
+
   @BeforeAll
   protected static void beforeAll() {
     BasePostgresTest.beforeAll();

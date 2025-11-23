@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.io.FileNotFoundException;
@@ -58,7 +59,8 @@ public class FileRepository {
     contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
   }
 
-  public FileDownloadDto downloadFile(String storagePath) {
+  public byte[] downloadFile(String storagePath)
+      throws FileNotFoundException {
     return contentRepository.downloadFile(storagePath);
   }
 

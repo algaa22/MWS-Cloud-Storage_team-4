@@ -35,7 +35,8 @@ public class FileService {
     return "application/octet-stream";
   }
 
-  public void startChunkedUploadSession(FileChunkedUploadDto session) throws UserNotFoundException, StorageFileAlreadyExistsException {
+  public void startChunkedUploadSession(FileChunkedUploadDto session)
+      throws UserNotFoundException, StorageFileAlreadyExistsException {
     // TODO: разделить session'ы на юзеровский и файловский
     UUID userId = sessionService.extractUserIdFromToken(session.userToken());
 
@@ -44,8 +45,7 @@ public class FileService {
     String path = session.path();
     Optional<FileEntity> fileEntity = fileRepository.getFile(userId, path);
 
-    if (fileEntity.isPresent())
-      throw new StorageFileAlreadyExistsException(userId, path);
+    if (fileEntity.isPresent()) throw new StorageFileAlreadyExistsException(userId, path);
 
     activeUploads.put(session.sessionId(), new ChunkedUploadState(session));
   }
@@ -60,7 +60,8 @@ public class FileService {
     upload.eTags.put(partNum, etag);
   }
 
-  public void completeChunkedUpload(String sessionId) throws StorageFileAlreadyExistsException, UserNotFoundException {
+  public void completeChunkedUpload(String sessionId)
+      throws StorageFileAlreadyExistsException, UserNotFoundException {
     ChunkedUploadState upload = activeUploads.remove(sessionId);
     if (upload == null) throw new RuntimeException("No such upload session!");
 
@@ -88,7 +89,8 @@ public class FileService {
     fileRepository.completeMultipartUpload(fileEntity, upload.uploadId, upload.eTags);
   }
 
-  public void uploadFile(FileUploadDto fileUploadRequest) throws StorageFileAlreadyExistsException, UserNotFoundException {
+  public void uploadFile(FileUploadDto fileUploadRequest)
+      throws StorageFileAlreadyExistsException, UserNotFoundException {
     UUID fileId = UUID.randomUUID();
     UUID userId = sessionService.extractUserIdFromToken(fileUploadRequest.userToken());
 
@@ -110,17 +112,25 @@ public class FileService {
     fileRepository.addFile(entity, data);
   }
 
-  public FileDownloadDto downloadFile(SimpleFileOperationDto fileDownload) throws StorageIllegalAccessException, UserNotFoundException {
+  public FileDownloadDto downloadFile(SimpleFileOperationDto fileDownload)
+      throws StorageIllegalAccessException, UserNotFoundException, FileNotFoundException {
     UUID userId = sessionService.extractUserIdFromToken(fileDownload.userToken());
 
     Optional<FileEntity> entityOpt = fileRepository.getFile(userId, fileDownload.path());
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
     checkFileAccess(userId, entity);
 
-    return fileRepository.downloadFile(entity.getS3Key());
+    return new FileDownloadDto(
+        fileDownload.path(),
+        entityOpt.get().getMimeType(),
+        fileRepository.downloadFile(entity.getS3Key()));
   }
 
-  public void deleteFile(SimpleFileOperationDto deleteFileRequest) throws StorageIllegalAccessException, UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
+  public void deleteFile(SimpleFileOperationDto deleteFileRequest)
+      throws StorageIllegalAccessException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          FileNotFoundException {
     UUID userUuid = sessionService.extractUserIdFromToken(deleteFileRequest.userToken());
     Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, deleteFileRequest.path());
     FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
@@ -136,31 +146,36 @@ public class FileService {
     }
   }
 
-  //TODO: переделать
+  // TODO: переделать
   public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest) {
     return null;
   }
 
-  public List<String> getFilePathsList(GetFilePathsListDto filePathsRequest) throws UserNotFoundException {
+  public List<String> getFilePathsList(GetFilePathsListDto filePathsRequest)
+      throws UserNotFoundException {
     UUID userUuid = sessionService.extractUserIdFromToken(filePathsRequest.userToken());
     return fileRepository.getFilePathsList(userUuid);
   }
 
-  public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest) throws UserNotFoundException, StorageFileNotFoundException {
+  public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
+      throws UserNotFoundException, StorageFileNotFoundException {
     UUID userUuid = sessionService.extractUserIdFromToken(fileInfoRequest.userToken());
     String s3Key = StoragePaths.getS3Key(userUuid, fileInfoRequest.path());
     Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, s3Key);
-    if(entityOpt.isEmpty()) throw new StorageFileNotFoundException(fileInfoRequest.path());
+    if (entityOpt.isEmpty()) throw new StorageFileNotFoundException(fileInfoRequest.path());
     return FileMapper.toDto(entityOpt.get());
   }
 
-  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo) throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
+  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo)
+      throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
     UUID userUuid = sessionService.extractUserIdFromToken(fileInfo.userToken());
     Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, fileInfo.path());
-    FileEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileInfo.path()));
+    FileEntity entity =
+        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileInfo.path()));
     checkFileAccess(userUuid, entity);
 
-    return new FileChunkedDownloadDto(entity.getFileId(), fileInfo.path(), entity.getMimeType(), entity.getSize());
+    return new FileChunkedDownloadDto(
+        entity.getFileId(), fileInfo.path(), entity.getMimeType(), entity.getSize());
   }
 
   public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadata) {

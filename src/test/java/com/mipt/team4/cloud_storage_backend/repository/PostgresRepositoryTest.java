@@ -7,18 +7,20 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateEx
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
-import com.mipt.team4.cloud_storage_backend.repository.database.AbstractPostgresTest;
+import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class PostgresRepositoryTest extends AbstractPostgresTest {
+public class PostgresRepositoryTest extends BasePostgresTest {
   private static final String UNEXPECTED_DB_EXCEPTION_MESSAGE =
       "Database exception should not be thrown";
 
@@ -28,9 +30,9 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
 
   @BeforeAll
   protected static void beforeAll() {
-    AbstractPostgresTest.beforeAll();
+    BasePostgresTest.beforeAll();
 
-    postgresConnection = createConnection();
+    postgresConnection = TestUtils.createConnection(postgresContainer);
     fileMetadataRepository = new PostgresFileMetadataRepository(postgresConnection);
 
     addTestUser();
@@ -38,7 +40,7 @@ public class PostgresRepositoryTest extends AbstractPostgresTest {
 
   @AfterAll
   protected static void afterAll() {
-    AbstractPostgresTest.afterAll();
+    BasePostgresTest.afterAll();
 
     postgresConnection.disconnect();
   }

@@ -14,12 +14,12 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStarte
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
-import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
@@ -40,10 +40,8 @@ public class ChunkedUploadHandler {
   private String currentSessionId;
   private String currentUserToken;
   private String currentFilePath;
-  private long totalFileSize;
   private long receivedBytes = 0;
   private int receivedChunks = 0;
-  private int totalChunks;
 
   public ChunkedUploadHandler(FileController fileController) {
     this.fileController = fileController;
@@ -65,8 +63,6 @@ public class ChunkedUploadHandler {
           new FileChunkedUploadDto(
               currentSessionId,
               currentUserToken,
-              totalFileSize,
-              totalChunks,
               currentFilePath,
               currentFileTags));
     } catch (ValidationFailedException
@@ -84,47 +80,13 @@ public class ChunkedUploadHandler {
 
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Started chunked upload. Session: {}, user: {}, file: {}, size: {}, chunks: {}",
+          "Started chunked upload. Session: {}, user: {}, file: {}",
           currentSessionId,
           currentUserToken,
-          currentFilePath,
-          totalFileSize,
-          totalChunks);
+          currentFilePath);
     }
 
     sendProgressResponse(ctx, "upload_started");
-  }
-
-  public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
-      throws TransferNotStartedYetException {
-    if (!isInProgress) throw new TransferNotStartedYetException();
-
-    if (content.content().readableBytes() > 0) handleFileChunk(ctx, content);
-
-    try {
-      fileController.completeChunkedUpload(currentSessionId);
-    } catch (UserNotFoundException
-        | StorageFileAlreadyExistsException
-        | ValidationFailedException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      cleanup();
-      return;
-    } catch (MissingFilePartException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, e);
-      cleanup();
-      return;
-    }
-
-    if (logger.isDebugEnabled())
-      logger.debug(
-          "Completed chunk upload. Session: {}, newPath: {}, chunks: {}, bytes: {}",
-          currentSessionId,
-          currentFilePath,
-          receivedChunks,
-          receivedBytes);
-
-    sendSuccessResponse(ctx, currentFilePath, totalFileSize);
-    cleanup();
   }
 
   public void handleFileChunk(ChannelHandlerContext ctx, HttpContent content)
@@ -149,15 +111,46 @@ public class ChunkedUploadHandler {
     receivedBytes += chunkSize;
 
     logger.debug(
-        "Processed chunk {}/{} for session: {}. Size: {} bytes, total: {} bytes",
+        "Processed chunk {} for session: {}. Size: {} bytes, total: {} bytes",
         receivedChunks,
-        totalChunks,
         currentSessionId,
-        chunkSize,
-        totalFileSize);
+        chunkSize);
 
-    if (receivedChunks % StorageConfig.INSTANCE.getSendUploadProgressInterval() == 0
-        || receivedChunks == totalChunks) sendProgressResponse(ctx, "upload_progress");
+    if (receivedChunks % StorageConfig.INSTANCE.getSendUploadProgressInterval() == 0) sendProgressResponse(ctx, "upload_progress");
+  }
+
+  public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
+          throws TransferNotStartedYetException {
+    if (!isInProgress) throw new TransferNotStartedYetException();
+
+    if (content.content().readableBytes() > 0) handleFileChunk(ctx, content);
+
+    ChunkedUploadFileResultDto result;
+
+    try {
+      result = fileController.completeChunkedUpload(currentSessionId);
+    } catch (UserNotFoundException
+             | StorageFileAlreadyExistsException
+             | ValidationFailedException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      cleanup();
+      return;
+    } catch (MissingFilePartException e) {
+      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, e);
+      cleanup();
+      return;
+    }
+
+    if (logger.isDebugEnabled())
+      logger.debug(
+              "Completed chunk upload. Session: {}, newPath: {}, chunks: {}, bytes: {}",
+              currentSessionId,
+              currentFilePath,
+              receivedChunks,
+              receivedBytes);
+
+    sendSuccessResponse(ctx, currentFilePath, result.fileSize(), result.totalChunks());
+    cleanup();
   }
 
   public void cleanup() {
@@ -166,32 +159,26 @@ public class ChunkedUploadHandler {
     currentUserToken = null;
     currentFilePath = null;
     currentFileTags = null;
-    totalFileSize = 0;
     receivedBytes = 0;
     receivedChunks = 0;
-    totalChunks = 0;
   }
 
   private void parseUploadRequestMetadata(HttpRequest request)
       throws QueryParameterNotFoundException, HeaderNotFoundException, ParseException {
     currentSessionId = UUID.randomUUID().toString();
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-    currentFilePath = RequestUtils.getRequiredQueryParam(request, "newPath");
+    currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
-    totalFileSize =
-        SafeParser.parseLong("File size", RequestUtils.getRequiredHeader(request, "X-File-Size"));
-    totalChunks =
-        SafeParser.parseInt(
-            "Total chunks", RequestUtils.getRequiredHeader(request, "X-Total-Chunks"));
   }
 
-  private void sendSuccessResponse(ChannelHandlerContext ctx, String filePath, long totalFileSize) {
+  private void sendSuccessResponse(ChannelHandlerContext ctx, String filePath, long fileSize, long totalChunks) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
     json.put("newPath", filePath);
-    json.put("fileSize", totalFileSize);
+    json.put("fileSize", fileSize);
+    json.put("totalChunks", totalChunks);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
   }
@@ -202,7 +189,6 @@ public class ChunkedUploadHandler {
 
     json.put("status", status);
     json.put("currentChunk", receivedChunks);
-    json.put("totalChunks", totalChunks);
     json.put("bytesReceived", receivedBytes);
     json.put("sessionId", currentSessionId);
 

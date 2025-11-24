@@ -8,7 +8,7 @@ public record SimpleFileOperationDto(String path, String userToken) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.notBlank("File newPath", path), Validators.validToken(userToken));
+            Validators.notBlank("File path", path), Validators.validToken(userToken));
 
     Validators.throwExceptionIfNotValid(result);
   }

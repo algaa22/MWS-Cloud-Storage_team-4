@@ -9,8 +9,6 @@ import java.util.List;
 public record FileChunkedUploadDto(
     String sessionId,
     String userToken,
-    long totalFileSize,
-    int totalChunks,
     String path,
     List<String> tags) {
 
@@ -19,11 +17,7 @@ public record FileChunkedUploadDto(
         Validators.all(
             Validators.notBlank("Session ID", sessionId),
             Validators.validToken(userToken),
-            Validators.notBlank("Path", path),
-            Validators.mustBePositive("Total file size", totalFileSize),
-            Validators.numberMax(
-                "Total file size", totalFileSize, StorageConfig.INSTANCE.getMaxFileSize()),
-            Validators.mustBePositive("Total chunks", totalChunks));
+            Validators.notBlank("Path", path));
 
     Validators.throwExceptionIfNotValid(result);
   }

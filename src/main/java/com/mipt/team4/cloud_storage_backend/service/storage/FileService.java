@@ -41,6 +41,7 @@ public class FileService {
     UUID userId = sessionService.extractUserIdFromToken(session.userToken());
 
     // TODO: если с таким session.sessionId() уже есть сессия в activeUploads?
+    // TODO: проверять, что не превысили лимит
 
     String path = session.path();
     Optional<FileEntity> fileEntity = fileRepository.getFile(userId, path);
@@ -58,15 +59,18 @@ public class FileService {
     CompletableFuture<String> etag =
         fileRepository.uploadPart(uploadId, upload.session.path(), partNum, chunk.chunkData());
     upload.eTags.put(partNum, etag);
+
+    upload.totalChunks++;
+    upload.totalChunks += chunk.chunkData().length;
   }
 
-  public void completeChunkedUpload(String sessionId)
+  public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
       throws StorageFileAlreadyExistsException, UserNotFoundException {
     ChunkedUploadState upload = activeUploads.remove(sessionId);
     if (upload == null) throw new RuntimeException("No such upload session!");
 
     FileChunkedUploadDto session = upload.session;
-    for (int i = 1; i <= session.totalChunks(); i++) {
+    for (int i = 1; i <= upload.totalChunks; i++) {
       if (!upload.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
     }
 
@@ -82,11 +86,13 @@ public class FileService {
             s3Key,
             guessMimeType(session.path()),
             "private",
-            session.totalFileSize(),
+            upload.fileSize,
             false,
             session.tags());
 
     fileRepository.completeMultipartUpload(fileEntity, upload.uploadId, upload.eTags);
+
+    return new ChunkedUploadFileResultDto(session.path(), upload.fileSize, upload.totalChunks);
   }
 
   public void uploadFile(FileUploadDto fileUploadRequest)
@@ -202,7 +208,10 @@ public class FileService {
   private static class ChunkedUploadState {
     final FileChunkedUploadDto session;
     final Map<Integer, CompletableFuture<String>> eTags = new HashMap<>();
+
     CompletableFuture<String> uploadId;
+    int fileSize = 0;
+    int totalChunks = 0;
 
     ChunkedUploadState(FileChunkedUploadDto session) {
       this.session = session;

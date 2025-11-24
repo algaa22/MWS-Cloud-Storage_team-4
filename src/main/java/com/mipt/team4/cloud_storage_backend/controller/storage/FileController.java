@@ -33,14 +33,14 @@ public class FileController {
     service.processChunk(request);
   }
 
-  public void completeChunkedUpload(String request)
+  public ChunkedUploadFileResultDto completeChunkedUpload(String request)
       throws MissingFilePartException,
           ValidationFailedException,
           StorageFileAlreadyExistsException,
           UserNotFoundException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", request));
 
-    service.completeChunkedUpload(request);
+    return service.completeChunkedUpload(request);
   }
 
   public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto request)

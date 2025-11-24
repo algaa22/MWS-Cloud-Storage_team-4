@@ -1,12 +1,16 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage;
 
+import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
+
+import java.io.IOException;
 import java.net.http.HttpRequest;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ChunkedUploadTestUtils {
-  public static List<byte[]> splitFileIntoChunks(byte[] fileData, int maxChunkSize) {
+  private static List<byte[]> splitFileIntoChunks(byte[] fileData, int maxChunkSize) {
+    // TODO: nyzhen?
     List<byte[]> chunks = new ArrayList<>(maxChunkSize);
     int offset = 0;
 
@@ -23,15 +27,15 @@ public class ChunkedUploadTestUtils {
     return chunks;
   }
 
-  public static HttpRequest createChunkedUploadRequest(
-      String userToken, String filePath, long fileSize, int totalChunks, String fileTags) {
+  public static HttpRequest sendUploadRequest(
+      String userToken, String filePath, String fileTags) throws IOException {
+    byte[] fileData = FileLoader.getInputStream(filePath).readAllBytes();
+
     return TestUtils.createRequest("/api/files/upload?path=" + filePath)
         .header("Transfer-Encoding", "chunked")
         .header("X-Auth-Token", userToken)
-        .header("X-File-Size", String.valueOf(fileSize))
-        .header("X-Total-Chunks", String.valueOf(totalChunks))
         .header("X-File-Tags", fileTags)
-        .POST(HttpRequest.BodyPublishers.noBody())
+        .POST(HttpRequest.BodyPublishers.ofByteArray(fileData))
         .build();
   }
 

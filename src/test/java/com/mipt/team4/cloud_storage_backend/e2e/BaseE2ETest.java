@@ -37,9 +37,4 @@ public abstract class BaseE2ETest {
 
     CloudStorageApplication.stop();
   }
-
-  protected static HttpRequest.Builder createRequest(String endpoint) {
-    return HttpRequest.newBuilder()
-        .uri(URI.create("http://localhost:" + NettyConfig.INSTANCE.getPort() + endpoint));
-  }
 }

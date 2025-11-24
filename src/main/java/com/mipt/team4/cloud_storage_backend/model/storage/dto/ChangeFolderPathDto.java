@@ -4,13 +4,13 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record ChangeFolderPathDto(String userToken, String oldFolderPath, String newOlderPath) {
+public record ChangeFolderPathDto(String userToken, String oldFolderPath, String newFolderPath) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
             Validators.validToken(userToken),
             Validators.notBlank("Old folder path", oldFolderPath),
-            Validators.notBlank("New folder path", newOlderPath));
+            Validators.notBlank("New folder path", newFolderPath));
 
     Validators.throwExceptionIfNotValid(result);
   }

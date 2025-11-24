@@ -109,7 +109,7 @@ public class FileController {
     service.deleteFolder(request);
   }
 
-  public FileDownloadDto downloadFile(SimpleFileOperationDto request) throws ValidationFailedException, UserNotFoundException, StorageIllegalAccessException, FileNotFoundException {
+  public FileDownloadDto downloadFile(SimpleFileOperationDto request) throws ValidationFailedException, UserNotFoundException, StorageIllegalAccessException, FileNotFoundException, StorageFileNotFoundException {
     request.validate();
     return service.downloadFile(request);
   }

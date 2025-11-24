@@ -117,7 +117,7 @@ public class ChunkedUploadHandler {
 
     if (logger.isDebugEnabled())
       logger.debug(
-          "Completed chunk upload. Session: {}, path: {}, chunks: {}, bytes: {}",
+          "Completed chunk upload. Session: {}, newPath: {}, chunks: {}, bytes: {}",
           currentSessionId,
           currentFilePath,
           receivedChunks,
@@ -176,7 +176,7 @@ public class ChunkedUploadHandler {
       throws QueryParameterNotFoundException, HeaderNotFoundException, ParseException {
     currentSessionId = UUID.randomUUID().toString();
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-    currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
+    currentFilePath = RequestUtils.getRequiredQueryParam(request, "newPath");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
     totalFileSize =
         SafeParser.parseLong("File size", RequestUtils.getRequiredHeader(request, "X-File-Size"));
@@ -190,7 +190,7 @@ public class ChunkedUploadHandler {
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
-    json.put("path", filePath);
+    json.put("newPath", filePath);
     json.put("fileSize", totalFileSize);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);

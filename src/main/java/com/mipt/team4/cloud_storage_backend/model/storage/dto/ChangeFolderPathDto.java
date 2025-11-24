@@ -9,8 +9,8 @@ public record ChangeFolderPathDto(String userToken, String oldFolderPath, String
     ValidationResult result =
         Validators.all(
             Validators.validToken(userToken),
-            Validators.notBlank("Old folder path", oldFolderPath),
-            Validators.notBlank("New folder path", newOlderPath));
+            Validators.notBlank("Old folder newPath", oldFolderPath),
+            Validators.notBlank("New folder newPath", newOlderPath));
 
     Validators.throwExceptionIfNotValid(result);
   }

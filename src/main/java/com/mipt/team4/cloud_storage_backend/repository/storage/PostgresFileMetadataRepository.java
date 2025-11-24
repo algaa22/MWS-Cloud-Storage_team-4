@@ -22,8 +22,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   @Override
   public void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException {
     if (fileExists(fileEntity.getOwnerId(), fileEntity.getS3Key()))
-      throw new StorageFileAlreadyExistsException(
-          fileEntity.getOwnerId(), fileEntity.getS3Key());
+      throw new StorageFileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getS3Key());
 
     postgres.executeUpdate(
         "INSERT INTO files (owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
@@ -43,8 +42,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     return postgres.executeQuery(
         "SELECT storage_path FROM files WHERE owner_id = ? AND is_deleted = FALSE;",
         List.of(id),
-        rs -> rs.getString("storage_path")
-    );
+        rs -> rs.getString("storage_path"));
   }
 
   @Override
@@ -66,7 +64,9 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
                     rs.getBoolean("is_deleted"),
                     FileTagsMapper.toList(rs.getString("tags"))));
 
-    return Optional.ofNullable(result.getFirst());
+    if (result.isEmpty()) return Optional.empty();
+
+    return Optional.of(result.getFirst());
   }
 
   @Override
@@ -85,9 +85,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
       throw new StorageFileNotFoundException(path);
     }
     postgres.executeUpdate(
-        "UPDATE files SET is_deleted = TRUE WHERE owner_id = ? AND path = ?;",
-        List.of(ownerId, path)
-    );
+        "UPDATE files SET is_deleted = TRUE WHERE owner_id = ? AND newPath = ?;",
+        List.of(ownerId, path));
   }
-
 }

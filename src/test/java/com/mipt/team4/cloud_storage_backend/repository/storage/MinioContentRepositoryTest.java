@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MinioContentRepositoryTest {
     @Test
     public void shouldInitialize() {
-        MinioContentRepository minioContentRepository = new MinioContentRepository();
+    MinioContentRepository minioContentRepository =
+        new MinioContentRepository(MinioConfig.INSTANCE.getUrl());
     }
 }

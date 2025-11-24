@@ -8,17 +8,19 @@ import java.util.Optional;
 
 public record ChangeFileMetadataDto(
     String userToken,
-    Optional<String> path,
+    String oldPath,
+    Optional<String> newPath,
     Optional<Boolean> visibility,
     Optional<List<String>> tags) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
             Validators.validToken(userToken),
+            Validators.notBlank("Old file path", oldPath),
             Validators.any(
                 "File metadata",
-                "One of the fields {path, visibility, tags} must not be null",
-                Validators.validate(path.isPresent() && !path.get().isEmpty(), "File path"),
+                "One of the fields {newPath, visibility, tags} must not be null",
+                Validators.validate(newPath.isPresent() && !newPath.get().isEmpty(), "New file path"),
                 Validators.validate(visibility.isPresent(), "File visibility"),
                 Validators.validate(tags.isPresent() && !tags.get().isEmpty(), "File tags")));
 

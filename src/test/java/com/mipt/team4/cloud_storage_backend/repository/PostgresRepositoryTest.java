@@ -21,9 +21,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public class PostgresRepositoryTest extends BasePostgresTest {
-  private static final String UNEXPECTED_DB_EXCEPTION_MESSAGE =
-      "Database exception should not be thrown";
-
   private static PostgresFileMetadataRepository fileMetadataRepository;
   private static PostgresConnection postgresConnection;
   private static UUID testUserUuid;
@@ -50,90 +47,63 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   // TODO: refactor
 
   @Test
-  void fileExists_ShouldReturnTrue_WhenFileExists() {
+  void fileExists_ShouldReturnTrue_WhenFileExists() throws StorageFileAlreadyExistsException {
     FileEntity testFile = createTestFile();
 
-    try {
-      fileMetadataRepository.addFile(testFile);
+    fileMetadataRepository.addFile(testFile);
 
-      assertTrue(
-          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
-    } catch (StorageFileAlreadyExistsException e) {
-      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
-    }
+    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
   }
 
   @Test
-  void fileExists_ShouldReturnFalse_WhenFileNotFound() {
+  void fileExists_ShouldReturnFalse_WhenFileNotFound() throws StorageFileAlreadyExistsException {
     FileEntity testFile = createTestFile();
 
-    try {
-      assertTrue(
-          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
+    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
 
-      fileMetadataRepository.addFile(testFile);
-    } catch (StorageFileAlreadyExistsException e) {
-      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
-    }
+    fileMetadataRepository.addFile(testFile);
   }
 
   @Test
-  void shouldAddAndGetFile_WithSameContent() {
+  void shouldAddAndGetFile_WithSameContent() throws StorageFileAlreadyExistsException {
     FileEntity testFile = createTestFile();
 
-    try {
-      fileMetadataRepository.addFile(testFile);
+    fileMetadataRepository.addFile(testFile);
 
-      Optional<FileEntity> receivedTestFile =
-          fileMetadataRepository.getFile(testUserUuid, "some/path.xml");
+    Optional<FileEntity> receivedTestFile =
+        fileMetadataRepository.getFile(testUserUuid, "some/newPath.xml");
 
-      assertTrue(receivedTestFile.isPresent());
-      assertTrue(receivedTestFile.get().fullEquals(testFile));
-    } catch (StorageFileAlreadyExistsException e) {
-      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
-    }
+    assertTrue(receivedTestFile.isPresent());
+    assertTrue(receivedTestFile.get().fullEquals(testFile));
   }
 
   @Test
   void shouldReturnNull_WhenGetNonexistentFile() {
-    try {
-      assertFalse(fileMetadataRepository.getFile(testUserUuid, "").isPresent());
-    } catch (DbExecuteQueryException e) {
-      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
-    }
+    assertFalse(fileMetadataRepository.getFile(testUserUuid, "").isPresent());
   }
 
   @Test
-  void shouldThrowException_WhenAddExistentFile() {
+  void shouldThrowException_WhenAddExistentFile() throws StorageFileAlreadyExistsException {
     FileEntity file = createTestFile();
 
-    try {
-      fileMetadataRepository.addFile(file);
-    } catch (StorageFileAlreadyExistsException e) {
-      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
-    }
+    fileMetadataRepository.addFile(file);
 
     assertThrows(
         StorageFileAlreadyExistsException.class, () -> fileMetadataRepository.addFile(file));
   }
 
   @Test
-  void shouldAddAndDeleteFile_WithSameId() {
+  void shouldAddAndDeleteFile_WithSameId()
+      throws StorageFileAlreadyExistsException, StorageFileNotFoundException {
     FileEntity testFile = createTestFile();
 
-    try {
-      fileMetadataRepository.addFile(testFile);
+    fileMetadataRepository.addFile(testFile);
 
-      assertTrue(
-          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
+    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
 
-      fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getS3Key());
+    fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getS3Key());
 
-      assertFalse(
-          fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
-    } catch (StorageFileAlreadyExistsException | StorageFileNotFoundException e) {
-      fail(UNEXPECTED_DB_EXCEPTION_MESSAGE, e);
-    }
+    assertFalse(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
   }
 
   private static void addTestUser() {
@@ -143,7 +113,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     try {
       postgresConnection.executeUpdate(
-          "INSERT INTO users (path, email, password_hash, username, storage_limit, used_storage, is_active) "
+          "INSERT INTO users (newPath, email, password_hash, username, storage_limit, used_storage, is_active) "
               + "VALUES (?, ?, ?, ?, ?, ?, ?)",
           List.of(
               testUserUuid, "test@example.com", "password", "test_user", 10737418240L, 0, true));
@@ -156,7 +126,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     return new FileEntity(
         UUID.randomUUID(),
         testUserUuid,
-        "some/path.xml",
+        "some/newPath.xml",
         "application/xml",
         "public",
         52,

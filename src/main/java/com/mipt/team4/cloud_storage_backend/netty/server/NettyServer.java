@@ -38,6 +38,7 @@ public class NettyServer {
       bootstrap
           .group(bossGroup, workerGroup)
           .channel(NioServerSocketChannel.class)
+          .option(ChannelOption.SO_REUSEADDR, true)
           .childHandler(new CustomChannelInitializer());
 
       ChannelFuture future = bootstrap.bind(NettyConfig.INSTANCE.getPort()).sync();

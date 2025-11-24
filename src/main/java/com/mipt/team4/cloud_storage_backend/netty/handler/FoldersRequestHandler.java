@@ -47,7 +47,7 @@ public record FoldersRequestHandler(FileController fileController) {
     }
 
     ResponseHelper.sendSuccessResponse(
-        ctx, HttpResponseStatus.CREATED, "Folder path successfully changed");
+        ctx, HttpResponseStatus.CREATED, "Folder newPath successfully changed");
   }
 
   public void handleDeleteFolderRequest(

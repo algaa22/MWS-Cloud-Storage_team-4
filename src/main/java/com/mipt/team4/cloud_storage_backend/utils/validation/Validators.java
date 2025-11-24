@@ -82,7 +82,7 @@ public class Validators {
   }
 
   public static ValidationResult isEmail(String email) {
-    return pattern("Email", email, "");
+    return pattern("Email", email, "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
   }
 
   public static ValidationResult pattern(String field, String value, String regex) {

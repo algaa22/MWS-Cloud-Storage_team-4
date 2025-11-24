@@ -44,7 +44,7 @@ public record FilesRequestHandler(FileController fileController) {
     if (paths != null) {
       for (String path : paths) {
         ObjectNode fileNode = mapper.createObjectNode();
-        fileNode.put("path", path);
+        fileNode.put("newPath", path);
         filesArray.add(fileNode);
       }
     }
@@ -91,8 +91,8 @@ public record FilesRequestHandler(FileController fileController) {
   }
 
   public void handleChangeFileMetadataRequest(
-      ChannelHandlerContext ctx, FullHttpRequest request, String fileId, String userToken) {
-    Optional<String> filePath = RequestUtils.getHeader(request, "X-File-Path");
+      ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken) {
+    Optional<String> newFilePath = RequestUtils.getHeader(request, "X-File-New-Path");
     Optional<Boolean> fileVisibility;
 
     try {
@@ -111,7 +111,7 @@ public record FilesRequestHandler(FileController fileController) {
 
     try {
       fileController.changeFileMetadata(
-          new ChangeFileMetadataDto(userToken, filePath, fileVisibility, fileTags));
+          new ChangeFileMetadataDto(userToken, filePath, newFilePath, fileVisibility, fileTags));
     } catch (ValidationFailedException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
@@ -165,11 +165,12 @@ public record FilesRequestHandler(FileController fileController) {
     FileDownloadDto fileDownload;
 
     try {
-      fileDownload = fileController.downloadFile(new SimpleFileOperationDto(userToken, filePath));
+      fileDownload = fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
     } catch (UserNotFoundException
         | StorageIllegalAccessException
         | ValidationFailedException
-        | FileNotFoundException e) {
+        | FileNotFoundException
+        | StorageFileNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }

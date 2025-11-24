@@ -199,7 +199,7 @@ public class ChunkedDownloadHandler {
 
   private void parseDownloadRequestMetadata(HttpRequest request)
       throws QueryParameterNotFoundException {
-    currentFilePath = RequestUtils.getRequiredQueryParam(request, "File path");
+    currentFilePath = RequestUtils.getRequiredQueryParam(request, "File newPath");
     currentUserToken = request.headers().get("X-Auth-Token", "");
   }
 

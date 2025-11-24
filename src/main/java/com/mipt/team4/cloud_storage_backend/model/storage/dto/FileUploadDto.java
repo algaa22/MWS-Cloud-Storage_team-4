@@ -10,7 +10,7 @@ public record FileUploadDto(String path, String userToken, List<String> tags, by
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.notBlank("File path", path),
+            Validators.notBlank("File newPath", path),
             Validators.validToken(userToken),
             Validators.mustBePositive("File size", data.length));
 

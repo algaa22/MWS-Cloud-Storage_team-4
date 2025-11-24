@@ -59,7 +59,6 @@ public class CloudStorageApplication {
               postgresConnection.disconnect();
             });
 
-    serverThread.setDaemon(true);
     serverThread.start();
   }
 

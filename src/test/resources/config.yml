@@ -1,0 +1,23 @@
+netty:
+  port: 8083
+  boss-threads: 1
+  worker-threads: 4
+  start-timeout-sec: 5
+
+storage:
+  http:
+    max-content-length: 65536 # 64 kb
+    max-file-size: 10737418240 # 10 gb
+    max-file-chunk-size: 10485760 # 10 mb
+    file-download-chunk-size: 65536 # 64 kb
+    send-upload-progress-interval: 10 # in chunks
+
+  repository:
+    user-data-bucket:
+      name: user-data
+
+  auth:
+    jwt-token-expiration-sec: 86400 # 24 hours
+
+  quotas:
+    default-storage-limit: 10737418240

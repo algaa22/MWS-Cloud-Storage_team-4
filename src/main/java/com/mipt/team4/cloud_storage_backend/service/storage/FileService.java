@@ -113,11 +113,16 @@ public class FileService {
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationDto fileDownload)
-      throws StorageIllegalAccessException, UserNotFoundException, FileNotFoundException {
+      throws StorageIllegalAccessException,
+          UserNotFoundException,
+          FileNotFoundException,
+          StorageFileNotFoundException {
     UUID userId = sessionService.extractUserIdFromToken(fileDownload.userToken());
 
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, fileDownload.path());
-    FileEntity entity = entityOpt.orElseThrow(() -> new RuntimeException("File not found"));
+    String s3Key = StoragePaths.getS3Key(userId, fileDownload.path());
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, s3Key);
+
+    FileEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(s3Key));
     checkFileAccess(userId, entity);
 
     return new FileDownloadDto(

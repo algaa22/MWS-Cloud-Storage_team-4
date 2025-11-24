@@ -15,7 +15,7 @@ public class JwtService {
     this.jwtTokenExpirationSec = jwtTokenExpirationSec;
   }
 
-  // Проверяет подпись и срок действия токена
+  // проверка подписи и срока действия
   public static boolean isTokenValid(String token) {
     try {
       Jwts.parserBuilder()

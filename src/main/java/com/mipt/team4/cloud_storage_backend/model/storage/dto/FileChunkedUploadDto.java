@@ -10,7 +10,9 @@ public record FileChunkedUploadDto(
     String sessionId,
     String userToken,
     String path,
-    List<String> tags) {
+    List<String> tags,
+    int totalChunks,
+    int totalFileSize) {
 
   public void validate() throws ValidationFailedException {
     ValidationResult result =

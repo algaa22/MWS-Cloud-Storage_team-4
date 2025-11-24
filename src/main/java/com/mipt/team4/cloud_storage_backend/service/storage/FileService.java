@@ -27,11 +27,16 @@ public class FileService {
 
   // TODO: soft delete?
 
-  private static String guessMimeType(String path) {
-    // TODO: peredelat :))))))))))
-    if (path.endsWith(".jpg")) return "image/jpeg";
-    if (path.endsWith(".png")) return "image/png";
-    if (path.endsWith(".pdf")) return "application/pdf";
+  private String guessMimeType(String filePath) {
+    if (filePath == null) return "application/octet-stream";
+    if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) return "image/jpeg";
+    if (filePath.endsWith(".png")) return "image/png";
+    if (filePath.endsWith(".gif")) return "image/gif";
+    if (filePath.endsWith(".pdf")) return "application/pdf";
+    if (filePath.endsWith(".txt")) return "text/plain";
+    if (filePath.endsWith(".html")) return "text/html";
+    if (filePath.endsWith(".mp3")) return "audio/mpeg";
+    if (filePath.endsWith(".mp4")) return "video/mp4";
     return "application/octet-stream";
   }
 
@@ -39,38 +44,40 @@ public class FileService {
       throws UserNotFoundException, StorageFileAlreadyExistsException {
     // TODO: разделить session'ы на юзеровский и файловский
     UUID userId = sessionService.extractUserIdFromToken(session.userToken());
-
-    // TODO: если с таким session.sessionId() уже есть сессия в activeUploads?
-    // TODO: проверять, что не превысили лимит
-
+    String sessionId = session.sessionId();
     String path = session.path();
+    if (activeUploads.containsKey(sessionId)) {
+      throw new StorageFileAlreadyExistsException(userId, path);
+    }
     Optional<FileEntity> fileEntity = fileRepository.getFile(userId, path);
-
     if (fileEntity.isPresent()) throw new StorageFileAlreadyExistsException(userId, path);
-
     activeUploads.put(session.sessionId(), new ChunkedUploadState(session));
   }
 
-  public void processChunk(FileChunkDto chunk) {
+  public void processChunk(FileChunkDto chunk) throws UserNotFoundException {
+    UUID userId = sessionService.extractUserIdFromToken(chunk.userToken());
+    String sessionId = chunk.sessionId();
     ChunkedUploadState upload = activeUploads.get(chunk.sessionId());
-    if (upload == null) throw new RuntimeException("Upload session not found!");
+    if (upload == null) {
+      throw new RuntimeException("Upload session not found!");
+    }
     CompletableFuture<String> uploadId = upload.getOrCreateUploadId(fileRepository);
     int partNum = chunk.chunkIndex() + 1;
+    if (chunk.chunkData().length > 10 * 1024 * 1024) {
+      throw new RuntimeException("Chunk size exceeds maximum allowed size");
+    }
     CompletableFuture<String> etag =
         fileRepository.uploadPart(uploadId, upload.session.path(), partNum, chunk.chunkData());
     upload.eTags.put(partNum, etag);
-
-    upload.totalChunks++;
-    upload.totalChunks += chunk.chunkData().length;
   }
 
-  public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
+  public void completeChunkedUpload(String sessionId)
       throws StorageFileAlreadyExistsException, UserNotFoundException {
     ChunkedUploadState upload = activeUploads.remove(sessionId);
     if (upload == null) throw new RuntimeException("No such upload session!");
 
     FileChunkedUploadDto session = upload.session;
-    for (int i = 1; i <= upload.totalChunks; i++) {
+    for (int i = 1; i <= session.totalChunks(); i++) {
       if (!upload.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
     }
 
@@ -86,13 +93,11 @@ public class FileService {
             s3Key,
             guessMimeType(session.path()),
             "private",
-            upload.fileSize,
+            session.totalFileSize(),
             false,
             session.tags());
 
     fileRepository.completeMultipartUpload(fileEntity, upload.uploadId, upload.eTags);
-
-    return new ChunkedUploadFileResultDto(session.path(), upload.fileSize, upload.totalChunks);
   }
 
   public void uploadFile(FileUploadDto fileUploadRequest)
@@ -151,15 +156,40 @@ public class FileService {
 
   private void checkFileAccess(UUID userId, FileEntity entity)
       throws StorageIllegalAccessException {
-    // TODO: а нужен ли?
     if (!entity.getOwnerId().equals(userId)) {
       throw new StorageIllegalAccessException();
     }
   }
 
-  // TODO: переделать
-  public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest) {
-    return null;
+
+  public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
+      throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
+    UUID userId = sessionService.extractUserIdFromToken(fileChunkRequest.userToken());
+    String s3Key = StoragePaths.getS3Key(userId, fileChunkRequest.fileId());
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, s3Key);
+
+    FileEntity entity = entityOpt.orElseThrow(() ->
+        new StorageFileNotFoundException(fileChunkRequest.fileId()));
+    checkFileAccess(userId, entity);
+    long fileSize = entity.getSize();
+    long chunkSize = fileChunkRequest.chunkSize();
+    long chunkIndex = fileChunkRequest.chunkIndex();
+    long offset = chunkIndex * chunkSize;
+    if (offset >= fileSize) {
+      throw new RuntimeException("Chunk index out of bounds");
+    }
+
+    long actualChunkSize = Math.min(chunkSize, fileSize - offset);
+    byte[] chunkData = fileRepository.downloadFilePart(entity.getS3Key(), offset, actualChunkSize);
+
+    return new FileChunkDto(
+        fileChunkRequest.sessionId(),
+        fileChunkRequest.fileId(),
+        fileChunkRequest.chunkIndex(),
+        fileChunkRequest.chunkData(),
+        fileChunkRequest.userToken(),
+        chunkIndex * chunkSize + actualChunkSize >= fileSize
+    );
   }
 
   public List<String> getFilePathsList(GetFilePathsListDto filePathsRequest)
@@ -189,13 +219,44 @@ public class FileService {
         entity.getFileId(), fileInfo.path(), entity.getMimeType(), entity.getSize());
   }
 
-  public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadata) {
-    // TODO
+  public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadata)
+      throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException, StorageFileAlreadyExistsException {
+
+    UUID userId = sessionService.extractUserIdFromToken(changeFileMetadata.userToken());
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, changeFileMetadata.oldPath());
+
+    FileEntity entity = entityOpt.orElseThrow(() ->
+        new StorageFileNotFoundException(changeFileMetadata.oldPath()));
+    checkFileAccess(userId, entity);
+
+    if (changeFileMetadata.newPath() != null) {
+      Optional<FileEntity> existingFile = fileRepository.getFile(userId,
+          String.valueOf(changeFileMetadata.newPath()));
+      if (existingFile.isPresent()) {
+        throw new StorageFileAlreadyExistsException(userId, String.valueOf(changeFileMetadata.newPath()));
+      }
+      entity.setS3Key(StoragePaths.getS3Key(userId, String.valueOf(changeFileMetadata.newPath())));
+    }
+
+    if (changeFileMetadata.tags() != null) {
+      entity.setTags(changeFileMetadata.tags());
+    }
+
+    if (changeFileMetadata.visibility() != null) {
+      entity.setVisibility(String.valueOf(changeFileMetadata.visibility()));
+    }
+
+    fileRepository.updateFile(entity);
   }
 
-  public void createFolder(SimpleFolderOperationDto createFolder) {
-    // TODO
+  //TODO: хз как это сделать лучше
+  public void createFolder(SimpleFolderOperationDto createFolder)
+      throws UserNotFoundException {
+    UUID userId = sessionService.extractUserIdFromToken(createFolder.userToken());
+    String folderPath = createFolder.folderPath();
+    System.out.println("User " + userId + " created folder: " + folderPath);
   }
+
 
   public void changeFolderPath(ChangeFolderPathDto changeFolder) {
     // TODO
@@ -208,10 +269,7 @@ public class FileService {
   private static class ChunkedUploadState {
     final FileChunkedUploadDto session;
     final Map<Integer, CompletableFuture<String>> eTags = new HashMap<>();
-
     CompletableFuture<String> uploadId;
-    int fileSize = 0;
-    int totalChunks = 0;
 
     ChunkedUploadState(FileChunkedUploadDto session) {
       this.session = session;

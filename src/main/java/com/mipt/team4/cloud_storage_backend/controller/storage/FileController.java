@@ -28,7 +28,7 @@ public class FileController {
     service.startChunkedUploadSession(request);
   }
 
-  public void processFileChunk(FileChunkDto request) throws ValidationFailedException {
+  public void processFileChunk(FileChunkDto request) throws ValidationFailedException, UserNotFoundException {
     request.validate();
     service.processChunk(request);
   }

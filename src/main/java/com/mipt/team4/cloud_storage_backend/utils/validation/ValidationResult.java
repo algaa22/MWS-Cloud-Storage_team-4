@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.utils.validation;
 
+import com.sun.nio.sctp.NotificationHandler;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,7 +32,7 @@ public class ValidationResult {
     return new ValidationResult(false, errors);
   }
 
-  public ValidationResult merge(ValidationResult other) {
+  public ValidationResult combine(ValidationResult other) {
     if (this.valid && other.valid) {
       return valid();
     }

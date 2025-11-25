@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
@@ -19,7 +18,7 @@ public record FileChunkedUploadDto(
         Validators.all(
             Validators.notBlank("Session ID", sessionId),
             Validators.validToken(userToken),
-            Validators.notBlank("Path", path));
+            Validators.mustBeFilePath("Path", path));
 
     Validators.throwExceptionIfNotValid(result);
   }

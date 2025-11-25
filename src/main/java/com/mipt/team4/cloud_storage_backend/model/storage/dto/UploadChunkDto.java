@@ -9,6 +9,7 @@ public record UploadChunkDto(String sessionId, String path, int chunkIndex, byte
     ValidationResult result =
         Validators.all(
             Validators.isUuid("Session ID", sessionId),
+            Validators.mustBeFilePath("Path", path),
             Validators.notNull("Chunk data", chunkData),
             Validators.mustBePositive("Chunk data", chunkData.length),
             Validators.cannotBeNegative("Chunk index", chunkIndex));

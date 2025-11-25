@@ -56,6 +56,8 @@ public record FilesRequestHandler(FileController fileController) {
       ChannelHandlerContext ctx, String filePath, String userToken) {
     FileDto fileDto;
 
+    // TODO: пагинация
+
     try {
       fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
     } catch (ValidationFailedException | StorageFileNotFoundException | UserNotFoundException e) {

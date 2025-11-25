@@ -36,6 +36,8 @@ class ValidatorsTest {
     assertValid(Validators.notBlank("String", "some string"));
   }
 
+  // TODO: еще тесты
+
   @Test
   public void notBlank_ShouldInvalid_WhenListIsNull() {
     assertInvalid(Validators.notBlank("List", (List<String>) null));

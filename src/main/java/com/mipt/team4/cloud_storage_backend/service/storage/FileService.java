@@ -28,6 +28,7 @@ public class FileService {
   // TODO: soft delete?
 
   private String guessMimeType(String filePath) {
+    // TODO: вынести в отдельный класс, добавить типов файлов
     if (filePath == null) return "application/octet-stream";
     if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) return "image/jpeg";
     if (filePath.endsWith(".png")) return "image/png";
@@ -49,6 +50,7 @@ public class FileService {
     if (activeUploads.containsKey(sessionId)) {
       throw new StorageFileAlreadyExistsException(userId, path);
     }
+    // TODO: не s3 ли key?
     Optional<FileEntity> fileEntity = fileRepository.getFile(userId, path);
     if (fileEntity.isPresent()) throw new StorageFileAlreadyExistsException(userId, path);
     activeUploads.put(session.sessionId(), new ChunkedUploadState(session));
@@ -67,17 +69,20 @@ public class FileService {
       throw new RuntimeException("Chunk size exceeds maximum allowed size");
     }
     CompletableFuture<String> etag =
-        fileRepository.uploadPart(uploadId, upload.session.path(), partNum, chunk.chunkData());
+        fileRepository.uploadPart(uploadId, upload.s3Key, partNum, chunk.chunkData());
     upload.eTags.put(partNum, etag);
+
+    upload.totalChunks++;
+    upload.fileSize += chunk.chunkData().length;
   }
 
-  public void completeChunkedUpload(String sessionId)
+  public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
       throws StorageFileAlreadyExistsException, UserNotFoundException {
     ChunkedUploadState upload = activeUploads.remove(sessionId);
     if (upload == null) throw new RuntimeException("No such upload session!");
 
     FileChunkedUploadDto session = upload.session;
-    for (int i = 1; i <= session.totalChunks(); i++) {
+    for (int i = 1; i <= upload.totalChunks; i++) {
       if (!upload.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
     }
 
@@ -93,11 +98,13 @@ public class FileService {
             s3Key,
             guessMimeType(session.path()),
             "private",
-            session.totalFileSize(),
+            upload.fileSize,
             false,
             session.tags());
 
     fileRepository.completeMultipartUpload(fileEntity, upload.uploadId, upload.eTags);
+
+    return new ChunkedUploadFileResultDto(session.path(), upload.fileSize, upload.totalChunks);
   }
 
   public void uploadFile(FileUploadDto fileUploadRequest)
@@ -106,7 +113,11 @@ public class FileService {
     UUID userId = sessionService.extractUserIdFromToken(fileUploadRequest.userToken());
 
     String s3Key = StoragePaths.getS3Key(userId, fileUploadRequest.path());
-    String mimeType = guessMimeType(fileUploadRequest.path());
+
+    if (fileRepository.fileExists(userId, s3Key))
+      throw new StorageFileAlreadyExistsException(userId, fileUploadRequest.path());
+
+    String mimeType = parseMimeType(fileUploadRequest.path());
     byte[] data = fileUploadRequest.data();
 
     FileEntity entity =
@@ -156,6 +167,7 @@ public class FileService {
 
   private void checkFileAccess(UUID userId, FileEntity entity)
       throws StorageIllegalAccessException {
+    // TODO: а нужен ли?
     if (!entity.getOwnerId().equals(userId)) {
       throw new StorageIllegalAccessException();
     }
@@ -257,7 +269,6 @@ public class FileService {
     System.out.println("User " + userId + " created folder: " + folderPath);
   }
 
-
   public void changeFolderPath(ChangeFolderPathDto changeFolder) {
     // TODO
   }
@@ -269,15 +280,24 @@ public class FileService {
   private static class ChunkedUploadState {
     final FileChunkedUploadDto session;
     final Map<Integer, CompletableFuture<String>> eTags = new HashMap<>();
-    CompletableFuture<String> uploadId;
+    final UUID userId;
+    final String s3Key;
 
-    ChunkedUploadState(FileChunkedUploadDto session) {
+    CompletableFuture<String> uploadId;
+    int fileSize = 0;
+    int totalChunks = 0;
+
+    // TODO: читаемость пупупу
+
+    ChunkedUploadState(FileChunkedUploadDto session, UUID userId, String s3Key) {
       this.session = session;
+      this.userId = userId;
+      this.s3Key = s3Key;
     }
 
     CompletableFuture<String> getOrCreateUploadId(FileRepository repo) {
       if (uploadId == null) {
-        String s3Key = session.userToken() + "/" + session.path();
+        String s3Key = StoragePaths.getS3Key(userId, session.path());
         uploadId = repo.startMultipartUpload(s3Key);
       }
       return uploadId;

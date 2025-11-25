@@ -59,9 +59,9 @@ public class FileRepository {
     contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
   }
 
-  public byte[] downloadFile(String storagePath)
+  public byte[] downloadFile(String s3Key)
       throws FileNotFoundException {
-    return contentRepository.downloadFile(storagePath);
+    return contentRepository.downloadFile(s3Key);
   }
 
   public void deleteFile(UUID ownerId, String path)

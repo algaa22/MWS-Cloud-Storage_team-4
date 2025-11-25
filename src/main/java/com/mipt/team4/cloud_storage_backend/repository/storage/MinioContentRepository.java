@@ -4,6 +4,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.messages.Part;
@@ -109,6 +110,8 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   // TODO: неправильная асинхронность
+  // TODO: чанковая загрузка доступна только для фалов >= 5МБ
+  // TODO: download part
   // TODO: retry?
 
   @Override
@@ -244,6 +247,16 @@ public class MinioContentRepository implements FileContentRepository {
         | InterruptedException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void deleteFile(String s3Key) {
+    // TODO
+  }
+
+  @Override
+  public void moveFile(FileEntity entity) {
+    // TODO
   }
 
   private Multimap<String, String> createEmptyHeader() {

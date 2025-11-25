@@ -10,7 +10,7 @@ public record ChangeFileMetadataDto(
     String userToken,
     String oldPath,
     Optional<String> newPath,
-    Optional<Boolean> visibility,
+    Optional<String> visibility,
     Optional<List<String>> tags) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =

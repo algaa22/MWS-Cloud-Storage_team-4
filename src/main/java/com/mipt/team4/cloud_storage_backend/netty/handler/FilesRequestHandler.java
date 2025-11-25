@@ -9,13 +9,11 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundExcept
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
-import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -44,7 +42,7 @@ public record FilesRequestHandler(FileController fileController) {
     if (paths != null) {
       for (String path : paths) {
         ObjectNode fileNode = mapper.createObjectNode();
-        fileNode.put("newPath", path);
+        fileNode.put("path", path);
         filesArray.add(fileNode);
       }
     }
@@ -88,22 +86,16 @@ public record FilesRequestHandler(FileController fileController) {
         | FileNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
+
+    ResponseHelper.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
   }
 
   public void handleChangeFileMetadataRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken) {
     Optional<String> newFilePath = RequestUtils.getHeader(request, "X-File-New-Path");
-    Optional<Boolean> fileVisibility;
 
-    try {
-      fileVisibility =
-          Optional.ofNullable(
-              SafeParser.parseBoolean(
-                  "File visibility", RequestUtils.getHeader(request, "X-File-Visibility", null)));
-    } catch (ParseException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+    Optional<String> fileVisibility =
+        Optional.ofNullable(RequestUtils.getHeader(request, "X-File-Visibility", null));
 
     Optional<List<String>> fileTags =
         Optional.ofNullable(
@@ -112,7 +104,10 @@ public record FilesRequestHandler(FileController fileController) {
     try {
       fileController.changeFileMetadata(
           new ChangeFileMetadataDto(userToken, filePath, newFilePath, fileVisibility, fileTags));
-    } catch (ValidationFailedException e) {
+    } catch (ValidationFailedException
+        | UserNotFoundException
+        | StorageFileNotFoundException
+        | StorageFileAlreadyExistsException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }

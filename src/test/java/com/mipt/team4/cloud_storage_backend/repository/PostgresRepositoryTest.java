@@ -51,14 +51,14 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     fileMetadataRepository.addFile(testFile);
 
-    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
+    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getPath()));
   }
 
   @Test
   void fileExists_ShouldReturnFalse_WhenFileNotFound() throws StorageFileAlreadyExistsException {
     FileEntity testFile = createTestFile();
 
-    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
+    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getPath()));
 
     fileMetadataRepository.addFile(testFile);
   }
@@ -98,11 +98,11 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     fileMetadataRepository.addFile(testFile);
 
-    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
+    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getPath()));
 
-    fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getS3Key());
+    fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getPath());
 
-    assertFalse(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getS3Key()));
+    assertFalse(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getPath()));
   }
 
   private static void addTestUser() {

@@ -4,11 +4,7 @@ import java.util.StringTokenizer;
 import java.util.UUID;
 
 public class StoragePaths {
-  public static String getS3Key(UUID ownerId, String filePath) {
-    return ownerId + "/" + filePath;
-  }
-
-  public static String getFilePathFromS3Key(String s3Key) {
-    return s3Key.substring(s3Key.indexOf("/") + 1);
+  public static String getS3Key(UUID ownerId, UUID fileId) {
+    return ownerId + "/" + fileId;
   }
 }

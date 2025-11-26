@@ -22,15 +22,15 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   @Override
   public void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException {
-    if (fileExists(fileEntity.getOwnerId(), fileEntity.getS3Key()))
-      throw new StorageFileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getS3Key());
+    if (fileExists(fileEntity.getOwnerId(), fileEntity.getPath()))
+      throw new StorageFileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getPath());
 
     postgres.executeUpdate(
-        "INSERT INTO files (owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
+        "INSERT INTO files (owner_id, path, file_size, mime_type, visibility, is_deleted, tags)"
             + " values (?, ?, ?, ?, ?, ?, ?);",
         List.of(
             fileEntity.getOwnerId(),
-            fileEntity.getS3Key(),
+            fileEntity.getPath(),
             fileEntity.getSize(),
             fileEntity.getMimeType(),
             fileEntity.getVisibility(),
@@ -41,24 +41,24 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   @Override
   public List<String> getFilesPathsList(UUID id) {
     return postgres.executeQuery(
-        "SELECT storage_path FROM files WHERE owner_id = ? AND is_deleted = FALSE;",
+        "SELECT path FROM files WHERE owner_id = ? AND is_deleted = FALSE;",
         List.of(id),
-        rs -> StoragePaths.getFilePathFromS3Key(rs.getString("storage_path")));
+        rs -> rs.getString("path"));
   }
 
   @Override
-  public Optional<FileEntity> getFile(UUID ownerId, String s3Key) {
+  public Optional<FileEntity> getFile(UUID ownerId, String path) {
     List<FileEntity> result;
 
     result =
         postgres.executeQuery(
-            "SELECT * FROM files WHERE owner_id = ? AND storage_path = ?;",
-            List.of(ownerId, s3Key),
+            "SELECT * FROM files WHERE owner_id = ? AND path = ?;",
+            List.of(ownerId, path),
             rs ->
                 new FileEntity(
                     UUID.fromString(rs.getString("id")),
                     ownerId,
-                    rs.getString("storage_path"),
+                    rs.getString("path"),
                     rs.getString("mime_type"),
                     rs.getString("visibility"),
                     rs.getLong("file_size"),
@@ -71,21 +71,21 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public void deleteFile(UUID ownerId, String s3Key) throws StorageFileNotFoundException {
-    if (!fileExists(ownerId, s3Key)) {
-      throw new StorageFileNotFoundException(s3Key);
+  public void deleteFile(UUID ownerId, String path) throws StorageFileNotFoundException {
+    if (!fileExists(ownerId, path)) {
+      throw new StorageFileNotFoundException(path);
     }
 
     postgres.executeUpdate(
-        "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;", List.of(ownerId, s3Key));
+        "DELETE FROM files WHERE owner_id = ? AND path = ?;", List.of(ownerId, path));
   }
 
   @Override
   public void updateFile(FileEntity fileEntity) {
     postgres.executeUpdate(
-        "UPDATE files SET storage_path = ?, visibility = ?, tags = ? WHERE owner_id = ? AND id = ?",
+        "UPDATE files SET path = ?, visibility = ?, tags = ? WHERE owner_id = ? AND id = ?",
         List.of(
-            fileEntity.getS3Key(),
+            fileEntity.getPath(),
             fileEntity.getVisibility(),
             FileTagsMapper.toString(fileEntity.getTags()),
             fileEntity.getOwnerId(),
@@ -93,11 +93,11 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public boolean fileExists(UUID ownerId, String s3Key) {
+  public boolean fileExists(UUID ownerId, String path) {
     List<Boolean> result =
         postgres.executeQuery(
-            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
-            List.of(ownerId, s3Key),
+            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND path = ?);",
+            List.of(ownerId, path),
             rs -> (rs.getBoolean(1)));
     return result.getFirst();
   }

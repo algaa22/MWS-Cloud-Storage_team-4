@@ -17,7 +17,7 @@ public interface FileContentRepository {
 
   byte[] downloadFile(String storagePath);
 
-  void deleteFile(String s3Key);
+  void hardDeleteFile(String s3Key);
 
   void moveFile(FileEntity entity, String oldS3Key);
 }

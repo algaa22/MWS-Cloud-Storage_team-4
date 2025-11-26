@@ -221,8 +221,21 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public void deleteFile(String s3Key) {
-    // TODO
+  public void hardDeleteFile(String s3Key) {
+    try {
+      minioClient.removeObject(
+          RemoveObjectArgs.builder()
+              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+              .object(s3Key)
+              .build());
+    } catch (InsufficientDataException
+        | XmlParserException
+        | NoSuchAlgorithmException
+        | IOException
+        | InvalidKeyException
+        | InternalException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

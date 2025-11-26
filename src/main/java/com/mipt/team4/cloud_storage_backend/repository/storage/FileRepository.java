@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 public class FileRepository {
   FileMetadataRepository metadataRepository;
@@ -64,7 +63,7 @@ public class FileRepository {
   public void deleteFile(UUID ownerId, String s3Key)
       throws StorageFileNotFoundException, FileNotFoundException {
     metadataRepository.deleteFile(ownerId, s3Key);
-    contentRepository.deleteFile(s3Key);
+    contentRepository.hardDeleteFile(s3Key);
   }
 
   public byte[] downloadFilePart(String s3Key) {

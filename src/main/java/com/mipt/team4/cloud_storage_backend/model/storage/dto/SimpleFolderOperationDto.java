@@ -1,0 +1,16 @@
+package com.mipt.team4.cloud_storage_backend.model.storage.dto;
+
+import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
+import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+
+public record SimpleFolderOperationDto(String userToken, String folderPath) {
+  public void validate() throws ValidationFailedException {
+    ValidationResult result = Validators.all(
+            Validators.validToken(userToken),
+            Validators.notBlank("Folder path", folderPath)
+    );
+
+    Validators.throwExceptionIfNotValid(result);
+  }
+}

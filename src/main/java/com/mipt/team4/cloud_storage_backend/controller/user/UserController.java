@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -19,21 +20,21 @@ public class UserController {
     this.service = service;
   }
 
-  public String registerUser(RegisterRequestDto registerRequest)
+  public String registerUser(RegisterRequestDto request)
       throws ValidationFailedException, UserAlreadyExistsException {
-    registerRequest.validate();
-    return service.registerUser(registerRequest);
+    request.validate();
+    return service.registerUser(request);
   }
 
-  public String loginUser(LoginRequestDto loginRequest)
+  public String loginUser(LoginRequestDto request)
       throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException {
-    loginRequest.validate();
-    return service.loginUser(loginRequest);
+    request.validate();
+    return service.loginUser(request);
   }
 
-  public void logoutUser(LogoutRequestDto logoutRequest)
-      throws ValidationFailedException, UserNotFoundException {
-    logoutRequest.validate();
-    service.logoutUser(logoutRequest);
+  public void logoutUser(LogoutRequestDto request)
+      throws ValidationFailedException, UserNotFoundException, InvalidSessionException {
+    request.validate();
+    service.logoutUser(request);
   }
 }

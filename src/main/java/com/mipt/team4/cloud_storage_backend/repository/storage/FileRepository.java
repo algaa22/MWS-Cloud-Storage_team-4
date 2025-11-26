@@ -1,51 +1,71 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class FileRepository {
-  PostgresFileMetadataRepository postgresMetadataRepository;
-  MinioContentRepository minioContentRepository;
+  FileMetadataRepository metadataRepository;
+  FileContentRepository contentRepository;
 
-  public FileRepository(PostgresConnection postgres) {
-    postgresMetadataRepository = new PostgresFileMetadataRepository(postgres);
+  public FileRepository(PostgresConnection postgresConnection, String minioUrl) {
+    metadataRepository = new PostgresFileMetadataRepository(postgresConnection);
+    contentRepository = new MinioContentRepository(minioUrl);
   }
 
   public void addFile(FileEntity fileEntity, byte[] data) throws StorageFileAlreadyExistsException {
-    postgresMetadataRepository.addFile(fileEntity);
+    metadataRepository.addFile(fileEntity); // TODO: если ошибка в putObject
+    contentRepository.putObject(fileEntity.getS3Key(), data, fileEntity.getMimeType());
   }
 
-  public Optional<FileEntity> getFile(UUID ownerId, String path) {
-    return postgresMetadataRepository.getFile(ownerId, path);
+  public Optional<FileEntity> getFile(UUID ownerId, String s3Key) {
+    return metadataRepository.getFile(ownerId, s3Key);
   }
 
-  public boolean fileExists(UUID ownerId, String storagePath) {
-    return postgresMetadataRepository.fileExists(ownerId, storagePath);
+  public boolean fileExists(UUID ownerId, String s3Key) {
+    return metadataRepository.fileExists(ownerId, s3Key);
   }
 
   public CompletableFuture<String> startMultipartUpload(String s3Key) {
-    return minioContentRepository.startMultipartUpload(s3Key);
+    return contentRepository.startMultipartUpload(s3Key);
   }
 
   public CompletableFuture<String> uploadPart(
       CompletableFuture<String> uploadId, String s3Key, int partIndex, byte[] bytes) {
-    return minioContentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
+    // TODO: параметры в дто?
+    return contentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
+  }
+
+  public List<String> getFilePathsList(UUID userId) {
+    return metadataRepository.getFilesPathsList(userId);
   }
 
   public void completeMultipartUpload(
-      String s3Key,
+      FileEntity fileEntity,
       CompletableFuture<String> uploadId,
-      Map<Integer, CompletableFuture<String>> eTags) {
-    minioContentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
+      Map<Integer, CompletableFuture<String>> eTags)
+      throws StorageFileAlreadyExistsException {
+    metadataRepository.addFile(fileEntity);
+    contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
   }
 
-  public InputStream downloadFile(String storagePath) {
-    return minioContentRepository.downloadFile(storagePath);
+  public byte[] downloadFile(String s3Key)
+      throws FileNotFoundException {
+    return contentRepository.downloadFile(s3Key);
+  }
+
+  public void deleteFile(UUID ownerId, String path)
+      throws StorageFileNotFoundException, FileNotFoundException {
+    metadataRepository.deleteFile(ownerId, path);
   }
 }

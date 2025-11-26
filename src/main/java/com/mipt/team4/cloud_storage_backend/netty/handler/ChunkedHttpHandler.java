@@ -1,8 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -46,11 +49,11 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
       } else {
         ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
       }
-    } catch (TransferAlreadyStartedException e) {
-      handleBadRequest(
-          ctx,
-          "New HttpRequest received while previous request is in progress",
-          "Previous request not completed");
+    } catch (TransferAlreadyStartedException
+        | UserNotFoundException
+        | StorageFileNotFoundException
+        | StorageIllegalAccessException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
   }
 
@@ -62,13 +65,8 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
         chunkedUpload.handleFileChunk(ctx, content);
       }
     } catch (TransferNotStartedYetException e) {
-      handleTransferNotStartedYet(ctx);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
-  }
-
-  private void handleTransferNotStartedYet(ChannelHandlerContext ctx) {
-    handleBadRequest(
-        ctx, "HttpContent received without active HttpRequest", "HTTP content without request");
   }
 
   private void handleBadRequest(

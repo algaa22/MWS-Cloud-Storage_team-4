@@ -3,11 +3,10 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.messages.Part;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,25 +21,33 @@ import java.util.concurrent.ExecutionException;
 public class MinioContentRepository implements FileContentRepository {
   private MinioAsyncClient minioClient;
 
-  public void createBucket() {
+  public MinioContentRepository(String minioUrl) {
+    initialize(minioUrl);
+  }
+
+  private void initialize(String minioUrl) {
     try {
-      CompletableFuture<Boolean> bucketFound =
-          minioClient.bucketExists(
-              BucketExistsArgs.builder()
-                  .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
-                  .build());
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException e) {
+      minioClient =
+          MinioAsyncClient.builder()
+              .endpoint(minioUrl)
+              .credentials(MinioConfig.INSTANCE.getUsername(), MinioConfig.INSTANCE.getPassword())
+              .build();
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
 
     try {
+      createBucket(MinioConfig.INSTANCE.getUserDataBucketName());
+    } catch (BucketAlreadyExistsException _) {
+    }
+  }
+
+  public void createBucket(String bucketName) throws BucketAlreadyExistsException {
+    if (bucketExists(bucketName)) throw new BucketAlreadyExistsException(bucketName);
+
+    try {
       minioClient.makeBucket(
-          MakeBucketArgs.builder().bucket(StorageConfig.INSTANCE.getUserDataBucketName()).build());
+          MakeBucketArgs.builder().bucket(MinioConfig.INSTANCE.getUserDataBucketName()).build());
     } catch (InsufficientDataException
         | InternalException
         | InvalidKeyException
@@ -52,21 +59,19 @@ public class MinioContentRepository implements FileContentRepository {
     }
   }
 
-  @Override
-  public void initialize() {
+  public boolean bucketExists(String bucketName) {
     try {
-      minioClient =
-          MinioAsyncClient.builder()
-              .endpoint(MinioConfig.INSTANCE.getUrl())
-              .credentials(MinioConfig.INSTANCE.getUsername(), MinioConfig.INSTANCE.getPassword())
-              .build();
-    } catch (Exception e) {
+      return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build()).get();
+    } catch (InsufficientDataException
+        | InternalException
+        | InvalidKeyException
+        | IOException
+        | NoSuchAlgorithmException
+        | XmlParserException
+        | ExecutionException
+        | InterruptedException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  private Multimap<String, String> createEmptyHeader() {
-    return MultimapBuilder.hashKeys().arrayListValues().build();
   }
 
   @Override
@@ -80,7 +85,7 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       futureResponse =
           minioClient.createMultipartUploadAsync(
-              StorageConfig.INSTANCE.getUserDataBucketName(),
+              MinioConfig.INSTANCE.getUserDataBucketName(),
               "eu-central-1",
               s3Key,
               headers,
@@ -103,6 +108,9 @@ public class MinioContentRepository implements FileContentRepository {
             });
   }
 
+  // TODO: неправильная асинхронность
+  // TODO: retry?
+
   @Override
   public CompletableFuture<String> uploadPart(
       CompletableFuture<String> uploadId, String s3Key, int partNum, byte[] bytes) {
@@ -117,7 +125,7 @@ public class MinioContentRepository implements FileContentRepository {
                   try {
                     return minioClient
                         .uploadPartAsync(
-                            StorageConfig.INSTANCE.getUserDataBucketName(),
+                            MinioConfig.INSTANCE.getUserDataBucketName(),
                             "eu-central-1",
                             s3Key,
                             inputStream,
@@ -167,8 +175,8 @@ public class MinioContentRepository implements FileContentRepository {
               try {
                 minioClient
                     .completeMultipartUploadAsync(
-                        StorageConfig.INSTANCE.getUserDataBucketName(),
-                        "eu-central-1",
+                        MinioConfig.INSTANCE.getUserDataBucketName(),
+                          "eu-central-1",
                         s3Key,
                         uploadIdStr,
                         createPartArray(eTags),
@@ -193,19 +201,6 @@ public class MinioContentRepository implements FileContentRepository {
             });
   }
 
-  private Part[] createPartArray(Map<Integer, CompletableFuture<String>> eTags) {
-    List<Part> partsList = new ArrayList<>(eTags.size());
-
-    for (Map.Entry<Integer, CompletableFuture<String>> entry : eTags.entrySet()) {
-      int partNumber = entry.getKey();
-      CompletableFuture<String> eTag = entry.getValue();
-
-      eTag.thenAccept(eTagStr -> partsList.add(new Part(partNumber, eTagStr)));
-    }
-
-    return partsList.toArray(new Part[0]);
-  }
-
   @Override
   public void putObject(String s3Key, byte[] data, String mimeType) {
     InputStream stream = new ByteArrayInputStream(data);
@@ -213,9 +208,9 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient.putObject(
           PutObjectArgs.builder()
-              .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
+              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
               .object(s3Key)
-              .stream(stream, data.length, data.length)
+              .stream(stream, data.length, -1)
               .contentType(mimeType)
               .build());
     } catch (InsufficientDataException
@@ -229,16 +224,16 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public InputStream downloadFile(String s3Key) {
+  public byte[] downloadFile(String s3Key) {
     try {
       return minioClient
           .getObject(
               GetObjectArgs.builder()
-                  .bucket(StorageConfig.INSTANCE.getUserDataBucketName())
+                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
                   .object(s3Key)
                   .build())
-          .get();
-
+          .get()
+          .readAllBytes();
     } catch (InsufficientDataException
         | XmlParserException
         | NoSuchAlgorithmException
@@ -249,5 +244,25 @@ public class MinioContentRepository implements FileContentRepository {
         | InterruptedException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private Multimap<String, String> createEmptyHeader() {
+    return MultimapBuilder.hashKeys().arrayListValues().build();
+  }
+
+  private Part[] createPartArray(Map<Integer, CompletableFuture<String>> eTags) throws ExecutionException, InterruptedException {
+    List<CompletableFuture<Part>> partsList = new ArrayList<>(eTags.size());
+
+    for (Map.Entry<Integer, CompletableFuture<String>> entry : eTags.entrySet()) {
+      int partNumber = entry.getKey();
+      CompletableFuture<String> eTag = entry.getValue();
+
+      CompletableFuture<Part> part = eTag.thenApply(eTagStr -> new Part(partNumber, eTagStr));
+      partsList.add(part);
+    }
+
+    return CompletableFuture.allOf(partsList.toArray(new CompletableFuture[0]))
+        .thenApply(_ -> partsList.stream().map(CompletableFuture::join).toArray(Part[]::new))
+        .get();
   }
 }

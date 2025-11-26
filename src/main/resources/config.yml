@@ -1,7 +1,8 @@
 netty:
-  port: 8080
+  port: 8081
   boss-threads: 1
   worker-threads: 4
+  start-timeout-sec: 5
 
 storage:
   http:

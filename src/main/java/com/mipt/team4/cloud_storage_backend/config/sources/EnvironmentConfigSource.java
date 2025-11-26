@@ -1,6 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.config.sources;
 
 import com.mipt.team4.cloud_storage_backend.exception.config.DotEnvLoadException;
+import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,7 +32,7 @@ public class EnvironmentConfigSource extends ConfigSource {
   }
 
   private void loadEnvFile(String filePath) {
-    try (InputStream inputStream = getInputStream(filePath);
+    try (InputStream inputStream = FileLoader.getInputStream(filePath);
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
       String line;
 

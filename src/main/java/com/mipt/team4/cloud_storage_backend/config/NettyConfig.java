@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
-import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 
 public enum NettyConfig {
@@ -10,6 +9,7 @@ public enum NettyConfig {
   private final int port;
   private final int bossThreads;
   private final int workerThreads;
+  private final int startTimeoutSec;
 
   NettyConfig() {
     ConfigSource source = new YamlConfigSource("config.yml");
@@ -17,6 +17,7 @@ public enum NettyConfig {
     this.port = source.getInt("netty.port").orElseThrow();
     this.bossThreads = source.getInt("netty.boss-threads").orElseThrow();
     this.workerThreads = source.getInt("netty.worker-threads").orElseThrow();
+    this.startTimeoutSec = source.getInt("netty.start-timeout-sec").orElseThrow();
   }
 
   public int getPort() {
@@ -29,5 +30,9 @@ public enum NettyConfig {
 
   public int getWorkerThreads() {
     return workerThreads;
+  }
+
+  public int getStartTimeoutSec() {
+    return startTimeoutSec;
   }
 }

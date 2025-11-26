@@ -3,10 +3,13 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 public class FileController {
@@ -16,66 +19,98 @@ public class FileController {
     this.service = service;
   }
 
-  public void startChunkedUpload(FileChunkedUploadDto chunkedUploadRequest)
+  public void startChunkedUpload(FileChunkedUploadDto request)
       throws ValidationFailedException,
           StorageFileAlreadyExistsException,
-          StorageIllegalAccessException {
-    chunkedUploadRequest.validate();
-    service.startChunkedUploadSession(chunkedUploadRequest);
+          StorageIllegalAccessException,
+          UserNotFoundException {
+    request.validate();
+    service.startChunkedUploadSession(request);
   }
 
-  public void processFileChunk(FileChunkDto fileChunk)
-      throws ValidationFailedException {
-    fileChunk.validate();
-    service.processChunk(fileChunk);
+  public void processFileChunk(FileChunkDto request) throws ValidationFailedException, UserNotFoundException {
+    request.validate();
+    service.processChunk(request);
   }
 
-  public void completeChunkedUpload(String sessionId)
+  public ChunkedUploadFileResultDto completeChunkedUpload(String request)
       throws MissingFilePartException,
           ValidationFailedException,
-          StorageFileAlreadyExistsException {
-    Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));
+          StorageFileAlreadyExistsException,
+          UserNotFoundException {
+    Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", request));
 
-    service.completeChunkedUpload(sessionId);
+    return service.completeChunkedUpload(request);
   }
 
-  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo)
-      throws ValidationFailedException {
-    fileInfo.validate();
-    // TODO: Передавать DTO
-    return service.getFileDownloadInfo(fileInfo.filePath(), fileInfo.userId());
+  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto request)
+      throws ValidationFailedException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          StorageIllegalAccessException {
+    request.validate();
+    return service.getFileDownloadInfo(request);
   }
 
-  public FileChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
-      throws ValidationFailedException {
-    fileChunkRequest.validate();
-    // TODO: Передавать DTO
-    return service.getFileChunk(
-        fileChunkRequest.fileId(), fileChunkRequest.chunkIndex(), fileChunkRequest.chunkSize());
+  public FileChunkDto getFileChunk(GetFileChunkDto request)
+      throws ValidationFailedException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          StorageIllegalAccessException {
+    request.validate();
+    return service.getFileChunk(request);
   }
 
-  public List<String> getFilePathsList(GetFilePathsListDto filePathsListRequest)
-      throws ValidationFailedException {
-    filePathsListRequest.validate();
-    // TODO: Передавать DTO
-    return service.getFilePathsList(filePathsListRequest.userId());
+  public List<String> getFilePathsList(GetFilePathsListDto request)
+      throws ValidationFailedException, UserNotFoundException {
+    request.validate();
+    return service.getFilePathsList(request);
   }
 
-  public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
-      throws ValidationFailedException {
-    fileInfoRequest.validate();
-    // TODO: Передавать DTO
-    return service.getFileInfo(fileInfoRequest.filePath(), fileInfoRequest.userId());
+  public FileDto getFileInfo(SimpleFileOperationDto request)
+      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
+    request.validate();
+    return service.getFileInfo(request);
   }
 
-  public void deleteFile(SimpleFileOperationDto deleteFileRequest)
-      throws ValidationFailedException, StorageIllegalAccessException {
-    deleteFileRequest.validate();
-    service.deleteFile(deleteFileRequest.userId(), deleteFileRequest.filePath()); // TODO: в дто
+  public void deleteFile(SimpleFileOperationDto request)
+      throws ValidationFailedException,
+          StorageIllegalAccessException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          FileNotFoundException {
+    request.validate();
+    service.deleteFile(request);
   }
 
-  public void uploadFile(FileUploadDto fileUploadRequest) throws StorageFileAlreadyExistsException, ValidationFailedException {
-    fileUploadRequest.validate();
-    service.uploadFile(fileUploadRequest);
+  public void uploadFile(FileUploadDto request)
+      throws StorageFileAlreadyExistsException, ValidationFailedException, UserNotFoundException {
+    request.validate();
+    service.uploadFile(request);
+  }
+
+  public void changeFileMetadata(ChangeFileMetadataDto request) throws ValidationFailedException {
+    request.validate();
+    service.changeFileMetadata(request);
+  }
+
+  public void createFolder(SimpleFolderOperationDto request) throws ValidationFailedException {
+    request.validate();
+    service.createFolder(request);
+  }
+
+  public void changeFolderPath(ChangeFolderPathDto request) throws ValidationFailedException {
+    request.validate();
+    service.changeFolderPath(request);
+  }
+
+  public void deleteFolder(SimpleFolderOperationDto request) throws ValidationFailedException {
+    request.validate();
+    service.deleteFolder(request);
+  }
+
+  public FileDownloadDto downloadFile(SimpleFileOperationDto request) throws ValidationFailedException, UserNotFoundException, StorageIllegalAccessException, FileNotFoundException, StorageFileNotFoundException {
+    request.validate();
+    return service.downloadFile(request);
   }
 }

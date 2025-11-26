@@ -5,32 +5,36 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFilePathsListDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
+import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import java.io.FileNotFoundException;
 import java.util.List;
+import java.util.Optional;
 
-public class FilesRequestHandler {
-  private final FileController fileController;
+public record FilesRequestHandler(FileController fileController) {
+  // TODO: параметры vs заголовки
 
-  public FilesRequestHandler(FileController fileController) {
-    this.fileController = fileController;
-  }
-
-  public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, String userId) {
+  public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, String userToken) {
     List<String> paths;
 
     try {
-      paths = fileController.getFilePathsList(new GetFilePathsListDto(userId));
-    } catch (ValidationFailedException e) {
-      throw new RuntimeException(e);
+      paths = fileController.getFilePathsList(new GetFilePathsListDto(userToken));
+    } catch (ValidationFailedException | UserNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
     }
 
     ObjectMapper mapper = new ObjectMapper();
@@ -40,7 +44,7 @@ public class FilesRequestHandler {
     if (paths != null) {
       for (String path : paths) {
         ObjectNode fileNode = mapper.createObjectNode();
-        fileNode.put("path", path);
+        fileNode.put("newPath", path);
         filesArray.add(fileNode);
       }
     }
@@ -50,21 +54,20 @@ public class FilesRequestHandler {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userId) {
+  public void handleGetFileInfoRequest(
+      ChannelHandlerContext ctx, String filePath, String userToken) {
     FileDto fileDto;
 
     try {
-      fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userId));
-    } catch (ValidationFailedException e) {
-      handleValidationError(ctx, e);
+      fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
+    } catch (ValidationFailedException | StorageFileNotFoundException | UserNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
 
-    rootNode.put("ID", fileDto.fileId().toString());
-    rootNode.put("OwnerID", fileDto.ownerId().toString());
     rootNode.put("Path", fileDto.path());
     rootNode.put("Type", fileDto.type());
     rootNode.put("Visibility", fileDto.visibility());
@@ -75,25 +78,103 @@ public class FilesRequestHandler {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String fileId, String userId) {
+  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String fileId, String userToken) {
     try {
-      fileController.deleteFile(new SimpleFileOperationDto(fileId, userId));
-    } catch (ValidationFailedException e) {
-      // TODO
-    } catch (StorageIllegalAccessException e) {
-      // TODO
+      fileController.deleteFile(new SimpleFileOperationDto(fileId, userToken));
+    } catch (UserNotFoundException
+        | ValidationFailedException
+        | StorageIllegalAccessException
+        | StorageFileNotFoundException
+        | FileNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     }
   }
 
   public void handleChangeFileMetadataRequest(
-      ChannelHandlerContext ctx, String fileId, String userId) {}
+      ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken) {
+    Optional<String> newFilePath = RequestUtils.getHeader(request, "X-File-New-Path");
+    Optional<Boolean> fileVisibility;
 
-  private void handleValidationError(ChannelHandlerContext ctx, ValidationFailedException e) {
-    ResponseHelper.sendValidationErrorResponse(ctx, e);
+    try {
+      fileVisibility =
+          Optional.ofNullable(
+              SafeParser.parseBoolean(
+                  "File visibility", RequestUtils.getHeader(request, "X-File-Visibility", null)));
+    } catch (ParseException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    Optional<List<String>> fileTags =
+        Optional.ofNullable(
+            FileTagsMapper.toList(RequestUtils.getHeader(request, "X-File-Tags", null)));
+
+    try {
+      fileController.changeFileMetadata(
+          new ChangeFileMetadataDto(userToken, filePath, newFilePath, fileVisibility, fileTags));
+    } catch (ValidationFailedException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    ResponseHelper.sendSuccessResponse(
+        ctx, HttpResponseStatus.OK, "File metadata successfully changed");
   }
 
   public void handleUploadFileRequest(
-      ChannelHandlerContext ctx, HttpRequest request, String filePath, String userId) {
+      ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken) {
+    List<String> fileTags;
 
+    try {
+      fileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
+    } catch (HeaderNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    // TODO: проверка на размер
+
+    ByteBuf fileByteBuf = request.content();
+
+    // TODO: correct?
+    if (request.content().readableBytes() == 0) {
+      ResponseHelper.sendErrorResponse(
+          ctx, HttpResponseStatus.BAD_REQUEST, "Upload request does not contain content");
+      return;
+    }
+
+    byte[] fileData = new byte[fileByteBuf.readableBytes()];
+    fileByteBuf.readBytes(fileData);
+
+    try {
+      fileController.uploadFile(new FileUploadDto(filePath, userToken, fileTags, fileData));
+    } catch (UserNotFoundException
+        | StorageFileAlreadyExistsException
+        | ValidationFailedException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    ResponseHelper.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
+  }
+
+  // TODO: выбор метода скачивания
+
+  public void handleDownloadFileRequest(
+      ChannelHandlerContext ctx, String filePath, String userToken) {
+    FileDownloadDto fileDownload;
+
+    try {
+      fileDownload = fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
+    } catch (UserNotFoundException
+        | StorageIllegalAccessException
+        | ValidationFailedException
+        | FileNotFoundException
+        | StorageFileNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    ResponseHelper.sendBinaryResponse(ctx, fileDownload.mimeType(), fileDownload.data());
   }
 }

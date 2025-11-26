@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.netty.handler.AggregatedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handler.ChunkedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -56,13 +57,13 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
     ChannelPipeline pipeline = ctx.pipeline();
 
     if (previousPipeline == PipelineType.CHUNKED) {
-      pipeline.remove(ChunkedWriteHandler.class);
-      pipeline.remove(ChunkedHttpHandler.class);
+      safeRemoveFromPipeline(pipeline, ChunkedWriteHandler.class);
+      safeRemoveFromPipeline(pipeline, ChunkedHttpHandler.class);
     }
 
     if (previousPipeline == PipelineType.AGGREGATED) {
-      pipeline.remove(HttpObjectAggregator.class);
-      pipeline.remove(AggregatedHttpHandler.class);
+      safeRemoveFromPipeline(pipeline, HttpObjectAggregator.class);
+      safeRemoveFromPipeline(pipeline, AggregatedHttpHandler.class);
     }
   }
 
@@ -78,13 +79,12 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
     }
   }
 
-  //  private void handleRequestWithTooLargeContent(ChannelHandlerContext ctx, int contentLength) {
-  //    logger.error(
-  //        "Large file with Content-Length={} not supported. Use chunked upload.", contentLength);
-  //
-  //    ResponseHelper.sendErrorResponse(
-  //        ctx, HttpResponseStatus.BAD_REQUEST, "Large files must use chunked upload");
-  //  }
+  private void safeRemoveFromPipeline(
+      ChannelPipeline pipeline, Class<? extends ChannelHandler> handlerClass) {
+    if (pipeline.get(handlerClass) != null) {
+      pipeline.remove(handlerClass);
+    }
+  }
 
   private void handleNotHttpRequest(ChannelHandlerContext ctx, Object msg) {
     logger.error(

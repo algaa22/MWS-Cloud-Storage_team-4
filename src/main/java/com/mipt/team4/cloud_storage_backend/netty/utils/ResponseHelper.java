@@ -8,15 +8,9 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.*;
-import io.netty.handler.stream.ChunkedNioFile;
-
 import java.nio.charset.StandardCharsets;
 
 public class ResponseHelper {
-  public static void sendExceptionResponse(ChannelHandlerContext ctx, HttpResponseStatus status, Exception e) {
-    ResponseHelper.sendErrorResponse(ctx, status, e.getMessage());
-  }
-
   public static void sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
     ResponseHelper.sendErrorResponse(
         ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error");
@@ -27,12 +21,17 @@ public class ResponseHelper {
     sendErrorResponse(
         ctx,
         HttpResponseStatus.BAD_REQUEST,
-        "Request with uri: " + uri + ", method: " + method + " not supported");
+        "Request {uri: " + uri + ", method: " + method + "} not supported");
   }
 
-  public static void sendValidationErrorResponse(
-      ChannelHandlerContext ctx, ValidationFailedException exception) {
-    sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.toJson());
+  public static void sendBadRequestExceptionResponse(
+      ChannelHandlerContext ctx, Exception exception) {
+    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.getMessage());
+  }
+
+  public static void sendExceptionResponse(
+      ChannelHandlerContext ctx, HttpResponseStatus status, Exception e) {
+    ResponseHelper.sendErrorResponse(ctx, status, e.getMessage());
   }
 
   public static ChannelFuture sendSuccessResponse(
@@ -72,7 +71,8 @@ public class ResponseHelper {
     return createJsonResponse(status, createJsonResponseNode(status, success, message));
   }
 
-  public static ObjectNode createJsonResponseNode(HttpResponseStatus status, boolean success, String message) {
+  public static ObjectNode createJsonResponseNode(
+      HttpResponseStatus status, boolean success, String message) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
@@ -101,12 +101,16 @@ public class ResponseHelper {
     return response;
   }
 
-  public static FullHttpResponse createBinaryResponse(
-      HttpResponseStatus status, byte[] data, String contentType) {
-    FullHttpResponse response =
-        new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer(data));
+  public static void sendBinaryResponse(ChannelHandlerContext ctx, String mimeType, byte[] data) {
+    ctx.writeAndFlush(createBinaryResponse(mimeType, data));
+  }
 
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
+  public static FullHttpResponse createBinaryResponse(String mimeType, byte[] data) {
+    FullHttpResponse response =
+        new DefaultFullHttpResponse(
+            HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(data));
+
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, data.length);
     response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache?
 

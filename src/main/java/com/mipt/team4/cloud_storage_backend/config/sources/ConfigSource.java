@@ -1,10 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.config.sources;
 
 import com.mipt.team4.cloud_storage_backend.exception.config.ConfigConvertException;
-import com.mipt.team4.cloud_storage_backend.exception.config.ConfigNotFoundException;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.Optional;
 
 public abstract class ConfigSource {
@@ -92,16 +88,5 @@ public abstract class ConfigSource {
                 throw new ConfigConvertException("Double", key, value);
               }
             });
-  }
-
-  protected InputStream getInputStream(String filePath) {
-    InputStream classPathStream = getClass().getClassLoader().getResourceAsStream(filePath);
-    if (classPathStream != null) return classPathStream;
-
-    try {
-      return new FileInputStream(filePath);
-    } catch (FileNotFoundException e) {
-      throw new ConfigNotFoundException(filePath);
-    }
   }
 }

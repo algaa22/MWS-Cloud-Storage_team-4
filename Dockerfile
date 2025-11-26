@@ -16,4 +16,4 @@ USER appuser
 
 COPY --from=builder /app/target/cloud-storage-backend-1.0-SNAPSHOT.jar app.jar
 
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-jar", "--enable-preview", "/app/app.jar"]

@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -17,13 +18,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
-public class UsersRequestHandler {
-  private final UserController userController;
-
-  public UsersRequestHandler(UserController userController) {
-    this.userController = userController;
-  }
-
+public record UsersRequestHandler(UserController userController) {
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request) {
     String token;
 
@@ -34,14 +29,12 @@ public class UsersRequestHandler {
                   RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
                   RequestUtils.getRequiredHeader(request, "X-Auth-Password"),
                   RequestUtils.getRequiredHeader(request, "X-Auth-Username")));
-    } catch (ValidationFailedException e) {
-      handleValidationError(ctx, e);
-      return;
-    } catch (HeaderNotFoundException | UserAlreadyExistsException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+    } catch (ValidationFailedException | HeaderNotFoundException | UserAlreadyExistsException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
+    // TODO: шо не так...................................................... (дто в маппер??)
     ObjectNode rootNode =
         ResponseHelper.createJsonResponseNode(
             HttpResponseStatus.CREATED, true, "Account created successfully.");
@@ -61,11 +54,11 @@ public class UsersRequestHandler {
               new LoginRequestDto(
                   RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
                   RequestUtils.getRequiredHeader(request, "X-Auth-Password")));
-    } catch (ValidationFailedException e) {
-      handleValidationError(ctx, e);
-      return;
-    } catch (HeaderNotFoundException | InvalidEmailOrPassword | WrongPasswordException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+    } catch (ValidationFailedException
+        | HeaderNotFoundException
+        | InvalidEmailOrPassword
+        | WrongPasswordException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
@@ -82,19 +75,15 @@ public class UsersRequestHandler {
     try {
       userController.logoutUser(
           new LogoutRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
-    } catch (ValidationFailedException e) {
-      handleValidationError(ctx, e);
-      return;
-    } catch (HeaderNotFoundException | UserNotFoundException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.BAD_REQUEST, e);
+    } catch (ValidationFailedException
+        | InvalidSessionException
+        | HeaderNotFoundException
+        | UserNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
 
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
-  }
-
-  private void handleValidationError(ChannelHandlerContext ctx, ValidationFailedException e) {
-    ResponseHelper.sendValidationErrorResponse(ctx, e);
   }
 }

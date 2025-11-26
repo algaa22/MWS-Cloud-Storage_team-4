@@ -4,9 +4,8 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record FileChunkDto(String sessionId, String path, int chunkIndex, byte[] chunkData) {
+public record FileChunkDto(String sessionId, String path, int chunkIndex, byte[] chunkData, String userToken, boolean isLastChunk) {
   public void validate() throws ValidationFailedException {
-    // TODO: доделать валидацию
     ValidationResult result =
         Validators.all(
             Validators.isUuid("Session ID", sessionId),

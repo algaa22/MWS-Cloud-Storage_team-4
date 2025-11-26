@@ -18,8 +18,8 @@ public class PostgresConnection implements DatabaseConnection {
     this.databasePassword = databasePassword;
   }
 
-  public PostgresConnection() {
-    this.databaseUrl = DatabaseConfig.INSTANCE.getUrl();
+  public PostgresConnection(String databaseUrl) {
+    this.databaseUrl = databaseUrl;
     this.databaseUsername = DatabaseConfig.INSTANCE.getUsername();
     this.databasePassword = DatabaseConfig.INSTANCE.getPassword();
   }

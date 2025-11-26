@@ -1,12 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.exception.validation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-
 import java.util.List;
 
 public class ValidationFailedException extends Exception {
@@ -17,26 +15,18 @@ public class ValidationFailedException extends Exception {
   }
 
   public ValidationFailedException(List<ValidationError> errors) {
-    super();
+    super(toJsonString(errors));
 
     this.errors = errors;
   }
 
   public ValidationFailedException(ValidationError error) {
-    super();
+    super(toJsonString(List.of(error)));
 
     this.errors = List.of(error);
   }
 
-  public List<ValidationError> getErrors() {
-    return errors;
-  }
-
-  public String toJsonString() {
-    return toJson().toString();
-  }
-
-  public JsonNode toJson() {
+  private static String toJsonString(List<ValidationError> errors) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode root = mapper.createObjectNode();
     root.put("error", "Validation failed");
@@ -48,6 +38,10 @@ public class ValidationFailedException extends Exception {
 
     root.set("details", details);
 
-    return root;
+    return root.toString();
+  }
+
+  public List<ValidationError> getErrors() {
+    return errors;
   }
 }

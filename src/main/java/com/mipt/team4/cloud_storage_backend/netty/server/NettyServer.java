@@ -11,12 +11,16 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
+import java.util.concurrent.CountDownLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NettyServer {
   private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
   private final PipelineSelector pipelineSelector;
+  private final CountDownLatch startupLatch = new CountDownLatch(1);
+
+  private Channel serverChannel;
 
   public NettyServer(FileController fileController, UserController userController) {
     this.pipelineSelector = new PipelineSelector(fileController, userController);
@@ -34,17 +38,29 @@ public class NettyServer {
       bootstrap
           .group(bossGroup, workerGroup)
           .channel(NioServerSocketChannel.class)
+          .option(ChannelOption.SO_REUSEADDR, true)
           .childHandler(new CustomChannelInitializer());
 
       ChannelFuture future = bootstrap.bind(NettyConfig.INSTANCE.getPort()).sync();
       logger.info("Netty server started on port " + NettyConfig.INSTANCE.getPort());
 
-      future.channel().closeFuture().sync();
-      logger.info("Netty server stopped");
+      startupLatch.countDown();
 
+      serverChannel = future.channel();
+      serverChannel.closeFuture().sync();
+
+      logger.info("Netty server stopped");
     } catch (Exception e) {
       throw new ServerStartException(e);
     }
+  }
+
+  public void stop() {
+    if (serverChannel != null) serverChannel.close();
+  }
+
+  public CountDownLatch getStartupLatch() {
+    return startupLatch;
   }
 
   class CustomChannelInitializer extends ChannelInitializer<SocketChannel> {

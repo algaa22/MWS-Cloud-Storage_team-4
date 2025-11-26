@@ -6,6 +6,8 @@ import com.mipt.team4.cloud_storage_backend.exception.config.YamlLoadException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+
+import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -150,24 +152,20 @@ public class YamlConfigSource extends ConfigSource {
   private Map<String, Object> loadYaml(String filePath) {
     Yaml yaml = new Yaml(new SafeConstructor(getYamlLoaderOptions()));
 
-    try (InputStream inputStream = getInputStream(filePath)) {
-      if (inputStream != null) {
-        Object loaded = yaml.load(inputStream);
+    try (InputStream inputStream = FileLoader.getInputStream(filePath)) {
+      Object loaded = yaml.load(inputStream);
 
-        if (loaded instanceof Map) {
-          Map<String, Object> rootMap = (Map<String, Object>) loaded;
-          Map<String, Object> flat = new HashMap<>();
+      if (loaded instanceof Map) {
+        Map<String, Object> rootMap = (Map<String, Object>) loaded;
+        Map<String, Object> flat = new HashMap<>();
 
-          return flatten("", rootMap, flat);
-        } else {
-          throw new InvalidYamlException(loaded, filePath);
-        }
+        return flatten("", rootMap, flat);
+      } else {
+        throw new InvalidYamlException(loaded, filePath);
       }
     } catch (IOException e) {
       throw new YamlLoadException(filePath, e);
     }
-
-    return new HashMap<>();
   }
 
   private LoaderOptions getYamlLoaderOptions() {

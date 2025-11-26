@@ -4,10 +4,8 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-
-import java.util.*;
-
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,12 +22,11 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   @Override
   public void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException {
     if (fileExists(fileEntity.getOwnerId(), fileEntity.getS3Key()))
-      throw new StorageFileAlreadyExistsException(
-          fileEntity.getOwnerId(), fileEntity.getS3Key());
+      throw new StorageFileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getS3Key());
 
     postgres.executeUpdate(
         "INSERT INTO files (owner_id, storage_path, file_size, mime_type, visibility, is_deleted, tags)"
-            + " values (?, ?, ?, ?, ?, ?, ?, ?);",
+            + " values (?, ?, ?, ?, ?, ?, ?);",
         List.of(
             fileEntity.getOwnerId(),
             fileEntity.getS3Key(),
@@ -41,13 +38,21 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public Optional<FileEntity> getFile(UUID ownerId, String path) {
+  public List<String> getFilesPathsList(UUID id) {
+    return postgres.executeQuery(
+        "SELECT storage_path FROM files WHERE owner_id = ? AND is_deleted = FALSE;",
+        List.of(id),
+        rs -> rs.getString("storage_path"));
+  }
+
+  @Override
+  public Optional<FileEntity> getFile(UUID ownerId, String s3Key) {
     List<FileEntity> result;
 
     result =
         postgres.executeQuery(
             "SELECT * FROM files WHERE owner_id = ? AND storage_path = ?;",
-            List.of(ownerId, path),
+            List.of(ownerId, s3Key),
             rs ->
                 new FileEntity(
                     UUID.fromString(rs.getString("id")),
@@ -61,7 +66,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
     if (result.isEmpty()) return Optional.empty();
 
-    return Optional.ofNullable(result.getFirst());
+    return Optional.of(result.getFirst());
   }
 
   @Override
@@ -75,14 +80,12 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public void deleteFile(UUID ownerId, String storagePath) throws StorageFileNotFoundException {
-    if (!fileExists(ownerId, storagePath)) {
-      // TODO: обернуть в StorageFileNotFoundException
-      throw new StorageFileNotFoundException(ownerId, storagePath);
+  public void deleteFile(UUID ownerId, String path) throws StorageFileNotFoundException {
+    if (!fileExists(ownerId, path)) {
+      throw new StorageFileNotFoundException(path);
     }
-
     postgres.executeUpdate(
-        "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;",
-        List.of(ownerId, storagePath));
+        "UPDATE files SET is_deleted = TRUE WHERE owner_id = ? AND newPath = ?;",
+        List.of(ownerId, path));
   }
 }

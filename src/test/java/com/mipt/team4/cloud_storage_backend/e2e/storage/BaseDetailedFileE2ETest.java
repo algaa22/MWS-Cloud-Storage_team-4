@@ -9,20 +9,19 @@ import java.io.IOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Iterator;
-
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public abstract class BaseDetailedFileE2ETest extends BaseFileE2ETest {
-  private final boolean isQueryForSingleFile;
-  private final String endpoint;
+  private final QueryType queryType;
+  private final String rawEndpoint;
   private final String method;
 
-  public BaseDetailedFileE2ETest(String rawEndpoint, String method, boolean isQueryForSingleFile) {
-    this.endpoint = rawEndpoint;
+  public BaseDetailedFileE2ETest(String rawEndpoint, String method, QueryType queryType) {
+    this.rawEndpoint = rawEndpoint;
     this.method = method;
-    this.isQueryForSingleFile = isQueryForSingleFile;
+    this.queryType = queryType;
   }
 
   // TODO: тест на отсутствие хедеров, параметром
@@ -37,7 +36,7 @@ public abstract class BaseDetailedFileE2ETest extends BaseFileE2ETest {
         client.send(
             createRawRequestWithToken(otherUserToken), HttpResponse.BodyHandlers.ofString());
 
-    if (isQueryForSingleFile) {
+    if (queryType == QueryType.SINGLE_FILE) {
       assertFileNotFound(otherUserResponse);
     } else {
       HttpResponse<String> ownerResponse =
@@ -50,7 +49,7 @@ public abstract class BaseDetailedFileE2ETest extends BaseFileE2ETest {
 
   @Test
   public void shouldNotDoX_WhenSpecifyNotExistentFile() throws IOException, InterruptedException {
-    if (!isQueryForSingleFile) return;
+    if (queryType != QueryType.SINGLE_FILE) return;
 
     simpleUploadFile("asdfghjklasdasdflhgehsagjak");
 
@@ -59,6 +58,19 @@ public abstract class BaseDetailedFileE2ETest extends BaseFileE2ETest {
             createRawRequestWithToken(currentUserToken), HttpResponse.BodyHandlers.ofString());
 
     assertFileNotFound(response);
+  }
+
+  @Test
+  public void shouldNotDoX_WhenSpecifyFolder() throws IOException, InterruptedException {
+    if (queryType != QueryType.SINGLE_FILE) return;
+
+    HttpResponse<String> response =
+        client.send(
+            createRawRequestWithToken(currentUserToken, rawEndpoint + "/"),
+            HttpResponse.BodyHandlers.ofString());
+
+    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    assertTrue(containsValidationError(response, "NOT_DIRECTORY"));
   }
 
   @Test
@@ -80,7 +92,8 @@ public abstract class BaseDetailedFileE2ETest extends BaseFileE2ETest {
     assertTrue(containsValidationError(response, "VALID_TOKEN"));
   }
 
-  protected boolean containsValidationError(HttpResponse<String> response, String validationCode) throws IOException {
+  protected boolean containsValidationError(HttpResponse<String> response, String validationCode)
+      throws IOException {
     JsonNode messageJsonStrNode = TestUtils.getRootNodeFromResponse(response).get("message");
     assertNotNull(messageJsonStrNode);
 
@@ -103,6 +116,10 @@ public abstract class BaseDetailedFileE2ETest extends BaseFileE2ETest {
   }
 
   private HttpRequest createRawRequestWithToken(String userToken) {
+    return createRawRequestWithToken(userToken, this.rawEndpoint);
+  }
+
+  private HttpRequest createRawRequestWithToken(String userToken, String endpoint) {
     return TestUtils.createRequest(endpoint)
         .header("X-Auth-Token", userToken)
         .method(method, HttpRequest.BodyPublishers.noBody())

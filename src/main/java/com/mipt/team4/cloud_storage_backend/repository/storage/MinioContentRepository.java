@@ -109,10 +109,11 @@ public class MinioContentRepository implements FileContentRepository {
             });
   }
 
-  // TODO: неправильная асинхронность
-  // TODO: чанковая загрузка доступна только для фалов >= 5МБ
+  // TODO: сделать синхронным
+  // TODO: в completeMultipartUpload формировать части по 5МБ и бросать
+  //       исключение, если непоследняя часть размером < 5МБ
   // TODO: download part
-  // TODO: retry?
+  // TODO: (позже) retry
 
   @Override
   public CompletableFuture<String> uploadPart(

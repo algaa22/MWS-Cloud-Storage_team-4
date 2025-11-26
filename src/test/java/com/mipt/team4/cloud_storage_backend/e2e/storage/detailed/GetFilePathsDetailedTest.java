@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.detailed;
 
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseDetailedFileE2ETest;
+import com.mipt.team4.cloud_storage_backend.e2e.storage.QueryType;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsTestUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.user.UserAuthUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
@@ -16,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GetFilePathsDetailedTest extends BaseDetailedFileE2ETest {
   public GetFilePathsDetailedTest() {
-    super("/api/files", HttpMethod.GET.name(), false);
+    super("/api/files", HttpMethod.GET.name(), QueryType.FOLDER);
   }
 
   @Test

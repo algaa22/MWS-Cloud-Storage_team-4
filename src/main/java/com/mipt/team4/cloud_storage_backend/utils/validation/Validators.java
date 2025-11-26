@@ -4,8 +4,8 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.NumberComparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 public class Validators {
   public static ValidationResult any(
@@ -21,7 +21,7 @@ public class Validators {
     ValidationResult combined = ValidationResult.valid();
 
     for (ValidationResult result : results) {
-      combined = combined.merge(result);
+      combined = combined.combine(result);
     }
 
     return combined;
@@ -39,12 +39,36 @@ public class Validators {
     return validate(value != null, field, field + " cannot be null", "NOT_NULL");
   }
 
-  public static ValidationResult notBlank(String field, String value) {
-    return notBlank(value != null && !value.trim().isBlank(), field);
+  public static ValidationResult mustBeFilePath(String field, String path) {
+    return notBlank(field, path).combine(notDirectory(field, path));
   }
 
-  public static <T> ValidationResult notBlank(String field, T[] list) {
-    return notBlank(list != null && list.length != 0, field);
+  public static ValidationResult mustBeDirectoryPath(String field, String path) {
+    return notBlank(field, path).combine(mustBeDirectory(field, path));
+  }
+
+  public static ValidationResult mustBeDirectory(String field, String path) {
+    char lastChar = path.charAt(path.length() - 1);
+
+    return validate(
+            lastChar == '/' || lastChar == '\\',
+            field,
+            field + " must be path to directory",
+            "MUST_BE_DIRECTORY");
+  }
+
+  public static ValidationResult notDirectory(String field, String path) {
+    char lastChar = path.charAt(path.length() - 1);
+
+    return validate(
+        lastChar != '/' && lastChar != '\\',
+        field,
+        field + " must not be path to directory",
+        "NOT_DIRECTORY");
+  }
+
+  public static ValidationResult notBlank(String field, String value) {
+    return notBlank(value != null && !value.trim().isBlank(), field);
   }
 
   public static <T> ValidationResult notBlank(String field, List<T> list) {
@@ -154,12 +178,12 @@ public class Validators {
     if (!result.isValid()) throw new ValidationFailedException(result);
   }
 
-  public static ValidationResult validate(boolean condition, String field, String message) {
-    return validate(condition, field, message, null);
+  public static ValidationResult validate(BooleanSupplier supplier, String field, String message) {
+    return validate(supplier.getAsBoolean(), field, message, null);
   }
 
-  public static ValidationResult validate(boolean condition, String field) {
-    return validate(condition, field, null, null);
+  public static ValidationResult validate(boolean condition, String field, String message) {
+    return validate(condition, field, message, null);
   }
 
   public static ValidationResult validate(

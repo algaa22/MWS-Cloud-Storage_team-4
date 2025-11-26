@@ -2,12 +2,9 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,8 +61,19 @@ public class FileRepository {
     return contentRepository.downloadFile(s3Key);
   }
 
-  public void deleteFile(UUID ownerId, String path)
+  public void deleteFile(UUID ownerId, String s3Key)
       throws StorageFileNotFoundException, FileNotFoundException {
-    metadataRepository.deleteFile(ownerId, path);
+    metadataRepository.deleteFile(ownerId, s3Key);
+    contentRepository.deleteFile(s3Key);
+  }
+
+  public byte[] downloadFilePart(String s3Key) {
+    return null;
+  }
+
+  public void updateFile(FileEntity entity) {
+    metadataRepository.updateFile(entity);
+    // TODO: если надо переместить офк
+    contentRepository.moveFile(entity);
   }
 }

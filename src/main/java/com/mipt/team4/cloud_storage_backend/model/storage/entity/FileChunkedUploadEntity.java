@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -11,7 +11,7 @@ public class FileChunkedUploadEntity {
   private String s3UploadId;
   private String path;
   private List<String> tags;
-  private List<FileChunkDto> chunks;
+  private List<UploadChunkDto> chunks;
   private Map<Integer, String> eTags;
 
   public FileChunkedUploadEntity(
@@ -20,7 +20,7 @@ public class FileChunkedUploadEntity {
       String s3UploadId,
       String path,
       List<String> tags,
-      List<FileChunkDto> chunks,
+      List<UploadChunkDto> chunks,
       Map<Integer, String> eTags) {
     this.sessionId = sessionId;
     this.ownerId = ownerId;
@@ -71,11 +71,11 @@ public class FileChunkedUploadEntity {
     this.tags = tags;
   }
 
-  public List<FileChunkDto> getChunks() {
+  public List<UploadChunkDto> getChunks() {
     return chunks;
   }
 
-  public void setChunks(List<FileChunkDto> chunks) {
+  public void setChunks(List<UploadChunkDto> chunks) {
     this.chunks = chunks;
   }
 

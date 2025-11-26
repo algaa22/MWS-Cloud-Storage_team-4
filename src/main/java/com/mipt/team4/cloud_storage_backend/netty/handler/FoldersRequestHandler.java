@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeFolderPathDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFolderOperationDto;
@@ -16,7 +17,7 @@ public record FoldersRequestHandler(FileController fileController) {
       ChannelHandlerContext ctx, String folderPath, String userToken) {
     try {
       fileController.createFolder(new SimpleFolderOperationDto(userToken, folderPath));
-    } catch (ValidationFailedException e) {
+    } catch (ValidationFailedException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }

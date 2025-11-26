@@ -1,6 +1,5 @@
-package com.mipt.team4.cloud_storage_backend.e2e.storage;
+package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
-import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -9,13 +8,13 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChunkedUploadTestUtils {
+public class FileChunkedTransferTestUtils {
   public static HttpResponse<String> createUploadRequest(
-      HttpClient client, String userToken, String filePath, byte[] fileData, String fileTags)
+      HttpClient client, String userToken, String targetFilePath, byte[] fileData, String fileTags)
       throws IOException, InterruptedException {
     List<byte[]> chunks = splitFileIntoChunks(fileData, 8 * 1024);
 
-    HttpRequest request = TestUtils.createRequest("/api/files/upload?path=" + filePath)
+    HttpRequest request = TestUtils.createRequest("/api/files/upload?path=" + targetFilePath)
             .header("Transfer-Encoding", "chunked")
             .header("X-Auth-Token", userToken)
             .header("X-File-Tags", fileTags)

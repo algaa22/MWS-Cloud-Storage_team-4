@@ -1,17 +1,19 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
+import static org.junit.jupiter.api.Assertions.fail;
+
 import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import org.testcontainers.containers.MinIOContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
-
-import static org.junit.jupiter.api.Assertions.fail;
+import java.net.http.HttpResponse;
+import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class TestUtils {
   public static PostgreSQLContainer<?> createPostgresContainer() {
@@ -45,5 +47,10 @@ public class TestUtils {
 
   public static void failWithException(Exception exception) {
     fail("Exception thrown in test", exception);
+  }
+
+  public static JsonNode getRootNodeFromResponse(HttpResponse<String> response) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    return mapper.readTree(response.body());
   }
 }

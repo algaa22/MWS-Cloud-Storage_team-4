@@ -5,6 +5,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     return postgres.executeQuery(
         "SELECT storage_path FROM files WHERE owner_id = ? AND is_deleted = FALSE;",
         List.of(id),
-        rs -> rs.getString("storage_path"));
+        rs -> StoragePaths.getFilePathFromS3Key(rs.getString("storage_path")));
   }
 
   @Override
@@ -70,22 +71,34 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public boolean fileExists(UUID ownerId, String storagePath) {
-    List<Boolean> result =
-        postgres.executeQuery(
-            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
-            List.of(ownerId, storagePath),
-            rs -> (rs.getBoolean(1)));
-    return result.getFirst();
+  public void deleteFile(UUID ownerId, String s3Key) throws StorageFileNotFoundException {
+    if (!fileExists(ownerId, s3Key)) {
+      throw new StorageFileNotFoundException(s3Key);
+    }
+
+    postgres.executeUpdate(
+        "DELETE FROM files WHERE owner_id = ? AND storage_path = ?;", List.of(ownerId, s3Key));
   }
 
   @Override
-  public void deleteFile(UUID ownerId, String path) throws StorageFileNotFoundException {
-    if (!fileExists(ownerId, path)) {
-      throw new StorageFileNotFoundException(path);
-    }
+  public void updateFile(FileEntity fileEntity) {
     postgres.executeUpdate(
-        "UPDATE files SET is_deleted = TRUE WHERE owner_id = ? AND newPath = ?;",
-        List.of(ownerId, path));
+        "UPDATE files SET storage_path = ?, visibility = ?, tags = ? WHERE owner_id = ? AND id = ?",
+        List.of(
+            fileEntity.getS3Key(),
+            fileEntity.getVisibility(),
+            FileTagsMapper.toString(fileEntity.getTags()),
+            fileEntity.getOwnerId(),
+            fileEntity.getFileId()));
+  }
+
+  @Override
+  public boolean fileExists(UUID ownerId, String s3Key) {
+    List<Boolean> result =
+        postgres.executeQuery(
+            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND storage_path = ?);",
+            List.of(ownerId, s3Key),
+            rs -> (rs.getBoolean(1)));
+    return result.getFirst();
   }
 }

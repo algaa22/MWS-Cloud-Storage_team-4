@@ -71,17 +71,13 @@ public class FileRepository {
     return null;
   }
 
-  public void updateFile(FileEntity entity) {
+  public void updateFile(FileEntity entity, String oldS3Key) {
     metadataRepository.updateFile(entity);
     // TODO: если надо переместить офк
-    contentRepository.moveFile(entity);
+    contentRepository.moveFile(entity, oldS3Key);
   }
 
     public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
       return null;
-    }
-
-    public void updateFile(FileEntity entity) {
-
     }
 }

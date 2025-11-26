@@ -16,7 +16,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public class MinioContentRepository implements FileContentRepository {
@@ -55,7 +54,7 @@ public class MinioContentRepository implements FileContentRepository {
         | IOException
         | NoSuchAlgorithmException
         | XmlParserException e) {
-      // TODO: exceptions
+      // TODO: exceptions, retry
       throw new RuntimeException(e);
     }
   }
@@ -107,12 +106,6 @@ public class MinioContentRepository implements FileContentRepository {
     return response.result().uploadId();
   }
 
-  // TODO: сделать синхронным
-  // TODO: в completeMultipartUpload формировать части по 5МБ и бросать
-  //       исключение, если непоследняя часть размером < 5МБ
-  // TODO: download part
-  // TODO: (позже) retry
-
   @Override
   public String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes) {
     Multimap<String, String> extraHeaders = createEmptyHeader();
@@ -148,7 +141,9 @@ public class MinioContentRepository implements FileContentRepository {
     return response.etag();
   }
 
+  @Override
   public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
+    // TODO
     return null;
   }
 
@@ -231,7 +226,7 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public void moveFile(FileEntity entity) {
+  public void moveFile(FileEntity entity, String oldS3Key) {
     // TODO
   }
 

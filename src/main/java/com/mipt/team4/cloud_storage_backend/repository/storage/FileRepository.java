@@ -2,12 +2,9 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,12 +33,12 @@ public class FileRepository {
     return metadataRepository.fileExists(ownerId, s3Key);
   }
 
-  public CompletableFuture<String> startMultipartUpload(String s3Key) {
+  public String startMultipartUpload(String s3Key) {
     return contentRepository.startMultipartUpload(s3Key);
   }
 
-  public CompletableFuture<String> uploadPart(
-      CompletableFuture<String> uploadId, String s3Key, int partIndex, byte[] bytes) {
+  public String uploadPart(
+      String uploadId, String s3Key, int partIndex, byte[] bytes) {
     // TODO: параметры в дто?
     return contentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
   }
@@ -52,8 +49,8 @@ public class FileRepository {
 
   public void completeMultipartUpload(
       FileEntity fileEntity,
-      CompletableFuture<String> uploadId,
-      Map<Integer, CompletableFuture<String>> eTags)
+      String uploadId,
+      Map<Integer, String> eTags)
       throws StorageFileAlreadyExistsException {
     metadataRepository.addFile(fileEntity);
     contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
@@ -68,4 +65,12 @@ public class FileRepository {
       throws StorageFileNotFoundException, FileNotFoundException {
     metadataRepository.deleteFile(ownerId, path);
   }
+
+    public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
+      return null;
+    }
+
+    public void updateFile(FileEntity entity) {
+
+    }
 }

@@ -55,6 +55,7 @@ public class MinioContentRepository implements FileContentRepository {
         | IOException
         | NoSuchAlgorithmException
         | XmlParserException e) {
+      // TODO: exceptions
       throw new RuntimeException(e);
     }
   }
@@ -106,7 +107,11 @@ public class MinioContentRepository implements FileContentRepository {
     return response.result().uploadId();
   }
 
-  // TODO: retry?
+  // TODO: сделать синхронным
+  // TODO: в completeMultipartUpload формировать части по 5МБ и бросать
+  //       исключение, если непоследняя часть размером < 5МБ
+  // TODO: download part
+  // TODO: (позже) retry
 
   @Override
   public String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes) {
@@ -145,10 +150,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
     return null;
-  }
-
-  public void updateFile(FileEntity entity) {
-
   }
 
   @Override
@@ -222,6 +223,16 @@ public class MinioContentRepository implements FileContentRepository {
         | InterruptedException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void deleteFile(String s3Key) {
+    // TODO
+  }
+
+  @Override
+  public void moveFile(FileEntity entity) {
+    // TODO
   }
 
   private Multimap<String, String> createEmptyHeader() {

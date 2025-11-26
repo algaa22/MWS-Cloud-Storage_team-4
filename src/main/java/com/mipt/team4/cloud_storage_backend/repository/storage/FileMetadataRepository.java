@@ -13,10 +13,12 @@ public interface FileMetadataRepository {
 
   List<String> getFilesPathsList(UUID id);
 
-  Optional<FileEntity> getFile(UUID ownerID, String path);
+  Optional<FileEntity> getFile(UUID ownerID, String s3Key);
 
-  boolean fileExists(UUID ownerId, String storagePath);
+  boolean fileExists(UUID ownerId, String s3Key);
 
-  void deleteFile(UUID ownerId, String storagePath)
+  void deleteFile(UUID ownerId, String s3Key)
       throws FileNotFoundException, StorageFileNotFoundException;
+
+  void updateFile(FileEntity fileEntity);
 }

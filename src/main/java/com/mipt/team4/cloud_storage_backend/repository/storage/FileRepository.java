@@ -61,9 +61,20 @@ public class FileRepository {
     return contentRepository.downloadFile(s3Key);
   }
 
-  public void deleteFile(UUID ownerId, String path)
+  public void deleteFile(UUID ownerId, String s3Key)
       throws StorageFileNotFoundException, FileNotFoundException {
-    metadataRepository.deleteFile(ownerId, path);
+    metadataRepository.deleteFile(ownerId, s3Key);
+    contentRepository.deleteFile(s3Key);
+  }
+
+  public byte[] downloadFilePart(String s3Key) {
+    return null;
+  }
+
+  public void updateFile(FileEntity entity) {
+    metadataRepository.updateFile(entity);
+    // TODO: если надо переместить офк
+    contentRepository.moveFile(entity);
   }
 
     public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {

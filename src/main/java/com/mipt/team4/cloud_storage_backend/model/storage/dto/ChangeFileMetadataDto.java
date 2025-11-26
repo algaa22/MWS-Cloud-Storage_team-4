@@ -10,19 +10,24 @@ public record ChangeFileMetadataDto(
     String userToken,
     String oldPath,
     Optional<String> newPath,
-    Optional<Boolean> visibility,
+    Optional<String> visibility,
     Optional<List<String>> tags) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
             Validators.validToken(userToken),
-            Validators.notBlank("Old file path", oldPath),
+            Validators.mustBeFilePath("Old file path", oldPath),
+            Validators.any(
+                "New file path",
+                "If new file path specified, it must not be directory",
+                Validators.validate(newPath.isEmpty(), null, null),
+                Validators.mustBeFilePath(null, newPath.orElse(null))),
             Validators.any(
                 "File metadata",
-                "One of the fields {newPath, visibility, tags} must not be null",
-                Validators.validate(newPath.isPresent() && !newPath.get().isEmpty(), "New file path"),
-                Validators.validate(visibility.isPresent(), "File visibility"),
-                Validators.validate(tags.isPresent() && !tags.get().isEmpty(), "File tags")));
+                "One of the fields {New file Path, File visibility, File tags} must be specified",
+                Validators.validate(newPath.isPresent(), null, null),
+                Validators.validate(visibility.isPresent(), null, null),
+                Validators.validate(tags.isPresent() && !tags.get().isEmpty(), null, null)));
 
     Validators.throwExceptionIfNotValid(result);
   }

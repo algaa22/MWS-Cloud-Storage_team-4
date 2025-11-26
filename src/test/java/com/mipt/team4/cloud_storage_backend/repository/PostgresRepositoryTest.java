@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.repository;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;

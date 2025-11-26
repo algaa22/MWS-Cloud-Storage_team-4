@@ -15,7 +15,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
@@ -61,9 +61,10 @@ public class ChunkedUploadHandler {
     }
 
     try {
+      // TODO: ????
       fileController.startChunkedUpload(
           new FileChunkedUploadDto(
-              currentSessionId, currentUserToken, currentFilePath, currentFileTags));
+              currentSessionId, currentUserToken, currentFilePath, currentFileTags, 0, 0));
     } catch (ValidationFailedException
         | StorageFileAlreadyExistsException
         | StorageIllegalAccessException
@@ -100,8 +101,8 @@ public class ChunkedUploadHandler {
 
     try {
       fileController.processFileChunk(
-          new FileChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
-    } catch (ValidationFailedException e) {
+          new UploadChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
+    } catch (ValidationFailedException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
@@ -145,7 +146,7 @@ public class ChunkedUploadHandler {
 
     if (logger.isDebugEnabled())
       logger.debug(
-          "Completed chunk upload. Session: {}, newPath: {}, chunks: {}, bytes: {}",
+          "Completed chunk upload. Session: {}, path: {}, chunks: {}, bytes: {}",
           currentSessionId,
           currentFilePath,
           receivedChunks,
@@ -180,7 +181,7 @@ public class ChunkedUploadHandler {
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
-    json.put("newPath", filePath);
+    json.put("path", filePath);
     json.put("fileSize", fileSize);
     json.put("totalChunks", totalChunks);
 

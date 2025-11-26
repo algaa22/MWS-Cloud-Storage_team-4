@@ -4,6 +4,6 @@ import java.util.UUID;
 
 public class StorageFileAlreadyExistsException extends Exception {
   public StorageFileAlreadyExistsException(UUID ownerId, String filePath) {
-    super("File with path " + filePath + " already exists for user " + ownerId);
+    super("File already exists: user=" + ownerId + ", path=" + filePath);
   }
 }

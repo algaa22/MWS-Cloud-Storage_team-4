@@ -34,7 +34,7 @@ public record UsersRequestHandler(UserController userController) {
       return;
     }
 
-    // TODO: шо не так...................................................... (дто в маппер??)
+    // TODO: подумать над тем, чтобы преобразовывать ответы DTO в Json
     ObjectNode rootNode =
         ResponseHelper.createJsonResponseNode(
             HttpResponseStatus.CREATED, true, "Account created successfully.");

@@ -28,9 +28,10 @@ public class FileController {
     service.startChunkedUploadSession(request);
   }
 
-  public void processFileChunk(FileChunkDto request) throws ValidationFailedException, UserNotFoundException {
+  public void processFileChunk(UploadChunkDto request)
+      throws ValidationFailedException, UserNotFoundException {
     request.validate();
-    service.processChunk(request);
+    service.uploadChunk(request);
   }
 
   public ChunkedUploadFileResultDto completeChunkedUpload(String request)
@@ -52,7 +53,7 @@ public class FileController {
     return service.getFileDownloadInfo(request);
   }
 
-  public FileChunkDto getFileChunk(GetFileChunkDto request)
+  public DownloadedChunkDto getFileChunk(GetFileChunkDto request)
       throws ValidationFailedException,
           UserNotFoundException,
           StorageFileNotFoundException,
@@ -89,12 +90,17 @@ public class FileController {
     service.uploadFile(request);
   }
 
-  public void changeFileMetadata(ChangeFileMetadataDto request) throws ValidationFailedException {
+  public void changeFileMetadata(ChangeFileMetadataDto request)
+      throws ValidationFailedException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          StorageFileAlreadyExistsException {
     request.validate();
     service.changeFileMetadata(request);
   }
 
-  public void createFolder(SimpleFolderOperationDto request) throws ValidationFailedException {
+  public void createFolder(SimpleFolderOperationDto request)
+      throws ValidationFailedException, UserNotFoundException {
     request.validate();
     service.createFolder(request);
   }
@@ -109,7 +115,12 @@ public class FileController {
     service.deleteFolder(request);
   }
 
-  public FileDownloadDto downloadFile(SimpleFileOperationDto request) throws ValidationFailedException, UserNotFoundException, StorageIllegalAccessException, FileNotFoundException, StorageFileNotFoundException {
+  public FileDownloadDto downloadFile(SimpleFileOperationDto request)
+      throws ValidationFailedException,
+          UserNotFoundException,
+          StorageIllegalAccessException,
+          FileNotFoundException,
+          StorageFileNotFoundException {
     request.validate();
     return service.downloadFile(request);
   }

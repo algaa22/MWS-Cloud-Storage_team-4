@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.model.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
+import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 
 public class FileMapper {
   public static FileEntity toEntity(FileDto dto) {
@@ -20,7 +21,7 @@ public class FileMapper {
     return new FileDto(
         entity.getFileId(),
         entity.getOwnerId(),
-        entity.getS3Key(),
+        StoragePaths.getFilePathFromS3Key(entity.getS3Key()),
         entity.getMimeType(),
         entity.getVisibility(),
         entity.getSize(),

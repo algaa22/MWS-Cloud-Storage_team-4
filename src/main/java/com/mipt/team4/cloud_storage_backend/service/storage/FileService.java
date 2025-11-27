@@ -14,6 +14,7 @@ import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class FileService {
   private final FileRepository fileRepository;
@@ -249,12 +250,79 @@ public class FileService {
     System.out.println("User " + userId + " created folder: " + folderPath);
   }
 
-  public void changeFolderPath(ChangeFolderPathDto changeFolder) {
-    // TODO
+
+  public void changeFolderPath(ChangeFolderPathDto changeFolder)
+      throws UserNotFoundException {
+
+    UUID userId = sessionService.extractUserIdFromToken(changeFolder.userToken());
+    String oldPath = changeFolder.oldFolderPath();
+    String newPath = changeFolder.newFolderPath();
+    if (oldPath == null || oldPath.isEmpty() || newPath == null || newPath.isEmpty()) {
+      throw new RuntimeException("Folder paths cannot be empty");
+    }
+    if (oldPath.equals(newPath)) {
+      throw new RuntimeException("Old and new paths are the same");
+    }
+    List<String> allFilePaths = fileRepository.getFilePathsList(userId);
+    List<String> filesInOldFolder = allFilePaths.stream()
+        .filter(filePath -> filePath.startsWith(oldPath + "/"))
+        .collect(Collectors.toList());
+    if (filesInOldFolder.isEmpty()) {
+      throw new RuntimeException("Folder not found or empty: " + oldPath);
+    }
+    for (String oldFilePath : filesInOldFolder) {
+      String newFilePath = oldFilePath.replaceFirst(oldPath, newPath);
+      if (fileRepository.fileExists(userId, newFilePath)) {
+        throw new RuntimeException("File already exists at new path: " + newFilePath);
+      }
+      Optional<FileEntity> fileOpt = fileRepository.getFile(userId, oldFilePath);
+      if (fileOpt.isPresent()) {
+        FileEntity file = fileOpt.get();
+        try {
+          byte[] fileContent = fileRepository.downloadFile(file.getS3Key());
+          FileEntity newFileEntity = new FileEntity(
+              UUID.randomUUID(),
+              userId,
+              newFilePath,
+              file.getMimeType(),
+              file.getVisibility(),
+              file.getSize(),
+              file.isDeleted(),
+              file.getTags()
+          );
+          fileRepository.addFile(newFileEntity, fileContent);
+          fileRepository.deleteFile(userId, oldFilePath);
+
+        } catch (Exception e) {
+          throw new RuntimeException("Failed to move file: " + oldFilePath, e);
+        }
+      }
+    }
   }
 
-  public void deleteFolder(SimpleFolderOperationDto request) {
-    // TODO
+  public void deleteFolder(SimpleFolderOperationDto request)
+      throws UserNotFoundException {
+
+    UUID userId = sessionService.extractUserIdFromToken(request.userToken());
+    String folderPath = request.folderPath();
+
+    if (folderPath == null || folderPath.isEmpty()) {
+      throw new RuntimeException("Folder path cannot be empty");
+    }
+    List<String> allFilePaths = fileRepository.getFilePathsList(userId);
+    List<String> filesInFolder = allFilePaths.stream()
+        .filter(filePath -> filePath.startsWith(folderPath + "/"))
+        .collect(Collectors.toList());
+    if (filesInFolder.isEmpty()) {
+      throw new RuntimeException("Folder not found or empty: " + folderPath);
+    }
+    for (String filePath : filesInFolder) {
+      try {
+        fileRepository.deleteFile(userId, filePath);
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to delete file: " + filePath, e);
+      }
+    }
   }
 
   private static class ChunkedUploadState {

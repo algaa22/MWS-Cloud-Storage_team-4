@@ -41,7 +41,7 @@ public class FileController {
           UserNotFoundException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", request));
 
-    return service.completeChunkedUpload(request);
+    service.completeChunkedUpload(request);
   }
 
   public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto request)
@@ -90,6 +90,7 @@ public class FileController {
     service.uploadFile(request);
   }
 
+
   public void changeFileMetadata(ChangeFileMetadataDto request)
       throws ValidationFailedException,
           UserNotFoundException,
@@ -105,12 +106,12 @@ public class FileController {
     service.createFolder(request);
   }
 
-  public void changeFolderPath(ChangeFolderPathDto request) throws ValidationFailedException {
+  public void changeFolderPath(ChangeFolderPathDto request) throws ValidationFailedException, UserNotFoundException {
     request.validate();
     service.changeFolderPath(request);
   }
 
-  public void deleteFolder(SimpleFolderOperationDto request) throws ValidationFailedException {
+  public void deleteFolder(SimpleFolderOperationDto request) throws ValidationFailedException, UserNotFoundException {
     request.validate();
     service.deleteFolder(request);
   }

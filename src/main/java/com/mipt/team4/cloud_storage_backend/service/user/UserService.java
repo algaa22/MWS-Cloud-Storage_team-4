@@ -27,23 +27,26 @@ public class UserService {
     this.refreshTokenService = refreshTokenService;
   }
 
-  public UserEntity getUserInfo(String email) throws UserNotFoundException {
-    Optional<UserEntity> userOpt = userRepository.getUserByEmail(email);
+  public UserDto getUserInfo(SimpleUserRequestDto getUserInfoRequest) throws UserNotFoundException {
+    String token = getUserInfoRequest.token();
+    UUID userId = userSessionService.extractUserIdFromToken(token);
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
 
     if (userOpt.isEmpty()) {
-      throw new UserNotFoundException(email);
+      throw new UserNotFoundException(token);
     }
-    UserEntity user = userOpt.get();
-    return new UserEntity(
+
+    UserEntity userEntity = userOpt.get();
+
+    return new UserDto(
         null,
-        user.getName(),
-        user.getEmail(),
+        userEntity.getName(),
+        userEntity.getEmail(),
         null,
-        user.getStorageLimit(),
-        user.getUsedStorage(),
+        userEntity.getStorageLimit(),
+        userEntity.getUsedStorage(),
         null,
-        user.isActive()
-    );
+        userEntity.isActive());
   }
 
   public String registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
@@ -85,7 +88,8 @@ public class UserService {
     return usedSession.token();
   }
 
-  public void logoutUser(LogoutRequestDto logoutRequest) throws UserNotFoundException, InvalidSessionException {
+  public void logoutUser(SimpleUserRequestDto logoutRequest)
+      throws UserNotFoundException, InvalidSessionException {
     String token = logoutRequest.token();
 
     if (userSessionService.tokenExists(token)) {

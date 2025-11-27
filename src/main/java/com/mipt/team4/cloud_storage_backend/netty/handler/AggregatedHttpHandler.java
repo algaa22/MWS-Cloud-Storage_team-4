@@ -103,6 +103,10 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         usersRequestHandler.handleRegisterRequest(ctx, request);
       else if (uri.equals("/api/users/auth/logout"))
         usersRequestHandler.handleLogoutRequest(ctx, request);
+      else if (uri.equals("/api/users/info"))
+        usersRequestHandler.handleGetUserRequest(ctx, request);
+      else if (uri.equals("/api/users/auth/update"))
+        usersRequestHandler.handleUpdateUserRequest(ctx, request);
       else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
     } else {
       ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);

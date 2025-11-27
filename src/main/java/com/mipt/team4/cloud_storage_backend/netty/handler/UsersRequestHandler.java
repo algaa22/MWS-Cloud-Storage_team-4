@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
@@ -10,13 +11,18 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.LogoutRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.SimpleUserRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
+
+import java.util.Optional;
 
 public record UsersRequestHandler(UserController userController) {
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request) {
@@ -74,7 +80,7 @@ public record UsersRequestHandler(UserController userController) {
   public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request) {
     try {
       userController.logoutUser(
-          new LogoutRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
+          new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
     } catch (ValidationFailedException
         | InvalidSessionException
         | HeaderNotFoundException
@@ -85,5 +91,47 @@ public record UsersRequestHandler(UserController userController) {
 
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
+  }
+
+  public void handleGetUserRequest(ChannelHandlerContext ctx, HttpRequest request) {
+    UserDto userInfo;
+    
+    try {
+      userInfo = userController.getUserInfo(
+          new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
+    } catch (ValidationFailedException | UserNotFoundException | HeaderNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode rootNode = mapper.createObjectNode();
+
+    rootNode.put("Name", userInfo.name());
+    rootNode.put("Email", userInfo.email());
+    rootNode.put("Storage limit", userInfo.storageLimit());
+    rootNode.put("IsActive", userInfo.isActive());
+
+    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+  }
+
+  public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request) {
+    Optional<String> newUsername = RequestUtils.getHeader(request, "X-New-Username");
+    Optional<String> oldUserPassword = RequestUtils.getHeader(request, "X-Old-Password");
+    Optional<String> newUserPassword = RequestUtils.getHeader(request, "X-New-Password");
+
+    try {
+      userController.updateUserInfo(
+          new UpdateUserInfoDto(
+              RequestUtils.getRequiredHeader(request, "X-Auth-Token"),
+              oldUserPassword,
+              newUserPassword,
+              newUsername));
+    } catch (ValidationFailedException | HeaderNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    ResponseHelper.sendSuccessResponse(
+        ctx, HttpResponseStatus.OK, "User info successfully changed");
   }
 }

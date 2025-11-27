@@ -23,10 +23,11 @@ public record ChangeFileMetadataDto(
                 Validators.validate(newPath.isEmpty(), null, null),
                 Validators.mustBeFilePath(null, newPath.orElse(null))),
             Validators.any(
-                "File metadata",
+                "New file metadata",
                 "One of the fields {New file Path, File visibility, File tags} must be specified",
-                Validators.validate(newPath.isPresent(), null, null),
-                Validators.validate(visibility.isPresent(), null, null),
+                Validators.validate(newPath.isPresent() && !newPath.get().isEmpty(), null, null),
+                Validators.validate(
+                    visibility.isPresent() && !visibility.get().isEmpty(), null, null),
                 Validators.validate(tags.isPresent() && !tags.get().isEmpty(), null, null)));
 
     Validators.throwExceptionIfNotValid(result);

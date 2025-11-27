@@ -11,6 +11,5 @@ public record UserDto(
     long storageLimit,
     long used_storage,
     LocalDateTime createdAt,
-    boolean isActive,
-    String accessToken,
-    String refreshToken) {}
+    boolean isActive
+  ) {}

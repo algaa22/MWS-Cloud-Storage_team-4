@@ -11,18 +11,20 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 public class UserTestUtils {
 
   public static HttpResponse<String> sendRegisterRequest(
-      HttpClient client, String email, String password, String name)
+      HttpClient client, String email, String password, String username)
       throws IOException, InterruptedException {
 
     String json =
         String.format(
-            "{\"email\":\"%s\", \"password\":\"%s\", \"name\":\"%s\"}", email, password, name);
+            "{\"email\":\"%s\", \"password\":\"%s\", \"name\":\"%s\"}", email, password, username);
 
     HttpRequest request =
-        TestUtils.createRequest("/user/regitser")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json))
-            .build();
+        TestUtils.createRequest("/api/users/auth/register")
+        .header("X-Auth-Email", email)
+        .header("X-Auth-Username", username)
+        .header("X-Auth-Password", password)
+        .POST(HttpRequest.BodyPublishers.noBody())
+        .build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
@@ -33,8 +35,9 @@ public class UserTestUtils {
     String json = String.format("{\"email\":\"%s\", \"password\":\"%s\"}", email, password);
 
     HttpRequest request =
-        TestUtils.createRequest("/user/login")
-            .header("Content-Type", "application/json")
+        TestUtils.createRequest("/users/auth/login")
+            .header("X-Auth-Email", email)
+            .header("X-Auth-Password", password)
             .POST(HttpRequest.BodyPublishers.ofString(json))
             .build();
 
@@ -47,7 +50,7 @@ public class UserTestUtils {
     String json = String.format("{\"refreshToken\":\"%s\"}", refreshToken);
 
     HttpRequest request =
-        TestUtils.createRequest("/user/refresh")
+        TestUtils.createRequest("/users/refresh")
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(json))
             .build();
@@ -59,7 +62,7 @@ public class UserTestUtils {
       throws IOException, InterruptedException {
 
     HttpRequest request =
-            TestUtils.createRequest("/user")
+        TestUtils.createRequest("/users/info")
             .header("X-Auth-Token", accessToken)
             .GET()
             .build();
@@ -74,9 +77,8 @@ public class UserTestUtils {
     String json = String.format("{\"name\":\"%s\"}", newName);
 
     HttpRequest request =
-            TestUtils.createRequest("/user")
+        TestUtils.createRequest("/users/update")
             .header("X-Auth-Token", accessToken)
-            .header("Content-Type", "application/json")
             .PUT(HttpRequest.BodyPublishers.ofString(json))
             .build();
 
@@ -89,8 +91,8 @@ public class UserTestUtils {
     String json = String.format("{\"refreshToken\":\"%s\"}", refreshToken);
 
     HttpRequest request =
-            TestUtils.createRequest("/user/logout")
-            .header("Content-Type", "application/json")
+        TestUtils.createRequest("/usesr/auth/logout")
+            .header("X-Auth-Token", refreshToken)
             .POST(HttpRequest.BodyPublishers.ofString(json))
             .build();
 

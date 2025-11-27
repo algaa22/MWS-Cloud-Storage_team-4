@@ -42,7 +42,7 @@ public record FoldersRequestHandler(FileController fileController) {
     try {
       fileController.changeFolderPath(
           new ChangeFolderPathDto(userToken, oldFolderPath, newFolderPath));
-    } catch (ValidationFailedException e) {
+    } catch (ValidationFailedException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
@@ -55,7 +55,7 @@ public record FoldersRequestHandler(FileController fileController) {
       ChannelHandlerContext ctx, String folderPath, String userToken) {
     try {
       fileController.deleteFolder(new SimpleFolderOperationDto(userToken, folderPath));
-    } catch (ValidationFailedException e) {
+    } catch (ValidationFailedException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }

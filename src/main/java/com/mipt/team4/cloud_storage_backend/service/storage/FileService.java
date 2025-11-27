@@ -28,20 +28,6 @@ public class FileService {
 
   // TODO: soft delete?
 
-  private String guessMimeType(String filePath) {
-    // TODO: вынести в отдельный класс, добавить типов файлов
-    if (filePath == null) return "application/octet-stream";
-    if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) return "image/jpeg";
-    if (filePath.endsWith(".png")) return "image/png";
-    if (filePath.endsWith(".gif")) return "image/gif";
-    if (filePath.endsWith(".pdf")) return "application/pdf";
-    if (filePath.endsWith(".txt")) return "text/plain";
-    if (filePath.endsWith(".html")) return "text/html";
-    if (filePath.endsWith(".mp3")) return "audio/mpeg";
-    if (filePath.endsWith(".mp4")) return "video/mp4";
-    return "application/octet-stream";
-  }
-
   public void startChunkedUploadSession(FileChunkedUploadDto uploadSession)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
     // TODO: разделить session'ы на юзеровский и файловский
@@ -64,12 +50,13 @@ public class FileService {
     if (upload == null) {
       throw new RuntimeException("Upload session not found!");
     }
-    CompletableFuture<String> uploadId = upload.getOrCreateUploadId(fileRepository);
+
+    String uploadId = upload.getOrCreateUploadId(fileRepository);
     int partNum = chunk.chunkIndex() + 1;
     if (chunk.chunkData().length > 10 * 1024 * 1024) {
       throw new RuntimeException("Chunk size exceeds maximum allowed size");
     }
-    CompletableFuture<String> etag =
+    String etag =
         fileRepository.uploadPart(uploadId, upload.s3Key, partNum, chunk.chunkData());
     upload.eTags.put(partNum, etag);
 
@@ -327,11 +314,11 @@ public class FileService {
 
   private static class ChunkedUploadState {
     final FileChunkedUploadDto session;
-    final Map<Integer, CompletableFuture<String>> eTags = new HashMap<>();
+    final Map<Integer, String> eTags = new HashMap<>();
     final UUID userId;
     final String s3Key;
 
-    CompletableFuture<String> uploadId;
+    String uploadId;
     int fileSize = 0;
     int totalChunks = 0;
 
@@ -343,12 +330,27 @@ public class FileService {
       this.s3Key = s3Key;
     }
 
-    CompletableFuture<String> getOrCreateUploadId(FileRepository repo) {
+    String getOrCreateUploadId(FileRepository repo) {
       if (uploadId == null) {
         String s3Key = StoragePaths.getS3Key(userId, session.path());
         uploadId = repo.startMultipartUpload(s3Key);
       }
+
       return uploadId;
     }
+  }
+
+  private String guessMimeType(String filePath) {
+    // TODO: вынести в отдельный класс, добавить типов файлов
+    if (filePath == null) return "application/octet-stream";
+    if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) return "image/jpeg";
+    if (filePath.endsWith(".png")) return "image/png";
+    if (filePath.endsWith(".gif")) return "image/gif";
+    if (filePath.endsWith(".pdf")) return "application/pdf";
+    if (filePath.endsWith(".txt")) return "text/plain";
+    if (filePath.endsWith(".html")) return "text/html";
+    if (filePath.endsWith(".mp3")) return "audio/mpeg";
+    if (filePath.endsWith(".mp4")) return "video/mp4";
+    return "application/octet-stream";
   }
 }

@@ -38,6 +38,7 @@ public class PostgresConnection implements DatabaseConnection {
       connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword);
       createUsersTable(); // TODO: переместить в userRepository
       createFilesTable(); // TODO: переместить в fileRepository
+      createRefreshTokensTable();
       // TODO: миграции
     } catch (SQLException e) {
       throw new DbConnectionException(e);
@@ -138,6 +139,26 @@ public class PostgresConnection implements DatabaseConnection {
       executeUpdate(createUsersSql, List.of());
     } catch (DbExecuteUpdateException e) {
       throw new DbCreateTableException("users", e);
+    }
+  }
+
+  private void createRefreshTokensTable() {
+    String request =
+        """
+                CREATE TABLE refresh_tokens (
+                    id UUID PRIMARY KEY,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    token TEXT NOT NULL UNIQUE,
+                    expires_at TIMESTAMP NOT NULL,
+                    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """;
+
+    try {
+      executeUpdate(request, List.of());
+    } catch (DbExecuteUpdateException e) {
+      throw new DbCreateTableException("refresh_tokens", e);
     }
   }
 

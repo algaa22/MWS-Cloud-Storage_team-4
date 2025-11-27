@@ -38,7 +38,9 @@ public class UserController {
     request.validate();
     service.logoutUser(request);
   }
+
   public String refresh(RefreshTokenDto request) throws InvalidSessionException {
+    // TODO
     if (request == null || request.refreshToken() == null) {
       throw new InvalidSessionException("refresh token required");
     }

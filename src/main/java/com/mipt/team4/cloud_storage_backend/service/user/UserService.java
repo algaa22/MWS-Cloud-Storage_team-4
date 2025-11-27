@@ -1,16 +1,21 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeFileMetadataDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.RefreshTokenEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenService;
+import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.util.*;
 
 public class UserService {
@@ -42,8 +47,7 @@ public class UserService {
         user.getStorageLimit(),
         user.getUsedStorage(),
         null,
-        user.isActive()
-    );
+        user.isActive());
   }
 
   public String registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
@@ -85,7 +89,8 @@ public class UserService {
     return usedSession.token();
   }
 
-  public void logoutUser(LogoutRequestDto logoutRequest) throws UserNotFoundException, InvalidSessionException {
+  public void logoutUser(LogoutRequestDto logoutRequest)
+      throws UserNotFoundException, InvalidSessionException {
     String token = logoutRequest.token();
 
     if (userSessionService.tokenExists(token)) {
@@ -120,12 +125,18 @@ public class UserService {
     return newSession.token();
   }
 
-  public void updateUserInfo(String token, String newName) throws UserNotFoundException {
-    UUID id = userSessionService.extractUserIdFromToken(token);
+  public void updateUserInfo(UpdateUserInfoDto updateUserInfoDto) throws UserNotFoundException {
+    UUID id = userSessionService.extractUserIdFromToken(updateUserInfoDto.accessToken());
     Optional<UserEntity> userOpt = userRepository.getUserById(id);
-    if (userOpt.isEmpty()) {
-      throw new UserNotFoundException(id);
+    UserEntity entity = userOpt.orElseThrow();
+
+    if (updateUserInfoDto.newName().isPresent()) {
+      entity.setName(String.valueOf(updateUserInfoDto.newName()));
     }
-    userRepository.updateInfo(id, newName);
+    if (updateUserInfoDto.newPassword().isPresent()) {
+      entity.setPassword(String.valueOf(updateUserInfoDto.newPassword()));
+    }
+    userRepository.updateInfo(id,updateUserInfoDto.newName(), updateUserInfoDto.oldPassword(), updateUserInfoDto.newPassword());
+
   }
-}
+   }

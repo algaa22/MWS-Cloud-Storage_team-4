@@ -59,8 +59,8 @@ public class UserTestUtils {
       throws IOException, InterruptedException {
 
     HttpRequest request =
-        TestUtils.createRequest("/user")
-            .header("Authorization", "Bearer " + accessToken)
+            TestUtils.createRequest("/user")
+            .header("X-Auth-Token", accessToken)
             .GET()
             .build();
 
@@ -74,8 +74,8 @@ public class UserTestUtils {
     String json = String.format("{\"name\":\"%s\"}", newName);
 
     HttpRequest request =
-        TestUtils.createRequest("/user")
-            .header("Authorization", "Bearer " + accessToken)
+            TestUtils.createRequest("/user")
+            .header("X-Auth-Token", accessToken)
             .header("Content-Type", "application/json")
             .PUT(HttpRequest.BodyPublishers.ofString(json))
             .build();
@@ -89,7 +89,7 @@ public class UserTestUtils {
     String json = String.format("{\"refreshToken\":\"%s\"}", refreshToken);
 
     HttpRequest request =
-        TestUtils.createRequest("/user/logout")
+            TestUtils.createRequest("/user/logout")
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(json))
             .build();

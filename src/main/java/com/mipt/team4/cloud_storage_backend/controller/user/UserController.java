@@ -8,7 +8,6 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.LogoutRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SimpleUserRequestDto;
@@ -56,7 +55,7 @@ public class UserController {
     return service.getUserInfo(request);
   }
 
-  public void updateUserInfo(UpdateUserInfoDto request) throws ValidationFailedException {
+  public void updateUserInfo(UpdateUserInfoDto request) throws ValidationFailedException, UserNotFoundException {
     request.validate();
     service.updateUserInfo(request);
   }

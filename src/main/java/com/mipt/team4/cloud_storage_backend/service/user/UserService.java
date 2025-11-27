@@ -124,12 +124,18 @@ public class UserService {
     return newSession.token();
   }
 
-  public void updateUserInfo(String token, String newName) throws UserNotFoundException {
-    UUID id = userSessionService.extractUserIdFromToken(token);
+  public void updateUserInfo(UpdateUserInfoDto updateUserInfoDto) throws UserNotFoundException {
+    UUID id = userSessionService.extractUserIdFromToken(updateUserInfoDto.accessToken());
     Optional<UserEntity> userOpt = userRepository.getUserById(id);
-    if (userOpt.isEmpty()) {
-      throw new UserNotFoundException(id);
+    UserEntity entity = userOpt.orElseThrow();
+
+    if (updateUserInfoDto.newName().isPresent()) {
+      entity.setName(String.valueOf(updateUserInfoDto.newName()));
     }
-    userRepository.updateInfo(id, newName);
+    if (updateUserInfoDto.newPassword().isPresent()) {
+      entity.setPassword(String.valueOf(updateUserInfoDto.newPassword()));
+    }
+    userRepository.updateInfo(id,updateUserInfoDto.newName(), updateUserInfoDto.oldPassword(), updateUserInfoDto.newPassword());
+
   }
 }

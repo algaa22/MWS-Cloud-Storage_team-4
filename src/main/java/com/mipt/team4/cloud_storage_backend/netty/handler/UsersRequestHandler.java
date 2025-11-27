@@ -126,7 +126,7 @@ public record UsersRequestHandler(UserController userController) {
               oldUserPassword,
               newUserPassword,
               newUsername));
-    } catch (ValidationFailedException | HeaderNotFoundException e) {
+    } catch (ValidationFailedException | HeaderNotFoundException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }

@@ -71,7 +71,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         else if (method.equals(HttpMethod.GET))
           filesRequestHandler.handleDownloadFileRequest(ctx, filePath, userToken);
         else if (method.equals(HttpMethod.POST))
-        filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
+          filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
         else if (method.equals(HttpMethod.PUT))
           filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, filePath, userToken);
         else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
@@ -97,17 +97,18 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   }
 
   private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request) {
+    // TODO: switch-case?
     if (method.equals(HttpMethod.POST)) {
       if (uri.equals("/api/users/auth/login")) usersRequestHandler.handleLoginRequest(ctx, request);
       else if (uri.equals("/api/users/auth/register"))
         usersRequestHandler.handleRegisterRequest(ctx, request);
       else if (uri.equals("/api/users/auth/logout"))
         usersRequestHandler.handleLogoutRequest(ctx, request);
-      else if (uri.equals("/api/users/info"))
-        usersRequestHandler.handleGetUserRequest(ctx, request);
       else if (uri.equals("/api/users/auth/update"))
         usersRequestHandler.handleUpdateUserRequest(ctx, request);
       else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+    } else if (method.equals(HttpMethod.GET)) {
+      if (uri.equals("/api/users/info")) usersRequestHandler.handleGetUserRequest(ctx, request);
     } else {
       ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
     }

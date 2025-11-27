@@ -71,7 +71,7 @@ public class UserRepository {
     List<UserEntity> result;
     result =
         postgres.executeQuery(
-            "SELECT * FROM users WHERE id = ?;",
+            "SELECT * FROM users WHERE id = ?",
             List.of(id.toString()),
             rs ->
                 new UserEntity(

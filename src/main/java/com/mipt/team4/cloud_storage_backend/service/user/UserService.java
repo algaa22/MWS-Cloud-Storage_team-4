@@ -50,7 +50,6 @@ public class UserService {
   }
 
   public String registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
-
     if (userRepository.getUserByEmail(registerRequest.email()).isPresent())
       throw new UserAlreadyExistsException(registerRequest.email());
 
@@ -93,10 +92,10 @@ public class UserService {
     String token = logoutRequest.token();
 
     if (userSessionService.tokenExists(token)) {
-      userSessionService.blacklistToken(token);
-
       UUID userId = userSessionService.extractUserIdFromToken(token);
       refreshTokenService.revokeAllForUser(userId);
+
+      userSessionService.blacklistToken(token);
     } else {
       throw new UserNotFoundException(token);
     }

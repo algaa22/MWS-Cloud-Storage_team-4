@@ -28,6 +28,7 @@ public class Validators {
   }
 
   public static ValidationResult validToken(String token) {
+    // TODO: проверка не нужна
     return validate(
         JwtService.isTokenValid(token),
         "User token",

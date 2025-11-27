@@ -5,7 +5,6 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
-import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,9 +25,10 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
       throw new StorageFileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getPath());
 
     postgres.executeUpdate(
-        "INSERT INTO files (owner_id, path, file_size, mime_type, visibility, is_deleted, tags)"
-            + " values (?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, tags)"
+            + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
+                fileEntity.getFileId(),
             fileEntity.getOwnerId(),
             fileEntity.getPath(),
             fileEntity.getSize(),

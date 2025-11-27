@@ -5,11 +5,11 @@ import com.sun.nio.sctp.NotificationHandler;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class ValidationResult {
   private final boolean valid;
   private final List<ValidationError> errors;
-
   public ValidationResult(boolean valid, List<ValidationError> errors) {
     this.valid = valid;
     this.errors = Collections.unmodifiableList(errors);
@@ -30,6 +30,14 @@ public class ValidationResult {
 
   public static ValidationResult errors(List<ValidationError> errors) {
     return new ValidationResult(false, errors);
+  }
+
+  public ValidationResult thenCombine(Supplier<ValidationResult> otherSupplier) {
+    if (this.valid) {
+      return this.combine(otherSupplier.get());
+    }
+
+    return this;
   }
 
   public ValidationResult combine(ValidationResult other) {

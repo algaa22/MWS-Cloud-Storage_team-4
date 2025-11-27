@@ -28,7 +28,7 @@ public class FileSmokeTest extends BaseFileE2ETest {
         FileSimpleTransferTestUtils.sendDownloadFileRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
 
-    byte[] originalFile = FileLoader.getInputStream("files/small_file.txt").readAllBytes();
+    byte[] originalFile = FileLoader.getInputStream(SMALL_FILE_LOCAL_PATH).readAllBytes();
     byte[] downloadedFile = downloadResponse.body();
 
     assertEquals(HttpStatus.SC_OK, downloadResponse.statusCode());

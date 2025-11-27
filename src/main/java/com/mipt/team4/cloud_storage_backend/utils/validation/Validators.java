@@ -40,11 +40,11 @@ public class Validators {
   }
 
   public static ValidationResult mustBeFilePath(String field, String path) {
-    return notBlank(field, path).combine(notDirectory(field, path));
+    return notBlank(field, path).thenCombine(() -> notDirectory(field, path));
   }
 
   public static ValidationResult mustBeDirectoryPath(String field, String path) {
-    return notBlank(field, path).combine(mustBeDirectory(field, path));
+    return notBlank(field, path).thenCombine(() -> mustBeDirectory(field, path));
   }
 
   public static ValidationResult mustBeDirectory(String field, String path) {

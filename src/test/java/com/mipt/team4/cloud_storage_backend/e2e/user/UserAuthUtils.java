@@ -1,54 +1,47 @@
 package com.mipt.team4.cloud_storage_backend.e2e.user;
 
+import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
-import java.net.URI;
+import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.UUID;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class UserAuthUtils {
+  static int usersCounter = 0;
 
-  public record AuthResult(
-      String email,
-      String password,
-      String accessToken,
-      String refreshToken
-  ) {}
+  public static String sendRegisterRandomUserRequest(HttpClient client) {
+    return sendRegisterTestUserRequest(client,
+            usersCounter++ + "@email.com",
+            "deadlyparkourkillerdarkbrawlstarsassassinstalkersniper1998rus",
+            "superpassword1488");
+  }
 
-  public static AuthResult sendRegisterRandomUser(HttpClient client) {
+  public static String sendRegisterTestUserRequest(
+          HttpClient client, String email, String username, String password) {
+    HttpRequest request =
+            TestUtils.createRequest("/api/users/auth/register")
+                    .header("X-Auth-Email", email)
+                    .header("X-Auth-Username", username)
+                    .header("X-Auth-Password", password)
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
     try {
-      String email = "test_" + UUID.randomUUID() + "@example.com";
-      String password = "pass_" + UUID.randomUUID();
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      String responseBody = response.body();
 
-      String body = """
-                    {
-                        "email": "%s",
-                        "password": "%s",
-                        "userName": "AutoUser"
-                    }
-                    """.formatted(email, password);
+      if (response.statusCode() != HttpStatus.SC_CREATED)
+        throw new RuntimeException("Failed to register test user: " + responseBody);
 
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create("http://localhost:8080/api/user/register"))
-              .header("Content-Type", "application/json")
-              .POST(HttpRequest.BodyPublishers.ofString(body))
-              .build();
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode rootNode = mapper.readTree(responseBody);
 
-      HttpResponse<String> response =
-          client.send(request, HttpResponse.BodyHandlers.ofString());
-
-      JsonNode root = TestUtils.getRootNodeFromResponse(response);
-
-      String accessToken = root.get("accessToken").asText();
-      String refreshToken = root.get("refreshToken").asText();
-
-      return new AuthResult(email, password, accessToken, refreshToken);
-
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to register random user", e);
+      return rootNode.get("token").asText();
+    } catch (IOException | InterruptedException e) {
+      throw new RuntimeException(e);
     }
   }
 }

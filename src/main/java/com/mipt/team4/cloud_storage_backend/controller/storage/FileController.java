@@ -41,7 +41,7 @@ public class FileController {
           UserNotFoundException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", request));
 
-    service.completeChunkedUpload(request);
+    return service.completeChunkedUpload(request);
   }
 
   public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto request)

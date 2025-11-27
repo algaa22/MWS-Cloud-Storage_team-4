@@ -45,7 +45,7 @@ public class RefreshTokenService {
 
   public void revoke(String token) {
     repository.findByToken(token)
-        .ifPresent(t -> repository.revoke(t.getId()));
+        .ifPresent(t -> repository.revokeById(t.getId()));
   }
 
   public void revokeAllForUser(UUID userId) {

@@ -15,6 +15,18 @@ public class RefreshTokenRepository {
     this.postgres = postgres;
   }
 
+  public void revokeById(UUID id) {
+    postgres.executeUpdate("UPDATE refresh_tokens SET revoked = TRUE WHERE id = ?;", List.of(id));
+  }
+
+  public void deleteByUser(UUID userId) {
+    postgres.executeUpdate("DELETE FROM refresh_tokens WHERE user_id = ?;", List.of(userId));
+  }
+
+  public void deleteByToken(String token) {
+    postgres.executeUpdate("DELETE FROM refresh_tokens WHERE token = ?;", List.of(token));
+  }
+
   public void save(RefreshTokenEntity token) {
     postgres.executeUpdate(
         "INSERT INTO refresh_tokens (id, user_id, token, expires_at, revoked) VALUES (?, ?, ?, ?, ?) " +
@@ -52,17 +64,5 @@ public class RefreshTokenRepository {
             ));
     if (result.isEmpty()) return Optional.empty();
     return Optional.of(result.getFirst());
-  }
-
-  public void revokeById(UUID id) {
-    postgres.executeUpdate("UPDATE refresh_tokens SET revoked = TRUE WHERE id = ?;", List.of(id));
-  }
-
-  public void deleteByUser(UUID userId) {
-    postgres.executeUpdate("DELETE FROM refresh_tokens WHERE user_id = ?;", List.of(userId));
-  }
-
-  public void deleteByToken(String token) {
-    postgres.executeUpdate("DELETE FROM refresh_tokens WHERE token = ?;", List.of(token));
   }
 }

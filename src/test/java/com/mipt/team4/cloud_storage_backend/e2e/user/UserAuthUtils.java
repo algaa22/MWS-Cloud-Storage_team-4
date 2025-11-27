@@ -6,10 +6,21 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Random;
+
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class UserAuthUtils {
+  static int usersCounter = 0;
+
+  public static String sendRegisterRandomUserRequest(HttpClient client) {
+    return sendRegisterTestUserRequest(client,
+            usersCounter++ + "@email.com",
+            "deadlyparkourkillerdarkbrawlstarsassassinstalkersniper1998rus",
+            "superpassword1488");
+  }
+
   public static String sendRegisterTestUserRequest(
       HttpClient client, String email, String username, String password) {
     HttpRequest request =

@@ -13,13 +13,13 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SessionService {
+public class UserSessionService {
 
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
   private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
   private final JwtService jwtService;
 
-  public SessionService(JwtService jwtService) {
+  public UserSessionService(JwtService jwtService) {
     this.jwtService = jwtService;
   }
 

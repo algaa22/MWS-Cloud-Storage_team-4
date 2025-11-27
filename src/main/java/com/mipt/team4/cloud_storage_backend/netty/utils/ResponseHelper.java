@@ -3,7 +3,6 @@ package com.mipt.team4.cloud_storage_backend.netty.utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -34,9 +33,9 @@ public class ResponseHelper {
     ResponseHelper.sendErrorResponse(ctx, status, e.getMessage());
   }
 
-  public static ChannelFuture sendSuccessResponse(
+  public static void sendSuccessResponse(
       ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
-    return sendResponse(ctx, createSuccessResponse(status, message));
+    sendResponse(ctx, createSuccessResponse(status, message));
   }
 
   public static ChannelFuture sendErrorResponse(
@@ -44,14 +43,14 @@ public class ResponseHelper {
     return sendResponse(ctx, createErrorResponse(status, message));
   }
 
-  public static ChannelFuture sendJsonResponse(
+  public static void sendJsonResponse(
       ChannelHandlerContext ctx, HttpResponseStatus status, JsonNode json) {
-    return sendJsonResponse(ctx, status, json.toString());
+    sendJsonResponse(ctx, status, json.toString());
   }
 
-  public static ChannelFuture sendJsonResponse(
+  public static void sendJsonResponse(
       ChannelHandlerContext ctx, HttpResponseStatus status, String json) {
-    return sendResponse(ctx, createJsonResponse(status, json));
+    sendResponse(ctx, createJsonResponse(status, json));
   }
 
   public static ChannelFuture sendResponse(ChannelHandlerContext ctx, FullHttpResponse response) {
@@ -77,6 +76,7 @@ public class ResponseHelper {
     ObjectNode json = mapper.createObjectNode();
 
     // TODO: Json injection?
+    // TODO: вместо String message - JsonNode message в ошибке валидации
     json.put("success", success);
     json.put("message", message);
     json.put("status", status.code());

@@ -8,7 +8,7 @@ public record SimpleFolderOperationDto(String userToken, String folderPath) {
   public void validate() throws ValidationFailedException {
     ValidationResult result = Validators.all(
             Validators.validToken(userToken),
-            Validators.notBlank("Folder path", folderPath)
+            Validators.mustBeDirectoryPath("Folder path", folderPath)
     );
 
     Validators.throwExceptionIfNotValid(result);

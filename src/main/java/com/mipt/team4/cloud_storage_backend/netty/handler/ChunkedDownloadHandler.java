@@ -8,7 +8,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.DownloadedChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
@@ -33,7 +33,7 @@ public class ChunkedDownloadHandler {
   private String currentUserToken;
   private long fileSize;
   private long sentBytes = 0;
-  private long sentChunks = 0;
+  private int sentChunks = 0;
   private int totalChunks;
 
   public ChunkedDownloadHandler(FileController fileController) {
@@ -90,16 +90,13 @@ public class ChunkedDownloadHandler {
       return;
     }
 
-    int chunkIndex = totalChunks;
-    int maxChunkSize = StorageConfig.INSTANCE.getFileDownloadChunkSize();
-    long offset = (long) chunkIndex * maxChunkSize;
-    int chunkSize = (int) Math.min(maxChunkSize, fileSize - offset);
-
-    FileChunkDto fileChunk;
+    DownloadedChunkDto fileChunk;
+    int chunkIndex = sentChunks;
 
     try {
       fileChunk =
-          fileController.getFileChunk(new GetFileChunkDto(currentFilePath, chunkIndex, chunkSize));
+          fileController.getFileChunk(
+              new GetFileChunkDto(currentUserToken, currentFilePath, chunkIndex));
     } catch (ValidationFailedException
         | UserNotFoundException
         | StorageFileNotFoundException
@@ -111,7 +108,7 @@ public class ChunkedDownloadHandler {
 
     HttpContent httpChunk = new DefaultHttpContent(Unpooled.copiedBuffer(fileChunk.chunkData()));
 
-    ChannelFutureListener listener = createChunkSendListener(ctx, chunkIndex, chunkSize);
+    ChannelFutureListener listener = createChunkSendListener(ctx, chunkIndex, fileChunk.chunkData().length);
     ctx.write(httpChunk).addListener(listener);
   }
 

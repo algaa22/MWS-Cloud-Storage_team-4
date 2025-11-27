@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 public class FileEntity {
@@ -88,7 +87,7 @@ public class FileEntity {
     return tags;
   }
 
-  public void setTags(Optional<List<String>> tags) {
+  public void setTags(List<String> tags) {
     this.tags = tags;
   }
 

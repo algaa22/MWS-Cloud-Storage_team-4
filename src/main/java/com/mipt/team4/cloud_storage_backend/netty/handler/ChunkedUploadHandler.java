@@ -15,11 +15,12 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
@@ -42,6 +43,7 @@ public class ChunkedUploadHandler {
   private String currentFilePath;
   private long receivedBytes = 0;
   private int receivedChunks = 0;
+  private boolean wantsProgress;
 
   public ChunkedUploadHandler(FileController fileController) {
     this.fileController = fileController;
@@ -59,12 +61,10 @@ public class ChunkedUploadHandler {
     }
 
     try {
+      // TODO: ????
       fileController.startChunkedUpload(
           new FileChunkedUploadDto(
-              currentSessionId,
-              currentUserToken,
-              currentFilePath,
-              currentFileTags));
+              currentSessionId, currentUserToken, currentFilePath, currentFileTags, 0, 0));
     } catch (ValidationFailedException
         | StorageFileAlreadyExistsException
         | StorageIllegalAccessException
@@ -92,7 +92,7 @@ public class ChunkedUploadHandler {
   public void handleFileChunk(ChannelHandlerContext ctx, HttpContent content)
       throws TransferNotStartedYetException {
     if (!isInProgress) throw new TransferNotStartedYetException();
-
+    // TODO: не слишком ли большой чанк?
     ByteBuf chunkData = content.content();
     int chunkSize = chunkData.readableBytes();
 
@@ -101,8 +101,8 @@ public class ChunkedUploadHandler {
 
     try {
       fileController.processFileChunk(
-          new FileChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
-    } catch (ValidationFailedException e) {
+          new UploadChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
+    } catch (ValidationFailedException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     }
@@ -110,17 +110,20 @@ public class ChunkedUploadHandler {
     receivedChunks++;
     receivedBytes += chunkSize;
 
-    logger.debug(
-        "Processed chunk {} for session: {}. Size: {} bytes, total: {} bytes",
-        receivedChunks,
-        currentSessionId,
-        chunkSize);
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Processed chunk {} for session: {}. Size: {} bytes, total: {} bytes",
+          receivedChunks,
+          currentSessionId,
+          chunkSize);
+    }
 
-    if (receivedChunks % StorageConfig.INSTANCE.getSendUploadProgressInterval() == 0) sendProgressResponse(ctx, "upload_progress");
+    if (receivedChunks % StorageConfig.INSTANCE.getSendUploadProgressInterval() == 0)
+      sendProgressResponse(ctx, "upload_progress");
   }
 
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
-          throws TransferNotStartedYetException {
+      throws TransferNotStartedYetException {
     if (!isInProgress) throw new TransferNotStartedYetException();
 
     if (content.content().readableBytes() > 0) handleFileChunk(ctx, content);
@@ -130,8 +133,8 @@ public class ChunkedUploadHandler {
     try {
       result = fileController.completeChunkedUpload(currentSessionId);
     } catch (UserNotFoundException
-             | StorageFileAlreadyExistsException
-             | ValidationFailedException e) {
+        | StorageFileAlreadyExistsException
+        | ValidationFailedException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       cleanup();
       return;
@@ -143,11 +146,11 @@ public class ChunkedUploadHandler {
 
     if (logger.isDebugEnabled())
       logger.debug(
-              "Completed chunk upload. Session: {}, newPath: {}, chunks: {}, bytes: {}",
-              currentSessionId,
-              currentFilePath,
-              receivedChunks,
-              receivedBytes);
+          "Completed chunk upload. Session: {}, path: {}, chunks: {}, bytes: {}",
+          currentSessionId,
+          currentFilePath,
+          receivedChunks,
+          receivedBytes);
 
     sendSuccessResponse(ctx, currentFilePath, result.fileSize(), result.totalChunks());
     cleanup();
@@ -169,14 +172,16 @@ public class ChunkedUploadHandler {
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
+    wantsProgress = SafeParser.parseBoolean("Progress update", RequestUtils.getRequiredHeader(request, "X-Progress-Update"));
   }
 
-  private void sendSuccessResponse(ChannelHandlerContext ctx, String filePath, long fileSize, long totalChunks) {
+  private void sendSuccessResponse(
+      ChannelHandlerContext ctx, String filePath, long fileSize, long totalChunks) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
-    json.put("newPath", filePath);
+    json.put("path", filePath);
     json.put("fileSize", fileSize);
     json.put("totalChunks", totalChunks);
 
@@ -184,6 +189,8 @@ public class ChunkedUploadHandler {
   }
 
   private void sendProgressResponse(ChannelHandlerContext ctx, String status) {
+    if (!wantsProgress) return;
+
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 

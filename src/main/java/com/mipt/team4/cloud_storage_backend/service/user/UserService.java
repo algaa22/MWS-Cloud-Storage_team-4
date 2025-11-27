@@ -13,10 +13,10 @@ import java.util.*;
 
 public class UserService {
   private final UserRepository userRepository;
-  private final SessionService sessionService;
-  public UserService(UserRepository userRepository, SessionService sessionService) {
+  private final UserSessionService userSessionService;
+  public UserService(UserRepository userRepository, UserSessionService userSessionService) {
     this.userRepository = userRepository;
-    this.sessionService = sessionService;
+    this.userSessionService = userSessionService;
   }
 
   public UserEntity getUserInfo(String email) throws UserNotFoundException {
@@ -49,7 +49,7 @@ public class UserService {
             UUID.randomUUID(), registerRequest.userName(), registerRequest.email(), hash);
 
     userRepository.addUser(userEntity);
-    SessionDto session = sessionService.createSession(userEntity);
+    SessionDto session = userSessionService.createSession(userEntity);
 
     return session.token();
   }
@@ -64,11 +64,11 @@ public class UserService {
       throw new WrongPasswordException();
     }
 
-    Optional<SessionDto> session = sessionService.findSessionByEmail(user.getEmail());
+    Optional<SessionDto> session = userSessionService.findSessionByEmail(user.getEmail());
     String token;
 
     if (session.isPresent()) token = session.get().token();
-    else token = sessionService.createSession(user).token();
+    else token = userSessionService.createSession(user).token();
 
     // TODO: refresh-токены?
     return token;
@@ -77,14 +77,14 @@ public class UserService {
   public void logoutUser(LogoutRequestDto logoutRequest) throws UserNotFoundException, InvalidSessionException {
     String token = logoutRequest.token();
 
-    if (sessionService.tokenExists(token))
-      sessionService.blacklistToken(token);
+    if (userSessionService.tokenExists(token))
+      userSessionService.blacklistToken(token);
     else
       throw new UserNotFoundException(token);
   }
 
   public void updateUserInfo(String token, String newName) throws UserNotFoundException {
-    UUID id = sessionService.extractUserIdFromToken(token);
+    UUID id = userSessionService.extractUserIdFromToken(token);
     Optional<UserEntity> userOpt = userRepository.getUserById(id);
     if (userOpt.isEmpty()) {
       throw new UserNotFoundException(id);

@@ -4,6 +4,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.messages.Part;
@@ -108,6 +109,12 @@ public class MinioContentRepository implements FileContentRepository {
             });
   }
 
+  // TODO: сделать синхронным
+  // TODO: в completeMultipartUpload формировать части по 5МБ и бросать
+  //       исключение, если непоследняя часть размером < 5МБ
+  // TODO: download part
+  // TODO: (позже) retry
+
   @Override
   public CompletableFuture<String> uploadPart(
       CompletableFuture<String> uploadId, String s3Key, int partNum, byte[] bytes) {
@@ -173,7 +180,7 @@ public class MinioContentRepository implements FileContentRepository {
                 minioClient
                     .completeMultipartUploadAsync(
                         MinioConfig.INSTANCE.getUserDataBucketName(),
-                        "eu-central-1",
+                          "eu-central-1",
                         s3Key,
                         uploadIdStr,
                         createPartArray(eTags),
@@ -196,23 +203,6 @@ public class MinioContentRepository implements FileContentRepository {
               // TODO
               return null;
             });
-  }
-
-  private Multimap<String, String> createEmptyHeader() {
-    return MultimapBuilder.hashKeys().arrayListValues().build();
-  }
-
-  private Part[] createPartArray(Map<Integer, CompletableFuture<String>> eTags) {
-    List<Part> partsList = new ArrayList<>(eTags.size());
-
-    for (Map.Entry<Integer, CompletableFuture<String>> entry : eTags.entrySet()) {
-      int partNumber = entry.getKey();
-      CompletableFuture<String> eTag = entry.getValue();
-
-      eTag.thenAccept(eTagStr -> partsList.add(new Part(partNumber, eTagStr)));
-    }
-
-    return partsList.toArray(new Part[0]);
   }
 
   @Override
@@ -246,8 +236,8 @@ public class MinioContentRepository implements FileContentRepository {
                   .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
                   .object(s3Key)
                   .build())
-          .get().readAllBytes();
-
+          .get()
+          .readAllBytes();
     } catch (InsufficientDataException
         | XmlParserException
         | NoSuchAlgorithmException
@@ -258,5 +248,35 @@ public class MinioContentRepository implements FileContentRepository {
         | InterruptedException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void deleteFile(String s3Key) {
+    // TODO
+  }
+
+  @Override
+  public void moveFile(FileEntity entity) {
+    // TODO
+  }
+
+  private Multimap<String, String> createEmptyHeader() {
+    return MultimapBuilder.hashKeys().arrayListValues().build();
+  }
+
+  private Part[] createPartArray(Map<Integer, CompletableFuture<String>> eTags) throws ExecutionException, InterruptedException {
+    List<CompletableFuture<Part>> partsList = new ArrayList<>(eTags.size());
+
+    for (Map.Entry<Integer, CompletableFuture<String>> entry : eTags.entrySet()) {
+      int partNumber = entry.getKey();
+      CompletableFuture<String> eTag = entry.getValue();
+
+      CompletableFuture<Part> part = eTag.thenApply(eTagStr -> new Part(partNumber, eTagStr));
+      partsList.add(part);
+    }
+
+    return CompletableFuture.allOf(partsList.toArray(new CompletableFuture[0]))
+        .thenApply(_ -> partsList.stream().map(CompletableFuture::join).toArray(Part[]::new))
+        .get();
   }
 }

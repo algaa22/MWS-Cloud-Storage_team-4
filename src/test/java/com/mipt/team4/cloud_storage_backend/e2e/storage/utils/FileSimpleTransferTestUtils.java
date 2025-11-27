@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.e2e.storage;
+package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
@@ -7,14 +7,18 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-public class SimpleFileTransferUtils {
+public class FileSimpleTransferTestUtils {
   public static HttpResponse<String> sendUploadFileRequest(
-      HttpClient client, String userToken, String filePath, String fileTags)
+      HttpClient client,
+      String userToken,
+      String localFilePath,
+      String targetFilePath,
+      String fileTags)
       throws IOException, InterruptedException {
-    byte[] testFile = FileLoader.getInputStream(filePath).readAllBytes();
+    byte[] testFile = FileLoader.getInputStream(localFilePath).readAllBytes();
 
     HttpRequest request =
-        TestUtils.createRequest("/api/files/upload?path=" + filePath)
+        TestUtils.createRequest("/api/files/upload?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .header("X-File-Tags", fileTags)
             .POST(HttpRequest.BodyPublishers.ofByteArray(testFile))
@@ -24,10 +28,10 @@ public class SimpleFileTransferUtils {
   }
 
   public static HttpResponse<byte[]> sendDownloadFileRequest(
-      HttpClient client, String userToken, String filePath)
+      HttpClient client, String userToken, String targetFilePath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/files?path=" + filePath)
+        TestUtils.createRequest("/api/files?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .GET()
             .build();

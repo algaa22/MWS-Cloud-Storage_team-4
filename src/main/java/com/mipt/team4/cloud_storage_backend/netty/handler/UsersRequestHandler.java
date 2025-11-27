@@ -100,7 +100,8 @@ public record UsersRequestHandler(UserController userController) {
       userInfo = userController.getUserInfo(
           new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
     } catch (ValidationFailedException | UserNotFoundException | HeaderNotFoundException e) {
-      throw new RuntimeException(e);
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
     }
 
     ObjectMapper mapper = new ObjectMapper();

@@ -68,11 +68,10 @@ public class UserRepository {
   }
 
   public Optional<UserEntity> getUserById(UUID id) {
-    List<UserEntity> result;
-    result =
+    List<UserEntity> result =
         postgres.executeQuery(
             "SELECT * FROM users WHERE id = ?",
-            List.of(id.toString()),
+            List.of(id),
             rs ->
                 new UserEntity(
                     UUID.fromString(rs.getString("id")),
@@ -98,6 +97,7 @@ public class UserRepository {
     return result.getFirst();
   }
 
+  // TODO: убрать optional
   public void updateInfo(UUID id, Optional<String> newName, Optional<String> oldPassword, Optional<String> newPassword) throws UserNotFoundException {
     int rowsUpdated = postgres.executeUpdate(
         "UPDATE users SET username = ? newPassword = ? WHERE email = ?;",

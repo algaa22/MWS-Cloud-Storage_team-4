@@ -14,7 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UserSessionService {
-
+  // Сделать его синглтоном
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
   private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
   private final JwtService jwtService;
@@ -88,7 +88,7 @@ public class UserSessionService {
 
   public UUID extractUserIdFromToken(String token) throws UserNotFoundException {
     Optional<SessionDto> userSession = getSession(token);
-    if (userSession.isEmpty()) throw new UserNotFoundException(token);
+    if (blacklistedTokens.containsKey(token) || userSession.isEmpty()) throw new UserNotFoundException(token);
     return userSession.get().userId();
   }
 }

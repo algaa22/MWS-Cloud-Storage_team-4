@@ -9,6 +9,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordExceptio
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LogoutRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 
@@ -36,5 +37,11 @@ public class UserController {
       throws ValidationFailedException, UserNotFoundException, InvalidSessionException {
     request.validate();
     service.logoutUser(request);
+  }
+  public String refresh(RefreshTokenDto request) throws InvalidSessionException {
+    if (request == null || request.refreshToken() == null) {
+      throw new InvalidSessionException("refresh token required");
+    }
+    return service.refreshTokens(request.refreshToken());
   }
 }

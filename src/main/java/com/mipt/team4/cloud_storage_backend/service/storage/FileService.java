@@ -254,7 +254,7 @@ public class FileService {
   public void changeFolderPath(ChangeFolderPathDto changeFolder)
       throws UserNotFoundException {
 
-    UUID userId = sessionService.extractUserIdFromToken(changeFolder.userToken());
+    UUID userId = userSessionService.extractUserIdFromToken(changeFolder.userToken());
     String oldPath = changeFolder.oldFolderPath();
     String newPath = changeFolder.newFolderPath();
     if (oldPath == null || oldPath.isEmpty() || newPath == null || newPath.isEmpty()) {
@@ -303,7 +303,7 @@ public class FileService {
   public void deleteFolder(SimpleFolderOperationDto request)
       throws UserNotFoundException {
 
-    UUID userId = sessionService.extractUserIdFromToken(request.userToken());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     String folderPath = request.folderPath();
 
     if (folderPath == null || folderPath.isEmpty()) {

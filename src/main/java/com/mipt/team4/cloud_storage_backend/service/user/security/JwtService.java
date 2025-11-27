@@ -32,19 +32,6 @@ public class JwtService {
     return StorageConfig.INSTANCE.getJwtSecretKey();
   }
 
-//  public String getUserIdFromToken(String token) {
-//    String jwtSecretKey = StorageConfig.INSTANCE.getJwtSecretKey();
-//
-//    Claims claims =
-//        Jwts.parserBuilder()
-//            .setSigningKey(Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8)))
-//            .build()
-//            .parseClaimsJws(token)
-//            .getBody();
-//
-//    return claims.getSubject();
-//  }
-
   public String generateToken(UserEntity user) {
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + jwtTokenExpirationSec * 1000L);
@@ -64,4 +51,16 @@ public class JwtService {
   public LocalDateTime getTokenExpiredDateTime() {
     return LocalDateTime.now().plusSeconds(jwtTokenExpirationSec);
   }
+
+  public String getUserIdFromToken(String token) {
+    Claims claims =
+        Jwts.parserBuilder()
+            .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+            .build()
+            .parseClaimsJws(token)
+            .getBody();
+
+    return claims.getSubject(); // userId
+  }
+
 }

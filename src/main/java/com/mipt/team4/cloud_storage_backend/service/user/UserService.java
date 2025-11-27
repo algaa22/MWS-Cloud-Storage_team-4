@@ -6,17 +6,25 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsExce
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
+import com.mipt.team4.cloud_storage_backend.model.user.entity.RefreshTokenEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
+import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenService;
 import java.util.*;
 
 public class UserService {
   private final UserRepository userRepository;
   private final UserSessionService userSessionService;
-  public UserService(UserRepository userRepository, UserSessionService userSessionService) {
+  private final RefreshTokenService refreshTokenService;
+
+  public UserService(
+      UserRepository userRepository,
+      UserSessionService userSessionService,
+      RefreshTokenService refreshTokenService) {
     this.userRepository = userRepository;
     this.userSessionService = userSessionService;
+    this.refreshTokenService = refreshTokenService;
   }
 
   public UserEntity getUserInfo(String email) throws UserNotFoundException {
@@ -49,9 +57,11 @@ public class UserService {
             UUID.randomUUID(), registerRequest.userName(), registerRequest.email(), hash);
 
     userRepository.addUser(userEntity);
+
     SessionDto session = userSessionService.createSession(userEntity);
 
-    return session.token();
+    RefreshTokenEntity refreshEntity = refreshTokenService.create(userEntity.getId());
+    return "{\"access\":\"" + session.token() + "\",\"refresh\":\"" + refreshEntity.getToken() + "\"}";
   }
 
   public String loginUser(LoginRequestDto loginRequest)
@@ -65,22 +75,50 @@ public class UserService {
     }
 
     Optional<SessionDto> session = userSessionService.findSessionByEmail(user.getEmail());
-    String token;
+    SessionDto usedSession;
+    if (session.isPresent()) {
+      usedSession = session.get();
+    } else {
+      usedSession = userSessionService.createSession(user);
+    }
+    RefreshTokenEntity refreshEntity = refreshTokenService.create(user.getId());
 
-    if (session.isPresent()) token = session.get().token();
-    else token = userSessionService.createSession(user).token();
-
-    // TODO: refresh-токены?
-    return token;
+    return "{\"access\":\"" + usedSession.token() + "\",\"refresh\":\"" + refreshEntity.getToken() + "\"}";
   }
 
   public void logoutUser(LogoutRequestDto logoutRequest) throws UserNotFoundException, InvalidSessionException {
     String token = logoutRequest.token();
 
-    if (userSessionService.tokenExists(token))
+    if (userSessionService.tokenExists(token)) {
       userSessionService.blacklistToken(token);
-    else
+
+      UUID userId = userSessionService.extractUserIdFromToken(token);
+      refreshTokenService.revokeAllForUser(userId);
+    } else {
       throw new UserNotFoundException(token);
+    }
+  }
+
+  public String refreshTokens(String refreshToken) throws InvalidSessionException {
+    RefreshTokenEntity stored = refreshTokenService.validate(refreshToken);
+    if (stored == null) {
+      throw new InvalidSessionException("Refresh token invalid or expired");
+    }
+
+    UUID userId = stored.getUserId();
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+    if (userOpt.isEmpty()) {
+      refreshTokenService.revoke(refreshToken);
+      throw new InvalidSessionException("User not found for refresh token");
+    }
+
+    UserEntity user = userOpt.get();
+
+    SessionDto newSession = userSessionService.createSession(user);
+    RefreshTokenEntity newRefresh = refreshTokenService.create(userId);
+    refreshTokenService.revoke(refreshToken);
+
+    return "{\"access\":\"" + newSession.token() + "\",\"refresh\":\"" + newRefresh.getToken() + "\"}";
   }
 
   public void updateUserInfo(String token, String newName) throws UserNotFoundException {

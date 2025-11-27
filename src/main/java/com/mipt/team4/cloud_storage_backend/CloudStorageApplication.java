@@ -10,12 +10,14 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServer;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.RefreshTokenRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 
+import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -44,9 +46,14 @@ public class CloudStorageApplication {
 
     UserSessionService userSessionService =
         new UserSessionService(new JwtService(StorageConfig.INSTANCE.getJwtTokenExpirationSec()));
-    FileService fileService = new FileService(fileRepository, userSessionService);
-    UserService userService = new UserService(userRepository, userSessionService);
 
+    RefreshTokenRepository refreshTokenRepository =
+        new RefreshTokenRepository(postgresConnection);
+    RefreshTokenService refreshTokenService =
+        new RefreshTokenService(refreshTokenRepository);
+    FileService fileService = new FileService(fileRepository, userSessionService);
+    UserService userService =
+        new UserService(userRepository, userSessionService, refreshTokenService);
     FileController fileController = new FileController(fileService);
     UserController userController = new UserController(userService);
 

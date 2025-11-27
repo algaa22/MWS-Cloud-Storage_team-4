@@ -31,7 +31,7 @@ public abstract class BaseDetailedFileE2ETest extends BaseFileE2ETest {
   public void shouldEnforceUsersIsolation() throws IOException, InterruptedException {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
-    String otherUserToken = UserAuthUtils.sendRegisterRandomUserRequest(client);
+    String otherUserToken = String.valueOf(UserAuthUtils.sendRegisterRandomUser(client));
     HttpResponse<String> otherUserResponse =
         client.send(
             createRawRequestWithToken(otherUserToken), HttpResponse.BodyHandlers.ofString());

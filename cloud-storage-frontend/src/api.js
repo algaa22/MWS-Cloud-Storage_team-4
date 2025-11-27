@@ -41,3 +41,20 @@ export async function getUserInfo(token) {
 
   return res.json();
 }
+
+export async function listFolders(token, directory = "") {
+  const res = await fetch(
+      `${API_BASE}/api/files?directory=${encodeURIComponent(directory)}`,
+      {
+        method: "GET",
+        headers: { "X-Auth-Token": token }
+      }
+  );
+
+  if (!res.ok) return [];
+
+  const data = await res.json();
+
+  // backend отдаёт список объектов — фильтруем только папки
+  return data.filter((item) => item.isDirectory);
+}

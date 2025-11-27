@@ -9,7 +9,6 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
-        navigate("/files");
         <Route path="/register" element={<Register />} />
         <Route path="/files" element={<FileBrowser />} />
       </Routes>

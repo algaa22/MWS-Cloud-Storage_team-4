@@ -98,10 +98,11 @@ public class UserRepository {
     return result.getFirst();
   }
 
-  public void updateInfo(UUID id, String newName) throws UserNotFoundException {
+  public void updateInfo(UUID id, Optional<String> newName, Optional<String> oldPassword, Optional<String> newPassword) throws UserNotFoundException {
     int rowsUpdated = postgres.executeUpdate(
-        "UPDATE users SET username = ? WHERE email = ?;",
+        "UPDATE users SET username = ? newPassword = ? WHERE email = ?;",
         List.of(newName, id));
+        List.of(newPassword, oldPassword, id);
     if (rowsUpdated == 0) throw new UserNotFoundException(id);
   }
 }

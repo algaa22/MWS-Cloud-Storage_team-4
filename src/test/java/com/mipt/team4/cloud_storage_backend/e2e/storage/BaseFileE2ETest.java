@@ -23,8 +23,8 @@ public abstract class BaseFileE2ETest extends BaseE2ETest {
   protected String currentUserToken;
 
   @BeforeEach
-  public void beforeEach() {
-    currentUserToken = String.valueOf(UserAuthUtils.sendRegisterRandomUserRequest(client));
+  public void beforeEach() throws IOException, InterruptedException {
+    currentUserToken = UserAuthUtils.sendRegisterRandomUserRequest(client);
   }
 
   protected void assertFileNotFound(HttpResponse<String> response) throws IOException {

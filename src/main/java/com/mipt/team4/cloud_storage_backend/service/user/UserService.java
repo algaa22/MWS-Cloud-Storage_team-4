@@ -60,8 +60,7 @@ public class UserService {
 
     SessionDto session = userSessionService.createSession(userEntity);
 
-    RefreshTokenEntity refreshEntity = refreshTokenService.create(userEntity.getId());
-    return "{\"access\":\"" + session.token() + "\",\"refresh\":\"" + refreshEntity.getToken() + "\"}";
+    return session.token();
   }
 
   public String loginUser(LoginRequestDto loginRequest)
@@ -83,7 +82,7 @@ public class UserService {
     }
     RefreshTokenEntity refreshEntity = refreshTokenService.create(user.getId());
 
-    return "{\"access\":\"" + usedSession.token() + "\",\"refresh\":\"" + refreshEntity.getToken() + "\"}";
+    return usedSession.token();
   }
 
   public void logoutUser(LogoutRequestDto logoutRequest) throws UserNotFoundException, InvalidSessionException {
@@ -118,7 +117,7 @@ public class UserService {
     RefreshTokenEntity newRefresh = refreshTokenService.create(userId);
     refreshTokenService.revoke(refreshToken);
 
-    return "{\"access\":\"" + newSession.token() + "\",\"refresh\":\"" + newRefresh.getToken() + "\"}";
+    return newSession.token();
   }
 
   public void updateUserInfo(String token, String newName) throws UserNotFoundException {

@@ -12,36 +12,42 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 public class UserAuthUtils {
   static int usersCounter = 0;
 
-  public static String sendRegisterRandomUserRequest(HttpClient client) {
-    return sendRegisterTestUserRequest(client,
-            usersCounter++ + "@email.com",
-            "deadlyparkourkillerdarkbrawlstarsassassinstalkersniper1998rus",
-            "superpassword1488");
+  // TODO: перенести в usertestutils
+
+  public static String sendRegisterRandomUserRequest(HttpClient client)
+      throws IOException, InterruptedException {
+    HttpResponse<String> response = sendRegisterTestUserRequest(client, createRandomUser());
+    String responseBody = response.body();
+
+    if (response.statusCode() != HttpStatus.SC_CREATED)
+      throw new RuntimeException("Failed to register test user: " + responseBody);
+
+    return UserTestUtils.extractAccessToken(response);
   }
 
-  public static String sendRegisterTestUserRequest(
-          HttpClient client, String email, String username, String password) {
+  public static TestUserDto createRandomUser() {
+    return new TestUserDto(
+        "deadlyparkourkillerdarkbrawlstarsassassinstalkersniper1998rus",
+        usersCounter++ + "@email.com",
+        "superpassword1488");
+  }
+
+  public static HttpResponse<String> sendRegisterTestUserRequest(
+      HttpClient client, TestUserDto user) throws IOException, InterruptedException {
+    return sendRegisterTestUserRequest(client, user.email(), user.password(), user.userName());
+  }
+
+  public static HttpResponse<String> sendRegisterTestUserRequest(
+      HttpClient client, String email, String password, String userName)
+      throws IOException, InterruptedException {
     HttpRequest request =
-            TestUtils.createRequest("/api/users/auth/register")
-                    .header("X-Auth-Email", email)
-                    .header("X-Auth-Username", username)
-                    .header("X-Auth-Password", password)
-                    .POST(HttpRequest.BodyPublishers.noBody())
-                    .build();
+        TestUtils.createRequest("/api/users/auth/register")
+            .header("X-Auth-Email", email)
+            .header("X-Auth-Username", userName)
+            .header("X-Auth-Password", password)
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
 
-    try {
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-      String responseBody = response.body();
-
-      if (response.statusCode() != HttpStatus.SC_CREATED)
-        throw new RuntimeException("Failed to register test user: " + responseBody);
-
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode rootNode = mapper.readTree(responseBody);
-
-      return rootNode.get("token").asText();
-    } catch (IOException | InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 }

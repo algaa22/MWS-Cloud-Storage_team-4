@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 public class FileRepository {
   FileMetadataRepository metadataRepository;
@@ -33,12 +32,12 @@ public class FileRepository {
     return metadataRepository.fileExists(ownerId, s3Key);
   }
 
-  public CompletableFuture<String> startMultipartUpload(String s3Key) {
+  public String startMultipartUpload(String s3Key) {
     return contentRepository.startMultipartUpload(s3Key);
   }
 
-  public CompletableFuture<String> uploadPart(
-      CompletableFuture<String> uploadId, String s3Key, int partIndex, byte[] bytes) {
+  public String uploadPart(
+      String uploadId, String s3Key, int partIndex, byte[] bytes) {
     // TODO: параметры в дто?
     return contentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
   }
@@ -49,8 +48,8 @@ public class FileRepository {
 
   public void completeMultipartUpload(
       FileEntity fileEntity,
-      CompletableFuture<String> uploadId,
-      Map<Integer, CompletableFuture<String>> eTags)
+      String uploadId,
+      Map<Integer, String> eTags)
       throws StorageFileAlreadyExistsException {
     metadataRepository.addFile(fileEntity);
     contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
@@ -64,16 +63,20 @@ public class FileRepository {
   public void deleteFile(UUID ownerId, String s3Key)
       throws StorageFileNotFoundException, FileNotFoundException {
     metadataRepository.deleteFile(ownerId, s3Key);
-    contentRepository.deleteFile(s3Key);
+    contentRepository.hardDeleteFile(s3Key);
   }
 
   public byte[] downloadFilePart(String s3Key) {
     return null;
   }
 
-  public void updateFile(FileEntity entity) {
+  public void updateFile(FileEntity entity, String oldS3Key) {
     metadataRepository.updateFile(entity);
     // TODO: если надо переместить офк
-    contentRepository.moveFile(entity);
+    contentRepository.moveFile(entity, oldS3Key);
   }
+
+    public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
+      return null;
+    }
 }

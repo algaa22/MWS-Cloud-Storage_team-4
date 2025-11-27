@@ -16,7 +16,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public class MinioContentRepository implements FileContentRepository {
@@ -55,7 +54,7 @@ public class MinioContentRepository implements FileContentRepository {
         | IOException
         | NoSuchAlgorithmException
         | XmlParserException e) {
-      // TODO: exceptions
+      // TODO: exceptions, retry
       throw new RuntimeException(e);
     }
   }
@@ -76,133 +75,104 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public CompletableFuture<String> startMultipartUpload(String s3Key) {
+  public String startMultipartUpload(String s3Key) {
     // TODO: Think about headers...
     Multimap<String, String> headers = createEmptyHeader();
     Multimap<String, String> extraQueryParams = createEmptyHeader();
 
-    CompletableFuture<CreateMultipartUploadResponse> futureResponse;
+    CreateMultipartUploadResponse response;
 
     try {
-      futureResponse =
-          minioClient.createMultipartUploadAsync(
-              MinioConfig.INSTANCE.getUserDataBucketName(),
-              "eu-central-1",
-              s3Key,
-              headers,
-              extraQueryParams);
+      response =
+          minioClient
+              .createMultipartUploadAsync(
+                  MinioConfig.INSTANCE.getUserDataBucketName(),
+                  "eu-central-1",
+                  s3Key,
+                  headers,
+                  extraQueryParams)
+              .get();
     } catch (InsufficientDataException
         | InternalException
         | InvalidKeyException
         | IOException
         | NoSuchAlgorithmException
-        | XmlParserException e) {
+        | XmlParserException
+        | ExecutionException
+        | InterruptedException e) {
       throw new RuntimeException(e);
     }
 
-    return futureResponse
-        .thenApply(response -> response.result().uploadId())
-        .exceptionally(
-            e -> {
-              // TODO
-              return "";
-            });
+    return response.result().uploadId();
   }
 
-  // TODO: сделать синхронным
-  // TODO: в completeMultipartUpload формировать части по 5МБ и бросать
-  //       исключение, если непоследняя часть размером < 5МБ
-  // TODO: download part
-  // TODO: (позже) retry
-
   @Override
-  public CompletableFuture<String> uploadPart(
-      CompletableFuture<String> uploadId, String s3Key, int partNum, byte[] bytes) {
+  public String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes) {
     Multimap<String, String> extraHeaders = createEmptyHeader();
     Multimap<String, String> extraQueryParams = createEmptyHeader();
     InputStream inputStream = new ByteArrayInputStream(bytes);
+    UploadPartResponse response;
 
-    CompletableFuture<UploadPartResponse> futureResponse =
-        uploadId
-            .thenApply(
-                uploadIdStr -> {
-                  try {
-                    return minioClient
-                        .uploadPartAsync(
-                            MinioConfig.INSTANCE.getUserDataBucketName(),
-                            "eu-central-1",
-                            s3Key,
-                            inputStream,
-                            bytes.length,
-                            uploadIdStr,
-                            partNum,
-                            extraHeaders,
-                            extraQueryParams)
-                        .get();
-                  } catch (InsufficientDataException
-                      | InternalException
-                      | InvalidKeyException
-                      | IOException
-                      | NoSuchAlgorithmException
-                      | XmlParserException
-                      | ExecutionException
-                      | InterruptedException e) {
-                    throw new RuntimeException(e);
-                  }
-                })
-            .exceptionally(
-                e -> {
-                  // TODO
-                  return null;
-                });
+    try {
+      response =
+          minioClient
+              .uploadPartAsync(
+                  MinioConfig.INSTANCE.getUserDataBucketName(),
+                  "eu-central-1",
+                  s3Key,
+                  inputStream,
+                  bytes.length,
+                  uploadId,
+                  partNum,
+                  extraHeaders,
+                  extraQueryParams)
+              .get();
+    } catch (InterruptedException
+        | XmlParserException
+        | NoSuchAlgorithmException
+        | IOException
+        | InvalidKeyException
+        | InternalException
+        | InsufficientDataException
+        | ExecutionException ex) {
+      throw new RuntimeException(ex);
+    }
 
-    return futureResponse
-        .thenApply(UploadPartResponse::etag)
-        .exceptionally(
-            e -> {
-              // TODO
-              return null;
-            });
+    return response.etag();
   }
 
   @Override
-  public void completeMultipartUpload(
-      String s3Key,
-      CompletableFuture<String> uploadId,
-      Map<Integer, CompletableFuture<String>> eTags) {
+  public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
     Multimap<String, String> extraHeaders = createEmptyHeader();
     Multimap<String, String> extraQueryParams = createEmptyHeader();
 
-    uploadId
-        .thenAccept(
-            uploadIdStr -> {
-              try {
-                minioClient
-                    .completeMultipartUploadAsync(
-                        MinioConfig.INSTANCE.getUserDataBucketName(),
-                          "eu-central-1",
-                        s3Key,
-                        uploadIdStr,
-                        createPartArray(eTags),
-                        extraHeaders,
-                        extraQueryParams)
-                    .get();
-              } catch (InsufficientDataException
-                  | InternalException
-                  | InvalidKeyException
-                  | IOException
-                  | NoSuchAlgorithmException
-                  | XmlParserException
-                  | ExecutionException
-                  | InterruptedException e) {
-                throw new RuntimeException(e);
-              }
-            })
-        .exceptionally(
-            e -> {
-              // TODO
-              return null;
-            });
+    try {
+      minioClient
+          .completeMultipartUploadAsync(
+              MinioConfig.INSTANCE.getUserDataBucketName(),
+              "eu-central-1",
+              s3Key,
+              uploadId,
+              createPartArray(eTags),
+              extraHeaders,
+              extraQueryParams)
+          .get();
+    } catch (InsufficientDataException
+        | InternalException
+        | InvalidKeyException
+        | IOException
+        | NoSuchAlgorithmException
+        | XmlParserException
+        | ExecutionException
+        | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -251,12 +221,25 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public void deleteFile(String s3Key) {
-    // TODO
+  public void hardDeleteFile(String s3Key) {
+    try {
+      minioClient.removeObject(
+          RemoveObjectArgs.builder()
+              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+              .object(s3Key)
+              .build());
+    } catch (InsufficientDataException
+        | XmlParserException
+        | NoSuchAlgorithmException
+        | IOException
+        | InvalidKeyException
+        | InternalException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
-  public void moveFile(FileEntity entity) {
+  public void moveFile(FileEntity entity, String oldS3Key) {
     // TODO
   }
 
@@ -264,19 +247,20 @@ public class MinioContentRepository implements FileContentRepository {
     return MultimapBuilder.hashKeys().arrayListValues().build();
   }
 
-  private Part[] createPartArray(Map<Integer, CompletableFuture<String>> eTags) throws ExecutionException, InterruptedException {
-    List<CompletableFuture<Part>> partsList = new ArrayList<>(eTags.size());
+  private Part[] createPartArray(Map<Integer, String> eTags)
+      throws ExecutionException, InterruptedException {
+    // TODO: объединять чанки произвольных размеров в части по 5МБ
+    //       и, если непоследняя часть имеет размер < 5МБ, то бросать исключение
+    List<Part> partsList = new ArrayList<>(eTags.size());
 
-    for (Map.Entry<Integer, CompletableFuture<String>> entry : eTags.entrySet()) {
+    for (Map.Entry<Integer, String> entry : eTags.entrySet()) {
       int partNumber = entry.getKey();
-      CompletableFuture<String> eTag = entry.getValue();
+      String eTag = entry.getValue();
 
-      CompletableFuture<Part> part = eTag.thenApply(eTagStr -> new Part(partNumber, eTagStr));
+      Part part = new Part(partNumber, eTag);
       partsList.add(part);
     }
 
-    return CompletableFuture.allOf(partsList.toArray(new CompletableFuture[0]))
-        .thenApply(_ -> partsList.stream().map(CompletableFuture::join).toArray(Part[]::new))
-        .get();
+    return partsList.toArray(Part[]::new);
   }
 }

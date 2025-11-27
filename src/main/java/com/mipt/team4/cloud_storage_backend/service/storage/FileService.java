@@ -240,7 +240,7 @@ public class FileService {
       entity.setVisibility(changeFileMetadata.visibility().get());
     }
 
-    fileRepository.updateFile(entity);
+    fileRepository.updateFile(entity, oldS3Key);
   }
 
   // TODO: хз как это сделать лучше

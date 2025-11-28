@@ -9,13 +9,12 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUt
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
-
+import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
@@ -51,11 +50,23 @@ public class FileSmokeIT extends BaseFileIT {
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
     assertEquals(HttpStatus.SC_OK, downloadResponse.statusCode());
 
-//    byte[] originalFile = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
-//    byte[] downloadedFile = downloadResponse.body();
-//    assertArrayEquals(downloadedFile, originalFile);
-//
-//    System.out.println(uploadResponse.statusCode() + " " + uploadResponse.body());
+    // TODO: разбить на функции
+    String receivedContentType = TestUtils.getHeader(downloadResponse, HttpHeaderNames.CONTENT_TYPE.toString());
+    String receivedTransferEncoding = TestUtils.getHeader(downloadResponse, HttpHeaderNames.TRANSFER_ENCODING.toString());
+    String receivedFilePath = TestUtils.getHeader(downloadResponse, "X-File-Path");
+    String receivedFileSize = TestUtils.getHeader(downloadResponse, "X-File-Size");
+    String receivedSessionId = TestUtils.getHeader(downloadResponse, "X-Session-Id");
+    String receivedTotalChunks = TestUtils.getHeader(downloadResponse, "X-Total-Chunks");
+
+    assertEquals("application/octet-stream", receivedContentType);
+    assertEquals("chunked", receivedTransferEncoding);
+    assertEquals(DEFAULT_FILE_TARGET_PATH, receivedFilePath);
+    assertEquals(String.valueOf(fileData.length), receivedFileSize);
+    assertNotNull(receivedSessionId);
+    assertNotNull(receivedTotalChunks);
+
+    int totalChunks = Integer.parseInt(receivedTotalChunks);
+    assertTrue(totalChunks > 0);
   }
 
   @Test

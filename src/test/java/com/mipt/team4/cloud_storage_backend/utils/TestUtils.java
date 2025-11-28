@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -52,5 +53,9 @@ public class TestUtils {
   public static JsonNode getRootNodeFromResponse(HttpResponse<String> response) throws IOException {
     ObjectMapper mapper = new ObjectMapper();
     return mapper.readTree(response.body());
+  }
+
+  public static String getHeader(HttpResponse<?> response, String header) {
+    return response.headers().firstValue(header).orElse(null);
   }
 }

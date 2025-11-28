@@ -30,6 +30,7 @@ public class FileChunkedTransferITUtils {
   public static HttpResponse<String> sendDownloadRequest(
       HttpClient client, String userToken, String targetFilePath)
       throws IOException, InterruptedException {
+    // TODO: X-Progress-Download?
     HttpRequest request =
         TestUtils.createRequest("/api/files?path=" + targetFilePath)
             .header("Transfer-Encoding", "chunked")

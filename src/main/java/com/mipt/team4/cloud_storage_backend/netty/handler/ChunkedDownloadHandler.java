@@ -77,7 +77,7 @@ public class ChunkedDownloadHandler {
           currentUserToken,
           currentFilePath,
           fileSize,
-          totalChunks);
+              totalChunks);
     }
 
     sendDownloadStartResponse(ctx, fileInfo);
@@ -132,7 +132,7 @@ public class ChunkedDownloadHandler {
       logger.debug(
           "Sent chunk {}/{} for session: {}, size: {}",
           sentChunks,
-          totalChunks,
+              totalChunks,
           currentSessionId,
           chunkSize);
     }
@@ -205,12 +205,12 @@ public class ChunkedDownloadHandler {
       ChannelHandlerContext ctx, FileChunkedDownloadDto fileInfo) {
     FullHttpResponse response = ResponseHelper.createRawResponse(HttpResponseStatus.OK);
 
+    // TODO: нужен ли session id?
     response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, "chunked");
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, fileInfo.mimeType());
     response.headers().set("X-File-Path", fileInfo.path());
     response.headers().set("X-File-Size", fileInfo.size());
-    response.headers().set("X-File-Type", fileInfo.type());
     response.headers().set("X-Total-Chunks", totalChunks);
-    response.headers().set("X-File-Path", fileInfo.path());
     response.headers().set("X-Session-Id", currentSessionId);
 
     ResponseHelper.sendResponse(ctx, response);

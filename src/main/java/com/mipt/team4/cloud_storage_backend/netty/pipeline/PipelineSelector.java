@@ -88,7 +88,7 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
 
   private void handleNotHttpRequest(ChannelHandlerContext ctx, Object msg) {
     logger.error(
-        "Unexpected message type before pipeline configuration: {}",
+        "Unexpected message mimeType before pipeline configuration: {}",
         msg.getClass().getSimpleName());
 
     ResponseHelper.sendErrorResponse(

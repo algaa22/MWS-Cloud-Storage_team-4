@@ -30,6 +30,7 @@ public class UserAuthUtils {
         "superpassword1488");
   }
 
+  // TODO: нужен ли TestUserDto?
   public static HttpResponse<String> sendRegisterTestUserRequest(
       HttpClient client, TestUserDto user) throws IOException, InterruptedException {
     return sendRegisterTestUserRequest(client, user.email(), user.password(), user.userName());

@@ -161,7 +161,7 @@ public class FileService {
     FileEntity entity =
         entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileChunkRequest.filePath()));
 
-    long chunkSize = StorageConfig.INSTANCE.getFileDownloadChunkSize();
+    long chunkSize = fileChunkRequest.chunkSize();
     long offset = fileChunkRequest.chunkIndex() * chunkSize;
     byte[] chunkData =
         fileRepository.downloadFilePart(entity.getOwnerId(), entity.getFileId(), offset, chunkSize);

@@ -9,12 +9,13 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUt
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
-import java.net.http.HttpHeaders;
+import java.io.InputStream;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+
+import io.netty.handler.codec.http.HttpHeaderNames;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
@@ -35,6 +36,7 @@ public class FileSmokeIT extends BaseFileIT {
   }
 
   // TODO: тест на удаление файла во время скачивания/загрузки
+  // TODO: проверки на content-type?
 
   @Test
   public void shouldUploadAndDownloadFile_Chunked() throws IOException, InterruptedException {
@@ -45,28 +47,34 @@ public class FileSmokeIT extends BaseFileIT {
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH, fileData, "");
     assertEquals(HttpStatus.SC_OK, uploadResponse.statusCode());
 
-    HttpResponse<String> downloadResponse =
+    HttpResponse<InputStream> downloadResponse =
         FileChunkedTransferITUtils.sendDownloadRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
     assertEquals(HttpStatus.SC_OK, downloadResponse.statusCode());
 
-    // TODO: разбить на функции
-    String receivedContentType = TestUtils.getHeader(downloadResponse, HttpHeaderNames.CONTENT_TYPE.toString());
-    String receivedTransferEncoding = TestUtils.getHeader(downloadResponse, HttpHeaderNames.TRANSFER_ENCODING.toString());
+    // TODO: вынести в отдельную функцию
+    String receivedTransferEncoding =
+        TestUtils.getHeader(downloadResponse, HttpHeaderNames.TRANSFER_ENCODING.toString());
     String receivedFilePath = TestUtils.getHeader(downloadResponse, "X-File-Path");
     String receivedFileSize = TestUtils.getHeader(downloadResponse, "X-File-Size");
-    String receivedSessionId = TestUtils.getHeader(downloadResponse, "X-Session-Id");
-    String receivedTotalChunks = TestUtils.getHeader(downloadResponse, "X-Total-Chunks");
 
-    assertEquals("application/octet-stream", receivedContentType);
     assertEquals("chunked", receivedTransferEncoding);
     assertEquals(DEFAULT_FILE_TARGET_PATH, receivedFilePath);
     assertEquals(String.valueOf(fileData.length), receivedFileSize);
-    assertNotNull(receivedSessionId);
-    assertNotNull(receivedTotalChunks);
 
-    int totalChunks = Integer.parseInt(receivedTotalChunks);
-    assertTrue(totalChunks > 0);
+    List<byte[]> downloadedChunks =
+        FileChunkedTransferITUtils.readChunksFromResponse(downloadResponse);
+
+    int offset = 0;
+
+    for (int i = 0; i < downloadedChunks.size(); ++i) {
+      byte[] chunk = downloadedChunks.get(i);
+
+      assertTrue(offset + chunk.length <= fileData.length);
+      assertTrue(FileChunkedTransferITUtils.chunkMatchesOriginal(fileData, chunk, offset));
+
+      offset += chunk.length;
+    }
   }
 
   @Test

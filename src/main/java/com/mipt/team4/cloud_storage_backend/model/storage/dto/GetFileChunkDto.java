@@ -4,10 +4,13 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record GetFileChunkDto(String userToken, String filePath, int chunkIndex) {
+public record GetFileChunkDto(String userToken, String filePath, int chunkIndex, long chunkSize) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
-        Validators.all(Validators.validToken(userToken), Validators.mustBeFilePath("File path", filePath));
+        Validators.all(
+            Validators.validToken(userToken),
+            Validators.mustBeFilePath("File path", filePath),
+            Validators.mustBePositive("Chunk size", chunkSize));
 
     Validators.throwExceptionIfNotValid(result);
   }

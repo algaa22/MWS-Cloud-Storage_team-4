@@ -17,7 +17,6 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.EventLoop;
 import io.netty.handler.codec.http.*;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -29,7 +28,7 @@ public class ChunkedDownloadHandler {
 
   private boolean isInProgress = false;
   private String currentSessionId;
-  private String currentFilePath;
+  private String currentFilePath; // TODO: зачем, если есть fileInfo
   private String currentUserToken;
   private long fileSize;
   private long sentBytes = 0;
@@ -47,20 +46,14 @@ public class ChunkedDownloadHandler {
           StorageIllegalAccessException {
     if (isInProgress) throw new TransferAlreadyStartedException();
 
-    try {
-      parseDownloadRequestMetadata(request);
-    } catch (QueryParameterNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
-
     FileChunkedDownloadDto fileInfo;
 
     try {
+      parseDownloadRequestMetadata(request);
       fileInfo =
           fileController.getFileDownloadInfo(
               new SimpleFileOperationDto(currentFilePath, currentUserToken));
-    } catch (ValidationFailedException e) {
+    } catch (ValidationFailedException | QueryParameterNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       cleanup();
       return;
@@ -77,11 +70,23 @@ public class ChunkedDownloadHandler {
           currentUserToken,
           currentFilePath,
           fileSize,
-              totalChunks);
+          totalChunks);
     }
 
-    sendDownloadStartResponse(ctx, fileInfo);
+    sendInitialHeaders(ctx, fileInfo);
     sendNextChunk(ctx);
+  }
+
+  private void sendInitialHeaders(ChannelHandlerContext ctx, FileChunkedDownloadDto fileInfo) {
+    HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+
+    response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
+    response.headers().set("X-File-Path", fileInfo.path());
+    response.headers().set("X-File-Size", fileInfo.size());
+    // TODO: зачем sessionId? нужно ли его отправлять в заголовках?
+
+    ctx.write(response);
   }
 
   private void sendNextChunk(ChannelHandlerContext ctx) {
@@ -96,12 +101,19 @@ public class ChunkedDownloadHandler {
     try {
       fileChunk =
           fileController.getFileChunk(
-              new GetFileChunkDto(currentUserToken, currentFilePath, chunkIndex));
+              new GetFileChunkDto(
+                  currentUserToken,
+                  currentFilePath,
+                  chunkIndex,
+                  StorageConfig.INSTANCE.getFileDownloadChunkSize()));
     } catch (ValidationFailedException
         | UserNotFoundException
         | StorageFileNotFoundException
         | StorageIllegalAccessException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      if (logger.isDebugEnabled())
+        logger.error("Download failed, closing connection: {}", e.getMessage());
+
+      ctx.close();
       cleanup();
       return;
     }
@@ -110,7 +122,7 @@ public class ChunkedDownloadHandler {
 
     ChannelFutureListener listener =
         createChunkSendListener(ctx, chunkIndex, fileChunk.chunkData().length);
-    ctx.write(httpChunk).addListener(listener);
+    ctx.writeAndFlush(httpChunk).addListener(listener);
   }
 
   private ChannelFutureListener createChunkSendListener(
@@ -132,14 +144,13 @@ public class ChunkedDownloadHandler {
       logger.debug(
           "Sent chunk {}/{} for session: {}, size: {}",
           sentChunks,
-              totalChunks,
+          totalChunks,
           currentSessionId,
           chunkSize);
     }
 
-    try (EventLoop eventLoop = ctx.channel().eventLoop()) {
-      eventLoop.execute(() -> sendNextChunk(ctx));
-    }
+    // TODO: или нужно с try-with-resources?
+    ctx.channel().eventLoop().execute(() -> sendNextChunk(ctx));
   }
 
   private void finishChunkedDownload(ChannelHandlerContext ctx) {
@@ -199,20 +210,5 @@ public class ChunkedDownloadHandler {
       throws QueryParameterNotFoundException {
     currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
     currentUserToken = request.headers().get("X-Auth-Token", "");
-  }
-
-  private void sendDownloadStartResponse(
-      ChannelHandlerContext ctx, FileChunkedDownloadDto fileInfo) {
-    FullHttpResponse response = ResponseHelper.createRawResponse(HttpResponseStatus.OK);
-
-    // TODO: нужен ли session id?
-    response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, "chunked");
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, fileInfo.mimeType());
-    response.headers().set("X-File-Path", fileInfo.path());
-    response.headers().set("X-File-Size", fileInfo.size());
-    response.headers().set("X-Total-Chunks", totalChunks);
-    response.headers().set("X-Session-Id", currentSessionId);
-
-    ResponseHelper.sendResponse(ctx, response);
   }
 }

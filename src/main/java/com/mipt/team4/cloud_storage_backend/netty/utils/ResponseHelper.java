@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 
 public class ResponseHelper {
   public static void sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
+    // TODO: нормальная обработка внутренних ошибок
     ResponseHelper.sendErrorResponse(
         ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error");
   }

@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
@@ -161,7 +162,9 @@ public class FileService {
     FileEntity entity =
         entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileChunkRequest.filePath()));
 
-    byte[] chunkData = fileRepository.downloadFilePart(entity.getS3Key());
+    long chunkSize = StorageConfig.INSTANCE.getFileDownloadChunkSize();
+    long offset = fileChunkRequest.chunkIndex() * chunkSize;
+    byte[] chunkData = fileRepository.downloadFilePart(entity.getS3Key(), offset, chunkSize);
 
     return new DownloadedChunkDto(
         fileChunkRequest.filePath(), fileChunkRequest.chunkIndex(), chunkData);
@@ -227,7 +230,7 @@ public class FileService {
       entity.setVisibility(changeFileMetadata.visibility().get());
     }
 
-    fileRepository.updateFile(entity, oldS3Key);
+    fileRepository.updateFile(entity);
   }
 
   // TODO: хз как это сделать лучше

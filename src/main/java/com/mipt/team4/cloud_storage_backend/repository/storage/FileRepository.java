@@ -55,8 +55,7 @@ public class FileRepository {
     contentRepository.completeMultipartUpload(fileEntity.getS3Key(), uploadId, eTags);
   }
 
-  public byte[] downloadFile(String s3Key)
-      throws FileNotFoundException {
+  public byte[] downloadFile(String s3Key) {
     return contentRepository.downloadFile(s3Key);
   }
 
@@ -66,16 +65,12 @@ public class FileRepository {
     contentRepository.hardDeleteFile(s3Key);
   }
 
-  public byte[] downloadFilePart(String s3Key) {
-    return null;
-  }
-
-  public void updateFile(FileEntity entity, String oldS3Key) {
+  public void updateFile(FileEntity entity) {
     metadataRepository.updateFile(entity);
     // TODO: если надо переместить офк
   }
 
     public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
-      return null;
+      return contentRepository.downloadFilePart(s3Key, offset, actualChunkSize);
     }
 }

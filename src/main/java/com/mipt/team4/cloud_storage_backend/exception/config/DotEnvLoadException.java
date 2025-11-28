@@ -4,6 +4,6 @@ import java.io.IOException;
 
 public class DotEnvLoadException extends RuntimeException {
   public DotEnvLoadException(String filePath, IOException cause) {
-    super(".env file not found at " + filePath, cause);
+    super(".env file not found: path=" + filePath, cause);
   }
 }

@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
@@ -70,39 +69,43 @@ public class FileService {
           UserNotFoundException,
           TooSmallFilePartException,
           CombineChunksToPartException {
-    ChunkedUploadState uploadState = activeUploads.remove(sessionId);
+    ChunkedUploadState uploadState = activeUploads.get(sessionId);
     if (uploadState == null) throw new RuntimeException("No such upload session!");
 
-    if (uploadState.totalParts == 0) {
-      throw new TooSmallFilePartException();
+    try {
+      if (uploadState.totalParts == 0) {
+        throw new TooSmallFilePartException();
+      }
+
+      if (uploadState.partSize != 0) {
+        uploadPart(uploadState);
+      }
+
+      FileChunkedUploadDto session = uploadState.session;
+      for (int i = 1; i <= uploadState.totalParts; i++) {
+        if (!uploadState.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
+      }
+
+      UUID userId = userSessionService.extractUserIdFromToken(session.userToken());
+
+      FileEntity fileEntity =
+          new FileEntity(
+              uploadState.fileId,
+              userId, // TODO: get actualUserId
+              uploadState.path,
+              guessMimeType(session.path()),
+              "private",
+              uploadState.fileSize,
+              false,
+              session.tags());
+
+      fileRepository.completeMultipartUpload(fileEntity, uploadState.uploadId, uploadState.eTags);
+
+      return new ChunkedUploadFileResultDto(
+          session.path(), uploadState.fileSize, uploadState.totalParts);
+    } finally {
+      activeUploads.remove(sessionId);
     }
-
-    if (uploadState.partSize != 0) {
-      uploadPart(uploadState);
-    }
-
-    FileChunkedUploadDto session = uploadState.session;
-    for (int i = 1; i <= uploadState.totalParts; i++) {
-      if (!uploadState.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
-    }
-
-    UUID userId = userSessionService.extractUserIdFromToken(session.userToken());
-
-    FileEntity fileEntity =
-        new FileEntity(
-            uploadState.fileId,
-            userId, // TODO: get actualUserId
-            uploadState.path,
-            guessMimeType(session.path()),
-            "private",
-            uploadState.fileSize,
-            false,
-            session.tags());
-
-    fileRepository.completeMultipartUpload(fileEntity, uploadState.uploadId, uploadState.eTags);
-
-    return new ChunkedUploadFileResultDto(
-        session.path(), uploadState.fileSize, uploadState.totalParts);
   }
 
   public void uploadFile(FileUploadDto fileUploadRequest)

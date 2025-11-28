@@ -6,14 +6,14 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.Optional;
 
 public record UpdateUserInfoDto(
-    String accessToken,
+    String userToken,
     Optional<String> oldPassword,
     Optional<String> newPassword,
     Optional<String> newName) {
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.validToken(accessToken),
+            Validators.validToken(userToken),
             Validators.any(
                 "New user info",
                 "One of the fields {NewUsername, newPassword} must be specified",

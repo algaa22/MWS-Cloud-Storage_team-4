@@ -66,10 +66,10 @@ public class FileRepository {
     return contentRepository.downloadFile(s3Key);
   }
 
-  public void deleteFile(UUID ownerId, String s3Key)
+  public void deleteFile(UUID ownerId, String path)
       throws StorageFileNotFoundException, FileNotFoundException {
-    metadataRepository.deleteFile(ownerId, s3Key);
-    contentRepository.hardDeleteFile(s3Key);
+    metadataRepository.deleteFile(ownerId, path);
+    contentRepository.hardDeleteFile(path);
   }
 
   public void updateFile(FileEntity entity) {
@@ -86,7 +86,7 @@ public class FileRepository {
           throws StorageFileNotFoundException, FileNotFoundException {
     String s3Key = StoragePaths.getS3Key(fileEntity.getOwnerId(), fileEntity.getFileId());
 
-    metadataRepository.deleteFile(fileEntity.getOwnerId(), s3Key);
+    metadataRepository.deleteFile(fileEntity.getOwnerId(), fileEntity.getPath());
     contentRepository.hardDeleteFile(s3Key);
   }
 }

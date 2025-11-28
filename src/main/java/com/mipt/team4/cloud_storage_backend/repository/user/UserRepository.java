@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.util.List;
@@ -35,14 +34,6 @@ public class UserRepository {
             userEntity.getUsedStorage(),
             userEntity.getCreatedAt(),
             userEntity.isActive()));
-  }
-
-  public void deleteUser(UUID id) throws UserNotFoundException {
-    if (!userExists(id)) {
-      throw new UserNotFoundException(id);
-    }
-
-    postgres.executeUpdate("DELETE FROM users WHERE id = ?;", List.of(id));
   }
 
   public Optional<UserEntity> getUserByEmail(String email) {
@@ -97,12 +88,9 @@ public class UserRepository {
     return result.getFirst();
   }
 
-  // TODO: убрать optional
-  public void updateInfo(UUID id, Optional<String> newName, Optional<String> oldPassword, Optional<String> newPassword) throws UserNotFoundException {
-    int rowsUpdated = postgres.executeUpdate(
-        "UPDATE users SET username = ? newPassword = ? WHERE email = ?;",
-        List.of(newName, id));
-        List.of(newPassword, oldPassword, id);
-    if (rowsUpdated == 0) throw new UserNotFoundException(id);
+  public void updateInfo(UUID id, String newName, String newPassword) {
+    postgres.executeUpdate(
+        "UPDATE users SET username = ? newPassword = ? WHERE ID = ?;",
+        List.of(newName, newPassword, id));
   }
 }

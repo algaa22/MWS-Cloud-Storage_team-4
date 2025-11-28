@@ -84,7 +84,7 @@ public class ChunkedDownloadHandler {
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
     response.headers().set("X-File-Path", fileInfo.path());
     response.headers().set("X-File-Size", fileInfo.size());
-    // TODO: зачем sessionId? нужно ли его отправлять в заголовках?
+    // TODO: зачем sessionId? его не нужно отправлять в заголовках
 
     ctx.write(response);
   }

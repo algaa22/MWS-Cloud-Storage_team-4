@@ -13,19 +13,20 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
 import java.util.concurrent.CountDownLatch;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NettyServer {
   private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
-  private final PipelineSelector pipelineSelector;
   private final CountDownLatch startupLatch = new CountDownLatch(1);
+  private final FileController fileController;
+  private final UserController userController;
 
   private Channel serverChannel;
 
   public NettyServer(FileController fileController, UserController userController) {
-    this.pipelineSelector = new PipelineSelector(fileController, userController);
+    this.fileController = fileController;
+    this.userController = userController;
   }
 
   public void start() {
@@ -71,11 +72,9 @@ public class NettyServer {
       ChannelPipeline pipeline = socketChannel.pipeline();
 
       pipeline.addLast("httpCodec", new HttpServerCodec());
-
       // TODO: CORS?
       pipeline.addLast("cors", new CorsHandler());
-
-      pipeline.addLast("pipeSelector", pipelineSelector);
+      pipeline.addLast("pipeSelector", new PipelineSelector(fileController, userController));
     }
   }
-  }
+}

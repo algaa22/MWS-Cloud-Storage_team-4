@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.detailed;
 
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseDetailedFileIT;
-import com.mipt.team4.cloud_storage_backend.e2e.storage.QueryType;
+import com.mipt.team4.cloud_storage_backend.e2e.storage.PathParam;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpMethod;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GetFilePathsDetailedIT extends BaseDetailedFileIT {
   public GetFilePathsDetailedIT() {
-    super("/api/files", HttpMethod.GET.name(), QueryType.FOLDER);
+    super("/api/files", HttpMethod.GET.name(), PathParam.EXISTENT_FOLDER);
   }
 
   @Test

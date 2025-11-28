@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.e2e.storage.detailed;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseDetailedFileIT;
-import com.mipt.team4.cloud_storage_backend.e2e.storage.QueryType;
+import com.mipt.team4.cloud_storage_backend.e2e.storage.PathParam;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
 import io.netty.handler.codec.http.HttpMethod;
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
   public SimpleUploadFileDetailedIT() {
-    super("/api/files/upload?path=_", HttpMethod.POST.name(), QueryType.SINGLE_FILE);
+    super("/api/files/upload?path=_", HttpMethod.POST.name(), PathParam.NEW_FILE);
   }
 
   @Test

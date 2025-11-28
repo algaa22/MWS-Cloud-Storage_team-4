@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
-import com.mipt.team4.cloud_storage_backend.exception.config.ConfigNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.utils.InputStreamNotFoundException;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -13,7 +13,7 @@ public class FileLoader {
     try {
       return new FileInputStream(filePath);
     } catch (FileNotFoundException e) {
-      throw new ConfigNotFoundException(filePath);
+      throw new InputStreamNotFoundException(filePath);
     }
   }
 }

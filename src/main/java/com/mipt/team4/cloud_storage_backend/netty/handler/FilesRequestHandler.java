@@ -78,9 +78,9 @@ public record FilesRequestHandler(FileController fileController) {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String fileId, String userToken) {
+  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken) {
     try {
-      fileController.deleteFile(new SimpleFileOperationDto(fileId, userToken));
+      fileController.deleteFile(new SimpleFileOperationDto(filePath, userToken));
     } catch (UserNotFoundException
         | ValidationFailedException
         | StorageIllegalAccessException
@@ -132,13 +132,6 @@ public record FilesRequestHandler(FileController fileController) {
     // TODO: проверка на размер
 
     ByteBuf fileByteBuf = request.content();
-
-    // TODO: correct?
-    if (request.content().readableBytes() == 0) {
-      ResponseHelper.sendErrorResponse(
-          ctx, HttpResponseStatus.BAD_REQUEST, "Upload request does not contain content");
-      return;
-    }
 
     byte[] fileData = new byte[fileByteBuf.readableBytes()];
     fileByteBuf.readBytes(fileData);

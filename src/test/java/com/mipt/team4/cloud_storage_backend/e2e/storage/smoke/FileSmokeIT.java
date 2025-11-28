@@ -9,13 +9,13 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUt
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-
-import io.netty.handler.codec.http.HttpHeaderNames;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
@@ -40,12 +40,12 @@ public class FileSmokeIT extends BaseFileIT {
 
   @Test
   public void shouldUploadAndDownloadFile_Chunked() throws IOException, InterruptedException {
-    byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
-
-    HttpResponse<String> uploadResponse =
-        FileChunkedTransferITUtils.sendUploadRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH, fileData, "");
-    assertEquals(HttpStatus.SC_OK, uploadResponse.statusCode());
+    try (CloseableHttpClient apacheClient = TestUtils.createApacheClient()) {
+      FileChunkedTransferITUtils.UploadResult uploadResult =
+          FileChunkedTransferITUtils.sendUploadRequest(
+              apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH, BIG_FILE_LOCAL_PATH, "");
+      assertEquals(HttpStatus.SC_OK, uploadResult.statusCode());
+    }
 
     HttpResponse<InputStream> downloadResponse =
         FileChunkedTransferITUtils.sendDownloadRequest(
@@ -57,6 +57,8 @@ public class FileSmokeIT extends BaseFileIT {
         TestUtils.getHeader(downloadResponse, HttpHeaderNames.TRANSFER_ENCODING.toString());
     String receivedFilePath = TestUtils.getHeader(downloadResponse, "X-File-Path");
     String receivedFileSize = TestUtils.getHeader(downloadResponse, "X-File-Size");
+
+    byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
 
     assertEquals("chunked", receivedTransferEncoding);
     assertEquals(DEFAULT_FILE_TARGET_PATH, receivedFilePath);

@@ -63,11 +63,10 @@ public class ResponseHelper {
 
   public static FullHttpResponse createJsonResponse(
       HttpResponseStatus status, boolean success, String message) {
-    return createJsonResponse(status, createJsonResponseNode(status, success, message));
+    return createJsonResponse(status, createJsonResponseNode(success, message));
   }
 
-  public static ObjectNode createJsonResponseNode(
-      HttpResponseStatus status, boolean success, String message) {
+  public static ObjectNode createJsonResponseNode(boolean success, String message) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
@@ -75,7 +74,6 @@ public class ResponseHelper {
     // TODO: вместо String message - JsonNode message в ошибке валидации
     json.put("success", success);
     json.put("message", message);
-    json.put("status", status.code());
 
     return json;
   }
@@ -97,8 +95,7 @@ public class ResponseHelper {
 
   public static FullHttpResponse createRawResponse(HttpResponseStatus status) {
     FullHttpResponse response =
-            new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER);
+        new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER);
 
     addDefaultHeadersToResponse(response);
 

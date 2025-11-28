@@ -17,11 +17,9 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
-import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-
 import java.util.Optional;
 
 public record UsersRequestHandler(UserController userController) {
@@ -42,8 +40,7 @@ public record UsersRequestHandler(UserController userController) {
 
     // TODO: подумать над тем, чтобы преобразовывать ответы DTO в Json
     ObjectNode rootNode =
-        ResponseHelper.createJsonResponseNode(
-            HttpResponseStatus.CREATED, true, "Account created successfully.");
+        ResponseHelper.createJsonResponseNode(true, "Account created successfully.");
 
     rootNode.put("token", token);
 
@@ -69,8 +66,7 @@ public record UsersRequestHandler(UserController userController) {
     }
 
     ObjectNode rootNode =
-        ResponseHelper.createJsonResponseNode(
-            HttpResponseStatus.OK, true, "You have successfully signed in.");
+        ResponseHelper.createJsonResponseNode(true, "You have successfully signed in.");
 
     rootNode.put("token", token);
 
@@ -95,10 +91,11 @@ public record UsersRequestHandler(UserController userController) {
 
   public void handleGetUserRequest(ChannelHandlerContext ctx, HttpRequest request) {
     UserDto userInfo;
-    
+
     try {
-      userInfo = userController.getUserInfo(
-          new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
+      userInfo =
+          userController.getUserInfo(
+              new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
     } catch (ValidationFailedException | UserNotFoundException | HeaderNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;

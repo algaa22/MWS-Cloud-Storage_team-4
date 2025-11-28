@@ -17,6 +17,7 @@ public class UserAuthUtils {
     HttpResponse<String> response = sendRegisterTestUserRequest(client, createRandomUser());
     String responseBody = response.body();
 
+    // TODO: RE?
     if (response.statusCode() != HttpStatus.SC_CREATED)
       throw new RuntimeException("Failed to register test user: " + responseBody);
 

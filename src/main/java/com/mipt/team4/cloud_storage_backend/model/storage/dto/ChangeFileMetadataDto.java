@@ -33,7 +33,7 @@ public record ChangeFileMetadataDto(
                 Validators.validate(newPath.isPresent() && !newPath.get().isEmpty(), null, null),
                 Validators.validate(
                     visibility.isPresent() && !visibility.get().isEmpty(), null, null),
-                Validators.validate(tags.isPresent() && !tags.get().isEmpty(), null, null)));
+                Validators.validate(tags.isPresent(), null, null)));
 
     Validators.throwExceptionIfNotValid(result);
   }

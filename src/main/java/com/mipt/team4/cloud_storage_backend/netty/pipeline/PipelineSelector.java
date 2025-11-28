@@ -42,18 +42,18 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
       // TODO: защита от атак (валидаторы)
       PipelineType currentPipeline = PipelineType.from(request);
 
-      cleanupPipeline(currentPipeline, ctx);
-      configurePipeline(currentPipeline, ctx);
+      if (previousPipeline != currentPipeline) {
+        cleanupPipeline(ctx);
+        configurePipeline(currentPipeline, ctx);
 
-      previousPipeline = currentPipeline;
+        previousPipeline = currentPipeline;
+      }
     }
 
     ctx.fireChannelRead(msg);
   }
 
-  private void cleanupPipeline(PipelineType currentPipeline, ChannelHandlerContext ctx) {
-    if (previousPipeline == currentPipeline) return;
-
+  private void cleanupPipeline(ChannelHandlerContext ctx) {
     ChannelPipeline pipeline = ctx.pipeline();
 
     if (previousPipeline == PipelineType.CHUNKED) {

@@ -14,14 +14,14 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public abstract class BaseDetailedFileIT extends BaseFileIT {
-  private final QueryType queryType;
+  private final PathParam pathParam;
   private final String rawEndpoint;
   private final String method;
 
-  public BaseDetailedFileIT(String rawEndpoint, String method, QueryType queryType) {
+  public BaseDetailedFileIT(String rawEndpoint, String method, PathParam pathParam) {
     this.rawEndpoint = rawEndpoint;
     this.method = method;
-    this.queryType = queryType;
+    this.pathParam = pathParam;
   }
 
   // TODO: тест на отсутствие хедеров, параметром
@@ -29,6 +29,8 @@ public abstract class BaseDetailedFileIT extends BaseFileIT {
 
   @Test
   public void shouldEnforceUsersIsolation() throws IOException, InterruptedException {
+    if (!pathParam.isExistent()) return;
+
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
     String otherUserToken = UserAuthUtils.sendRegisterRandomUserRequest(client);
@@ -36,9 +38,9 @@ public abstract class BaseDetailedFileIT extends BaseFileIT {
         client.send(
             createRawRequestWithToken(otherUserToken), HttpResponse.BodyHandlers.ofString());
 
-    if (queryType == QueryType.SINGLE_FILE) {
+    if (pathParam == PathParam.EXISTENT_FILE) {
       assertFileNotFound(otherUserResponse);
-    } else {
+    } else if (pathParam == PathParam.EXISTENT_FOLDER) {
       HttpResponse<String> ownerResponse =
           client.send(
               createRawRequestWithToken(currentUserToken), HttpResponse.BodyHandlers.ofString());
@@ -49,7 +51,7 @@ public abstract class BaseDetailedFileIT extends BaseFileIT {
 
   @Test
   public void shouldNotDoX_WhenSpecifyNotExistentFile() throws IOException, InterruptedException {
-    if (queryType != QueryType.SINGLE_FILE) return;
+    if (pathParam != PathParam.EXISTENT_FILE) return;
 
     simpleUploadFile("asdfghjklasdasdflhgehsagjak");
 
@@ -62,7 +64,7 @@ public abstract class BaseDetailedFileIT extends BaseFileIT {
 
   @Test
   public void shouldNotDoX_WhenSpecifyFolder() throws IOException, InterruptedException {
-    if (queryType != QueryType.SINGLE_FILE) return;
+    if (pathParam != PathParam.EXISTENT_FILE) return;
 
     HttpResponse<String> response =
         client.send(
@@ -106,7 +108,7 @@ public abstract class BaseDetailedFileIT extends BaseFileIT {
     for (Iterator<JsonNode> it = messageNode.get("details").elements(); it.hasNext(); ) {
       JsonNode detailNode = it.next();
 
-      if (detailNode.get("field").asText().equals(validationField)) {
+      if (detailNode.get("field").asText().equalsIgnoreCase(validationField)) {
         hasTargetValidationError = true;
         break;
       }
@@ -119,9 +121,11 @@ public abstract class BaseDetailedFileIT extends BaseFileIT {
     return createRawRequestWithToken(userToken, this.rawEndpoint);
   }
 
-  private HttpRequest createRawRequestWithToken(String userToken, String endpoint) {
+  protected HttpRequest createRawRequestWithToken(String userToken, String endpoint) {
     return TestUtils.createRequest(endpoint)
         .header("X-Auth-Token", userToken)
+        .header("X-File-Tags", "")
+        .header("X-File-New-Tags", "")
         .method(method, HttpRequest.BodyPublishers.noBody())
         .build();
   }

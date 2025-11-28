@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
-import static org.junit.jupiter.api.Assertions.fail;
 
 import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
@@ -10,7 +9,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -42,12 +43,11 @@ public class TestUtils {
   }
 
   public static HttpRequest.Builder createRequest(String endpoint) {
-    return HttpRequest.newBuilder()
-        .uri(URI.create("http://localhost:" + NettyConfig.INSTANCE.getPort() + endpoint));
+    return HttpRequest.newBuilder().uri(URI.create(createUriString(endpoint)));
   }
 
-  public static void failWithException(Exception exception) {
-    fail("Exception thrown in test", exception);
+  public static String createUriString(String endpoint) {
+    return "http://localhost:" + NettyConfig.INSTANCE.getPort() + endpoint;
   }
 
   public static JsonNode getRootNodeFromResponse(HttpResponse<String> response) throws IOException {
@@ -57,5 +57,12 @@ public class TestUtils {
 
   public static String getHeader(HttpResponse<?> response, String header) {
     return response.headers().firstValue(header).orElse(null);
+  }
+
+  public static CloseableHttpClient createApacheClient() {
+    return HttpClients.custom()
+        .setConnectionManager(new PoolingHttpClientConnectionManager())
+        .setConnectionManagerShared(false)
+        .build();
   }
 }

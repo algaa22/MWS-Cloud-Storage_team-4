@@ -71,7 +71,7 @@ public class UserSmokeIT extends BaseUserIT {
     //    assertEquals(HttpStatus.SC_OK, refreshResponse.statusCode());
     //
     //    JsonNode root = TestUtils.getRootNodeFromResponse(refreshResponse);
-    //    assertNotNull(root.get("accessToken"));
+    //    assertNotNull(root.get("userToken"));
     //    assertNotNull(root.get("refreshToken"));
   }
 

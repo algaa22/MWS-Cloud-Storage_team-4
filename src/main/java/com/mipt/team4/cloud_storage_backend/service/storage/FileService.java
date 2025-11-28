@@ -132,10 +132,7 @@ public class FileService {
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationDto fileDownload)
-      throws StorageIllegalAccessException,
-          UserNotFoundException,
-          FileNotFoundException,
-          StorageFileNotFoundException {
+      throws UserNotFoundException, StorageFileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(fileDownload.userToken());
 
     Optional<FileEntity> entityOpt = fileRepository.getFile(userId, fileDownload.path());
@@ -147,10 +144,7 @@ public class FileService {
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
-      throws StorageIllegalAccessException,
-          UserNotFoundException,
-          StorageFileNotFoundException,
-          FileNotFoundException {
+      throws UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(deleteFileRequest.userToken());
     Optional<FileEntity> entityOpt = fileRepository.getFile(userId, deleteFileRequest.path());
     FileEntity entity =
@@ -169,7 +163,8 @@ public class FileService {
 
     long chunkSize = StorageConfig.INSTANCE.getFileDownloadChunkSize();
     long offset = fileChunkRequest.chunkIndex() * chunkSize;
-    byte[] chunkData = fileRepository.downloadFilePart(entity.getS3Key(), offset, chunkSize);
+    byte[] chunkData =
+        fileRepository.downloadFilePart(entity.getOwnerId(), entity.getFileId(), offset, chunkSize);
 
     return new DownloadedChunkDto(
         fileChunkRequest.filePath(), fileChunkRequest.chunkIndex(), chunkData);
@@ -269,19 +264,19 @@ public class FileService {
       }
       Optional<FileEntity> fileOpt = fileRepository.getFile(userId, oldFilePath);
       if (fileOpt.isPresent()) {
-        FileEntity file = fileOpt.get();
+        FileEntity fileEntity = fileOpt.get();
         try {
-          byte[] fileContent = fileRepository.downloadFile(file.getS3Key());
+          byte[] fileContent = fileRepository.downloadFile(fileEntity);
           FileEntity newFileEntity =
               new FileEntity(
                   UUID.randomUUID(),
                   userId,
                   newFilePath,
-                  file.getMimeType(),
-                  file.getVisibility(),
-                  file.getSize(),
-                  file.isDeleted(),
-                  file.getTags());
+                  fileEntity.getMimeType(),
+                  fileEntity.getVisibility(),
+                  fileEntity.getSize(),
+                  fileEntity.isDeleted(),
+                  fileEntity.getTags());
           fileRepository.addFile(newFileEntity, fileContent);
           fileRepository.deleteFile(userId, oldFilePath);
 
@@ -327,8 +322,10 @@ public class FileService {
       throw new RuntimeException("Chunk size exceeds maximum allowed size");
     }
 
-    String etag = fileRepository.uploadPart(uploadId, uploadState.s3Key, uploadState.partNum, part);
-    uploadState.eTags.put(uploadState.partNum, etag);
+    String eTag =
+        fileRepository.uploadPart(
+            uploadId, uploadState.userId, uploadState.fileId, uploadState.partNum, part);
+    uploadState.eTags.put(uploadState.partNum, eTag);
 
     uploadState.totalParts++;
     uploadState.fileSize += part.length;

@@ -72,15 +72,13 @@ public class FileRepository {
     contentRepository.hardDeleteFile(s3Key);
   }
 
-  public byte[] downloadFilePart(String s3Key) {
-    return null;
-  }
-
   public void updateFile(FileEntity entity) {
     metadataRepository.updateFile(entity);
   }
 
-  public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
+  public byte[] downloadFilePart(UUID ownerId, UUID fileId, long offset, long actualChunkSize) {
+    // TODO: dublirovanie?
+    String s3Key = StoragePaths.getS3Key(ownerId, fileId);
     return contentRepository.downloadFilePart(s3Key, offset, actualChunkSize);
   }
 

@@ -238,10 +238,6 @@ public class MinioContentRepository implements FileContentRepository {
     }
   }
 
-  @Override
-  public void moveFile(FileEntity entity, String oldS3Key) {
-    // TODO
-  }
 
   private Multimap<String, String> createEmptyHeader() {
     return MultimapBuilder.hashKeys().arrayListValues().build();

@@ -73,7 +73,6 @@ public class FileRepository {
   public void updateFile(FileEntity entity, String oldS3Key) {
     metadataRepository.updateFile(entity);
     // TODO: если надо переместить офк
-    contentRepository.moveFile(entity, oldS3Key);
   }
 
     public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {

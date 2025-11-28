@@ -77,11 +77,11 @@ public class FileRepository {
     contentRepository.hardDeleteFile(s3Key);
   }
 
-  public void updateFile(FileEntity entity, String oldS3Key) {
+  public void updateFile(FileEntity entity) {
     metadataRepository.updateFile(entity);
   }
 
-    public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
+    public byte[] downloadFilePart(String path, long offset, long actualChunkSize) {
       return null;
     }
 }

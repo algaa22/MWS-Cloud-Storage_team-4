@@ -11,7 +11,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
-import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -90,9 +89,9 @@ public class FileService {
 
     FileEntity fileEntity =
         new FileEntity(
-            upload.fileId,
+            uploadState.fileId,
             userId, // TODO: get actualUserId
-            uploadState.s3Key,
+            uploadState.path,
             guessMimeType(session.path()),
             "private",
             uploadState.fileSize,
@@ -167,7 +166,7 @@ public class FileService {
     FileEntity entity =
         entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileChunkRequest.filePath()));
 
-    byte[] chunkData = fileRepository.downloadFilePart(entity);
+    byte[] chunkData = fileRepository.downloadFilePart(fileChunkRequest.filePath());
 
     return new DownloadedChunkDto(
         fileChunkRequest.filePath(), fileChunkRequest.chunkIndex(), chunkData);
@@ -230,7 +229,7 @@ public class FileService {
       entity.setVisibility(changeFileMetadata.visibility().get());
     }
 
-    fileRepository.updateFile(entity, oldPath);
+    fileRepository.updateFile(entity);
   }
 
   // TODO: хз как это сделать лучше

@@ -15,6 +15,8 @@ import java.io.InputStream;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -40,42 +42,39 @@ public class FileSmokeIT extends BaseFileIT {
 
   @Test
   public void shouldUploadAndDownloadFile_Chunked() throws IOException, InterruptedException {
-    try (CloseableHttpClient apacheClient = TestUtils.createApacheClient()) {
+    try (CloseableHttpClient apacheClient = TestUtils.createApacheClient() ) {
+      byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
+
       FileChunkedTransferITUtils.UploadResult uploadResult =
           FileChunkedTransferITUtils.sendUploadRequest(
               apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH, BIG_FILE_LOCAL_PATH, "");
       assertEquals(HttpStatus.SC_OK, uploadResult.statusCode());
-    }
 
-    HttpResponse<InputStream> downloadResponse =
-        FileChunkedTransferITUtils.sendDownloadRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
-    assertEquals(HttpStatus.SC_OK, downloadResponse.statusCode());
+      FileChunkedTransferITUtils.DownloadResult downloadResult =
+          FileChunkedTransferITUtils.sendDownloadRequest(
+              apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH);
+      assertEquals(HttpStatus.SC_OK, downloadResult.statusCode());
 
-    // TODO: вынести в отдельную функцию
-    String receivedTransferEncoding =
-        TestUtils.getHeader(downloadResponse, HttpHeaderNames.TRANSFER_ENCODING.toString());
-    String receivedFilePath = TestUtils.getHeader(downloadResponse, "X-File-Path");
-    String receivedFileSize = TestUtils.getHeader(downloadResponse, "X-File-Size");
+      // TODO: вынести в отдельную функцию
 
-    byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
+      Map<String, String> headers = downloadResult.headers();
 
-    assertEquals("chunked", receivedTransferEncoding);
-    assertEquals(DEFAULT_FILE_TARGET_PATH, receivedFilePath);
-    assertEquals(String.valueOf(fileData.length), receivedFileSize);
+      String receivedTransferEncoding = headers.get(HttpHeaderNames.TRANSFER_ENCODING.toString());
+      String receivedFilePath = headers.get("X-File-Path");
+      String receivedFileSize = headers.get("X-File-Size");
 
-    List<byte[]> downloadedChunks =
-        FileChunkedTransferITUtils.readChunksFromResponse(downloadResponse);
+      assertEquals("chunked", receivedTransferEncoding);
+      assertEquals(DEFAULT_FILE_TARGET_PATH, receivedFilePath);
+      assertEquals(String.valueOf(fileData.length), receivedFileSize);
 
-    int offset = 0;
+      int offset = 0;
 
-    for (int i = 0; i < downloadedChunks.size(); ++i) {
-      byte[] chunk = downloadedChunks.get(i);
+      for (byte[] chunk : downloadResult.chunks()) {
+        assertTrue(offset + chunk.length <= fileData.length);
+        assertTrue(FileChunkedTransferITUtils.chunkMatchesOriginal(fileData, chunk, offset));
 
-      assertTrue(offset + chunk.length <= fileData.length);
-      assertTrue(FileChunkedTransferITUtils.chunkMatchesOriginal(fileData, chunk, offset));
-
-      offset += chunk.length;
+        offset += chunk.length;
+      }
     }
   }
 

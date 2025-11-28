@@ -4,15 +4,16 @@ import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.InputStreamEntity;
@@ -27,6 +28,21 @@ public class FileChunkedTransferITUtils {
     }
   }
 
+  public record DownloadResult(int statusCode, Map<String, String> headers, List<byte[]> chunks) {
+    public static DownloadResult from(ClassicHttpResponse response) throws IOException {
+      Map<String, String> headers = new HashMap<>();
+
+      for (Header header : response.getHeaders()) {
+        headers.put(header.getName(), header.getValue());
+      }
+
+      return new DownloadResult(
+          response.getCode(),
+          headers,
+          readChunksFromInputStream(response.getEntity().getContent()));
+    }
+  }
+
   public static UploadResult sendUploadRequest(
       CloseableHttpClient client,
       String userToken,
@@ -37,48 +53,24 @@ public class FileChunkedTransferITUtils {
     HttpPost request =
         new HttpPost(TestUtils.createUriString("/api/files/upload?path=" + targetFilePath));
 
-    try (InputStream fileStream = FileLoader.getInputStream(filePath)) {
-      InputStreamEntity entity =
-              new InputStreamEntity(fileStream, -1, ContentType.APPLICATION_OCTET_STREAM);
+    InputStream fileStream = FileLoader.getInputStream(filePath);
+    InputStreamEntity entity =
+        new InputStreamEntity(fileStream, -1, ContentType.APPLICATION_OCTET_STREAM);
 
-      request.setEntity(entity);
-      request.setHeader("X-Auth-Token", userToken);
-      request.setHeader("X-File-Tags", fileTags);
+    request.setEntity(entity);
+    request.setHeader("X-Auth-Token", userToken);
+    request.setHeader("X-File-Tags", fileTags);
 
-      return client.execute(request, UploadResult::from);
-    }
+    return client.execute(request, UploadResult::from);
   }
 
-  public static HttpResponse<InputStream> sendDownloadRequest(
-      HttpClient client, String userToken, String targetFilePath)
-      throws IOException, InterruptedException {
-    HttpRequest request =
-        TestUtils.createRequest("/api/files?path=" + targetFilePath)
-            .header("X-Download-Mode", "chunked")
-            .header("X-Auth-Token", userToken)
-            .GET()
-            .build();
+  public static DownloadResult sendDownloadRequest(
+      CloseableHttpClient client, String userToken, String targetFilePath) throws IOException {
+    HttpGet request = new HttpGet(TestUtils.createUriString("/api/files?path=" + targetFilePath));
+    request.setHeader("X-Download-Mode", "chunked");
+    request.setHeader("X-Auth-Token", userToken);
 
-    return client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-  }
-
-  public static List<byte[]> readChunksFromResponse(HttpResponse<InputStream> response)
-      throws IOException {
-    List<byte[]> chunks = new ArrayList<>();
-
-    try (InputStream inputStream = response.body()) {
-      byte[] buffer = new byte[MAX_CHUNK_SIZE];
-      int bytesRead;
-
-      while ((bytesRead = inputStream.read(buffer)) != -1) {
-        byte[] chunk = new byte[bytesRead];
-        System.arraycopy(buffer, 0, chunk, 0, bytesRead);
-
-        chunks.add(chunk);
-      }
-    }
-
-    return chunks;
+    return client.execute(request, DownloadResult::from);
   }
 
   public static boolean chunkMatchesOriginal(byte[] originalData, byte[] chunk, int offset) {
@@ -89,18 +81,17 @@ public class FileChunkedTransferITUtils {
     return true;
   }
 
-  private static List<byte[]> splitFileIntoChunks(byte[] fileData, int maxChunkSize) {
-    List<byte[]> chunks = new ArrayList<>(maxChunkSize);
-    int offset = 0;
+  private static List<byte[]> readChunksFromInputStream(InputStream inputStream)
+      throws IOException {
+    List<byte[]> chunks = new ArrayList<>();
+    byte[] buffer = new byte[MAX_CHUNK_SIZE];
+    int bytesRead;
 
-    while (offset < fileData.length) {
-      int chunkSize = Math.min(maxChunkSize, fileData.length - offset);
-      byte[] chunk = new byte[chunkSize];
+    while ((bytesRead = inputStream.read(buffer)) != -1) {
+      byte[] chunk = new byte[bytesRead];
+      System.arraycopy(buffer, 0, chunk, 0, bytesRead);
 
-      System.arraycopy(fileData, offset, chunk, 0, chunkSize);
       chunks.add(chunk);
-
-      offset += chunkSize;
     }
 
     return chunks;

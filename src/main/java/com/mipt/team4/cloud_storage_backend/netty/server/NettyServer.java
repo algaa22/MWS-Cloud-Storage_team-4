@@ -14,7 +14,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
 import java.util.concurrent.CountDownLatch;
 
-import io.netty.handler.codec.http.cors.CorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +72,7 @@ public class NettyServer {
 
       pipeline.addLast("httpCodec", new HttpServerCodec());
 
-      // 🟦 Добавляем CORS
+      // TODO: CORS?
       pipeline.addLast("cors", new CorsHandler());
 
       pipeline.addLast("pipeSelector", pipelineSelector);

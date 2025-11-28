@@ -24,8 +24,8 @@ public class FileRepository {
     contentRepository.putObject(fileEntity.getS3Key(), data, fileEntity.getMimeType());
   }
 
-  public Optional<FileEntity> getFile(UUID ownerId, String s3Key) {
-    return metadataRepository.getFile(ownerId, s3Key);
+  public Optional<FileEntity> getFile(UUID ownerId, String path) {
+    return metadataRepository.getFile(ownerId, path);
   }
 
   public boolean fileExists(UUID ownerId, String s3Key) {

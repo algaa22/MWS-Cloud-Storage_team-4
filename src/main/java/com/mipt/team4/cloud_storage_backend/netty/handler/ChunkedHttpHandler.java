@@ -44,7 +44,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
       // TODO: зачем здесь chunkedDownload
       if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
         chunkedUpload.startChunkedUpload(ctx, request);
-      } else if (uri.startsWith("/api/files/") && method.equals(HttpMethod.GET)) {
+      } else if (uri.startsWith("/api/files") && method.equals(HttpMethod.GET)) {
         chunkedDownload.startChunkedDownload(ctx, request);
       } else {
         ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);

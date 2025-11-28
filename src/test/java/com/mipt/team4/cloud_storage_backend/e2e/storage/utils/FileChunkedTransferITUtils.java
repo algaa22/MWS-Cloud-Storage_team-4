@@ -14,6 +14,7 @@ public class FileChunkedTransferITUtils {
       throws IOException, InterruptedException {
     List<byte[]> chunks = splitFileIntoChunks(fileData, 8 * 1024);
 
+    // TODO: прогресс все равно выводится
     HttpRequest request =
         TestUtils.createRequest("/api/files/upload?path=" + targetFilePath)
             .header("Transfer-Encoding", "chunked")

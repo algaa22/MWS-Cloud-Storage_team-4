@@ -15,7 +15,7 @@ public class EnvironmentConfigSource extends ConfigSource {
 
   public EnvironmentConfigSource(String filePath) {
     // TODO: problemi s dokerom
-    // loadEnvFile(filePath);
+    loadEnvFile(filePath);
   }
 
   @Override

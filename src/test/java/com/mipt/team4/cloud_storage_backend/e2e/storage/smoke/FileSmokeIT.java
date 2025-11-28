@@ -11,12 +11,10 @@ import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -42,7 +40,7 @@ public class FileSmokeIT extends BaseFileIT {
 
   @Test
   public void shouldUploadAndDownloadFile_Chunked() throws IOException, InterruptedException {
-    try (CloseableHttpClient apacheClient = TestUtils.createApacheClient() ) {
+    try (CloseableHttpClient apacheClient = TestUtils.createApacheClient()) {
       byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
 
       FileChunkedTransferITUtils.UploadResult uploadResult =
@@ -107,7 +105,7 @@ public class FileSmokeIT extends BaseFileIT {
 
   @Test
   public void shouldGetFileInfo() throws IOException, InterruptedException {
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH, "1,2,3");
+    simpleUploadFile(SMALL_FILE_LOCAL_PATH, DEFAULT_FILE_TARGET_PATH, "1,2,3");
 
     HttpResponse<String> response =
         FileOperationsITUtils.sendGetFileInfoRequest(

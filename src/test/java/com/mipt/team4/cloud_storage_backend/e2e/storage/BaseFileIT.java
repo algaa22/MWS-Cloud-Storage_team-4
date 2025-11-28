@@ -39,10 +39,6 @@ public abstract class BaseFileIT extends BaseIT {
     simpleUploadFile(SMALL_FILE_LOCAL_PATH, targetFilePath, "");
   }
 
-  protected void simpleUploadFile(String localFilePath, String targetFilePath) throws IOException, InterruptedException {
-    simpleUploadFile(localFilePath, targetFilePath, "");
-  }
-
   protected void simpleUploadFile(String localFilePath, String targetFilePath, String fileTags)
           throws IOException, InterruptedException {
     HttpResponse<String> uploadResponse =

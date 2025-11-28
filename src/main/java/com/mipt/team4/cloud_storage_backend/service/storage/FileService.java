@@ -41,11 +41,13 @@ public class FileService {
       throw new StorageFileAlreadyExistsException(userId, path);
     }
 
-    String s3Key = StoragePaths.getS3Key(userId, path);
-    Optional<FileEntity> fileEntity = fileRepository.getFile(userId, s3Key);
+    Optional<FileEntity> fileEntity = fileRepository.getFile(userId, path);
     if (fileEntity.isPresent()) throw new StorageFileAlreadyExistsException(userId, path);
+
+    UUID newFileId = UUID.randomUUID();
+
     activeUploads.put(
-        uploadSession.sessionId(), new ChunkedUploadState(uploadSession, userId, s3Key));
+        uploadSession.sessionId(), new ChunkedUploadState(uploadSession, userId, newFileId, path));
   }
 
   public void uploadChunk(UploadChunkDto uploadRequest)
@@ -84,16 +86,13 @@ public class FileService {
       if (!uploadState.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
     }
 
-    UUID fileId = UUID.randomUUID();
     UUID userId = userSessionService.extractUserIdFromToken(session.userToken());
-
-    String s3Key = StoragePaths.getS3Key(userId, session.path());
 
     FileEntity fileEntity =
         new FileEntity(
-            fileId,
+            upload.fileId,
             userId, // TODO: get actualUserId
-            s3Key,
+            uploadState.s3Key,
             guessMimeType(session.path()),
             "private",
             uploadState.fileSize,
@@ -111,9 +110,7 @@ public class FileService {
     UUID fileId = UUID.randomUUID();
     UUID userId = userSessionService.extractUserIdFromToken(fileUploadRequest.userToken());
 
-    String s3Key = StoragePaths.getS3Key(userId, fileUploadRequest.path());
-
-    if (fileRepository.fileExists(userId, s3Key))
+    if (fileRepository.fileExists(userId, fileUploadRequest.path()))
       throw new StorageFileAlreadyExistsException(userId, fileUploadRequest.path());
 
     String mimeType = guessMimeType(fileUploadRequest.path());
@@ -123,7 +120,7 @@ public class FileService {
         new FileEntity(
             fileId,
             userId,
-            s3Key,
+            fileUploadRequest.path(),
             mimeType,
             "private",
             data.length,
@@ -141,15 +138,12 @@ public class FileService {
           StorageFileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(fileDownload.userToken());
 
-    String s3Key = StoragePaths.getS3Key(userId, fileDownload.path());
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, s3Key);
-
-    FileEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(s3Key));
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, fileDownload.path());
+    FileEntity entity =
+        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileDownload.path()));
 
     return new FileDownloadDto(
-        fileDownload.path(),
-        entityOpt.get().getMimeType(),
-        fileRepository.downloadFile(entity.getS3Key()));
+        fileDownload.path(), entityOpt.get().getMimeType(), fileRepository.downloadFile(entity));
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
@@ -158,21 +152,22 @@ public class FileService {
           StorageFileNotFoundException,
           FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(deleteFileRequest.userToken());
-    String s3Key = StoragePaths.getS3Key(userId, deleteFileRequest.path());
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, deleteFileRequest.path());
+    FileEntity entity =
+        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(deleteFileRequest.path()));
 
-    fileRepository.deleteFile(userId, s3Key);
+    fileRepository.deleteFile(entity);
   }
 
   public DownloadedChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
       throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
     UUID userId = userSessionService.extractUserIdFromToken(fileChunkRequest.userToken());
-    String s3Key = StoragePaths.getS3Key(userId, fileChunkRequest.filePath());
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, s3Key);
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, fileChunkRequest.filePath());
 
     FileEntity entity =
         entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileChunkRequest.filePath()));
 
-    byte[] chunkData = fileRepository.downloadFilePart(entity.getS3Key());
+    byte[] chunkData = fileRepository.downloadFilePart(entity);
 
     return new DownloadedChunkDto(
         fileChunkRequest.filePath(), fileChunkRequest.chunkIndex(), chunkData);
@@ -187,8 +182,8 @@ public class FileService {
   public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
       throws UserNotFoundException, StorageFileNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(fileInfoRequest.userToken());
-    String s3Key = StoragePaths.getS3Key(userUuid, fileInfoRequest.path());
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, s3Key);
+
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userUuid, fileInfoRequest.path());
     if (entityOpt.isEmpty()) throw new StorageFileNotFoundException(fileInfoRequest.path());
 
     return FileMapper.toDto(entityOpt.get());
@@ -211,22 +206,20 @@ public class FileService {
           StorageFileAlreadyExistsException {
 
     UUID userId = userSessionService.extractUserIdFromToken(changeFileMetadata.userToken());
-    String oldS3Key = StoragePaths.getS3Key(userId, changeFileMetadata.oldPath());
 
-    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, oldS3Key);
+    Optional<FileEntity> entityOpt = fileRepository.getFile(userId, changeFileMetadata.oldPath());
 
     FileEntity entity =
         entityOpt.orElseThrow(() -> new StorageFileNotFoundException(changeFileMetadata.oldPath()));
 
     if (changeFileMetadata.newPath().isPresent()) {
-      String newS3Key = StoragePaths.getS3Key(userId, changeFileMetadata.newPath().get());
-
-      Optional<FileEntity> existingFile = fileRepository.getFile(userId, newS3Key);
+      Optional<FileEntity> existingFile =
+          fileRepository.getFile(userId, changeFileMetadata.newPath().get());
       if (existingFile.isPresent()) {
         throw new StorageFileAlreadyExistsException(userId, changeFileMetadata.newPath().get());
       }
 
-      entity.setS3Key(StoragePaths.getS3Key(userId, changeFileMetadata.newPath().get()));
+      entity.setPath(changeFileMetadata.newPath().get());
     }
 
     if (changeFileMetadata.tags().isPresent()) {
@@ -237,7 +230,7 @@ public class FileService {
       entity.setVisibility(changeFileMetadata.visibility().get());
     }
 
-    fileRepository.updateFile(entity, oldS3Key);
+    fileRepository.updateFile(entity, oldPath);
   }
 
   // TODO: хз как это сделать лучше
@@ -364,7 +357,8 @@ public class FileService {
     final Map<Integer, String> eTags = new HashMap<>();
     final List<byte[]> chunks = new ArrayList<>();
     final UUID userId;
-    final String s3Key;
+    final UUID fileId;
+    final String path;
 
     String uploadId;
     int fileSize = 0;
@@ -374,16 +368,16 @@ public class FileService {
 
     // TODO: читаемость пупупу
 
-    ChunkedUploadState(FileChunkedUploadDto session, UUID userId, String s3Key) {
+    ChunkedUploadState(FileChunkedUploadDto session, UUID userId, UUID fileId, String path) {
       this.session = session;
       this.userId = userId;
-      this.s3Key = s3Key;
+      this.fileId = fileId;
+      this.path = path;
     }
 
     String getOrCreateUploadId(FileRepository repo) {
       if (uploadId == null) {
-        String s3Key = StoragePaths.getS3Key(userId, session.path());
-        uploadId = repo.startMultipartUpload(s3Key);
+        uploadId = repo.startMultipartUpload(userId, fileId);
       }
 
       return uploadId;

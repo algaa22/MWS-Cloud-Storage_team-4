@@ -53,9 +53,7 @@ public class FileRepository {
   }
 
   public void completeMultipartUpload(
-      FileEntity fileEntity,
-      String uploadId,
-      Map<Integer, String> eTags)
+      FileEntity fileEntity, String uploadId, Map<Integer, String> eTags)
       throws StorageFileAlreadyExistsException {
     String s3Key = StoragePaths.getS3Key(fileEntity.getOwnerId(), fileEntity.getFileId());
 
@@ -63,25 +61,34 @@ public class FileRepository {
     contentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
   }
 
-  public byte[] downloadFile(FileEntity fileEntity)
-      throws FileNotFoundException {
+  public byte[] downloadFile(FileEntity fileEntity) {
     String s3Key = StoragePaths.getS3Key(fileEntity.getOwnerId(), fileEntity.getFileId());
     return contentRepository.downloadFile(s3Key);
   }
 
-  public void deleteFile(FileEntity fileEntity)
+  public void deleteFile(UUID ownerId, String s3Key)
       throws StorageFileNotFoundException, FileNotFoundException {
-    String s3Key = StoragePaths.getS3Key(fileEntity.getOwnerId(), fileEntity.getFileId());
-
     metadataRepository.deleteFile(ownerId, s3Key);
     contentRepository.hardDeleteFile(s3Key);
+  }
+
+  public byte[] downloadFilePart(String s3Key) {
+    return null;
   }
 
   public void updateFile(FileEntity entity) {
     metadataRepository.updateFile(entity);
   }
 
-    public byte[] downloadFilePart(String path, long offset, long actualChunkSize) {
-      return null;
-    }
+  public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
+    return contentRepository.downloadFilePart(s3Key, offset, actualChunkSize);
+  }
+
+  public void deleteFile(FileEntity fileEntity)
+          throws StorageFileNotFoundException, FileNotFoundException {
+    String s3Key = StoragePaths.getS3Key(fileEntity.getOwnerId(), fileEntity.getFileId());
+
+    metadataRepository.deleteFile(fileEntity.getOwnerId(), s3Key);
+    contentRepository.hardDeleteFile(s3Key);
+  }
 }

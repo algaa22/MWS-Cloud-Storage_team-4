@@ -4,7 +4,6 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.messages.Part;
@@ -143,8 +142,27 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
-    // TODO
-    return null;
+    try {
+      return minioClient
+          .getObject(
+              GetObjectArgs.builder()
+                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .object(s3Key)
+                  .offset(offset)
+                  .length(actualChunkSize)
+                  .build())
+          .get()
+          .readAllBytes();
+    } catch (IOException
+        | InternalException
+        | InsufficientDataException
+        | XmlParserException
+        | InvalidKeyException
+        | NoSuchAlgorithmException
+        | ExecutionException
+        | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -238,19 +256,12 @@ public class MinioContentRepository implements FileContentRepository {
     }
   }
 
-  @Override
-  public void moveFile(FileEntity entity, String oldS3Key) {
-    // TODO
-  }
-
   private Multimap<String, String> createEmptyHeader() {
     return MultimapBuilder.hashKeys().arrayListValues().build();
   }
 
   private Part[] createPartArray(Map<Integer, String> eTags)
       throws ExecutionException, InterruptedException {
-    // TODO: объединять чанки произвольных размеров в части по 5МБ
-    //       и, если непоследняя часть имеет размер < 5МБ, то бросать исключение
     List<Part> partsList = new ArrayList<>(eTags.size());
 
     for (Map.Entry<Integer, String> entry : eTags.entrySet()) {

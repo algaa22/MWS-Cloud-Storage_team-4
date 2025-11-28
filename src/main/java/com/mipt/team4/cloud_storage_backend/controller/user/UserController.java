@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
@@ -11,6 +12,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SimpleUserRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
@@ -24,15 +26,17 @@ public class UserController {
   }
 
   public String registerUser(RegisterRequestDto request)
-      throws ValidationFailedException, UserAlreadyExistsException {
+      throws ValidationFailedException, UserAlreadyExistsException, JsonProcessingException {
     request.validate();
-    return service.registerUser(request);
+    TokenPairDto tokens = service.registerUser(request);
+    return mapper.writeValueAsString(tokens);
   }
 
   public String loginUser(LoginRequestDto request)
-      throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException {
+      throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException, JsonProcessingException {
     request.validate();
-    return service.loginUser(request);
+    TokenPairDto tokens = service.loginUser(request);
+    return mapper.writeValueAsString(tokens);
   }
 
   public void logoutUser(SimpleUserRequestDto request)
@@ -41,12 +45,12 @@ public class UserController {
     service.logoutUser(request);
   }
 
-  public String refresh(RefreshTokenDto request) throws InvalidSessionException {
-    // TODO: nado li?
+  public String refresh(RefreshTokenDto request) throws InvalidSessionException, JsonProcessingException {
     if (request == null || request.refreshToken() == null) {
       throw new InvalidSessionException("refresh token required");
     }
-    return service.refreshTokens(request.refreshToken());
+    TokenPairDto tokens = service.refreshTokens(request.refreshToken());
+    return mapper.writeValueAsString(tokens);
   }
 
   public UserDto getUserInfo(SimpleUserRequestDto request)

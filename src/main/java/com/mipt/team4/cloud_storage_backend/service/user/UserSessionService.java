@@ -5,6 +5,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SessionDto;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.Map;
@@ -18,17 +19,29 @@ public class UserSessionService {
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
   private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
   private final JwtService jwtService;
+  private final Duration accessTokenDuration = Duration.ofMinutes(15);
 
   public UserSessionService(JwtService jwtService) {
     this.jwtService = jwtService;
   }
 
   public SessionDto createSession(UserEntity user) {
-    String token = jwtService.generateToken(user);
-    SessionDto session =
-        new SessionDto(user.getId(), user.getEmail(), token, System.currentTimeMillis());
+    String token = jwtService.generateAccessToken(user);
+    SessionDto session = new SessionDto(
+        user.getId(),
+        user.getEmail(),
+        token,
+        System.currentTimeMillis()
+    );
     activeSessions.put(token, session);
     return session;
+  }
+
+  public boolean isSessionExpired(String token) {
+    Optional<SessionDto> session = getSession(token);
+    if (session.isEmpty()) return true;
+    long sessionAge = System.currentTimeMillis() - session.get().createdAt();
+    return sessionAge > accessTokenDuration.toMillis();
   }
 
   public boolean tokenExists(String token) {
@@ -49,7 +62,7 @@ public class UserSessionService {
     }
 
     cleanExpiredBlacklistedTokens();
-    blacklistedTokens.put(token, jwtService.getTokenExpiredDateTime());
+    blacklistedTokens.put(token, jwtService.getAccessTokenExpiredDateTime());
     // session.remove(token);
   }
 
@@ -87,8 +100,11 @@ public class UserSessionService {
   }
 
   public UUID extractUserIdFromToken(String token) throws UserNotFoundException {
+    if (isBlacklisted(token) || isSessionExpired(token)) {
+      throw new UserNotFoundException("Token expired or blacklisted");
+    }
     Optional<SessionDto> userSession = getSession(token);
-    if (blacklistedTokens.containsKey(token) || userSession.isEmpty()) throw new UserNotFoundException(token);
+    if (userSession.isEmpty()) throw new UserNotFoundException(token);
     return userSession.get().userId();
   }
 }

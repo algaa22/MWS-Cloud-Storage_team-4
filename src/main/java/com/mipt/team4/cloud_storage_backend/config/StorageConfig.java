@@ -66,4 +66,10 @@ public enum StorageConfig {
   public int getSendUploadProgressInterval() {
     return sendUploadProgressInterval;
   }
+  public long getAccessTokenExpirationSec() {
+    return 900; // 15 минут
+  }
+  public long getRefreshTokenExpirationSec() {
+    return 2592000; // 30 дней
+  }
 }

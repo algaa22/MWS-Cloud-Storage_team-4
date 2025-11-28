@@ -145,7 +145,7 @@ public class PostgresConnection implements DatabaseConnection {
   private void createRefreshTokensTable() {
     String request =
         """
-                CREATE TABLE refresh_tokens (
+                CREATE TABLE IF NOT EXISTS refresh_tokens (
                     id UUID PRIMARY KEY,
                     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     token TEXT NOT NULL UNIQUE,

@@ -88,10 +88,18 @@ public class ResponseHelper {
         new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer(json, StandardCharsets.UTF_8));
 
+    addDefaultHeadersToResponse(response);
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
-    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
-    response.headers().set(HttpHeaderNames.CONNECTION, "keep-alive");
-    response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache?
+
+    return response;
+  }
+
+  public static FullHttpResponse createRawResponse(HttpResponseStatus status) {
+    FullHttpResponse response =
+            new DefaultFullHttpResponse(
+                    HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER);
+
+    addDefaultHeadersToResponse(response);
 
     return response;
   }
@@ -105,10 +113,15 @@ public class ResponseHelper {
         new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(data));
 
+    addDefaultHeadersToResponse(response);
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
-    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, data.length);
-    response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache?
 
     return response;
+  }
+
+  private static void addDefaultHeadersToResponse(FullHttpResponse response) {
+    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
+    response.headers().set(HttpHeaderNames.CONNECTION, "keep-alive");
+    response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache?
   }
 }

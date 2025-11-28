@@ -108,7 +108,8 @@ public class ChunkedDownloadHandler {
 
     HttpContent httpChunk = new DefaultHttpContent(Unpooled.copiedBuffer(fileChunk.chunkData()));
 
-    ChannelFutureListener listener = createChunkSendListener(ctx, chunkIndex, fileChunk.chunkData().length);
+    ChannelFutureListener listener =
+        createChunkSendListener(ctx, chunkIndex, fileChunk.chunkData().length);
     ctx.write(httpChunk).addListener(listener);
   }
 
@@ -202,9 +203,9 @@ public class ChunkedDownloadHandler {
 
   private void sendDownloadStartResponse(
       ChannelHandlerContext ctx, FileChunkedDownloadDto fileInfo) {
-    HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+    FullHttpResponse response = ResponseHelper.createRawResponse(HttpResponseStatus.OK);
+
     response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, "chunked");
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
     response.headers().set("X-File-Path", fileInfo.path());
     response.headers().set("X-File-Size", fileInfo.size());
     response.headers().set("X-File-Type", fileInfo.type());
@@ -212,6 +213,6 @@ public class ChunkedDownloadHandler {
     response.headers().set("X-File-Path", fileInfo.path());
     response.headers().set("X-Session-Id", currentSessionId);
 
-    ctx.writeAndFlush(response);
+    ResponseHelper.sendResponse(ctx, response);
   }
 }

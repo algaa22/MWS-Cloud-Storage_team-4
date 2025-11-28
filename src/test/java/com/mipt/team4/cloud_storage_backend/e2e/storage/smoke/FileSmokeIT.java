@@ -35,6 +35,8 @@ public class FileSmokeIT extends BaseFileIT {
     assertArrayEquals(downloadedFile, originalFile);
   }
 
+  // TODO: тест на удаление файла во время скачивания/загрузки
+
   @Test
   public void shouldUploadAndDownloadFile_Chunked() throws IOException, InterruptedException {
     byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();

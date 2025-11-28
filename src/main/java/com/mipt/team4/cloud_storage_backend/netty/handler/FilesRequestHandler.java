@@ -97,11 +97,11 @@ public record FilesRequestHandler(FileController fileController) {
     Optional<String> newFilePath = RequestUtils.getHeader(request, "X-File-New-Path");
 
     Optional<String> fileVisibility =
-        Optional.ofNullable(RequestUtils.getHeader(request, "X-File-Visibility", null));
+        Optional.ofNullable(RequestUtils.getHeader(request, "X-File-New-Visibility", null));
 
     Optional<List<String>> fileTags =
         Optional.ofNullable(
-            FileTagsMapper.toList(RequestUtils.getHeader(request, "X-File-Tags", null)));
+            FileTagsMapper.toList(RequestUtils.getHeader(request, "X-File-New-Tags", null)));
 
     try {
       fileController.changeFileMetadata(

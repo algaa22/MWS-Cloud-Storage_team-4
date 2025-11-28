@@ -28,7 +28,6 @@ public class Validators {
   }
 
   public static ValidationResult validToken(String token) {
-    // TODO: проверка не нужна
     return validate(
         JwtService.isTokenValid(token),
         "User token",
@@ -41,21 +40,21 @@ public class Validators {
   }
 
   public static ValidationResult mustBeFilePath(String field, String path) {
-    return notBlank(field, path).combine(notDirectory(field, path));
+    return notBlank(field, path).thenCombine(() -> notDirectory(field, path));
   }
 
   public static ValidationResult mustBeDirectoryPath(String field, String path) {
-    return notBlank(field, path).combine(mustBeDirectory(field, path));
+    return notBlank(field, path).thenCombine(() -> mustBeDirectory(field, path));
   }
 
   public static ValidationResult mustBeDirectory(String field, String path) {
     char lastChar = path.charAt(path.length() - 1);
 
     return validate(
-            lastChar == '/' || lastChar == '\\',
-            field,
-            field + " must be path to directory",
-            "MUST_BE_DIRECTORY");
+        lastChar == '/' || lastChar == '\\',
+        field,
+        field + " must be path to directory",
+        "MUST_BE_DIRECTORY");
   }
 
   public static ValidationResult notDirectory(String field, String path) {
@@ -177,6 +176,17 @@ public class Validators {
   public static void throwExceptionIfNotValid(ValidationResult result)
       throws ValidationFailedException {
     if (!result.isValid()) throw new ValidationFailedException(result);
+  }
+
+  public static ValidationResult validateVisibility(String visibility) {
+    return validate(
+        visibility != null
+            && (visibility.equals("public")
+                || visibility.equals("private")
+                || visibility.equals("link_only")),
+        "Visibility",
+        "Visibility must be one of this values: {public, private, link_only}",
+        "VISIBILITY");
   }
 
   public static ValidationResult validate(BooleanSupplier supplier, String field, String message) {

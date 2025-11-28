@@ -28,11 +28,6 @@ public class ResponseHelper {
     ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.getMessage());
   }
 
-  public static void sendExceptionResponse(
-      ChannelHandlerContext ctx, HttpResponseStatus status, Exception e) {
-    ResponseHelper.sendErrorResponse(ctx, status, e.getMessage());
-  }
-
   public static void sendSuccessResponse(
       ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
     sendResponse(ctx, createSuccessResponse(status, message));

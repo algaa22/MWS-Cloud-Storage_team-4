@@ -3,6 +3,8 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
@@ -10,9 +12,10 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
+import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -45,33 +48,40 @@ public class FileService {
         uploadSession.sessionId(), new ChunkedUploadState(uploadSession, userId, s3Key));
   }
 
-  public void uploadChunk(UploadChunkDto chunk) throws UserNotFoundException {
-    ChunkedUploadState upload = activeUploads.get(chunk.sessionId());
-    if (upload == null) {
+  public void uploadChunk(UploadChunkDto uploadRequest)
+      throws UserNotFoundException, CombineChunksToPartException {
+    ChunkedUploadState uploadState = activeUploads.get(uploadRequest.sessionId());
+    if (uploadState == null) {
       throw new RuntimeException("Upload session not found!");
     }
 
-    String uploadId = upload.getOrCreateUploadId(fileRepository);
-    int partNum = chunk.chunkIndex() + 1;
-    if (chunk.chunkData().length > 10 * 1024 * 1024) {
-      throw new RuntimeException("Chunk size exceeds maximum allowed size");
-    }
-    String etag =
-        fileRepository.uploadPart(uploadId, upload.s3Key, partNum, chunk.chunkData());
-    upload.eTags.put(partNum, etag);
+    uploadState.chunks.add(uploadRequest.chunkData());
+    uploadState.partSize += uploadRequest.chunkData().length;
 
-    upload.totalChunks++;
-    upload.fileSize += chunk.chunkData().length;
+    if (uploadState.partSize >= 5 * 1024 * 1024) {
+      uploadPart(uploadState);
+    }
   }
 
   public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
-      throws StorageFileAlreadyExistsException, UserNotFoundException {
-    ChunkedUploadState upload = activeUploads.remove(sessionId);
-    if (upload == null) throw new RuntimeException("No such upload session!");
+      throws StorageFileAlreadyExistsException,
+          UserNotFoundException,
+          TooSmallFilePartException,
+          CombineChunksToPartException {
+    ChunkedUploadState uploadState = activeUploads.remove(sessionId);
+    if (uploadState == null) throw new RuntimeException("No such upload session!");
 
-    FileChunkedUploadDto session = upload.session;
-    for (int i = 1; i <= upload.totalChunks; i++) {
-      if (!upload.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
+    if (uploadState.totalParts == 0) {
+      throw new TooSmallFilePartException();
+    }
+
+    if (uploadState.partSize != 0) {
+      uploadPart(uploadState);
+    }
+
+    FileChunkedUploadDto session = uploadState.session;
+    for (int i = 1; i <= uploadState.totalParts; i++) {
+      if (!uploadState.eTags.containsKey(i)) throw new RuntimeException("Missing chunk #" + i);
     }
 
     UUID fileId = UUID.randomUUID();
@@ -86,13 +96,14 @@ public class FileService {
             s3Key,
             guessMimeType(session.path()),
             "private",
-            upload.fileSize,
+            uploadState.fileSize,
             false,
             session.tags());
 
-    fileRepository.completeMultipartUpload(fileEntity, upload.uploadId, upload.eTags);
+    fileRepository.completeMultipartUpload(fileEntity, uploadState.uploadId, uploadState.eTags);
 
-    return new ChunkedUploadFileResultDto(session.path(), upload.fileSize, upload.totalChunks);
+    return new ChunkedUploadFileResultDto(
+        session.path(), uploadState.fileSize, uploadState.totalParts);
   }
 
   public void uploadFile(FileUploadDto fileUploadRequest)
@@ -212,8 +223,7 @@ public class FileService {
 
       Optional<FileEntity> existingFile = fileRepository.getFile(userId, newS3Key);
       if (existingFile.isPresent()) {
-        throw new StorageFileAlreadyExistsException(
-            userId, changeFileMetadata.newPath().get());
+        throw new StorageFileAlreadyExistsException(userId, changeFileMetadata.newPath().get());
       }
 
       entity.setS3Key(StoragePaths.getS3Key(userId, changeFileMetadata.newPath().get()));
@@ -231,15 +241,14 @@ public class FileService {
   }
 
   // TODO: хз как это сделать лучше
+
   public void createFolder(SimpleFolderOperationDto createFolder) throws UserNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(createFolder.userToken());
     String folderPath = createFolder.folderPath();
     System.out.println("User " + userId + " created folder: " + folderPath);
   }
 
-
-  public void changeFolderPath(ChangeFolderPathDto changeFolder)
-      throws UserNotFoundException {
+  public void changeFolderPath(ChangeFolderPathDto changeFolder) throws UserNotFoundException {
 
     UUID userId = userSessionService.extractUserIdFromToken(changeFolder.userToken());
     String oldPath = changeFolder.oldFolderPath();
@@ -251,9 +260,10 @@ public class FileService {
       throw new RuntimeException("Old and new paths are the same");
     }
     List<String> allFilePaths = fileRepository.getFilePathsList(userId);
-    List<String> filesInOldFolder = allFilePaths.stream()
-        .filter(filePath -> filePath.startsWith(oldPath + "/"))
-        .collect(Collectors.toList());
+    List<String> filesInOldFolder =
+        allFilePaths.stream()
+            .filter(filePath -> filePath.startsWith(oldPath + "/"))
+            .collect(Collectors.toList());
     if (filesInOldFolder.isEmpty()) {
       throw new RuntimeException("Folder not found or empty: " + oldPath);
     }
@@ -267,16 +277,16 @@ public class FileService {
         FileEntity file = fileOpt.get();
         try {
           byte[] fileContent = fileRepository.downloadFile(file.getS3Key());
-          FileEntity newFileEntity = new FileEntity(
-              UUID.randomUUID(),
-              userId,
-              newFilePath,
-              file.getMimeType(),
-              file.getVisibility(),
-              file.getSize(),
-              file.isDeleted(),
-              file.getTags()
-          );
+          FileEntity newFileEntity =
+              new FileEntity(
+                  UUID.randomUUID(),
+                  userId,
+                  newFilePath,
+                  file.getMimeType(),
+                  file.getVisibility(),
+                  file.getSize(),
+                  file.isDeleted(),
+                  file.getTags());
           fileRepository.addFile(newFileEntity, fileContent);
           fileRepository.deleteFile(userId, oldFilePath);
 
@@ -287,8 +297,7 @@ public class FileService {
     }
   }
 
-  public void deleteFolder(SimpleFolderOperationDto request)
-      throws UserNotFoundException {
+  public void deleteFolder(SimpleFolderOperationDto request) throws UserNotFoundException {
 
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     String folderPath = request.folderPath();
@@ -297,9 +306,10 @@ public class FileService {
       throw new RuntimeException("Folder path cannot be empty");
     }
     List<String> allFilePaths = fileRepository.getFilePathsList(userId);
-    List<String> filesInFolder = allFilePaths.stream()
-        .filter(filePath -> filePath.startsWith(folderPath + "/"))
-        .collect(Collectors.toList());
+    List<String> filesInFolder =
+        allFilePaths.stream()
+            .filter(filePath -> filePath.startsWith(folderPath + "/"))
+            .collect(Collectors.toList());
     if (filesInFolder.isEmpty()) {
       throw new RuntimeException("Folder not found or empty: " + folderPath);
     }
@@ -312,15 +322,55 @@ public class FileService {
     }
   }
 
+  private void uploadPart(ChunkedUploadState uploadState) throws CombineChunksToPartException {
+    // TODO: ay ay ay... hardcoding
+    byte[] part = combineChunksToPart(uploadState);
+
+    String uploadId = uploadState.getOrCreateUploadId(fileRepository);
+    if (part.length > 10 * 1024 * 1024) {
+      // TODO: ne tak
+      throw new RuntimeException("Chunk size exceeds maximum allowed size");
+    }
+
+    String etag = fileRepository.uploadPart(uploadId, uploadState.s3Key, uploadState.partNum, part);
+    uploadState.eTags.put(uploadState.partNum, etag);
+
+    uploadState.totalParts++;
+    uploadState.fileSize += part.length;
+  }
+
+  // TODO: в другой класс?
+  private byte[] combineChunksToPart(ChunkedUploadState upload)
+      throws CombineChunksToPartException {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      for (byte[] chunk : upload.chunks) {
+        outputStream.write(chunk);
+      }
+
+      upload.chunks.clear();
+      upload.partSize = 0;
+      upload.partNum++;
+
+      return outputStream.toByteArray();
+    } catch (IOException e) {
+      throw new CombineChunksToPartException();
+    }
+  }
+
   private static class ChunkedUploadState {
+
+    // TODO: сессия не удаляется, если completeMultipartUpload не вызван
     final FileChunkedUploadDto session;
     final Map<Integer, String> eTags = new HashMap<>();
+    final List<byte[]> chunks = new ArrayList<>();
     final UUID userId;
     final String s3Key;
 
     String uploadId;
     int fileSize = 0;
-    int totalChunks = 0;
+    int totalParts = 0;
+    int partSize = 0;
+    int partNum = 0;
 
     // TODO: читаемость пупупу
 

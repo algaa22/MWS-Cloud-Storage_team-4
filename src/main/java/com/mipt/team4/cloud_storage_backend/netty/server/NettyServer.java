@@ -12,6 +12,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
 import java.util.concurrent.CountDownLatch;
+
+import io.netty.handler.codec.http.cors.CorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -9,14 +9,16 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundExcept
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
@@ -105,6 +107,10 @@ public class ChunkedUploadHandler {
     } catch (ValidationFailedException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
+    } catch (CombineChunksToPartException e) {
+      ResponseHelper.sendInternalServerErrorResponse(ctx);
+      logger.error("Internal server error: " + e.getMessage()); // TODO: dublirovanie
+      return;
     }
 
     receivedChunks++;
@@ -115,7 +121,8 @@ public class ChunkedUploadHandler {
           "Processed chunk {} for session: {}. Size: {} bytes, total: {} bytes",
           receivedChunks,
           currentSessionId,
-          chunkSize);
+          chunkSize,
+              receivedBytes);
     }
 
     if (receivedChunks % StorageConfig.INSTANCE.getSendUploadProgressInterval() == 0)
@@ -134,12 +141,14 @@ public class ChunkedUploadHandler {
       result = fileController.completeChunkedUpload(currentSessionId);
     } catch (UserNotFoundException
         | StorageFileAlreadyExistsException
-        | ValidationFailedException e) {
+        | ValidationFailedException
+        | TooSmallFilePartException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       cleanup();
       return;
-    } catch (MissingFilePartException e) {
-      ResponseHelper.sendExceptionResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, e);
+    } catch (MissingFilePartException | CombineChunksToPartException e) {
+      ResponseHelper.sendInternalServerErrorResponse(ctx);
+      logger.error("Internal server error: " + e.getMessage());
       cleanup();
       return;
     }
@@ -152,7 +161,7 @@ public class ChunkedUploadHandler {
           receivedChunks,
           receivedBytes);
 
-    sendSuccessResponse(ctx, currentFilePath, result.fileSize(), result.totalChunks());
+    sendSuccessResponse(ctx, currentFilePath, result.fileSize(), result.totalParts());
     cleanup();
   }
 
@@ -172,18 +181,20 @@ public class ChunkedUploadHandler {
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
-    wantsProgress = SafeParser.parseBoolean("Progress update", RequestUtils.getRequiredHeader(request, "X-Progress-Update"));
+    wantsProgress =
+        SafeParser.parseBoolean(
+            "Progress update", RequestUtils.getRequiredHeader(request, "X-Progress-Update"));
   }
 
   private void sendSuccessResponse(
-      ChannelHandlerContext ctx, String filePath, long fileSize, long totalChunks) {
+      ChannelHandlerContext ctx, String filePath, long fileSize, long totalParts) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
     json.put("path", filePath);
     json.put("fileSize", fileSize);
-    json.put("totalChunks", totalChunks);
+    json.put("totalParts", totalParts);
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
   }

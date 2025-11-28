@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class UserAuthUtils {
   static int usersCounter = 0;
@@ -22,7 +20,7 @@ public class UserAuthUtils {
     if (response.statusCode() != HttpStatus.SC_CREATED)
       throw new RuntimeException("Failed to register test user: " + responseBody);
 
-    return UserTestUtils.extractAccessToken(response);
+    return UserITUtils.extractAccessToken(response);
   }
 
   public static TestUserDto createRandomUser() {

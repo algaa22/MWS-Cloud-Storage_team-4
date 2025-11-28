@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
@@ -22,7 +21,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
-import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
@@ -45,7 +43,6 @@ public class ChunkedUploadHandler {
   private String currentFilePath;
   private long receivedBytes = 0;
   private int receivedChunks = 0;
-  private boolean wantsProgress;
 
   public ChunkedUploadHandler(FileController fileController) {
     this.fileController = fileController;
@@ -87,8 +84,6 @@ public class ChunkedUploadHandler {
           currentUserToken,
           currentFilePath);
     }
-
-    sendProgressResponse(ctx, "upload_started");
   }
 
   public void handleFileChunk(ChannelHandlerContext ctx, HttpContent content)
@@ -122,11 +117,8 @@ public class ChunkedUploadHandler {
           receivedChunks,
           currentSessionId,
           chunkSize,
-              receivedBytes);
+          receivedBytes);
     }
-
-    if (receivedChunks % StorageConfig.INSTANCE.getSendUploadProgressInterval() == 0)
-      sendProgressResponse(ctx, "upload_progress");
   }
 
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
@@ -161,7 +153,7 @@ public class ChunkedUploadHandler {
           receivedChunks,
           receivedBytes);
 
-    sendSuccessResponse(ctx, currentFilePath, result.fileSize(), result.totalParts());
+    sendSuccessResponse(ctx, result);
     cleanup();
   }
 
@@ -181,34 +173,16 @@ public class ChunkedUploadHandler {
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
-    wantsProgress =
-        SafeParser.parseBoolean(
-            "Progress update", RequestUtils.getRequiredHeader(request, "X-Progress-Update"));
   }
 
-  private void sendSuccessResponse(
-      ChannelHandlerContext ctx, String filePath, long fileSize, long totalParts) {
+  private void sendSuccessResponse(ChannelHandlerContext ctx, ChunkedUploadFileResultDto result) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
-    json.put("path", filePath);
-    json.put("fileSize", fileSize);
-    json.put("totalParts", totalParts);
-
-    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
-  }
-
-  private void sendProgressResponse(ChannelHandlerContext ctx, String status) {
-    if (!wantsProgress) return;
-
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode json = mapper.createObjectNode();
-
-    json.put("status", status);
-    json.put("currentChunk", receivedChunks);
-    json.put("bytesReceived", receivedBytes);
-    json.put("sessionId", currentSessionId);
+    json.put("path", result.filePath());
+    json.put("fileSize", result.fileSize());
+    json.put("totalParts", result.totalParts());
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
   }

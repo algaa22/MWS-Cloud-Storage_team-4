@@ -17,13 +17,11 @@ public class FileChunkedTransferITUtils {
       throws IOException, InterruptedException {
     List<byte[]> chunks = splitFileIntoChunks(fileData, MAX_CHUNK_SIZE);
 
-    // TODO: прогресс все равно выводится
     HttpRequest request =
         TestUtils.createRequest("/api/files/upload?path=" + targetFilePath)
             .header("Transfer-Encoding", "chunked")
             .header("X-Auth-Token", userToken)
             .header("X-File-Tags", fileTags)
-            .header("X-Progress-Update", "false")
             .POST(HttpRequest.BodyPublishers.ofByteArrays(chunks))
             .build();
 
@@ -33,7 +31,6 @@ public class FileChunkedTransferITUtils {
   public static HttpResponse<InputStream> sendDownloadRequest(
       HttpClient client, String userToken, String targetFilePath)
       throws IOException, InterruptedException {
-    // TODO: X-Progress-Download?
     HttpRequest request =
         TestUtils.createRequest("/api/files?path=" + targetFilePath)
             .header("Transfer-Encoding", "chunked")
@@ -48,7 +45,6 @@ public class FileChunkedTransferITUtils {
           throws IOException {
     List<byte[]> chunks = new ArrayList<>();
 
-    // TODO: потоково?
     try (InputStream inputStream = response.body()) {
       byte[] buffer = new byte[MAX_CHUNK_SIZE];
       int bytesRead;
@@ -74,7 +70,6 @@ public class FileChunkedTransferITUtils {
   }
 
   private static List<byte[]> splitFileIntoChunks(byte[] fileData, int maxChunkSize) {
-    // TODO: nyzhen?
     List<byte[]> chunks = new ArrayList<>(maxChunkSize);
     int offset = 0;
 

@@ -1,0 +1,78 @@
+.fb-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 20px;
+  background: #f0f6ff;
+}
+
+.fb-top {
+  height: 50px;
+  display: flex;
+  align-items: center;
+}
+
+.fb-profile {
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  color: #1f4eff;
+}
+
+.fb-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 40px;
+}
+
+.fb-empty {
+  font-size: 22px;
+  color: #8a8a8a;
+}
+
+.fb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 160px);
+  gap: 20px;
+}
+
+.fb-folder {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: 0.2s;
+}
+
+.fb-folder:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.fb-bottom {
+  height: 80px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  align-items: center;
+}
+
+.fb-btn {
+  background: #1f4eff;
+  color: white;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.fb-btn:hover {
+  background: #163bcc;
+}

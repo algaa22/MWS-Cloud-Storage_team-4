@@ -4,6 +4,7 @@ import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
+import com.mipt.team4.cloud_storage_backend.netty.cors.CorsHandler;
 import com.mipt.team4.cloud_storage_backend.netty.pipeline.PipelineSelector;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -71,7 +72,11 @@ public class NettyServer {
       ChannelPipeline pipeline = socketChannel.pipeline();
 
       pipeline.addLast("httpCodec", new HttpServerCodec());
+
+      // 🟦 Добавляем CORS
+      pipeline.addLast("cors", new CorsHandler());
+
       pipeline.addLast("pipeSelector", pipelineSelector);
     }
   }
-}
+  }

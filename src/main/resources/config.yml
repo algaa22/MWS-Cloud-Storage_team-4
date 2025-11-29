@@ -6,9 +6,11 @@ netty:
 
 storage:
   http:
-    max-content-length: 5242900 # 5mb + 20b
+    max-content-length: 5242900 # 5mb
     max-file-size: 10737418240 # 10 gb
+    max-file-chunk-size: 10485760 # 10 mb
     file-download-chunk-size: 65536 # 64 kb
+    send-upload-progress-interval: 10 # in chunks
 
   repository:
     user-data-bucket:

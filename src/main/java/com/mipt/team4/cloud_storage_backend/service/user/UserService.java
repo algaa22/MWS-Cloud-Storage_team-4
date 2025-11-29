@@ -49,7 +49,7 @@ public class UserService {
         userEntity.isActive());
   }
 
-  public String registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
+  public TokenPairDto registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
     if (userRepository.getUserByEmail(registerRequest.email()).isPresent())
       throw new UserAlreadyExistsException(registerRequest.email());
 
@@ -61,11 +61,12 @@ public class UserService {
     userRepository.addUser(userEntity);
 
     SessionDto session = userSessionService.createSession(userEntity);
+    RefreshTokenEntity refreshToken = refreshTokenService.create(userEntity.getId());
 
-    return session.token();
+    return new TokenPairDto(session.token(), refreshToken.getToken());
   }
 
-  public String loginUser(LoginRequestDto loginRequest)
+  public TokenPairDto loginUser(LoginRequestDto loginRequest)
       throws WrongPasswordException, InvalidEmailOrPassword {
     Optional<UserEntity> userOpt = userRepository.getUserByEmail(loginRequest.email());
     if (userOpt.isEmpty()) throw new InvalidEmailOrPassword();
@@ -82,9 +83,9 @@ public class UserService {
     } else {
       usedSession = userSessionService.createSession(user);
     }
-    RefreshTokenEntity refreshEntity = refreshTokenService.create(user.getId());
+    RefreshTokenEntity refreshToken = refreshTokenService.create(user.getId());
 
-    return usedSession.token();
+    return new TokenPairDto(usedSession.token(), refreshToken.getToken());
   }
 
   public void logoutUser(SimpleUserRequestDto logoutRequest)
@@ -101,14 +102,17 @@ public class UserService {
     }
   }
 
-  public String refreshTokens(String refreshToken) throws InvalidSessionException {
+  public TokenPairDto refreshTokens(RefreshTokenDto refreshTokenRequest) throws InvalidSessionException {
+    String refreshToken = refreshTokenRequest.refreshToken();
     RefreshTokenEntity stored = refreshTokenService.validate(refreshToken);
+
     if (stored == null) {
       throw new InvalidSessionException("Refresh token invalid or expired");
     }
 
     UUID userId = stored.getUserId();
     Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+
     if (userOpt.isEmpty()) {
       refreshTokenService.revoke(refreshToken);
       throw new InvalidSessionException("User not found for refresh token");
@@ -116,11 +120,13 @@ public class UserService {
 
     UserEntity user = userOpt.get();
 
+    userSessionService.revokeAllUserSessions(userId);
     SessionDto newSession = userSessionService.createSession(user);
-    RefreshTokenEntity newRefresh = refreshTokenService.create(userId);
+
+    RefreshTokenEntity newRefreshToken = refreshTokenService.create(userId);
     refreshTokenService.revoke(refreshToken);
 
-    return newSession.token();
+    return new TokenPairDto(newSession.token(), newRefreshToken.getToken());
   }
 
   public void updateUserInfo(UpdateUserInfoDto updateUserInfoDto) throws UserNotFoundException {

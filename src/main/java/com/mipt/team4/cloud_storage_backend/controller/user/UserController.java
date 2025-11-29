@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
@@ -11,6 +12,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SimpleUserRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
@@ -23,13 +25,13 @@ public class UserController {
     this.service = service;
   }
 
-  public String registerUser(RegisterRequestDto request)
+  public TokenPairDto registerUser(RegisterRequestDto request)
       throws ValidationFailedException, UserAlreadyExistsException {
     request.validate();
     return service.registerUser(request);
   }
 
-  public String loginUser(LoginRequestDto request)
+  public TokenPairDto loginUser(LoginRequestDto request)
       throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException {
     request.validate();
     return service.loginUser(request);
@@ -41,12 +43,9 @@ public class UserController {
     service.logoutUser(request);
   }
 
-  public String refresh(RefreshTokenDto request) throws InvalidSessionException {
-    // TODO: nado li?
-    if (request == null || request.refreshToken() == null) {
-      throw new InvalidSessionException("refresh token required");
-    }
-    return service.refreshTokens(request.refreshToken());
+  public TokenPairDto refresh(RefreshTokenDto request) throws InvalidSessionException, ValidationFailedException {
+    request.validate();
+    return service.refreshTokens(request);
   }
 
   public UserDto getUserInfo(SimpleUserRequestDto request)

@@ -7,15 +7,17 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.UUID;
 
 public class JwtService {
-  private final long jwtTokenExpirationSec;
+  private final long accessTokenExpirationSec;
+  private final long refreshTokenExpirationSec;
 
-  public JwtService(long jwtTokenExpirationSec) {
-    this.jwtTokenExpirationSec = jwtTokenExpirationSec;
+  public JwtService(long accessTokenExpirationSec, long refreshTokenExpirationSec) {
+    this.accessTokenExpirationSec = accessTokenExpirationSec;
+    this.refreshTokenExpirationSec = refreshTokenExpirationSec;
   }
 
-  // проверка подписи и срока действия
   public static boolean isTokenValid(String token) {
     try {
       Jwts.parserBuilder()
@@ -32,24 +34,37 @@ public class JwtService {
     return StorageConfig.INSTANCE.getJwtSecretKey();
   }
 
-  public String generateToken(UserEntity user) {
+  public String generateAccessToken(UserEntity user) {
+    return generateToken(user, accessTokenExpirationSec);
+  }
+
+  public String generateRefreshToken(UserEntity user) {
+    return generateToken(user, refreshTokenExpirationSec);
+  }
+
+  private String generateToken(UserEntity user, long expirationSec) {
     Date now = new Date();
-    Date expiryDate = new Date(now.getTime() + jwtTokenExpirationSec * 1000L);
+    Date expiryDate = new Date(now.getTime() + expirationSec * 1000L);
 
     return Jwts.builder()
         .setSubject(user.getId().toString())
         .claim("email", user.getEmail())
-        .claim("role", "USER") // TODO: если есть роль - добавляй здесь
+        .claim("role", "USER")
+        .claim("tokenType", expirationSec == accessTokenExpirationSec ? "access" : "refresh")
+        .claim("jti", UUID.randomUUID())
         .setIssuedAt(now)
         .setExpiration(expiryDate)
         .signWith(
-            Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())),
-            SignatureAlgorithm.HS256)
+            Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())), SignatureAlgorithm.HS256)
         .compact();
   }
 
-  public LocalDateTime getTokenExpiredDateTime() {
-    return LocalDateTime.now().plusSeconds(jwtTokenExpirationSec);
+  public LocalDateTime getAccessTokenExpiredDateTime() {
+    return LocalDateTime.now().plusSeconds(accessTokenExpirationSec);
+  }
+
+  public LocalDateTime getRefreshTokenExpiredDateTime() {
+    return LocalDateTime.now().plusSeconds(refreshTokenExpirationSec);
   }
 
   public String getUserIdFromToken(String token) {
@@ -63,4 +78,35 @@ public class JwtService {
     return claims.getSubject(); // userId
   }
 
+  public boolean isAccessToken(String token) {
+    try {
+      Claims claims =
+          Jwts.parserBuilder()
+              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+              .build()
+              .parseClaimsJws(token)
+              .getBody();
+
+      String tokenType = claims.get("tokenType", String.class);
+      return "access".equals(tokenType);
+    } catch (JwtException | IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  public boolean isRefreshToken(String token) {
+    try {
+      Claims claims =
+          Jwts.parserBuilder()
+              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+              .build()
+              .parseClaimsJws(token)
+              .getBody();
+
+      String tokenType = claims.get("tokenType", String.class);
+      return "refresh".equals(tokenType);
+    } catch (JwtException | IllegalArgumentException e) {
+      return false;
+    }
+  }
 }

@@ -37,7 +37,7 @@ public class CloudStorageApplication {
     if (server != null) server.stop();
   }
 
-  private static void startAsync(String postgresUrl, String minioUrl) {
+  public static void startAsync(String postgresUrl, String minioUrl) {
     PostgresConnection postgresConnection = new PostgresConnection(postgresUrl);
     postgresConnection.connect();
 
@@ -45,8 +45,11 @@ public class CloudStorageApplication {
     UserRepository userRepository = new UserRepository(postgresConnection);
 
     UserSessionService userSessionService =
-        new UserSessionService(new JwtService(StorageConfig.INSTANCE.getJwtTokenExpirationSec()));
-
+        new UserSessionService(new JwtService(StorageConfig.INSTANCE.getAccessTokenExpirationSec(), StorageConfig.INSTANCE.getRefreshTokenExpirationSec()));
+    JwtService jwtService = new JwtService(
+        StorageConfig.INSTANCE.getAccessTokenExpirationSec(),  // 15 минут
+        StorageConfig.INSTANCE.getRefreshTokenExpirationSec()  // 30 дней
+    );
     RefreshTokenRepository refreshTokenRepository =
         new RefreshTokenRepository(postgresConnection);
     RefreshTokenService refreshTokenService =

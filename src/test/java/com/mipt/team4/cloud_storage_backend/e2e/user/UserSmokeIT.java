@@ -8,11 +8,11 @@ import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public class UserSmokeIT extends BaseUserIT {
+
   @Test
   public void shouldRegisterUser() throws IOException, InterruptedException {
     HttpResponse<String> response =
@@ -21,7 +21,8 @@ public class UserSmokeIT extends BaseUserIT {
     assertEquals(HttpStatus.SC_CREATED, response.statusCode());
 
     JsonNode root = TestUtils.getRootNodeFromResponse(response);
-    assertNotNull(root.get("token"));
+    assertNotNull(root.get("AccessToken"));
+    assertNotNull(root.get("RefreshToken"));
   }
 
   @Test
@@ -43,7 +44,8 @@ public class UserSmokeIT extends BaseUserIT {
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
     JsonNode root = TestUtils.getRootNodeFromResponse(response);
-    assertNotNull(root.get("token"));
+    assertNotNull(root.get("AccessToken"));
+    assertNotNull(root.get("RefreshToken"));
   }
 
   @Test
@@ -56,28 +58,33 @@ public class UserSmokeIT extends BaseUserIT {
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
   }
 
-  @Disabled
   @Test
   public void shouldRefreshToken() throws IOException, InterruptedException {
-    // TODO: имитировать, что токен истек и проверять, что новый токен совпадает со старым
-    //    HttpResponse<String> registerResponse =
-    //        UserTestUtils.sendRegisterRequest(client, testEmail, testPassword, "User1");
-    //
-    //    String refreshToken = UserTestUtils.extractRefreshToken(registerResponse);
-    //
-    //    HttpResponse<String> refreshResponse =
-    //        UserTestUtils.sendRefreshTokenRequest(client, refreshToken);
-    //
-    //    assertEquals(HttpStatus.SC_OK, refreshResponse.statusCode());
-    //
-    //    JsonNode root = TestUtils.getRootNodeFromResponse(refreshResponse);
-    //    assertNotNull(root.get("userToken"));
-    //    assertNotNull(root.get("refreshToken"));
+    HttpResponse<String> registerResponse =
+        UserAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "RefreshUser");
+
+    JsonNode registerRoot = TestUtils.getRootNodeFromResponse(registerResponse);
+    String oldRefreshToken = registerRoot.get("RefreshToken").asText();
+
+    HttpResponse<String> refreshResponse =
+        UserITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
+
+    assertEquals(HttpStatus.SC_OK, refreshResponse.statusCode());
+
+    JsonNode refreshRoot = TestUtils.getRootNodeFromResponse(refreshResponse);
+    assertNotNull(refreshRoot.get("AccessToken"));
+    assertNotNull(refreshRoot.get("RefreshToken"));
+
+    String oldAccessToken = registerRoot.get("AccessToken").asText();
+    String newAccessToken = refreshRoot.get("AccessToken").asText();
+    String newRefreshToken = refreshRoot.get("RefreshToken").asText();
+
+    assertNotEquals(oldAccessToken, newAccessToken);
+    assertNotEquals(oldRefreshToken, newRefreshToken);
   }
 
   @Test
   public void shouldGetUserInfo() throws IOException, InterruptedException {
-    // TODO: сделать так шобы он не падл ;)
     HttpResponse<String> register =
         UserAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "User1");
 
@@ -91,7 +98,7 @@ public class UserSmokeIT extends BaseUserIT {
   @Test
   public void shouldLogoutUser() throws IOException, InterruptedException {
     HttpResponse<String> register =
-        UserAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "User1");
+        UserAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "LogoutUser");
 
     String accessToken = UserITUtils.extractAccessToken(register);
 
@@ -100,7 +107,31 @@ public class UserSmokeIT extends BaseUserIT {
     assertEquals(HttpStatus.SC_OK, logoutResponse.statusCode());
 
     HttpResponse<String> infoResponse = UserITUtils.sendUserInfoRequest(client, accessToken);
-
     assertEquals(HttpStatus.SC_BAD_REQUEST, infoResponse.statusCode());
+  }
+
+  @Test
+  public void shouldNotRefreshWithInvalidToken() throws IOException, InterruptedException {
+    HttpResponse<String> response =
+        UserITUtils.sendRefreshTokenRequest(client, "invalid-refresh-token");
+
+    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+  }
+
+  @Test
+  public void shouldNotRefreshWithUsedToken() throws IOException, InterruptedException {
+    HttpResponse<String> registerResponse =
+        UserAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "UsedTokenUser");
+
+    JsonNode registerRoot = TestUtils.getRootNodeFromResponse(registerResponse);
+    String oldRefreshToken = registerRoot.get("RefreshToken").asText();
+
+    HttpResponse<String> firstRefresh =
+        UserITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
+    assertEquals(HttpStatus.SC_OK, firstRefresh.statusCode());
+
+    HttpResponse<String> secondRefresh =
+        UserITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
+    assertEquals(HttpStatus.SC_BAD_REQUEST, secondRefresh.statusCode());
   }
 }

@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
+import ch.qos.logback.core.subst.Token;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
@@ -11,23 +13,28 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SimpleUserRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Optional;
 
 public record UsersRequestHandler(UserController userController) {
+  private static final ObjectMapper mapper = new ObjectMapper();
+
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    String token;
+    TokenPairDto tokenPair;
 
     try {
-      token =
+      tokenPair =
           userController.registerUser(
               new RegisterRequestDto(
                   RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
@@ -38,21 +45,14 @@ public record UsersRequestHandler(UserController userController) {
       return;
     }
 
-    // TODO: подумать над тем, чтобы преобразовывать ответы DTO в Json
-    ObjectNode rootNode =
-        ResponseHelper.createJsonResponseNode(true, "Account created successfully.");
-
-    rootNode.put("token", token);
-
-    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.CREATED, rootNode);
+    sendTokens(ctx, tokenPair);
   }
 
   public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    String token;
+    TokenPairDto tokenPair;
 
     try {
-      // TODO: получать хешированный пароль?
-      token =
+      tokenPair  =
           userController.loginUser(
               new LoginRequestDto(
                   RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
@@ -65,12 +65,7 @@ public record UsersRequestHandler(UserController userController) {
       return;
     }
 
-    ObjectNode rootNode =
-        ResponseHelper.createJsonResponseNode(true, "You have successfully signed in.");
-
-    rootNode.put("token", token);
-
-    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    sendTokens(ctx, tokenPair);
   }
 
   public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request) {
@@ -131,5 +126,30 @@ public record UsersRequestHandler(UserController userController) {
 
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "User info successfully changed");
+  }
+
+  public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request) {
+    TokenPairDto tokenPair;
+
+    try {
+       tokenPair =
+          userController.refresh(
+              new RefreshTokenDto(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
+    } catch (InvalidSessionException | HeaderNotFoundException | ValidationFailedException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      return;
+    }
+
+    sendTokens(ctx, tokenPair);
+  }
+
+  private void sendTokens(ChannelHandlerContext ctx, TokenPairDto tokenPair) {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode rootNode = mapper.createObjectNode();
+
+    rootNode.put("AccessToken", tokenPair.accessToken());
+    rootNode.put("RefreshToken", tokenPair.refreshToken());
+
+    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 }

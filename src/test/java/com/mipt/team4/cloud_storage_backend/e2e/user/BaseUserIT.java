@@ -16,6 +16,3 @@ public abstract class BaseUserIT extends BaseIT {
     testPassword = testUser.password();
   }
 }
-
-
-

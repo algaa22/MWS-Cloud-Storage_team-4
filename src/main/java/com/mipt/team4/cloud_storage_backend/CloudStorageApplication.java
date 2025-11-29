@@ -13,10 +13,9 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.RefreshTokenRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
-import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
+import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
-
 import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -44,19 +43,20 @@ public class CloudStorageApplication {
     FileRepository fileRepository = new FileRepository(postgresConnection, minioUrl);
     UserRepository userRepository = new UserRepository(postgresConnection);
 
-    UserSessionService userSessionService =
-        new UserSessionService(new JwtService(StorageConfig.INSTANCE.getAccessTokenExpirationSec(), StorageConfig.INSTANCE.getRefreshTokenExpirationSec()));
-    JwtService jwtService = new JwtService(
-        StorageConfig.INSTANCE.getAccessTokenExpirationSec(),  // 15 минут
-        StorageConfig.INSTANCE.getRefreshTokenExpirationSec()  // 30 дней
-    );
-    RefreshTokenRepository refreshTokenRepository =
-        new RefreshTokenRepository(postgresConnection);
-    RefreshTokenService refreshTokenService =
-        new RefreshTokenService(refreshTokenRepository);
+    JwtService jwtService =
+        new JwtService(
+            StorageConfig.INSTANCE.getAccessTokenExpirationSec(), // 15 минут
+            StorageConfig.INSTANCE.getRefreshTokenExpirationSec() // 30 дней
+            );
+    UserSessionService userSessionService = new UserSessionService(jwtService);
+
+    RefreshTokenRepository refreshTokenRepository = new RefreshTokenRepository(postgresConnection);
+    RefreshTokenService refreshTokenService = new RefreshTokenService(refreshTokenRepository);
+
     FileService fileService = new FileService(fileRepository, userSessionService);
     UserService userService =
         new UserService(userRepository, userSessionService, refreshTokenService);
+
     FileController fileController = new FileController(fileService);
     UserController userController = new UserController(userService);
 

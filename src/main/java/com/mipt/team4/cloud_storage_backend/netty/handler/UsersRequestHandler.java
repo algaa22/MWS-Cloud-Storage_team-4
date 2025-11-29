@@ -45,7 +45,7 @@ public record UsersRequestHandler(UserController userController) {
       return;
     }
 
-    sendTokens(ctx, tokenPair);
+    sendTokens(ctx, HttpResponseStatus.CREATED, tokenPair);
   }
 
   public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request) {
@@ -65,7 +65,7 @@ public record UsersRequestHandler(UserController userController) {
       return;
     }
 
-    sendTokens(ctx, tokenPair);
+    sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
   }
 
   public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request) {
@@ -140,16 +140,16 @@ public record UsersRequestHandler(UserController userController) {
       return;
     }
 
-    sendTokens(ctx, tokenPair);
+    sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
   }
 
-  private void sendTokens(ChannelHandlerContext ctx, TokenPairDto tokenPair) {
+  private void sendTokens(ChannelHandlerContext ctx, HttpResponseStatus status, TokenPairDto tokenPair) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
 
     rootNode.put("AccessToken", tokenPair.accessToken());
     rootNode.put("RefreshToken", tokenPair.refreshToken());
 
-    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseHelper.sendJsonResponse(ctx, status, rootNode);
   }
 }

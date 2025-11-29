@@ -9,9 +9,10 @@ public enum StorageConfig {
 
   private final String jwtSecretKey;
   private final int maxContentLength;
-  private final int jwtTokenExpirationSec;
   private final long fileDownloadChunkSize;
   private final long defaultStorageLimit;
+  private final long accessTokenExpirationSec;
+  private final long refreshTokenExpirationSec;
 
   StorageConfig() {
     ConfigSource yamlSource = new YamlConfigSource("config.yml");
@@ -22,8 +23,10 @@ public enum StorageConfig {
         yamlSource.getLong("storage.http.file-download-chunk-size").orElseThrow();
     this.defaultStorageLimit =
         yamlSource.getLong("storage.quotas.default-storage-limit").orElseThrow();
-    this.jwtTokenExpirationSec =
-        yamlSource.getInt("storage.auth.jwt-token-expiration-sec").orElseThrow();
+    this.accessTokenExpirationSec =
+        yamlSource.getInt("storage.auth.access-token-expiration-sec").orElseThrow();
+    this.refreshTokenExpirationSec =
+            yamlSource.getInt("storage.auth.refresh-token-expiration-sec").orElseThrow();
 
     this.jwtSecretKey = envSource.getString("jwt.secret.key").orElseThrow();
   }
@@ -36,15 +39,19 @@ public enum StorageConfig {
     return jwtSecretKey;
   }
 
-  public int getJwtTokenExpirationSec() {
-    return jwtTokenExpirationSec;
-  }
-
   public int getMaxContentLength() {
     return maxContentLength;
   }
 
   public long getFileDownloadChunkSize() {
     return fileDownloadChunkSize;
+  }
+
+  public long getAccessTokenExpirationSec() {
+    return accessTokenExpirationSec;
+  }
+
+  public long getRefreshTokenExpirationSec() {
+    return refreshTokenExpirationSec;
   }
 }

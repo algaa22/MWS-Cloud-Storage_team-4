@@ -72,11 +72,11 @@ public class UserITUtils {
 
   public static String extractAccessToken(HttpResponse<String> response) throws IOException {
     JsonNode root = TestUtils.getRootNodeFromResponse(response);
-    return root.get("token").asText();
+    return root.get("AccessToken").asText();
   }
 
   public static String extractRefreshToken(HttpResponse<String> response) throws IOException {
     JsonNode root = TestUtils.getRootNodeFromResponse(response);
-    return root.get("refreshToken").asText();
+    return root.get("RefreshToken").asText();
   }
 }

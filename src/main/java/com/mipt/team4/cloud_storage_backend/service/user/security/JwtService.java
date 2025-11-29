@@ -5,9 +5,9 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.UUID;
 
 public class JwtService {
   private final long accessTokenExpirationSec;
@@ -51,11 +51,11 @@ public class JwtService {
         .claim("email", user.getEmail())
         .claim("role", "USER")
         .claim("tokenType", expirationSec == accessTokenExpirationSec ? "access" : "refresh")
+        .claim("jti", UUID.randomUUID())
         .setIssuedAt(now)
         .setExpiration(expiryDate)
         .signWith(
-            Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())),
-            SignatureAlgorithm.HS256)
+            Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())), SignatureAlgorithm.HS256)
         .compact();
   }
 
@@ -80,11 +80,12 @@ public class JwtService {
 
   public boolean isAccessToken(String token) {
     try {
-      Claims claims = Jwts.parserBuilder()
-          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
-          .build()
-          .parseClaimsJws(token)
-          .getBody();
+      Claims claims =
+          Jwts.parserBuilder()
+              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+              .build()
+              .parseClaimsJws(token)
+              .getBody();
 
       String tokenType = claims.get("tokenType", String.class);
       return "access".equals(tokenType);
@@ -95,11 +96,12 @@ public class JwtService {
 
   public boolean isRefreshToken(String token) {
     try {
-      Claims claims = Jwts.parserBuilder()
-          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
-          .build()
-          .parseClaimsJws(token)
-          .getBody();
+      Claims claims =
+          Jwts.parserBuilder()
+              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+              .build()
+              .parseClaimsJws(token)
+              .getBody();
 
       String tokenType = claims.get("tokenType", String.class);
       return "refresh".equals(tokenType);

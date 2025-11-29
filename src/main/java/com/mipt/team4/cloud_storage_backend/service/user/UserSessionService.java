@@ -27,12 +27,8 @@ public class UserSessionService {
 
   public SessionDto createSession(UserEntity user) {
     String token = jwtService.generateAccessToken(user);
-    SessionDto session = new SessionDto(
-        user.getId(),
-        user.getEmail(),
-        token,
-        System.currentTimeMillis()
-    );
+    SessionDto session =
+        new SessionDto(user.getId(), user.getEmail(), token, System.currentTimeMillis());
     activeSessions.put(token, session);
     return session;
   }
@@ -106,5 +102,10 @@ public class UserSessionService {
     Optional<SessionDto> userSession = getSession(token);
     if (userSession.isEmpty()) throw new UserNotFoundException(token);
     return userSession.get().userId();
+  }
+
+  public void revokeAllUserSessions(UUID userId) {
+    // TODO: O(n)
+    activeSessions.entrySet().removeIf(entry -> entry.getValue().userId().equals(userId));
   }
 }

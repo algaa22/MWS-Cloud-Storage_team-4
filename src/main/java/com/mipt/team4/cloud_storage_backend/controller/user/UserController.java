@@ -25,18 +25,16 @@ public class UserController {
     this.service = service;
   }
 
-  public String registerUser(RegisterRequestDto request)
-      throws ValidationFailedException, UserAlreadyExistsException, JsonProcessingException {
+  public TokenPairDto registerUser(RegisterRequestDto request)
+      throws ValidationFailedException, UserAlreadyExistsException {
     request.validate();
-    TokenPairDto tokens = service.registerUser(request);
-    return mapper.writeValueAsString(tokens);
+    return service.registerUser(request);
   }
 
-  public String loginUser(LoginRequestDto request)
-      throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException, JsonProcessingException {
+  public TokenPairDto loginUser(LoginRequestDto request)
+      throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException {
     request.validate();
-    TokenPairDto tokens = service.loginUser(request);
-    return mapper.writeValueAsString(tokens);
+    return service.loginUser(request);
   }
 
   public void logoutUser(SimpleUserRequestDto request)
@@ -45,12 +43,9 @@ public class UserController {
     service.logoutUser(request);
   }
 
-  public String refresh(RefreshTokenDto request) throws InvalidSessionException, JsonProcessingException {
-    if (request == null || request.refreshToken() == null) {
-      throw new InvalidSessionException("refresh token required");
-    }
-    TokenPairDto tokens = service.refreshTokens(request.refreshToken());
-    return mapper.writeValueAsString(tokens);
+  public TokenPairDto refresh(RefreshTokenDto request) throws InvalidSessionException, ValidationFailedException {
+    request.validate();
+    return service.refreshTokens(request);
   }
 
   public UserDto getUserInfo(SimpleUserRequestDto request)

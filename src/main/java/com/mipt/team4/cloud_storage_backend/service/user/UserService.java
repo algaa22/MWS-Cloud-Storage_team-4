@@ -102,14 +102,17 @@ public class UserService {
     }
   }
 
-  public TokenPairDto refreshTokens(String refreshToken) throws InvalidSessionException {
+  public TokenPairDto refreshTokens(RefreshTokenDto refreshTokenRequest) throws InvalidSessionException {
+    String refreshToken = refreshTokenRequest.refreshToken();
     RefreshTokenEntity stored = refreshTokenService.validate(refreshToken);
+
     if (stored == null) {
       throw new InvalidSessionException("Refresh token invalid or expired");
     }
 
     UUID userId = stored.getUserId();
     Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+
     if (userOpt.isEmpty()) {
       refreshTokenService.revoke(refreshToken);
       throw new InvalidSessionException("User not found for refresh token");
@@ -117,7 +120,9 @@ public class UserService {
 
     UserEntity user = userOpt.get();
 
+    userSessionService.revokeAllUserSessions(userId);
     SessionDto newSession = userSessionService.createSession(user);
+
     RefreshTokenEntity newRefreshToken = refreshTokenService.create(userId);
     refreshTokenService.revoke(refreshToken);
 

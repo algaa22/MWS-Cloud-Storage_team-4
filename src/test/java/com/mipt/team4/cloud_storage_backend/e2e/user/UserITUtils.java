@@ -24,12 +24,11 @@ public class UserITUtils {
 
   public static HttpResponse<String> sendRefreshTokenRequest(HttpClient client, String refreshToken)
       throws IOException, InterruptedException {
-    String json = String.format("{\"refreshToken\":\"%s\"}", refreshToken);
-
     HttpRequest request =
-        TestUtils.createRequest("/api/users/refresh")
+        TestUtils.createRequest("/api/users/auth/refresh")
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .header("X-Refresh-Token", refreshToken)
+            .POST(HttpRequest.BodyPublishers.noBody())
             .build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());

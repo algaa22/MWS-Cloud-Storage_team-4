@@ -21,8 +21,8 @@ public class UserSmokeIT extends BaseUserIT {
     assertEquals(HttpStatus.SC_CREATED, response.statusCode());
 
     JsonNode root = TestUtils.getRootNodeFromResponse(response);
-    assertNotNull(root.get("token"));
-    assertNotNull(root.get("refreshToken"));
+    assertNotNull(root.get("AccessToken"));
+    assertNotNull(root.get("RefreshToken"));
   }
 
   @Test
@@ -44,8 +44,8 @@ public class UserSmokeIT extends BaseUserIT {
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
     JsonNode root = TestUtils.getRootNodeFromResponse(response);
-    assertNotNull(root.get("token"));
-    assertNotNull(root.get("refreshToken"));
+    assertNotNull(root.get("AccessToken"));
+    assertNotNull(root.get("RefreshToken"));
   }
 
   @Test
@@ -64,20 +64,23 @@ public class UserSmokeIT extends BaseUserIT {
         UserAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "RefreshUser");
 
     JsonNode registerRoot = TestUtils.getRootNodeFromResponse(registerResponse);
-    String refreshToken = registerRoot.get("refreshToken").asText();
+    String oldRefreshToken = registerRoot.get("RefreshToken").asText();
 
     HttpResponse<String> refreshResponse =
-        UserITUtils.sendRefreshTokenRequest(client, refreshToken);
+        UserITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
 
     assertEquals(HttpStatus.SC_OK, refreshResponse.statusCode());
 
     JsonNode refreshRoot = TestUtils.getRootNodeFromResponse(refreshResponse);
-    assertNotNull(refreshRoot.get("token"));
-    assertNotNull(refreshRoot.get("refreshToken"));
+    assertNotNull(refreshRoot.get("AccessToken"));
+    assertNotNull(refreshRoot.get("RefreshToken"));
 
-    String newAccessToken = refreshRoot.get("token").asText();
-    String oldAccessToken = registerRoot.get("token").asText();
+    String oldAccessToken = registerRoot.get("AccessToken").asText();
+    String newAccessToken = refreshRoot.get("AccessToken").asText();
+    String newRefreshToken = refreshRoot.get("RefreshToken").asText();
+
     assertNotEquals(oldAccessToken, newAccessToken);
+    assertNotEquals(oldRefreshToken, newRefreshToken);
   }
 
   @Test
@@ -121,7 +124,7 @@ public class UserSmokeIT extends BaseUserIT {
         UserAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "UsedTokenUser");
 
     JsonNode registerRoot = TestUtils.getRootNodeFromResponse(registerResponse);
-    String oldRefreshToken = registerRoot.get("refreshToken").asText();
+    String oldRefreshToken = registerRoot.get("RefreshToken").asText();
 
     HttpResponse<String> firstRefresh =
         UserITUtils.sendRefreshTokenRequest(client, oldRefreshToken);

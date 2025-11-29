@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
+import ch.qos.logback.core.subst.Token;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -15,10 +16,12 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SimpleUserRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -28,10 +31,10 @@ public record UsersRequestHandler(UserController userController) {
   private static final ObjectMapper mapper = new ObjectMapper();
 
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    String responseJson;
+    TokenPairDto tokenPair;
 
     try {
-      responseJson =
+      tokenPair =
           userController.registerUser(
               new RegisterRequestDto(
                   RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
@@ -40,49 +43,29 @@ public record UsersRequestHandler(UserController userController) {
     } catch (ValidationFailedException | HeaderNotFoundException | UserAlreadyExistsException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
     }
 
-    try {
-      ObjectNode responseNode = (ObjectNode) mapper.readTree(responseJson);
-      responseNode.put("success", true);
-      responseNode.put("message", "Account created successfully.");
-
-      ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.CREATED, responseNode);
-    } catch (Exception e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error processing response");
-    }
+    sendTokens(ctx, tokenPair);
   }
 
   public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    String responseJson;
+    TokenPairDto tokenPair;
 
     try {
-      responseJson =
+      tokenPair  =
           userController.loginUser(
               new LoginRequestDto(
                   RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
                   RequestUtils.getRequiredHeader(request, "X-Auth-Password")));
     } catch (ValidationFailedException
-             | HeaderNotFoundException
-             | InvalidEmailOrPassword
-             | WrongPasswordException e) {
+        | HeaderNotFoundException
+        | InvalidEmailOrPassword
+        | WrongPasswordException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
     }
 
-    try {
-      ObjectNode responseNode = (ObjectNode) mapper.readTree(responseJson);
-      responseNode.put("success", true);
-      responseNode.put("message", "You have successfully signed in.");
-
-      ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, responseNode);
-    } catch (Exception e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error processing response");
-    }
+    sendTokens(ctx, tokenPair);
   }
 
   public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request) {
@@ -144,29 +127,29 @@ public record UsersRequestHandler(UserController userController) {
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "User info successfully changed");
   }
+
   public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    String responseJson;
+    TokenPairDto tokenPair;
 
     try {
-      responseJson =
+       tokenPair =
           userController.refresh(
-              new RefreshTokenDto(
-                  RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
-    } catch (InvalidSessionException | HeaderNotFoundException e) {
+              new RefreshTokenDto(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
+    } catch (InvalidSessionException | HeaderNotFoundException | ValidationFailedException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
     }
 
-    try {
-      ObjectNode responseNode = (ObjectNode) mapper.readTree(responseJson);
-      responseNode.put("success", true);
-      responseNode.put("message", "Tokens refreshed successfully.");
+    sendTokens(ctx, tokenPair);
+  }
 
-      ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, responseNode);
-    } catch (Exception e) {
-      ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error processing response");
-    }
+  private void sendTokens(ChannelHandlerContext ctx, TokenPairDto tokenPair) {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode rootNode = mapper.createObjectNode();
+
+    rootNode.put("AccessToken", tokenPair.accessToken());
+    rootNode.put("RefreshToken", tokenPair.refreshToken());
+
+    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 }

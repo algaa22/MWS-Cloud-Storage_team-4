@@ -85,7 +85,7 @@ public class UserSessionService {
     LocalDateTime expiry = blacklistedTokens.get(token);
     if (expiry == null) return false;
     if (LocalDateTime.now().isAfter(expiry)) {
-      blacklistedTokens.remove(token); // очистка мусора
+      blacklistedTokens.remove(token);
       return false;
     }
     return true;

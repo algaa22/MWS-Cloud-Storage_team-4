@@ -24,10 +24,12 @@ public class UserITUtils {
 
   public static HttpResponse<String> sendRefreshTokenRequest(HttpClient client, String refreshToken)
       throws IOException, InterruptedException {
+    String json = String.format("{\"refreshToken\":\"%s\"}", refreshToken);
+
     HttpRequest request =
         TestUtils.createRequest("/api/users/refresh")
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.noBody())
+            .POST(HttpRequest.BodyPublishers.ofString(json))
             .build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -72,5 +74,10 @@ public class UserITUtils {
   public static String extractAccessToken(HttpResponse<String> response) throws IOException {
     JsonNode root = TestUtils.getRootNodeFromResponse(response);
     return root.get("token").asText();
+  }
+
+  public static String extractRefreshToken(HttpResponse<String> response) throws IOException {
+    JsonNode root = TestUtils.getRootNodeFromResponse(response);
+    return root.get("refreshToken").asText();
   }
 }

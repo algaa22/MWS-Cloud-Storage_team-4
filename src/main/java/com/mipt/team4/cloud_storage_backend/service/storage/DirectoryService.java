@@ -53,26 +53,20 @@ public class DirectoryService {
           StorageFileAlreadyExistsException,
           StorageFileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(changeDirectory.userToken());
-    String oldPath = changeDirectory.oldDirectoryPath();
-    String newPath = changeDirectory.newDirectoryPath();
+    String oldDirectoryPath = changeDirectory.oldDirectoryPath();
+    String newDirectoryPath = changeDirectory.newDirectoryPath();
 
-    Map<StorageEntity, String> changedDirectoryFilePaths = new HashMap<>();
+    List<String> directoryFiles = storageRepository.getFilePathsList(userId, true, oldDirectoryPath);
 
-    for (String oldFilePath : storageRepository.getFilePathsList(userId, false, oldPath)) {
+    for (String oldFilePath : directoryFiles) {
       Optional<StorageEntity> fileOpt = storageRepository.getFile(userId, oldFilePath);
       if (fileOpt.isEmpty()) throw new StorageFileNotFoundException(oldFilePath);
 
-      String newFilePath = oldFilePath.replaceFirst(oldPath, newPath);
+      String newFilePath = oldFilePath.replaceFirst(oldDirectoryPath, newDirectoryPath);
       if (storageRepository.fileExists(userId, newFilePath))
         throw new StorageFileAlreadyExistsException(newFilePath);
 
-      changedDirectoryFilePaths.put(fileOpt.get(), newFilePath);
-    }
-
-    for (Map.Entry<StorageEntity, String> entry : changedDirectoryFilePaths.entrySet()) {
-      StorageEntity fileEntity = entry.getKey();
-      String newFilePath = entry.getValue();
-
+      StorageEntity fileEntity = fileOpt.get();
       fileEntity.setPath(newFilePath);
       storageRepository.updateFile(fileEntity);
     }

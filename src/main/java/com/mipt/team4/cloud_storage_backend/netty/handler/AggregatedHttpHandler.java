@@ -58,7 +58,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       throws QueryParameterNotFoundException {
     String userToken = extractUserTokenFromRequest(request);
 
-    if (uri.startsWith("/api/files") && method.equals(HttpMethod.GET))
+    if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET))
       filesRequestHandler.handleGetFilePathsListRequest(ctx, request, userToken);
     else {
       String filePath = RequestUtils.getRequiredQueryParam(request, "path");

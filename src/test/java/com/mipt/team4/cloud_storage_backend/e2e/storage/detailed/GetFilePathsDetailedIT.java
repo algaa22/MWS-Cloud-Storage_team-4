@@ -14,7 +14,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public class GetFilePathsDetailedIT extends BaseDetailedFileIT {
   public GetFilePathsDetailedIT() {
-    super("/api/files", HttpMethod.GET.name(), PathParam.EXISTENT_FOLDER);
+    super("/api/files/list", HttpMethod.GET.name(), PathParam.EXISTENT_FOLDER);
   }
 
   @Test

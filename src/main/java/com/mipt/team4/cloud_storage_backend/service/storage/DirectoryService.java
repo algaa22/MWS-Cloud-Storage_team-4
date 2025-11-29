@@ -77,7 +77,7 @@ public class DirectoryService {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     String directoryPath = request.directoryPath();
 
-    List<String> directoryFiles = storageRepository.getFilePathsList(userId, false, directoryPath);
+    List<String> directoryFiles = storageRepository.getFilePathsList(userId, true, directoryPath);
 
     for (String filePath : directoryFiles) {
       storageRepository.deleteFile(userId, filePath);

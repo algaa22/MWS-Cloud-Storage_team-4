@@ -36,7 +36,7 @@ public class FileOperationsITUtils {
       HttpClient client, String userToken, boolean includeDirectories, String searchDirectory)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/files?includeDirectories=" + includeDirectories + "&?directory=" + searchDirectory)
+        TestUtils.createRequest("/api/files/list?includeDirectories=" + includeDirectories + "&?directory=" + searchDirectory)
             .header("X-Auth-Token", userToken)
             .GET()
             .build();

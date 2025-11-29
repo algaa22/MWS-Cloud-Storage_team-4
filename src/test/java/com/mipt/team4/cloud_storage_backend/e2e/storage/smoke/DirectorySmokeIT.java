@@ -54,7 +54,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
             client, currentUserToken, DEFAULT_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_CREATED, createDirectoryResponse.statusCode());
 
-    List<String> testFiles = addTestFilesToDirectory(DEFAULT_FILE_TARGET_PATH);
+    List<String> testFiles = addTestFilesToDirectory(DEFAULT_DIRECTORY_PATH);
 
     HttpResponse<String> deleteDirectoryResponse =
         DirectoryOperationsITUtils.sendDeleteDirectoryRequest(

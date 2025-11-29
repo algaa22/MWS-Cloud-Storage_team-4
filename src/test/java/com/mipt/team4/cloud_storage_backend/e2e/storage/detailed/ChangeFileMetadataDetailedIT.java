@@ -27,7 +27,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
 
   @Override
   @Test
-  public void shouldNotDoX_WhenSpecifyFolder() throws IOException, InterruptedException {
+  public void shouldNotDoX_WhenSpecifyDirectory() throws IOException, InterruptedException {
     HttpResponse<String> response =
             client.send(
                     createRawRequestWithToken(currentUserToken,  "/api/files?path=dir/"),
@@ -38,7 +38,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
   }
 
   @Test
-  public void shouldNotDoX_WhenSpecifyFolderInNewPath() throws IOException, InterruptedException {
+  public void shouldNotDoX_WhenSpecifyDirectoryInNewPath() throws IOException, InterruptedException {
     HttpResponse<String> response =
             client.send(
                     TestUtils.createRequest("/api/files?path=_")

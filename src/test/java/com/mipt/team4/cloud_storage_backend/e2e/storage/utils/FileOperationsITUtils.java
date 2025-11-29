@@ -1,16 +1,45 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public class FileOperationsITUtils {
+  public static boolean filePathsListContainsFiles(
+          HttpClient client, String userToken, List<String> filePaths, boolean includeDirectories, String searchDirectory) throws IOException, InterruptedException {
+    HttpResponse<String> response =
+            sendGetFilePathsListRequest(client, userToken, includeDirectories, searchDirectory);
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+
+    JsonNode filesNode = TestUtils.getRootNodeFromResponse(response).get("files");
+    List<String> responseFilePaths = new ArrayList<>();
+
+    for (int i = 0; i < filesNode.size(); i++) {
+      JsonNode fileNode = filesNode.get(i);
+      JsonNode filePathNode = fileNode.get("path");
+
+      responseFilePaths.add(filePathNode.asText());
+    }
+
+    return responseFilePaths.containsAll(filePaths);
+  }
+
   public static HttpResponse<String> sendGetFilePathsListRequest(
-      HttpClient client, String userToken) throws IOException, InterruptedException {
+      HttpClient client, String userToken, boolean includeDirectories, String searchDirectory)
+      throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/files").header("X-Auth-Token", userToken).GET().build();
+        TestUtils.createRequest("/api/files?includeDirectories=" + includeDirectories + "&?directory=" + searchDirectory)
+            .header("X-Auth-Token", userToken)
+            .GET()
+            .build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }

@@ -30,7 +30,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
             client, currentUserToken, DEFAULT_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_CREATED, createDirectoryResponse.statusCode());
 
-    List<String> testFiles = addTestFilesToDirectory();
+    List<String> testFiles = addTestFilesToDirectory(DEFAULT_DIRECTORY_PATH);
     final String NEW_DIRECTORY_PATH = "dir3/";
 
     HttpResponse<String> changePathResponse =
@@ -39,7 +39,12 @@ public class DirectorySmokeIT extends BaseStorageIT {
     assertEquals(HttpStatus.SC_OK, changePathResponse.statusCode());
 
     assertFalse(filePathsListContainsFiles(testFiles, DEFAULT_FILE_TARGET_PATH));
-    assertTrue(filePathsListContainsFiles(testFiles, NEW_DIRECTORY_PATH));
+    assertTrue(
+        filePathsListContainsFiles(
+            testFiles.stream()
+                .map(filePath -> filePath.replaceFirst(DEFAULT_DIRECTORY_PATH, NEW_DIRECTORY_PATH))
+                .toList(),
+            NEW_DIRECTORY_PATH));
   }
 
   @Test
@@ -49,7 +54,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
             client, currentUserToken, DEFAULT_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_CREATED, createDirectoryResponse.statusCode());
 
-    List<String> testFiles = addTestFilesToDirectory();
+    List<String> testFiles = addTestFilesToDirectory(DEFAULT_FILE_TARGET_PATH);
 
     HttpResponse<String> deleteDirectoryResponse =
         DirectoryOperationsITUtils.sendDeleteDirectoryRequest(
@@ -59,11 +64,12 @@ public class DirectorySmokeIT extends BaseStorageIT {
     assertFalse(filePathsListContainsFiles(testFiles, DEFAULT_DIRECTORY_PATH));
   }
 
-  private List<String> addTestFilesToDirectory() throws IOException, InterruptedException {
+  private List<String> addTestFilesToDirectory(String directoryPath)
+      throws IOException, InterruptedException {
     List<String> testFiles = new ArrayList<>();
 
-    for(int i = 0; i < 2; i++) {
-      String filePath = DEFAULT_FILE_TARGET_PATH + "file" + i;
+    for (int i = 0; i < 2; i++) {
+      String filePath = directoryPath + "file" + i;
 
       testFiles.add(filePath);
       simpleUploadFile(SMALL_FILE_LOCAL_PATH, filePath, "");

@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.e2e.storage.smoke;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
-import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseFileIT;
+import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
@@ -19,7 +19,7 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
-public class FileSmokeIT extends BaseFileIT {
+public class FileSmokeIT extends BaseStorageIT {
   @Test
   public void shouldUploadAndDownloadFile_Simple() throws IOException, InterruptedException {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
@@ -87,20 +87,9 @@ public class FileSmokeIT extends BaseFileIT {
       simpleUploadFile(targetFilePath);
     }
 
-    HttpResponse<String> response =
-        FileOperationsITUtils.sendGetFilePathsListRequest(client, currentUserToken);
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
-
-    JsonNode rootNode = TestUtils.getRootNodeFromResponse(response);
-    List<String> responseFilePaths = new ArrayList<>();
-
-    for (int i = 0; i < filePaths.size(); i++) {
-      responseFilePaths.add(rootNode.get("files").get(i).get("path").asText());
-    }
-
-    for (int i = 0; i < filePaths.size(); i++) {
-      assertTrue(responseFilePaths.contains(filePaths.get(i)));
-    }
+    assertTrue(
+        FileOperationsITUtils.filePathsListContainsFiles(
+            client, currentUserToken, filePaths, false, ""));
   }
 
   @Test

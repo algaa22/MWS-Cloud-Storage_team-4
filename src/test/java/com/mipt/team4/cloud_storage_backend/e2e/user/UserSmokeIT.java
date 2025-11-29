@@ -83,6 +83,8 @@ public class UserSmokeIT extends BaseUserIT {
     assertNotEquals(oldRefreshToken, newRefreshToken);
   }
 
+  // TODO: update user info
+
   @Test
   public void shouldGetUserInfo() throws IOException, InterruptedException {
     HttpResponse<String> register =

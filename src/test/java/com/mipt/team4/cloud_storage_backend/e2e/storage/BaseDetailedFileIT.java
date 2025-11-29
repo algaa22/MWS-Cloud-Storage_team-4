@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
-public abstract class BaseDetailedFileIT extends BaseFileIT {
+public abstract class BaseDetailedFileIT extends BaseStorageIT {
   private final PathParam pathParam;
   private final String rawEndpoint;
   private final String method;
@@ -63,7 +63,7 @@ public abstract class BaseDetailedFileIT extends BaseFileIT {
   }
 
   @Test
-  public void shouldNotDoX_WhenSpecifyFolder() throws IOException, InterruptedException {
+  public void shouldNotDoX_WhenSpecifyDirectory() throws IOException, InterruptedException {
     if (pathParam != PathParam.EXISTENT_FILE) return;
 
     HttpResponse<String> response =

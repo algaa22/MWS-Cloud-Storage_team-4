@@ -15,11 +15,12 @@ import java.net.http.HttpResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
-public abstract class BaseFileIT extends BaseIT {
+public abstract class BaseStorageIT extends BaseIT {
   protected static final String SMALL_FILE_LOCAL_PATH = "files/small_file.txt";
   protected static final String BIG_FILE_LOCAL_PATH = "files/big_file.txt";
   protected static final String EMPTY_FILE_LOCAL_PATH = "files/empty_file";
   protected static final String DEFAULT_FILE_TARGET_PATH = "file";
+  protected static final String DEFAULT_DIRECTORY_PATH = "dir1/dir2/";
 
   protected String currentUserToken;
 

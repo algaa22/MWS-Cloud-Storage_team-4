@@ -4,63 +4,66 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public class FileEntity {
-  private final UUID fileId;
-  private final UUID ownerId;
+public class StorageEntity {
+  private final UUID entityId;
+  private final UUID userId;
   private final String mimeType;
   private final long size;
   private String path;
   private String visibility;
   private boolean isDeleted;
+  private boolean isDirectory;
   private List<String> tags;
 
-  public FileEntity(
-      UUID fileId,
-      UUID ownerId,
+  public StorageEntity(
+      UUID entityId,
+      UUID userId,
       String path,
       String mimeType,
       String visibility,
       long size,
       boolean isDeleted,
-      List<String> tags) {
-    this.fileId = fileId;
-    this.ownerId = ownerId;
+      List<String> tags,
+      boolean isDirectory) {
+    this.entityId = entityId;
+    this.userId = userId;
     this.size = size;
     this.path = path;
     this.visibility = visibility;
     this.isDeleted = isDeleted;
     this.tags = tags;
     this.mimeType = mimeType;
+    this.isDirectory = isDirectory;
   }
 
   @Override
   public boolean equals(Object object) {
     if (object == null || getClass() != object.getClass()) return false;
 
-    FileEntity that = (FileEntity) object;
-    return Objects.equals(fileId, that.fileId);
+    StorageEntity that = (StorageEntity) object;
+    return Objects.equals(entityId, that.entityId);
   }
 
   public boolean fullEquals(Object object) {
     if (object == null || getClass() != object.getClass()) return false;
-
-    FileEntity that = (FileEntity) object;
+    StorageEntity that = (StorageEntity) object;
     return size == that.size
         && isDeleted == that.isDeleted
-        && Objects.equals(fileId, that.fileId)
-        && Objects.equals(ownerId, that.ownerId)
+        && isDirectory == that.isDirectory
+        && Objects.equals(entityId, that.entityId)
+        && Objects.equals(userId, that.userId)
         && Objects.equals(mimeType, that.mimeType)
         && Objects.equals(path, that.path)
         && Objects.equals(visibility, that.visibility)
         && Objects.equals(tags, that.tags);
   }
 
-  public UUID getFileId() {
-    return fileId;
+  public UUID getEntityId() {
+    return entityId;
   }
 
-  public UUID getOwnerId() {
-    return ownerId;
+  public UUID getUserId() {
+    return userId;
   }
 
   public long getSize() {
@@ -101,5 +104,13 @@ public class FileEntity {
 
   public String getMimeType() {
     return mimeType;
+  }
+
+  public boolean isDirectory() {
+    return isDirectory;
+  }
+
+  public void setDirectory(boolean directory) {
+    isDirectory = directory;
   }
 }

@@ -49,7 +49,7 @@ public class RefreshTokenService {
   }
 
   public void revokeAllForUser(UUID userId) {
-    repository.deleteByUser(userId);
+    repository.deleteByUserId(userId);
   }
 }
 

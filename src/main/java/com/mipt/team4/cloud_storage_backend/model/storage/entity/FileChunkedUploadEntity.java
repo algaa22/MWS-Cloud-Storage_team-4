@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public class FileChunkedUploadEntity {
   private UUID sessionId;
-  private UUID ownerId;
+  private UUID userId;
   private String s3UploadId;
   private String path;
   private List<String> tags;
@@ -16,14 +16,14 @@ public class FileChunkedUploadEntity {
 
   public FileChunkedUploadEntity(
       UUID sessionId,
-      UUID ownerId,
+      UUID userId,
       String s3UploadId,
       String path,
       List<String> tags,
       List<UploadChunkDto> chunks,
       Map<Integer, String> eTags) {
     this.sessionId = sessionId;
-    this.ownerId = ownerId;
+    this.userId = userId;
     this.s3UploadId = s3UploadId;
     this.path = path;
     this.tags = tags;
@@ -39,12 +39,12 @@ public class FileChunkedUploadEntity {
     this.sessionId = sessionId;
   }
 
-  public UUID getOwnerId() {
-    return ownerId;
+  public UUID getuserId() {
+    return userId;
   }
 
-  public void setOwnerId(UUID ownerId) {
-    this.ownerId = ownerId;
+  public void setuserId(UUID userId) {
+    this.userId = userId;
   }
 
   public String getS3UploadId() {

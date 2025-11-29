@@ -5,14 +5,16 @@ import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServer;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import com.mipt.team4.cloud_storage_backend.repository.storage.FileRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.RefreshTokenRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
+import com.mipt.team4.cloud_storage_backend.service.storage.DirectoryService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
@@ -40,27 +42,29 @@ public class CloudStorageApplication {
     PostgresConnection postgresConnection = new PostgresConnection(postgresUrl);
     postgresConnection.connect();
 
-    FileRepository fileRepository = new FileRepository(postgresConnection, minioUrl);
+    StorageRepository storageRepository = new StorageRepository(postgresConnection, minioUrl);
     UserRepository userRepository = new UserRepository(postgresConnection);
 
     JwtService jwtService =
         new JwtService(
-            StorageConfig.INSTANCE.getAccessTokenExpirationSec(), // 15 минут
-            StorageConfig.INSTANCE.getRefreshTokenExpirationSec() // 30 дней
+            StorageConfig.INSTANCE.getAccessTokenExpirationSec(),
+            StorageConfig.INSTANCE.getRefreshTokenExpirationSec()
             );
     UserSessionService userSessionService = new UserSessionService(jwtService);
 
     RefreshTokenRepository refreshTokenRepository = new RefreshTokenRepository(postgresConnection);
     RefreshTokenService refreshTokenService = new RefreshTokenService(refreshTokenRepository);
 
-    FileService fileService = new FileService(fileRepository, userSessionService);
+    FileService fileService = new FileService(storageRepository, userSessionService);
+    DirectoryService directoryService = new DirectoryService(storageRepository, userSessionService);
     UserService userService =
         new UserService(userRepository, userSessionService, refreshTokenService);
 
     FileController fileController = new FileController(fileService);
+    DirectoryController directoryController = new DirectoryController(directoryService);
     UserController userController = new UserController(userService);
 
-    server = new NettyServer(fileController, userController);
+    server = new NettyServer(fileController, directoryController, userController);
 
     Thread serverThread =
         new Thread(

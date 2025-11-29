@@ -19,7 +19,7 @@ public class RefreshTokenRepository {
     postgres.executeUpdate("UPDATE refresh_tokens SET revoked = TRUE WHERE id = ?;", List.of(id));
   }
 
-  public void deleteByUser(UUID userId) {
+  public void deleteByUserId(UUID userId) {
     postgres.executeUpdate("DELETE FROM refresh_tokens WHERE user_id = ?;", List.of(userId));
   }
 

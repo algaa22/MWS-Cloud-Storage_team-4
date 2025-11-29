@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import java.util.*;
@@ -20,50 +20,52 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public void addFile(FileEntity fileEntity) throws StorageFileAlreadyExistsException {
-    if (fileExists(fileEntity.getOwnerId(), fileEntity.getPath()))
-      throw new StorageFileAlreadyExistsException(fileEntity.getOwnerId(), fileEntity.getPath());
+  public void addFile(StorageEntity fileEntity) throws StorageFileAlreadyExistsException {
+    if (fileExists(fileEntity.getUserId(), fileEntity.getPath()))
+      throw new StorageFileAlreadyExistsException(fileEntity.getPath());
 
     postgres.executeUpdate(
-        "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, tags)"
-            + " values (?, ?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, tags, is_directory)"
+            + " values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
-                fileEntity.getFileId(),
-            fileEntity.getOwnerId(),
+            fileEntity.getEntityId(),
+            fileEntity.getUserId(),
             fileEntity.getPath(),
             fileEntity.getSize(),
             fileEntity.getMimeType(),
             fileEntity.getVisibility(),
             fileEntity.isDeleted(),
-            FileTagsMapper.toString(fileEntity.getTags())));
+            FileTagsMapper.toString(fileEntity.getTags()),
+            fileEntity.isDirectory()));
   }
 
   @Override
-  public List<String> getFilesPathsList(UUID id) {
+  public List<String> getFilesPathsList(UUID id, boolean includeDirectories, String searchDirectory) {
     return postgres.executeQuery(
-        "SELECT path FROM files WHERE owner_id = ? AND is_deleted = FALSE;",
-        List.of(id),
+        "SELECT path FROM files WHERE owner_id = ? AND is_directory = ? AND path LIKE '?%' AND is_deleted = FALSE;",
+        List.of(id, includeDirectories),
         rs -> rs.getString("path"));
   }
 
   @Override
-  public Optional<FileEntity> getFile(UUID ownerId, String path) {
-    List<FileEntity> result;
+  public Optional<StorageEntity> getFile(UUID userId, String path) {
+    List<StorageEntity> result;
 
     result =
         postgres.executeQuery(
             "SELECT * FROM files WHERE owner_id = ? AND path = ?;",
-            List.of(ownerId, path),
+            List.of(userId, path),
             rs ->
-                new FileEntity(
+                new StorageEntity(
                     UUID.fromString(rs.getString("id")),
-                    ownerId,
+                    userId,
                     rs.getString("path"),
                     rs.getString("mime_type"),
                     rs.getString("visibility"),
                     rs.getLong("file_size"),
                     rs.getBoolean("is_deleted"),
-                    FileTagsMapper.toList(rs.getString("tags"))));
+                    FileTagsMapper.toList(rs.getString("tags")),
+                    rs.getBoolean("is_directory")));
 
     if (result.isEmpty()) return Optional.empty();
 
@@ -71,33 +73,33 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public void deleteFile(UUID ownerId, String path) throws StorageFileNotFoundException {
-    if (!fileExists(ownerId, path)) {
+  public void deleteFile(UUID userId, String path) throws StorageFileNotFoundException {
+    if (!fileExists(userId, path)) {
       throw new StorageFileNotFoundException(path);
     }
 
     postgres.executeUpdate(
-        "DELETE FROM files WHERE owner_id = ? AND path = ?;", List.of(ownerId, path));
+        "DELETE FROM files WHERE owner_id = ? AND path = ?;", List.of(userId, path));
   }
 
   @Override
-  public void updateFile(FileEntity fileEntity) {
+  public void updateFile(StorageEntity fileEntity) {
     postgres.executeUpdate(
         "UPDATE files SET path = ?, visibility = ?, tags = ? WHERE owner_id = ? AND id = ?",
         List.of(
             fileEntity.getPath(),
             fileEntity.getVisibility(),
             FileTagsMapper.toString(fileEntity.getTags()),
-            fileEntity.getOwnerId(),
-            fileEntity.getFileId()));
+            fileEntity.getUserId(),
+            fileEntity.getEntityId()));
   }
 
   @Override
-  public boolean fileExists(UUID ownerId, String path) {
+  public boolean fileExists(UUID userId, String path) {
     List<Boolean> result =
         postgres.executeQuery(
             "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND path = ?);",
-            List.of(ownerId, path),
+            List.of(userId, path),
             rs -> (rs.getBoolean(1)));
     return result.getFirst();
   }

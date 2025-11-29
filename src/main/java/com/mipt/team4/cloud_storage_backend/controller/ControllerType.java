@@ -5,7 +5,7 @@ public enum ControllerType {
   USER;
 
   public static ControllerType fromUri(String uri) {
-    if (uri.startsWith("/api/files") || uri.startsWith("/api/folders")) {
+    if (uri.startsWith("/api/files") || uri.startsWith("/api/directories")) {
       return ControllerType.FILE;
     } else if (uri.startsWith("/api/auth")) {
       return USER;

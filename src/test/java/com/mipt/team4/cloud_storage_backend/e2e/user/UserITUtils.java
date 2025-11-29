@@ -74,9 +74,4 @@ public class UserITUtils {
     JsonNode root = TestUtils.getRootNodeFromResponse(response);
     return root.get("AccessToken").asText();
   }
-
-  public static String extractRefreshToken(HttpResponse<String> response) throws IOException {
-    JsonNode root = TestUtils.getRootNodeFromResponse(response);
-    return root.get("RefreshToken").asText();
-  }
 }

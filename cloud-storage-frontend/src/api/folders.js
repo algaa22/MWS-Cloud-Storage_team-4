@@ -1,7 +1,7 @@
 import { apiRequest } from "./client";
 
 
-export const FoldersAPI = {
+export const DirectorysAPI = {
   create: (folder) =>
       apiRequest(`/folders?folder=${encodeURIComponent(folder)}`, {
         method: "POST"

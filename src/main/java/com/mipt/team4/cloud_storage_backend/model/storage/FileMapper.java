@@ -1,31 +1,32 @@
 package com.mipt.team4.cloud_storage_backend.model.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
-import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 
 public class FileMapper {
-  public static FileEntity toEntity(FileDto dto) {
-    return new FileEntity(
+  public static StorageEntity toEntity(FileDto dto) {
+    return new StorageEntity(
         dto.fileId(),
-        dto.ownerId(),
+        dto.userId(),
         dto.path(),
         dto.type(),
         dto.visibility(),
         dto.size(),
         dto.isDeleted(),
-        dto.tags());
+        dto.tags(),
+        dto.isDirectory());
   }
 
-  public static FileDto toDto(FileEntity entity) {
+  public static FileDto toDto(StorageEntity entity) {
     return new FileDto(
-        entity.getFileId(),
-        entity.getOwnerId(),
+        entity.getEntityId(),
+        entity.getUserId(),
         entity.getPath(),
         entity.getMimeType(),
         entity.getVisibility(),
         entity.getSize(),
         entity.isDeleted(),
-        entity.getTags());
+        entity.getTags(),
+        entity.isDirectory());
   }
 }

@@ -42,7 +42,7 @@ export async function getUserInfo(token) {
   return res.json();
 }
 
-export async function listFolders(token, directory = "") {
+export async function listDirectorys(token, directory = "") {
   const res = await fetch(
       `${API_BASE}/api/files?directory=${encodeURIComponent(directory)}`,
       {

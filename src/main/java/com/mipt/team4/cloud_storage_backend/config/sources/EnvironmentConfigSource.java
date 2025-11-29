@@ -11,10 +11,7 @@ import java.util.Optional;
 public class EnvironmentConfigSource extends ConfigSource {
   Map<String, String> envVars = new HashMap<>();
 
-  public EnvironmentConfigSource() {}
-
   public EnvironmentConfigSource(String filePath) {
-    // TODO: problemi s dokerom
     loadEnvFile(filePath);
   }
 
@@ -53,8 +50,6 @@ public class EnvironmentConfigSource extends ConfigSource {
           envVars.put(key, value);
         }
       }
-    } catch (IOException e) {
-      throw new DotEnvLoadException(filePath, e);
-    }
+    } catch (IOException _) {}
   }
 }

@@ -6,10 +6,11 @@ import java.util.UUID;
 
 public record FileDto(
     UUID fileId,
-    UUID ownerId,
+    UUID userId,
     String path,
     String type,
     String visibility,
     long size,
     boolean isDeleted,
-    List<String> tags) {}
+    List<String> tags,
+    boolean isDirectory) {}

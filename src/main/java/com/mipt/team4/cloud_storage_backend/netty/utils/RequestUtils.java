@@ -17,6 +17,10 @@ public class RequestUtils {
         .orElseThrow(() -> new QueryParameterNotFoundException(paramName));
   }
 
+  public static String getQueryParam(HttpRequest request, String paramName, String defaultValue) {
+    return getQueryParam(request, paramName).orElse(defaultValue);
+  }
+
   public static Optional<String> getQueryParam(HttpRequest request, String paramName) {
     QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
     Map<String, List<String>> parameters = queryDecoder.parameters();

@@ -4,9 +4,14 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record GetFilePathsListDto(String userToken) {
+public record GetFilePathsListDto(
+    String userToken, boolean includeDirectories, String searchDirectory) {
   public void validate() throws ValidationFailedException {
-    ValidationResult result = Validators.all(Validators.validToken(userToken));
+    ValidationResult result =
+        Validators.all(
+            Validators.validToken(userToken),
+            Validators.notNull("Include directories", includeDirectories),
+            Validators.notNull("Search directory", searchDirectory));
 
     Validators.throwExceptionIfNotValid(result);
   }

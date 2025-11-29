@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.server;
 
 import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
 import com.mipt.team4.cloud_storage_backend.netty.cors.CorsHandler;
@@ -20,12 +21,17 @@ public class NettyServer {
   private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
   private final CountDownLatch startupLatch = new CountDownLatch(1);
   private final FileController fileController;
+  private final DirectoryController directoryController;
   private final UserController userController;
 
   private Channel serverChannel;
 
-  public NettyServer(FileController fileController, UserController userController) {
+  public NettyServer(
+      FileController fileController,
+      DirectoryController directoryController,
+      UserController userController) {
     this.fileController = fileController;
+    this.directoryController = directoryController;
     this.userController = userController;
   }
 
@@ -68,13 +74,13 @@ public class NettyServer {
 
   class CustomChannelInitializer extends ChannelInitializer<SocketChannel> {
     @Override
-    protected void initChannel(SocketChannel socketChannel) throws Exception {
+    protected void initChannel(SocketChannel socketChannel)  {
       ChannelPipeline pipeline = socketChannel.pipeline();
 
       pipeline.addLast("httpCodec", new HttpServerCodec());
       // TODO: CORS?
       pipeline.addLast("cors", new CorsHandler());
-      pipeline.addLast("pipeSelector", new PipelineSelector(fileController, userController));
+      pipeline.addLast("pipeSelector", new PipelineSelector(fileController, directoryController, userController));
     }
   }
 }

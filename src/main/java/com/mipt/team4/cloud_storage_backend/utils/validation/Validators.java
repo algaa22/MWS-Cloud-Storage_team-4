@@ -54,7 +54,7 @@ public class Validators {
         lastChar == '/' || lastChar == '\\',
         field,
         field + " must be path to directory",
-        "MUST_BE_DIRECTORY");
+        "MUST_BE_FOLDER");
   }
 
   public static ValidationResult notDirectory(String field, String path) {
@@ -187,6 +187,15 @@ public class Validators {
         "Visibility",
         "Visibility must be one of this values: {public, private, link_only}",
         "VISIBILITY");
+  }
+
+  public static ValidationResult notEqualIgnoreCase(
+      String field, String firstString, String secondString) {
+    return validate(
+        !firstString.equalsIgnoreCase(secondString),
+        field,
+        field + " must not be equal",
+        "STRING_IC_NOT_EQUAL");
   }
 
   public static ValidationResult validate(BooleanSupplier supplier, String field, String message) {

@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.pipeline;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.netty.handler.AggregatedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handler.ChunkedHttpHandler;
@@ -22,12 +23,17 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
   private static final Logger logger = LoggerFactory.getLogger(PipelineSelector.class);
 
   private final FileController fileController;
+  private final DirectoryController directoryController;
   private final UserController userController;
 
   private PipelineType previousPipeline = null;
 
-  public PipelineSelector(FileController fileController, UserController userController) {
+  public PipelineSelector(
+      FileController fileController,
+      DirectoryController directoryController,
+      UserController userController) {
     this.fileController = fileController;
+    this.directoryController = directoryController;
     this.userController = userController;
   }
 
@@ -75,7 +81,7 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
       pipeline.addLast(new ChunkedHttpHandler(fileController));
     } else {
       pipeline.addLast(new HttpObjectAggregator(StorageConfig.INSTANCE.getMaxContentLength()));
-      pipeline.addLast(new AggregatedHttpHandler(fileController, userController));
+      pipeline.addLast(new AggregatedHttpHandler(fileController, directoryController, userController));
     }
   }
 

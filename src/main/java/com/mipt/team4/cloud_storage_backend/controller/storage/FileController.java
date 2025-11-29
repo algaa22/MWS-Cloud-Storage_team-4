@@ -102,22 +102,6 @@ public class FileController {
     service.changeFileMetadata(request);
   }
 
-  public void createFolder(SimpleFolderOperationDto request)
-      throws ValidationFailedException, UserNotFoundException {
-    request.validate();
-    service.createFolder(request);
-  }
-
-  public void changeFolderPath(ChangeFolderPathDto request) throws ValidationFailedException, UserNotFoundException {
-    request.validate();
-    service.changeFolderPath(request);
-  }
-
-  public void deleteFolder(SimpleFolderOperationDto request) throws ValidationFailedException, UserNotFoundException {
-    request.validate();
-    service.deleteFolder(request);
-  }
-
   public FileDownloadDto downloadFile(SimpleFileOperationDto request)
       throws ValidationFailedException,
           UserNotFoundException,

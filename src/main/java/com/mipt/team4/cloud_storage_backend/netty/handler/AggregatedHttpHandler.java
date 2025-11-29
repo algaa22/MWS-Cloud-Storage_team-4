@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
+import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
@@ -13,15 +14,18 @@ import org.slf4j.LoggerFactory;
 
 public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
   private static final Logger logger = LoggerFactory.getLogger(AggregatedHttpHandler.class);
-  private final FoldersRequestHandler foldersRequestHandler;
+  private final DirectoriesRequestHandler directorysRequestHandler;
   private final FilesRequestHandler filesRequestHandler;
   private final UsersRequestHandler usersRequestHandler;
 
   private HttpMethod method;
   private String uri;
 
-  public AggregatedHttpHandler(FileController fileController, UserController userController) {
-    this.foldersRequestHandler = new FoldersRequestHandler(fileController);
+  public AggregatedHttpHandler(
+      FileController fileController,
+      DirectoryController directoryController,
+      UserController userController) {
+    this.directorysRequestHandler = new DirectoriesRequestHandler(directoryController);
     this.filesRequestHandler = new FilesRequestHandler(fileController);
     this.usersRequestHandler = new UsersRequestHandler(userController);
   }
@@ -32,36 +36,32 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       method = request.method();
       uri = request.uri();
 
-      if (uri.startsWith("/api/files")) {
-        handleFilesRequest(ctx, request);
-      } else if (uri.startsWith("/api/folders")) {
-        handleFoldersRequest(ctx, request);
-      } else if (uri.startsWith("/api/users")) {
-        handleUsersRequest(ctx, request);
-      } else {
-        ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      try {
+        if (uri.startsWith("/api/files")) {
+          handleFilesRequest(ctx, request);
+        } else if (uri.startsWith("/api/directories")) {
+          handleDirectoriesRequest(ctx, request);
+        } else if (uri.startsWith("/api/users")) {
+          handleUsersRequest(ctx, request);
+        } else {
+          ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+        }
+      } catch (QueryParameterNotFoundException e) {
+        ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       }
     } else {
       ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }
 
-  private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request) {
+  private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request)
+      throws QueryParameterNotFoundException {
     String userToken = extractUserTokenFromRequest(request);
 
-    if (uri.equals("/api/files") && method.equals(HttpMethod.GET))
-      filesRequestHandler.handleGetFilePathsListRequest(ctx, userToken);
+    if (uri.startsWith("/api/files") && method.equals(HttpMethod.GET))
+      filesRequestHandler.handleGetFilePathsListRequest(ctx, request, userToken);
     else {
-      String filePath;
-
-      try {
-        filePath = RequestUtils.getRequiredQueryParam(request, "path");
-      } catch (QueryParameterNotFoundException e) {
-        ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-        return;
-      }
-
-      // TODO: экранировать /, проверка на uri.length
+      String filePath = RequestUtils.getRequiredQueryParam(request, "path");
 
       if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET))
         filesRequestHandler.handleGetFileInfoRequest(ctx, filePath, userToken);
@@ -79,19 +79,19 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     }
   }
 
-  private void handleFoldersRequest(ChannelHandlerContext ctx, HttpRequest request) {
+  private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws QueryParameterNotFoundException {
     String userToken = extractUserTokenFromRequest(request);
 
-    if (uri.startsWith("/api/folders/") && method.equals(HttpMethod.POST))
-      foldersRequestHandler.handleChangeFolderPathRequest(ctx, request, userToken);
+    if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST))
+      directorysRequestHandler.handleChangeDirectoryPathRequest(ctx, request, userToken);
     else {
-      String[] uriPaths = uri.split("/");
-      String folderPath = uriPaths[uriPaths.length - 1];
+      String directoryPath = RequestUtils.getRequiredQueryParam(request, "path");
 
-      if (uri.equals("/api/folders") && method.equals(HttpMethod.POST))
-        foldersRequestHandler.handleCreateFolderRequest(ctx, folderPath, userToken);
+      if (uri.startsWith("/api/directories") && method.equals(HttpMethod.PUT))
+        directorysRequestHandler.handleCreateDirectoryRequest(ctx, directoryPath, userToken);
       else if (method.equals(HttpMethod.DELETE))
-        foldersRequestHandler.handleDeleteFolderRequest(ctx, folderPath, userToken);
+        directorysRequestHandler.handleDeleteDirectoryRequest(ctx, directoryPath, userToken);
       else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }

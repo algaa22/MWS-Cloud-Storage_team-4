@@ -4,8 +4,17 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
-import io.minio.*;
-import io.minio.errors.*;
+import io.minio.BucketExistsArgs;
+import io.minio.CreateMultipartUploadResponse;
+import io.minio.GetObjectArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioAsyncClient;
+import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import io.minio.UploadPartResponse;
+import io.minio.errors.InsufficientDataException;
+import io.minio.errors.InternalException;
+import io.minio.errors.XmlParserException;
 import io.minio.messages.Part;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -45,8 +54,7 @@ public class MinioContentRepository implements FileContentRepository {
     if (bucketExists(bucketName)) throw new BucketAlreadyExistsException(bucketName);
 
     try {
-      minioClient.makeBucket(
-          MakeBucketArgs.builder().bucket(MinioConfig.INSTANCE.getUserDataBucketName()).build());
+      minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
     } catch (InsufficientDataException
         | InternalException
         | InvalidKeyException
@@ -75,7 +83,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public String startMultipartUpload(String s3Key) {
-    // TODO: Think about headers...
     Multimap<String, String> headers = createEmptyHeader();
     Multimap<String, String> extraQueryParams = createEmptyHeader();
 
@@ -198,19 +205,23 @@ public class MinioContentRepository implements FileContentRepository {
     InputStream stream = new ByteArrayInputStream(data);
 
     try {
-      minioClient.putObject(
-          PutObjectArgs.builder()
-              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
-              .object(s3Key)
-              .stream(stream, data.length, -1)
-              .contentType(mimeType)
-              .build());
+      minioClient
+          .putObject(
+              PutObjectArgs.builder()
+                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .object(s3Key)
+                  .stream(stream, data.length, -1)
+                  .contentType(mimeType)
+                  .build())
+          .get();
     } catch (InsufficientDataException
         | XmlParserException
         | NoSuchAlgorithmException
         | IOException
         | InvalidKeyException
-        | InternalException e) {
+        | InternalException
+        | InterruptedException
+        | ExecutionException e) {
       throw new RuntimeException(e);
     }
   }
@@ -241,17 +252,21 @@ public class MinioContentRepository implements FileContentRepository {
   @Override
   public void hardDeleteFile(String s3Key) {
     try {
-      minioClient.removeObject(
-          RemoveObjectArgs.builder()
-              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
-              .object(s3Key)
-              .build());
+      minioClient
+          .removeObject(
+              RemoveObjectArgs.builder()
+                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .object(s3Key)
+                  .build())
+          .get();
     } catch (InsufficientDataException
         | XmlParserException
         | NoSuchAlgorithmException
         | IOException
         | InvalidKeyException
-        | InternalException e) {
+        | InternalException
+        | ExecutionException
+        | InterruptedException e) {
       throw new RuntimeException(e);
     }
   }

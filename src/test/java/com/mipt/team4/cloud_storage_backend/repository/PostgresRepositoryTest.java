@@ -5,26 +5,30 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
+import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
-
+import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+//TODO: fix
 public class PostgresRepositoryTest extends BasePostgresTest {
   private static PostgresFileMetadataRepository fileMetadataRepository;
+  private static UserRepository userRepository;
   private static PostgresConnection postgresConnection;
   private static UUID testUserUuid;
 
   // TODO: dodelat
+  // TODO: begit, pres kachat
 
   @BeforeAll
   protected static void beforeAll() {
@@ -32,6 +36,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     postgresConnection = TestUtils.createConnection(postgresContainer);
     fileMetadataRepository = new PostgresFileMetadataRepository(postgresConnection);
+    userRepository = new UserRepository(postgresConnection);
 
     addTestUser();
   }
@@ -109,12 +114,8 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     testUserUuid = UUID.randomUUID();
 
     try {
-      postgresConnection.executeUpdate(
-          "INSERT INTO users (newPath, email, password_hash, username, storage_limit, used_storage, is_active) "
-              + "VALUES (?, ?, ?, ?, ?, ?, ?)",
-          List.of(
-              testUserUuid, "test@example.com", "password", "test_user", 10737418240L, 0, true));
-    } catch (DbExecuteUpdateException e) {
+      userRepository.addUser(new UserEntity(testUserUuid, "name", "email", "password"));
+    } catch (UserAlreadyExistsException e) {
       throw new RuntimeException(e);
     }
   }

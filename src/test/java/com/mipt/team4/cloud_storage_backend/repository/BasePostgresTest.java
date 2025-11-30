@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.repository.database;
+package com.mipt.team4.cloud_storage_backend.repository;
 
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import org.junit.jupiter.api.AfterAll;
@@ -17,16 +17,5 @@ public abstract class BasePostgresTest {
   @AfterAll
   protected static void afterAll() {
     postgresContainer.stop();
-  }
-
-  protected static PostgresConnection createConnection() {
-    PostgresConnection postgresConnection =
-        new PostgresConnection(
-            postgresContainer.getJdbcUrl(),
-            postgresContainer.getUsername(),
-            postgresContainer.getPassword());
-    postgresConnection.connect();
-
-    return postgresConnection;
   }
 }

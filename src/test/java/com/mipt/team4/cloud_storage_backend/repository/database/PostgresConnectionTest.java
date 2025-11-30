@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
+import com.mipt.team4.cloud_storage_backend.repository.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import org.junit.jupiter.api.Test;
 

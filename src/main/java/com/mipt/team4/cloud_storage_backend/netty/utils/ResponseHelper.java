@@ -21,7 +21,7 @@ public class ResponseHelper {
     sendErrorResponse(
         ctx,
         HttpResponseStatus.BAD_REQUEST,
-        "Request {uri: " + uri + ", method: " + method + "} not supported");
+        "Request {uri: " + uri + ", method: " + method + "} not supported"); // TODO: заменить на String.format
   }
 
   public static void sendBadRequestExceptionResponse(

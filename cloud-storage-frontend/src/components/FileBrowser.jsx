@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import { listFolders } from "../api"; // твоя функция API (переименуй под свой бекенд)
+import { listDirectorys } from "../api"; // твоя функция API (переименуй под свой бекенд)
 import "./FileBrowser.css"; // стили ниже
 
 export default function FileBrowser() {
-  const [folders, setFolders] = useState([]);
+  const [folders, setDirectorys] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await listFolders();
-        setFolders(data);
+        const data = await listDirectorys();
+        setDirectorys(data);
       } catch (e) {
         console.error("Ошибка загрузки папок:", e);
       } finally {

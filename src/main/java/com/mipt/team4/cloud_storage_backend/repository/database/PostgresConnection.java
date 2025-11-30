@@ -36,13 +36,12 @@ public class PostgresConnection implements DatabaseConnection {
 
     try {
       connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword);
-      createUsersTable(); // TODO: переместить в userRepository
-      createFilesTable(); // TODO: переместить в fileRepository
-      createRefreshTokensTable();
       // TODO: миграции
     } catch (SQLException e) {
       throw new DbConnectionException(e);
     }
+
+    createTables();
   }
 
   public boolean isConnected() {
@@ -98,6 +97,12 @@ public class PostgresConnection implements DatabaseConnection {
     }
   }
 
+  private void createTables() {
+    createUsersTable();
+    createFilesTable();
+    createRefreshTokensTable();
+  }
+
   private void createFilesTable() {
     String createFilesSql =
         """
@@ -109,7 +114,8 @@ public class PostgresConnection implements DatabaseConnection {
                 mime_type VARCHAR(100),
                 tags VARCHAR(500),
                 visibility VARCHAR(20) DEFAULT 'private',
-                is_deleted BOOLEAN DEFAULT false
+                is_deleted BOOLEAN DEFAULT false,
+                is_directory BOOLEAN DEFAULT false
             )
         """;
 

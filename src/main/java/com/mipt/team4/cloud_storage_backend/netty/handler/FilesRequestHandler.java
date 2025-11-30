@@ -14,9 +14,11 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.FileNotFoundException;
 import java.util.List;
@@ -25,11 +27,16 @@ import java.util.Optional;
 public record FilesRequestHandler(FileController fileController) {
   // TODO: параметры vs заголовки
 
-  public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, String userToken) {
+  public void handleGetFilePathsListRequest(ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     List<String> paths;
 
     try {
-      paths = fileController.getFilePathsList(new GetFilePathsListDto(userToken));
+      boolean includeDirectories =
+              SafeParser.parseBoolean(
+                      "Include directories", RequestUtils.getQueryParam(request, "includeDirectories", "false"));
+      String searchDirectory = RequestUtils.getQueryParam(request, "directory", "");
+
+      paths = fileController.getFilePathsList(new GetFilePathsListDto(userToken, includeDirectories, searchDirectory));
     } catch (ValidationFailedException | UserNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
@@ -78,7 +85,8 @@ public record FilesRequestHandler(FileController fileController) {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken) {
+  public void handleDeleteFileRequest(
+      ChannelHandlerContext ctx, String filePath, String userToken) {
     try {
       fileController.deleteFile(new SimpleFileOperationDto(filePath, userToken));
     } catch (UserNotFoundException
@@ -147,8 +155,6 @@ public record FilesRequestHandler(FileController fileController) {
 
     ResponseHelper.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
   }
-
-  // TODO: выбор метода скачивания
 
   public void handleDownloadFileRequest(
       ChannelHandlerContext ctx, String filePath, String userToken) {

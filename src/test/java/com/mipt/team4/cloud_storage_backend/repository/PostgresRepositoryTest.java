@@ -5,13 +5,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.model.storage.entity.FileEntity;
-import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.util.List;
 import java.util.Optional;
@@ -20,15 +17,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-//TODO: fix
 public class PostgresRepositoryTest extends BasePostgresTest {
   private static PostgresFileMetadataRepository fileMetadataRepository;
-  private static UserRepository userRepository;
   private static PostgresConnection postgresConnection;
   private static UUID testUserUuid;
 
   // TODO: dodelat
-  // TODO: begit, pres kachat
 
   @BeforeAll
   protected static void beforeAll() {
@@ -36,7 +30,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     postgresConnection = TestUtils.createConnection(postgresContainer);
     fileMetadataRepository = new PostgresFileMetadataRepository(postgresConnection);
-    userRepository = new UserRepository(postgresConnection);
 
     addTestUser();
   }
@@ -52,29 +45,29 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
   @Test
   void fileExists_ShouldReturnTrue_WhenFileExists() throws StorageFileAlreadyExistsException {
-    FileEntity testFile = createTestFile();
+    StorageEntity testFile = createTestFile();
 
     fileMetadataRepository.addFile(testFile);
 
-    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getPath()));
+    assertTrue(fileMetadataRepository.fileExists(testFile.getUserId(), testFile.getPath()));
   }
 
   @Test
   void fileExists_ShouldReturnFalse_WhenFileNotFound() throws StorageFileAlreadyExistsException {
-    FileEntity testFile = createTestFile();
+    StorageEntity testFile = createTestFile();
 
-    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getPath()));
+    assertTrue(fileMetadataRepository.fileExists(testFile.getUserId(), testFile.getPath()));
 
     fileMetadataRepository.addFile(testFile);
   }
 
   @Test
   void shouldAddAndGetFile_WithSameContent() throws StorageFileAlreadyExistsException {
-    FileEntity testFile = createTestFile();
+    StorageEntity testFile = createTestFile();
 
     fileMetadataRepository.addFile(testFile);
 
-    Optional<FileEntity> receivedTestFile =
+    Optional<StorageEntity> receivedTestFile =
         fileMetadataRepository.getFile(testUserUuid, "some/newPath.xml");
 
     assertTrue(receivedTestFile.isPresent());
@@ -88,7 +81,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
   @Test
   void shouldThrowException_WhenAddExistentFile() throws StorageFileAlreadyExistsException {
-    FileEntity file = createTestFile();
+    StorageEntity file = createTestFile();
 
     fileMetadataRepository.addFile(file);
 
@@ -99,13 +92,13 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @Test
   void shouldAddAndDeleteFile_WithSameId()
       throws StorageFileAlreadyExistsException, StorageFileNotFoundException {
-    FileEntity testFile = createTestFile();
+    StorageEntity testFile = createTestFile();
 
     fileMetadataRepository.addFile(testFile);
-    assertTrue(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getPath()));
+    assertTrue(fileMetadataRepository.fileExists(testFile.getUserId(), testFile.getPath()));
 
-    fileMetadataRepository.deleteFile(testFile.getOwnerId(), testFile.getPath());
-    assertFalse(fileMetadataRepository.fileExists(testFile.getOwnerId(), testFile.getPath()));
+    fileMetadataRepository.deleteFile(testFile.getUserId(), testFile.getPath());
+    assertFalse(fileMetadataRepository.fileExists(testFile.getUserId(), testFile.getPath()));
   }
 
   private static void addTestUser() {
@@ -114,14 +107,18 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     testUserUuid = UUID.randomUUID();
 
     try {
-      userRepository.addUser(new UserEntity(testUserUuid, "name", "email", "password"));
-    } catch (UserAlreadyExistsException e) {
+      postgresConnection.executeUpdate(
+          "INSERT INTO users (newPath, email, password_hash, username, storage_limit, used_storage, is_active) "
+              + "VALUES (?, ?, ?, ?, ?, ?, ?)",
+          List.of(
+              testUserUuid, "test@example.com", "password", "test_user", 10737418240L, 0, true));
+    } catch (DbExecuteUpdateException e) {
       throw new RuntimeException(e);
     }
   }
 
-  private static FileEntity createTestFile() {
-    return new FileEntity(
+  private static StorageEntity createTestFile() {
+    return new StorageEntity(
         UUID.randomUUID(),
         testUserUuid,
         "some/newPath.xml",
@@ -129,6 +126,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
         "public",
         52,
         false,
-        List.of("some xml"));
+        List.of("some xml"),
+        false);
   }
 }

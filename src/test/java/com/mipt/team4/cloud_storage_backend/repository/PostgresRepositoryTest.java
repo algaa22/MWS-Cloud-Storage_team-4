@@ -41,8 +41,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     postgresConnection.disconnect();
   }
 
-  // TODO: refactor
-
   @Test
   void fileExists_ShouldReturnTrue_WhenFileExists() throws StorageFileAlreadyExistsException {
     StorageEntity testFile = createTestFile();
@@ -102,8 +100,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   }
 
   private static void addTestUser() {
-    // TODO: добавить нормально, через интерфейс
-
     testUserUuid = UUID.randomUUID();
 
     try {

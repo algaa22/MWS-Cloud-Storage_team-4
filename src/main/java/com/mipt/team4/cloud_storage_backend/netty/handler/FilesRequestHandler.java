@@ -30,7 +30,7 @@ public record FilesRequestHandler(FileController fileController) {
   public void handleGetFilePathsListRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken)
       throws UserNotFoundException, ValidationFailedException {
-    // TODO: пагинацияg
+    // TODO: пагинация
     boolean includeDirectories =
         SafeParser.parseBoolean(
             "Include directories",

@@ -77,7 +77,6 @@ public class StorageRepository {
   }
 
   public byte[] downloadFilePart(UUID userId, UUID fileId, long offset, long actualChunkSize) {
-    // TODO: dublirovanie?
     String s3Key = StoragePaths.getS3Key(userId, fileId);
     return contentRepository.downloadFilePart(s3Key, offset, actualChunkSize);
   }

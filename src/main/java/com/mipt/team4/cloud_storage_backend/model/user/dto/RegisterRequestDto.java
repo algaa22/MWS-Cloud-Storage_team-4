@@ -8,7 +8,7 @@ public record RegisterRequestDto(String email, String password, String userName)
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.isEmail(email), // TODO: pattern
+            Validators.isEmail(email),
             Validators.notBlank("Password hash", password),
             Validators.notBlank("User name", userName));
 

@@ -10,9 +10,9 @@ import io.netty.handler.codec.http.*;
 import java.nio.charset.StandardCharsets;
 
 public class ResponseHelper {
-  public static void sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
+  public static ChannelFuture sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
     // TODO: нормальная обработка внутренних ошибок
-    ResponseHelper.sendErrorResponse(
+    return ResponseHelper.sendErrorResponse(
         ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error");
   }
 

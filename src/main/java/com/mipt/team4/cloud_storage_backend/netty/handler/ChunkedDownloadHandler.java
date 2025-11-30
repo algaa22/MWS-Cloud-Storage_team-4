@@ -26,11 +26,10 @@ public class ChunkedDownloadHandler {
   private static final Logger logger = LoggerFactory.getLogger(ChunkedDownloadHandler.class);
   private final FileController fileController;
 
+  // TODO: вынести в класс состояния
   private boolean isInProgress = false;
-  private String currentSessionId;
-  private String currentFilePath; // TODO: зачем, если есть fileInfo
+  private String currentFilePath;
   private String currentUserToken;
-  private long fileSize;
   private long sentBytes = 0;
   private int sentChunks = 0;
   private int totalChunks;
@@ -61,16 +60,13 @@ public class ChunkedDownloadHandler {
     }
 
     isInProgress = true;
-    currentSessionId = UUID.randomUUID().toString();
     totalChunks = calculateTotalChunks(fileInfo.size());
 
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Started chunked download. Session: {}, user: {}, file: {}, size: {}, chunks: {}",
-          currentSessionId,
+          "Started chunked download. User={}, file={}, chunks={}",
           currentUserToken,
           currentFilePath,
-          fileSize,
           totalChunks);
     }
 
@@ -85,7 +81,6 @@ public class ChunkedDownloadHandler {
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
     response.headers().set("X-File-Path", fileInfo.path());
     response.headers().set("X-File-Size", fileInfo.size());
-    // TODO: зачем sessionId? его не нужно отправлять в заголовках
 
     ctx.write(response);
   }
@@ -143,10 +138,9 @@ public class ChunkedDownloadHandler {
 
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Sent chunk {}/{} for session: {}, size: {}",
+          "Sent chunk {}/{}: size={}",
           sentChunks,
           totalChunks,
-          currentSessionId,
           chunkSize);
     }
 
@@ -165,17 +159,15 @@ public class ChunkedDownloadHandler {
 
   public void cleanup() {
     isInProgress = false;
-    currentSessionId = null;
     currentFilePath = null;
     currentUserToken = null;
-    fileSize = 0;
     sentBytes = 0;
     sentChunks = 0;
     totalChunks = 0;
   }
 
   private void handleChunkSendFailure(ChannelHandlerContext ctx, int chunkIndex, Throwable cause) {
-    logger.error("Failed to send chunk {} for session: {}", chunkIndex, currentSessionId);
+    logger.error("Failed to send chunk. Chunk={}, file={}", chunkIndex, currentFilePath);
     ResponseHelper.sendErrorResponse(
             ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, cause.getMessage())
         .addListener(ChannelFutureListener.CLOSE);
@@ -186,19 +178,14 @@ public class ChunkedDownloadHandler {
       if (future.isSuccess()) {
         if (logger.isDebugEnabled())
           logger.debug(
-              "Completed chunked download. Session: {}, file: {}, chunks: {}, bytes: {}",
-              currentSessionId,
+              "Completed chunked download. File={}, chunks={}, bytes={}",
               currentFilePath,
               sentChunks,
               sentBytes);
       } else {
-        Throwable cause = future.cause();
-
         logger.error(
-            "Failed to send last content for download session: {}", currentSessionId, cause);
-        ResponseHelper.sendErrorResponse(
-                ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, cause.getMessage())
-            .addListener(ChannelFutureListener.CLOSE);
+            "Failed to send last content. File={}", currentFilePath);
+        ResponseHelper.sendInternalServerErrorResponse(ctx).addListener(ChannelFutureListener.CLOSE);
       }
     };
   }

@@ -37,6 +37,7 @@ public class ChunkedUploadHandler {
   private static final Logger logger = LoggerFactory.getLogger(ChunkedUploadHandler.class);
   private final FileController fileController;
 
+  // TODO: ненужные поля (кроме isInProgress)
   private boolean isInProgress = false;
   private List<String> currentFileTags;
   private String currentSessionId;
@@ -49,7 +50,7 @@ public class ChunkedUploadHandler {
     this.fileController = fileController;
   }
 
-  public void startChunkedUpload(ChannelHandlerContext ctx, HttpRequest request)
+  public void startChunkedUpload(HttpRequest request)
       throws TransferAlreadyStartedException,
           QueryParameterNotFoundException,
           HeaderNotFoundException,

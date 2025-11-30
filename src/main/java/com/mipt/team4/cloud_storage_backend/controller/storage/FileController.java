@@ -6,6 +6,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
@@ -31,7 +32,10 @@ public class FileController {
   }
 
   public void processFileChunk(UploadChunkDto request)
-      throws ValidationFailedException, UserNotFoundException, CombineChunksToPartException {
+      throws ValidationFailedException,
+          UserNotFoundException,
+          CombineChunksToPartException,
+          UploadSessionNotFoundException {
     request.validate();
     service.uploadChunk(request);
   }
@@ -40,7 +44,9 @@ public class FileController {
       throws MissingFilePartException,
           ValidationFailedException,
           StorageFileAlreadyExistsException,
-          UserNotFoundException, TooSmallFilePartException, CombineChunksToPartException {
+          UserNotFoundException,
+          TooSmallFilePartException,
+          CombineChunksToPartException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", request));
 
     return service.completeChunkedUpload(request);
@@ -91,7 +97,6 @@ public class FileController {
     request.validate();
     service.uploadFile(request);
   }
-
 
   public void changeFileMetadata(ChangeFileMetadataDto request)
       throws ValidationFailedException,

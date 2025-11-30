@@ -13,6 +13,8 @@ public enum StorageConfig {
   private final long defaultStorageLimit;
   private final long accessTokenExpirationSec;
   private final long refreshTokenExpirationSec;
+  private final long maxFileChunkSize;
+  private final long minFilePartSize;
 
   StorageConfig() {
     ConfigSource yamlSource = new YamlConfigSource("config.yml");
@@ -21,6 +23,10 @@ public enum StorageConfig {
     this.maxContentLength = yamlSource.getInt("storage.http.max-content-length").orElseThrow();
     this.fileDownloadChunkSize =
         yamlSource.getLong("storage.http.file-download-chunk-size").orElseThrow();
+    this.maxFileChunkSize =
+            yamlSource.getLong("storage.http.max-file-chunk-size").orElseThrow();
+    this.minFilePartSize =
+            yamlSource.getLong("repository.minio.min-file-part-size").orElseThrow();
     this.defaultStorageLimit =
         yamlSource.getLong("storage.quotas.default-storage-limit").orElseThrow();
     this.accessTokenExpirationSec =
@@ -53,5 +59,13 @@ public enum StorageConfig {
 
   public long getRefreshTokenExpirationSec() {
     return refreshTokenExpirationSec;
+  }
+
+  public long getMaxFileChunkSize() {
+    return maxFileChunkSize;
+  }
+
+  public long getMinFilePartSize() {
+    return minFilePartSize;
   }
 }

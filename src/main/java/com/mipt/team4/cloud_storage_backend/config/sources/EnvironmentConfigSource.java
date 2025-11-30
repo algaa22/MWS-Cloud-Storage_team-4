@@ -1,14 +1,15 @@
 package com.mipt.team4.cloud_storage_backend.config.sources;
 
-import com.mipt.team4.cloud_storage_backend.exception.config.DotEnvLoadException;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
-
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EnvironmentConfigSource extends ConfigSource {
+  private static final Logger logger = LoggerFactory.getLogger(EnvironmentConfigSource.class);
   Map<String, String> envVars = new HashMap<>();
 
   public EnvironmentConfigSource(String filePath) {
@@ -50,6 +51,8 @@ public class EnvironmentConfigSource extends ConfigSource {
           envVars.put(key, value);
         }
       }
-    } catch (IOException _) {}
+    } catch (IOException _) {
+      logger.warn(".env file not found: path={}", filePath);
+    }
   }
 }

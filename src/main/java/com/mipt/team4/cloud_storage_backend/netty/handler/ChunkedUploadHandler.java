@@ -12,6 +12,7 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPa
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
@@ -99,7 +100,7 @@ public class ChunkedUploadHandler {
     try {
       fileController.processFileChunk(
           new UploadChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
-    } catch (ValidationFailedException | UserNotFoundException e) {
+    } catch (ValidationFailedException | UserNotFoundException | UploadSessionNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       return;
     } catch (CombineChunksToPartException e) {

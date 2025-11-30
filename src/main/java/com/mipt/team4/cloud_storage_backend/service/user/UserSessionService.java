@@ -44,12 +44,6 @@ public class UserSessionService {
     return activeSessions.containsKey(token);
   }
 
-  public boolean isValidSession(UUID userId, String token) {
-    // TODO: возможно надо
-    SessionDto session = activeSessions.get(token);
-    return session != null && session.userId().equals(userId);
-  }
-
   public void blacklistToken(String token) throws InvalidSessionException {
     Optional<SessionDto> session = getSession(token);
 

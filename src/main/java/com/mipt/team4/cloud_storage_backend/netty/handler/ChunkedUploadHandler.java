@@ -50,29 +50,20 @@ public class ChunkedUploadHandler {
   }
 
   public void startChunkedUpload(ChannelHandlerContext ctx, HttpRequest request)
-      throws TransferAlreadyStartedException {
+      throws TransferAlreadyStartedException,
+          QueryParameterNotFoundException,
+          HeaderNotFoundException,
+          ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          UserNotFoundException,
+          StorageIllegalAccessException {
     if (isInProgress) throw new TransferAlreadyStartedException();
 
-    try {
-      parseUploadRequestMetadata(request);
-    } catch (QueryParameterNotFoundException | HeaderNotFoundException | ParseException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+    parseUploadRequestMetadata(request);
 
-    try {
-      // TODO: ????
-      fileController.startChunkedUpload(
-          new FileChunkedUploadDto(
-              currentSessionId, currentUserToken, currentFilePath, currentFileTags, 0, 0));
-    } catch (ValidationFailedException
-        | StorageFileAlreadyExistsException
-        | StorageIllegalAccessException
-        | UserNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      cleanup();
-      return;
-    }
+    fileController.startChunkedUpload(
+        new FileChunkedUploadDto(
+            currentSessionId, currentUserToken, currentFilePath, currentFileTags));
 
     isInProgress = true;
     receivedChunks = 0;
@@ -88,7 +79,11 @@ public class ChunkedUploadHandler {
   }
 
   public void handleFileChunk(ChannelHandlerContext ctx, HttpContent content)
-      throws TransferNotStartedYetException {
+      throws TransferNotStartedYetException,
+          UserNotFoundException,
+          UploadSessionNotFoundException,
+          CombineChunksToPartException,
+          ValidationFailedException {
     if (!isInProgress) throw new TransferNotStartedYetException();
     // TODO: не слишком ли большой чанк?
     ByteBuf chunkData = content.content();
@@ -97,17 +92,8 @@ public class ChunkedUploadHandler {
     byte[] chunkBytes = new byte[chunkSize];
     chunkData.getBytes(chunkData.readerIndex(), chunkBytes);
 
-    try {
-      fileController.processFileChunk(
-          new UploadChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
-    } catch (ValidationFailedException | UserNotFoundException | UploadSessionNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    } catch (CombineChunksToPartException e) {
-      ResponseHelper.sendInternalServerErrorResponse(ctx);
-      logger.error("Internal server error: " + e.getMessage()); // TODO: dublirovanie
-      return;
-    }
+    fileController.processFileChunk(
+        new UploadChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
 
     receivedChunks++;
     receivedBytes += chunkSize;
@@ -123,7 +109,14 @@ public class ChunkedUploadHandler {
   }
 
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
-      throws TransferNotStartedYetException {
+      throws TransferNotStartedYetException,
+          UserNotFoundException,
+          UploadSessionNotFoundException,
+          CombineChunksToPartException,
+          ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          TooSmallFilePartException,
+          MissingFilePartException {
     if (!isInProgress) throw new TransferNotStartedYetException();
 
     if (content.content().readableBytes() > 0) handleFileChunk(ctx, content);
@@ -132,18 +125,9 @@ public class ChunkedUploadHandler {
 
     try {
       result = fileController.completeChunkedUpload(currentSessionId);
-    } catch (UserNotFoundException
-        | StorageFileAlreadyExistsException
-        | ValidationFailedException
-        | TooSmallFilePartException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+    } catch (Exception e) {
       cleanup();
-      return;
-    } catch (MissingFilePartException | CombineChunksToPartException e) {
-      ResponseHelper.sendInternalServerErrorResponse(ctx);
-      logger.error("Internal server error: " + e.getMessage());
-      cleanup();
-      return;
+      throw e;
     }
 
     if (logger.isDebugEnabled())

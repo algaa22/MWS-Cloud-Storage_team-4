@@ -26,7 +26,7 @@ public enum StorageConfig {
     this.maxFileChunkSize =
             yamlSource.getLong("storage.http.max-file-chunk-size").orElseThrow();
     this.minFilePartSize =
-            yamlSource.getLong("repository.minio.min-file-part-size").orElseThrow();
+            yamlSource.getLong("storage.repository.minio.min-file-part-size").orElseThrow();
     this.defaultStorageLimit =
         yamlSource.getLong("storage.quotas.default-storage-limit").orElseThrow();
     this.accessTokenExpirationSec =

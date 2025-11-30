@@ -17,62 +17,42 @@ import java.io.FileNotFoundException;
 
 public record DirectoriesRequestHandler(DirectoryController directoryController) {
   public void handleCreateDirectoryRequest(
-      ChannelHandlerContext ctx, String directoryPath, String userToken) {
-    try {
-      directoryController.createDirectory(
-          new SimpleDirectoryOperationDto(userToken, directoryPath));
-    } catch (ValidationFailedException
-        | UserNotFoundException
-        | StorageFileAlreadyExistsException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+      ChannelHandlerContext ctx, String directoryPath, String userToken)
+      throws UserNotFoundException, StorageFileAlreadyExistsException, ValidationFailedException {
+    directoryController.createDirectory(new SimpleDirectoryOperationDto(userToken, directoryPath));
 
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.CREATED, "Directory successfully created");
   }
 
   public void handleChangeDirectoryPathRequest(
-      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+      ChannelHandlerContext ctx, HttpRequest request, String userToken)
+      throws QueryParameterNotFoundException,
+          UserNotFoundException,
+          StorageFileAlreadyExistsException,
+          StorageFileNotFoundException,
+          ValidationFailedException {
     String oldDirectoryPath;
     String newDirectoryPath;
 
-    try {
-      oldDirectoryPath = RequestUtils.getRequiredQueryParam(request, "from");
-      newDirectoryPath = RequestUtils.getRequiredQueryParam(request, "to");
-    } catch (QueryParameterNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+    oldDirectoryPath = RequestUtils.getRequiredQueryParam(request, "from");
+    newDirectoryPath = RequestUtils.getRequiredQueryParam(request, "to");
 
-    try {
-      directoryController.changeDirectoryPath(
-          new ChangeDirectoryPathDto(userToken, oldDirectoryPath, newDirectoryPath));
-    } catch (ValidationFailedException
-        | UserNotFoundException
-        | StorageFileAlreadyExistsException
-        | StorageFileNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+    directoryController.changeDirectoryPath(
+        new ChangeDirectoryPathDto(userToken, oldDirectoryPath, newDirectoryPath));
 
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "Directory path successfully changed");
   }
 
   public void handleDeleteDirectoryRequest(
-      ChannelHandlerContext ctx, String directoryPath, String userToken) {
-    try {
-      // TODO: ошибки обрабатывать в основном хендлере
-      directoryController.deleteDirectory(
-          new SimpleDirectoryOperationDto(userToken, directoryPath));
-    } catch (ValidationFailedException
-        | UserNotFoundException
-        | StorageFileNotFoundException
-        | FileNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+      ChannelHandlerContext ctx, String directoryPath, String userToken)
+      throws UserNotFoundException,
+          StorageFileNotFoundException,
+          ValidationFailedException,
+          FileNotFoundException {
+
+    directoryController.deleteDirectory(new SimpleDirectoryOperationDto(userToken, directoryPath));
 
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "Directory successfully deleted");

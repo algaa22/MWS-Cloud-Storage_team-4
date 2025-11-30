@@ -46,7 +46,7 @@ public class FileController {
           StorageFileAlreadyExistsException,
           UserNotFoundException,
           TooSmallFilePartException,
-          CombineChunksToPartException {
+          CombineChunksToPartException, UploadSessionNotFoundException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", request));
 
     return service.completeChunkedUpload(request);

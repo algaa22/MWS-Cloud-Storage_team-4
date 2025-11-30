@@ -1,14 +1,25 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
+import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
+import java.io.FileNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +57,18 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         } else {
           ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
         }
-      } catch (QueryParameterNotFoundException e) {
+      } catch (QueryParameterNotFoundException
+          | InvalidSessionException
+          | ValidationFailedException
+          | HeaderNotFoundException
+          | UserNotFoundException
+          | UserAlreadyExistsException
+          | InvalidEmailOrPassword
+          | WrongPasswordException
+          | StorageFileNotFoundException
+          | FileNotFoundException
+          | StorageFileAlreadyExistsException
+          | StorageIllegalAccessException e) {
         ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       }
     } else {
@@ -55,7 +77,14 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   }
 
   private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request)
-      throws QueryParameterNotFoundException {
+      throws QueryParameterNotFoundException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          ValidationFailedException,
+          StorageIllegalAccessException,
+          FileNotFoundException,
+          StorageFileAlreadyExistsException,
+          HeaderNotFoundException {
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET))
@@ -80,7 +109,12 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   }
 
   private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request)
-      throws QueryParameterNotFoundException {
+      throws QueryParameterNotFoundException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          ValidationFailedException,
+          FileNotFoundException,
+          StorageFileAlreadyExistsException {
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST))
@@ -96,7 +130,14 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     }
   }
 
-  private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request) {
+  private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws InvalidSessionException,
+          ValidationFailedException,
+          HeaderNotFoundException,
+          UserNotFoundException,
+          UserAlreadyExistsException,
+          InvalidEmailOrPassword,
+          WrongPasswordException {
     // TODO: switch-case?
     if (method.equals(HttpMethod.POST)) {
       if (uri.equals("/api/users/auth/login")) usersRequestHandler.handleLoginRequest(ctx, request);

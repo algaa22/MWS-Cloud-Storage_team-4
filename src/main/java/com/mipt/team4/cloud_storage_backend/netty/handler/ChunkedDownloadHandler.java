@@ -43,7 +43,9 @@ public class ChunkedDownloadHandler {
       throws TransferAlreadyStartedException,
           UserNotFoundException,
           StorageFileNotFoundException,
-          StorageIllegalAccessException {
+          StorageIllegalAccessException,
+          ValidationFailedException,
+          QueryParameterNotFoundException {
     if (isInProgress) throw new TransferAlreadyStartedException();
 
     FileChunkedDownloadDto fileInfo;
@@ -53,10 +55,9 @@ public class ChunkedDownloadHandler {
       fileInfo =
           fileController.getFileDownloadInfo(
               new SimpleFileOperationDto(currentFilePath, currentUserToken));
-    } catch (ValidationFailedException | QueryParameterNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+    } catch (Exception e) {
       cleanup();
-      return;
+      throw e;
     }
 
     isInProgress = true;

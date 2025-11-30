@@ -2,10 +2,18 @@ package com.mipt.team4.cloud_storage_backend.netty.handler;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -25,55 +33,77 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
-    if (msg instanceof HttpRequest request) {
-      handleHttpRequest(ctx, request);
-    } else if (msg instanceof HttpContent content) {
-      handleHttpContent(ctx, content);
+    try {
+      if (msg instanceof HttpRequest request) {
+        handleHttpRequest(ctx, request);
+      } else if (msg instanceof HttpContent content) {
+        handleHttpContent(ctx, content);
+      }
+    } catch (StorageFileAlreadyExistsException
+        | UserNotFoundException
+        | UploadSessionNotFoundException
+        | HeaderNotFoundException
+        | TransferAlreadyStartedException
+        | TransferNotStartedYetException
+        | StorageFileNotFoundException
+        | TooSmallFilePartException
+        | ValidationFailedException
+        | StorageIllegalAccessException
+        | QueryParameterNotFoundException e) {
+      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+    } catch (CombineChunksToPartException | MissingFilePartException e) {
+      ResponseHelper.sendInternalServerErrorResponse(ctx);
+      logger.error("Internal server error: {}", e.getMessage());
     }
   }
 
-  private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest request) {
+  private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws StorageFileAlreadyExistsException,
+          UserNotFoundException,
+          StorageFileNotFoundException,
+          ValidationFailedException,
+          StorageIllegalAccessException,
+          QueryParameterNotFoundException,
+          HeaderNotFoundException,
+          TransferAlreadyStartedException {
     startChunkedTransfer(ctx, request);
   }
 
-  private void startChunkedTransfer(ChannelHandlerContext ctx, HttpRequest request) {
+  private void startChunkedTransfer(ChannelHandlerContext ctx, HttpRequest request)
+      throws StorageFileAlreadyExistsException,
+          UserNotFoundException,
+          ValidationFailedException,
+          StorageIllegalAccessException,
+          QueryParameterNotFoundException,
+          HeaderNotFoundException,
+          TransferAlreadyStartedException,
+          StorageFileNotFoundException {
     String uri = request.uri();
     HttpMethod method = request.method();
 
-    try {
-      // TODO: зачем здесь chunkedDownload
-      if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
-        chunkedUpload.startChunkedUpload(ctx, request);
-      } else if (uri.startsWith("/api/files") && method.equals(HttpMethod.GET)) {
-        chunkedDownload.startChunkedDownload(ctx, request);
-      } else {
-        ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
-      }
-    } catch (TransferAlreadyStartedException
-        | UserNotFoundException
-        | StorageFileNotFoundException
-        | StorageIllegalAccessException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+    if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
+      chunkedUpload.startChunkedUpload(ctx, request);
+    } else if (uri.startsWith("/api/files") && method.equals(HttpMethod.GET)) {
+      chunkedDownload.startChunkedDownload(ctx, request);
+    } else {
+      ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }
 
-  private void handleHttpContent(ChannelHandlerContext ctx, HttpContent content) {
-    try {
-      if (content instanceof LastHttpContent) {
-        chunkedUpload.completeChunkedUpload(ctx, (LastHttpContent) content);
-      } else {
-        chunkedUpload.handleFileChunk(ctx, content);
-      }
-    } catch (TransferNotStartedYetException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+  private void handleHttpContent(ChannelHandlerContext ctx, HttpContent content)
+      throws UserNotFoundException,
+          StorageFileAlreadyExistsException,
+          TooSmallFilePartException,
+          UploadSessionNotFoundException,
+          CombineChunksToPartException,
+          ValidationFailedException,
+          MissingFilePartException,
+          TransferNotStartedYetException {
+    if (content instanceof LastHttpContent) {
+      chunkedUpload.completeChunkedUpload(ctx, (LastHttpContent) content);
+    } else {
+      chunkedUpload.handleFileChunk(ctx, content);
     }
-  }
-
-  private void handleBadRequest(
-      ChannelHandlerContext ctx, String loggerMessage, String responseMessage) {
-    logger.error(loggerMessage);
-
-    ResponseHelper.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, responseMessage);
   }
 
   @Override

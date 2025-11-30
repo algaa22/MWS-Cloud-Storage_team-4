@@ -1,7 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handler;
 
-import ch.qos.logback.core.subst.Token;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
@@ -21,7 +19,6 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
-import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -30,71 +27,51 @@ import java.util.Optional;
 public record UsersRequestHandler(UserController userController) {
   private static final ObjectMapper mapper = new ObjectMapper();
 
-  public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    TokenPairDto tokenPair;
-
-    try {
-      tokenPair =
-          userController.registerUser(
-              new RegisterRequestDto(
-                  RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
-                  RequestUtils.getRequiredHeader(request, "X-Auth-Password"),
-                  RequestUtils.getRequiredHeader(request, "X-Auth-Username")));
-    } catch (ValidationFailedException | HeaderNotFoundException | UserAlreadyExistsException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+  public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, ValidationFailedException, UserAlreadyExistsException {
+    TokenPairDto tokenPair =
+        userController.registerUser(
+            new RegisterRequestDto(
+                RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
+                RequestUtils.getRequiredHeader(request, "X-Auth-Password"),
+                RequestUtils.getRequiredHeader(request, "X-Auth-Username")));
 
     sendTokens(ctx, HttpResponseStatus.CREATED, tokenPair);
   }
 
-  public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request) {
+  public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException,
+          ValidationFailedException,
+          InvalidEmailOrPassword,
+          WrongPasswordException {
     TokenPairDto tokenPair;
 
-    try {
-      tokenPair  =
-          userController.loginUser(
-              new LoginRequestDto(
-                  RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
-                  RequestUtils.getRequiredHeader(request, "X-Auth-Password")));
-    } catch (ValidationFailedException
-        | HeaderNotFoundException
-        | InvalidEmailOrPassword
-        | WrongPasswordException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+    tokenPair =
+        userController.loginUser(
+            new LoginRequestDto(
+                RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
+                RequestUtils.getRequiredHeader(request, "X-Auth-Password")));
 
     sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
   }
 
-  public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    try {
-      userController.logoutUser(
-          new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
-    } catch (ValidationFailedException
-        | InvalidSessionException
-        | HeaderNotFoundException
-        | UserNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+  public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException,
+          UserNotFoundException,
+          InvalidSessionException,
+          ValidationFailedException {
+    userController.logoutUser(
+        new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
   }
 
-  public void handleGetUserRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    UserDto userInfo;
-
-    try {
-      userInfo =
-          userController.getUserInfo(
-              new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
-    } catch (ValidationFailedException | UserNotFoundException | HeaderNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+  public void handleGetUserRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, UserNotFoundException, ValidationFailedException {
+    UserDto userInfo =
+        userController.getUserInfo(
+            new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
@@ -107,43 +84,33 @@ public record UsersRequestHandler(UserController userController) {
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request) {
+  public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, UserNotFoundException, ValidationFailedException {
     Optional<String> newUsername = RequestUtils.getHeader(request, "X-New-Username");
     Optional<String> oldUserPassword = RequestUtils.getHeader(request, "X-Old-Password");
     Optional<String> newUserPassword = RequestUtils.getHeader(request, "X-New-Password");
 
-    try {
-      userController.updateUserInfo(
-          new UpdateUserInfoDto(
-              RequestUtils.getRequiredHeader(request, "X-Auth-Token"),
-              oldUserPassword,
-              newUserPassword,
-              newUsername));
-    } catch (ValidationFailedException | HeaderNotFoundException | UserNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+    userController.updateUserInfo(
+        new UpdateUserInfoDto(
+            RequestUtils.getRequiredHeader(request, "X-Auth-Token"),
+            oldUserPassword,
+            newUserPassword,
+            newUsername));
 
     ResponseHelper.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "User info successfully changed");
   }
 
-  public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request) {
-    TokenPairDto tokenPair;
-
-    try {
-       tokenPair =
-          userController.refresh(
-              new RefreshTokenDto(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
-    } catch (InvalidSessionException | HeaderNotFoundException | ValidationFailedException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
-      return;
-    }
+  public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request) throws HeaderNotFoundException, InvalidSessionException, ValidationFailedException {
+    TokenPairDto tokenPair =
+        userController.refresh(
+            new RefreshTokenDto(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
 
     sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
   }
 
-  private void sendTokens(ChannelHandlerContext ctx, HttpResponseStatus status, TokenPairDto tokenPair) {
+  private void sendTokens(
+      ChannelHandlerContext ctx, HttpResponseStatus status, TokenPairDto tokenPair) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
 

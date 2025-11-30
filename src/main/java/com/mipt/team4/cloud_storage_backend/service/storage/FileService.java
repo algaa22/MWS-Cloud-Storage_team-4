@@ -12,6 +12,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
@@ -72,9 +73,10 @@ public class FileService {
           UserNotFoundException,
           TooSmallFilePartException,
           CombineChunksToPartException,
-          MissingFilePartException {
+          MissingFilePartException,
+          UploadSessionNotFoundException {
     ChunkedUploadState uploadState = activeUploads.get(sessionId);
-    if (uploadState == null) throw new RuntimeException("No such upload session!");
+    if (uploadState == null) throw new UploadSessionNotFoundException(sessionId);
 
     try {
       if (uploadState.getTotalParts() == 0) {
@@ -98,7 +100,7 @@ public class FileService {
               userId,
               uploadState.getPath(),
               MimeTypeDetector.detect(session.path()),
-              "private",
+              FileVisibility.PRIVATE.toString(),
               uploadState.getFileSize(),
               false,
               session.tags(),
@@ -131,7 +133,7 @@ public class FileService {
             userId,
             fileUploadRequest.path(),
             mimeType,
-            "private",
+            FileVisibility.PRIVATE.toString(),
             data.length,
             false,
             fileUploadRequest.tags(),
@@ -254,7 +256,7 @@ public class FileService {
             uploadState.getFileId(),
             uploadState.getPartNum(),
             part);
-    uploadState.getETags().put(uploadState.getPartNum(), eTag);
+    uploadState.addCompletedPart(uploadState.getPartNum(), eTag);
 
     uploadState.increaseTotalParts();
     uploadState.addFileSize(part.length);

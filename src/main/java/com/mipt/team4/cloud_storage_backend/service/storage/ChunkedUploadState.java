@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,22 +10,19 @@ import java.util.UUID;
 
 public class ChunkedUploadState {
   // TODO: сессия не удаляется, если completeMultipartUpload не вызван
-  private final FileChunkedUploadDto session;
-  private final Map<Integer, String> eTags = new HashMap<>();
-  public final List<byte[]> chunks = new ArrayList<>();
-
   private final UUID userId;
   private final UUID fileId;
   private final String path;
+  private final FileChunkedUploadDto session;
 
-  private String uploadId;
   private long fileSize = 0;
   private int totalParts = 0;
-
   private int partSize = 0;
   private int partNum = 0;
 
-  // TODO: читаемость пупупу
+  private final Map<Integer, String> eTags = new HashMap<>();
+  public final List<byte[]> chunks = new ArrayList<>();
+  private String uploadId;
 
   ChunkedUploadState(FileChunkedUploadDto session, UUID userId, UUID fileId, String path) {
     this.session = session;
@@ -47,7 +43,7 @@ public class ChunkedUploadState {
     return totalParts;
   }
 
-  public int getFileSize() {
+  public long getFileSize() {
     return fileSize;
   }
 
@@ -69,6 +65,10 @@ public class ChunkedUploadState {
 
   public Map<Integer, String> getETags() {
     return eTags;
+  }
+
+  public void addCompletedPart(int partIndex, String eTag) {
+    eTags.put(partIndex, eTag);
   }
 
   public FileChunkedUploadDto getSession() {
@@ -95,11 +95,15 @@ public class ChunkedUploadState {
     partSize += amount;
   }
 
-  public int getPartSize() {
+  public long getPartSize() {
     return partSize;
   }
 
-  public void setPartSize(int partSize) {
-    this.partSize = partSize;
+  public void increasePartNum() {
+    partNum++;
+  }
+
+  public void resetPartSize() {
+    partSize = 0;
   }
 }

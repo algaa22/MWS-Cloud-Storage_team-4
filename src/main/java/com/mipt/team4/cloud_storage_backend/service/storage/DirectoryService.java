@@ -6,12 +6,11 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeDirectoryPathDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOperationDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import java.io.FileNotFoundException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,8 +37,8 @@ public class DirectoryService {
             UUID.randomUUID(),
             userId,
             directoryPath,
-            "application/x-directory", // TODO: hardcoding
-            "private", // TODO: hardcoding, нужно создать enum
+            "application/x-directory",
+            FileVisibility.PRIVATE.toString(),
             0,
             false,
             List.of(),
@@ -56,7 +55,8 @@ public class DirectoryService {
     String oldDirectoryPath = changeDirectory.oldDirectoryPath();
     String newDirectoryPath = changeDirectory.newDirectoryPath();
 
-    List<String> directoryFiles = storageRepository.getFilePathsList(userId, true, oldDirectoryPath);
+    List<String> directoryFiles =
+        storageRepository.getFilePathsList(userId, true, oldDirectoryPath);
 
     for (String oldFilePath : directoryFiles) {
       Optional<StorageEntity> fileOpt = storageRepository.getFile(userId, oldFilePath);

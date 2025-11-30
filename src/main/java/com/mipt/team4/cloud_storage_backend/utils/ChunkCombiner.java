@@ -15,8 +15,8 @@ public class ChunkCombiner {
       }
 
       uploadState.chunks.clear();
-      uploadState.partSize = 0;
-      uploadState.partNum++;
+      uploadState.resetPartSize();
+      uploadState.increasePartNum();
 
       return outputStream.toByteArray();
     } catch (IOException e) {

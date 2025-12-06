@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.handler.aggregated;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;

@@ -8,7 +8,7 @@ public enum StorageConfig {
   INSTANCE;
 
   private final String jwtSecretKey;
-  private final int maxContentLength;
+  private final int maxAggregatedContentLength;
   private final long fileDownloadChunkSize;
   private final long defaultStorageLimit;
   private final long accessTokenExpirationSec;
@@ -20,19 +20,19 @@ public enum StorageConfig {
     ConfigSource yamlSource = new YamlConfigSource("config.yml");
     ConfigSource envSource = new EnvironmentConfigSource(".env");
 
-    this.maxContentLength = yamlSource.getInt("storage.http.max-content-length").orElseThrow();
+    this.maxAggregatedContentLength =
+        yamlSource.getInt("storage.http.max-aggregated-content-length").orElseThrow();
     this.fileDownloadChunkSize =
         yamlSource.getLong("storage.http.file-download-chunk-size").orElseThrow();
-    this.maxFileChunkSize =
-            yamlSource.getLong("storage.http.max-file-chunk-size").orElseThrow();
+    this.maxFileChunkSize = yamlSource.getLong("storage.http.max-file-chunk-size").orElseThrow();
     this.minFilePartSize =
-            yamlSource.getLong("storage.repository.minio.min-file-part-size").orElseThrow();
+        yamlSource.getLong("storage.repository.minio.min-file-part-size").orElseThrow();
     this.defaultStorageLimit =
         yamlSource.getLong("storage.quotas.default-storage-limit").orElseThrow();
     this.accessTokenExpirationSec =
         yamlSource.getInt("storage.auth.access-token-expiration-sec").orElseThrow();
     this.refreshTokenExpirationSec =
-            yamlSource.getInt("storage.auth.refresh-token-expiration-sec").orElseThrow();
+        yamlSource.getInt("storage.auth.refresh-token-expiration-sec").orElseThrow();
 
     this.jwtSecretKey = envSource.getString("jwt.secret.key").orElseThrow();
   }
@@ -45,8 +45,8 @@ public enum StorageConfig {
     return jwtSecretKey;
   }
 
-  public int getMaxContentLength() {
-    return maxContentLength;
+  public int getMaxAggregatedContentLength() {
+    return maxAggregatedContentLength;
   }
 
   public long getFileDownloadChunkSize() {

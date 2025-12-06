@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.handler.chunked;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
@@ -30,6 +30,9 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     this.chunkedUpload = new ChunkedUploadHandler(fileController);
     this.chunkedDownload = new ChunkedDownloadHandler(fileController);
   }
+
+  // TODO: При обрыве соединения — загрузка прерывается, файл остаётся недозагруженным?
+  //       (resume-upload)
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {

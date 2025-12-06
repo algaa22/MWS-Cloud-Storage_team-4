@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.handler.aggregated;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -60,17 +60,18 @@ public record FilesRequestHandler(FileController fileController) {
 
   public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException, StorageFileNotFoundException, ValidationFailedException {
-    FileDto fileDto = fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
+    StorageDto storageDto =
+        fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
 
-    rootNode.put("Path", fileDto.path());
-    rootNode.put("Type", fileDto.type());
-    rootNode.put("Visibility", fileDto.visibility());
-    rootNode.put("Size", fileDto.size());
-    rootNode.put("IsDeleted", fileDto.isDeleted());
-    rootNode.put("Tags", FileTagsMapper.toString(fileDto.tags()));
+    rootNode.put("Path", storageDto.path());
+    rootNode.put("Type", storageDto.type());
+    rootNode.put("Visibility", storageDto.visibility());
+    rootNode.put("Size", storageDto.size());
+    rootNode.put("IsDeleted", storageDto.isDeleted());
+    rootNode.put("Tags", FileTagsMapper.toString(storageDto.tags()));
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
@@ -92,7 +93,7 @@ public record FilesRequestHandler(FileController fileController) {
           StorageFileNotFoundException,
           StorageFileAlreadyExistsException,
           ValidationFailedException {
-    Optional<String> newFilePath = RequestUtils.getHeader(request, "X-File-New-Path");
+    Optional<String> newFilePath = RequestUtils.getQueryParam(request, "newPath");
 
     Optional<String> fileVisibility =
         Optional.ofNullable(RequestUtils.getHeader(request, "X-File-New-Visibility", null));
@@ -129,7 +130,12 @@ public record FilesRequestHandler(FileController fileController) {
   }
 
   public void handleDownloadFileRequest(
-      ChannelHandlerContext ctx, String filePath, String userToken) throws UserNotFoundException, StorageFileNotFoundException, ValidationFailedException, StorageIllegalAccessException, FileNotFoundException {
+      ChannelHandlerContext ctx, String filePath, String userToken)
+      throws UserNotFoundException,
+          StorageFileNotFoundException,
+          ValidationFailedException,
+          StorageIllegalAccessException,
+          FileNotFoundException {
     FileDownloadDto fileDownload =
         fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
 

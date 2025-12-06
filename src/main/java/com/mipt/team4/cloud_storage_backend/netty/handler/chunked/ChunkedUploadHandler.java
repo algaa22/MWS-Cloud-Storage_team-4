@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.handler.chunked;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -14,7 +14,6 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadySt
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
@@ -109,6 +108,7 @@ public class ChunkedUploadHandler {
     }
   }
 
+  // TODO: а если коннект резко оборвётся?
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
       throws TransferNotStartedYetException,
           UserNotFoundException,
@@ -154,7 +154,7 @@ public class ChunkedUploadHandler {
   }
 
   private void parseUploadRequestMetadata(HttpRequest request)
-      throws QueryParameterNotFoundException, HeaderNotFoundException, ParseException {
+      throws QueryParameterNotFoundException, HeaderNotFoundException {
     currentSessionId = UUID.randomUUID().toString();
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");

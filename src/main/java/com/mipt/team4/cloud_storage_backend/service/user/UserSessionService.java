@@ -91,10 +91,12 @@ public class UserSessionService {
 
   public UUID extractUserIdFromToken(String token) throws UserNotFoundException {
     if (isBlacklisted(token) || isSessionExpired(token)) {
-      throw new UserNotFoundException("Token expired or blacklisted");
+      throw new UserNotFoundException(token);
     }
+
     Optional<SessionDto> userSession = getSession(token);
     if (userSession.isEmpty()) throw new UserNotFoundException(token);
+
     return userSession.get().userId();
   }
 

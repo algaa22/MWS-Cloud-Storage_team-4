@@ -42,13 +42,16 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   @Override
   public List<String> getFilesPathsList(
       UUID id, boolean includeDirectories, String searchDirectory) {
+    // TODO: параметр recursive
     String query =
-        "SELECT path FROM files WHERE owner_id = ? AND path LIKE ? AND is_deleted = FALSE";
+        "SELECT path FROM files WHERE owner_id = ? AND path LIKE ? AND path NOT LIKE ? AND path != ? AND is_deleted = FALSE";
 
     if (!includeDirectories) query += " AND is_directory = FALSE";
 
     return postgres.executeQuery(
-        query, List.of(id, searchDirectory + "%"), rs -> rs.getString("path"));
+        query,
+        List.of(id, searchDirectory + "%", searchDirectory + "%/_%", searchDirectory),
+        rs -> rs.getString("path"));
   }
 
   @Override

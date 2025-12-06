@@ -76,7 +76,7 @@ public class FileController {
     return service.getFilePathsList(request);
   }
 
-  public FileDto getFileInfo(SimpleFileOperationDto request)
+  public StorageDto getFileInfo(SimpleFileOperationDto request)
       throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
     request.validate();
     return service.getFileInfo(request);

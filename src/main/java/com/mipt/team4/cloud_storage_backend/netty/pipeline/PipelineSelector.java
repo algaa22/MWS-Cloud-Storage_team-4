@@ -4,8 +4,10 @@ import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
-import com.mipt.team4.cloud_storage_backend.netty.handler.AggregatedHttpHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handler.ChunkedHttpHandler;
+import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
+import com.mipt.team4.cloud_storage_backend.netty.handler.aggregated.AggregatedHttpHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handler.chunked.ChunkedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
@@ -46,7 +48,14 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
 
     if (msg instanceof HttpRequest request) {
       // TODO: защита от атак (валидаторы)
-      PipelineType currentPipeline = PipelineType.from(request);
+      PipelineType currentPipeline;
+
+      try {
+        currentPipeline = PipelineType.from(request);
+      } catch (ParseException e) {
+        ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+        return;
+      }
 
       if (previousPipeline != currentPipeline) {
         cleanupPipeline(ctx);
@@ -80,7 +89,7 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
       pipeline.addLast(new ChunkedWriteHandler());
       pipeline.addLast(new ChunkedHttpHandler(fileController));
     } else {
-      pipeline.addLast(new HttpObjectAggregator(StorageConfig.INSTANCE.getMaxContentLength()));
+      pipeline.addLast(new HttpObjectAggregator(StorageConfig.INSTANCE.getMaxAggregatedContentLength()));
       pipeline.addLast(new AggregatedHttpHandler(fileController, directoryController, userController));
     }
   }

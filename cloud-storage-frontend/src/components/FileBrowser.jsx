@@ -30,7 +30,7 @@ export default function FileBrowser() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [newFolderName, setNewFolderName] = useState("");
-  const [renameText, setRenameText] = useState("");
+  const [renameText, setRenameText] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [fileInfoData, setFileInfoData] = useState(null);
@@ -197,13 +197,15 @@ export default function FileBrowser() {
   const handleFileAction = async (action) => {
     if (!selectedItem) return;
 
+    setShowItemMenu(false);
+
     try {
       switch (action) {
         case "download":
           await apiDownloadFile(token, selectedItem.fullPath, selectedItem.name);
           break;
         case "rename":
-          setRenameText(selectedItem.name);
+          setRenameText(selectedItem.name || "");
           break;
         case "delete":
           if (window.confirm(`Удалить "${selectedItem.name}"?`)) {
@@ -226,8 +228,10 @@ export default function FileBrowser() {
       console.error("handleFileAction error:", err);
       setError(`Ошибка: ${err.message}`);
     } finally {
-      setShowItemMenu(false);
-      setSelectedItem(null);
+      if (action !== "rename") {
+          setShowItemMenu(false);
+          setSelectedItem(null);
+      }
     }
   };
 
@@ -300,7 +304,9 @@ export default function FileBrowser() {
       }
 
       await apiRenameFile(token, oldFull, newFull);
-      setRenameText("");
+      setRenameText(null);
+      setSelectedItem(null);
+
       await fetchFiles();
     } catch (err) {
       console.error("Rename error:", err);
@@ -443,7 +449,11 @@ export default function FileBrowser() {
                     >
                       <div className="text-4xl mb-2">📁</div>
                       <p className="truncate text-sm">
-                        {folder.name || folder.fullPath.split("/").filter(Boolean).pop()}
+                        {(() => {
+                          const path = folder.fullPath || "";
+                          const parts = path.split("/").filter(p => p);
+                          return parts.length > 0 ? parts[parts.length - 1] : "Папка";
+                        })()}
                       </p>
                       {folder.fileCount ? (
                           <p className="text-xs text-white/50 mt-1">{folder.fileCount} файлов</p>
@@ -664,13 +674,18 @@ export default function FileBrowser() {
         )}
 
         {/* Rename modal */}
-        {selectedItem && renameText !== "" && (
+        {selectedItem && renameText !== null && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
                 <h3 className="text-xl font-bold mb-4">Переименовать</h3>
                 <input type="text" value={renameText} onChange={(e) => setRenameText(e.target.value)} className="w-full p-3 rounded-xl bg-white/20 mb-4 text-white" />
                 <div className="flex justify-end space-x-3">
-                  <button onClick={() => setRenameText("")} className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30">Отмена</button>
+                  <button onClick={() => {
+                    setRenameText(null);
+                    setSelectedItem(null);
+                  }} className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30">
+                    Отмена
+                  </button>
                   <button onClick={handleRename} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700">Сохранить</button>
                 </div>
               </div>

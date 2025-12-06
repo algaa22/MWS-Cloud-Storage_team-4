@@ -190,7 +190,7 @@ public class FileService {
         userUuid, filePathsRequest.includeDirectories(), filePathsRequest.searchDirectory());
   }
 
-  public FileDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
+  public StorageDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
       throws UserNotFoundException, StorageFileNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(fileInfoRequest.userToken());
 

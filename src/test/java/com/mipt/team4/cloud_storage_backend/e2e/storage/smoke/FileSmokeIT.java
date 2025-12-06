@@ -39,7 +39,7 @@ public class FileSmokeIT extends BaseStorageIT {
   // TODO: проверки на content-type?
 
   @Test
-  public void shouldUploadAndDownloadFile_Chunked() throws IOException, InterruptedException {
+  public void shouldUploadAndDownloadFile_Chunked() throws IOException {
     try (CloseableHttpClient apacheClient = TestUtils.createApacheClient()) {
       FileChunkedTransferITUtils.UploadResult uploadResult =
           FileChunkedTransferITUtils.sendUploadRequest(

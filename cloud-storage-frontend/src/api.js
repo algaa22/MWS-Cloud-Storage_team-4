@@ -24,10 +24,6 @@ function pickTokenFromResponse(data) {
   );
 }
 
-/**
- * LOGIN - Используем только заголовки, как требует сервер
- */
-// Исправленная функция loginRequest в api.js:
 export async function loginRequest(email, password) {
   try {
     console.log("Login request to:", `${BASE}/users/auth/login`);
@@ -52,41 +48,31 @@ export async function loginRequest(email, password) {
     const data = await parseJsonSafe(res);
     console.log("Login success response received");
 
-    // ВОТ КЛЮЧЕВАЯ ЧАСТЬ: получаем AccessToken точно как пришел
-    const token = data?.AccessToken;
+    const accessToken = data?.accessToken || data?.AccessToken || data?.token;
+    const refreshToken = data?.refreshToken || data?.RefreshToken;
 
-    if (!token) {
-      console.error("No AccessToken in response!");
-      throw new Error("Server did not return AccessToken");
+    if (!accessToken) {
+      console.error("No access token in response! Full response:", data);
+      throw new Error("Server did not return access token");
     }
 
-    console.log("=== TOKEN DEBUG ===");
-    console.log("Original token from server:", token);
-    console.log("Token length:", token.length);
-    console.log("Token type:", typeof token);
+    console.log("Access token:", accessToken?.substring(0, 50) + "...");
+    console.log("Refresh token:", refreshToken ? "Present" : "Missing");
 
-    // Проверяем, не обернут ли токен в кавычки
-    if ((token.startsWith('"') && token.endsWith('"')) ||
-        (token.startsWith("'") && token.endsWith("'"))) {
-      console.log("Token is wrapped in quotes, removing them");
-      const unwrapped = token.slice(1, -1);
-      console.log("Unwrapped token:", unwrapped);
-      console.log("Unwrapped length:", unwrapped.length);
-      return unwrapped;
+    if (accessToken) {
+      localStorage.setItem("accessToken", accessToken);
+    }
+    if (refreshToken) {
+      localStorage.setItem("refreshToken", refreshToken);
     }
 
-    // Возвращаем токен как есть
-    return token;
-
+    return accessToken;
   } catch (error) {
     console.error("Login request failed:", error);
     throw error;
   }
 }
 
-/**
- * REGISTER - Используем заголовки
- */
 export async function registerRequest(email, password, username) {
   try {
     console.log("Register request to:", `${BASE}/users/auth/register`);
@@ -120,57 +106,73 @@ export async function registerRequest(email, password, username) {
 
 export async function getUserInfo(token) {
   console.log("=== getUserInfo DEBUG ===");
-  console.log("Token received:", token);
-  console.log("Token length:", token?.length);
 
-  // Проверяем, может токен в кавычках?
-  if (token && typeof token === 'string') {
-    console.log("First char:", token[0]);
-    console.log("Last char:", token[token.length - 1]);
-
-    // Если токен в кавычках, удаляем их
-    let cleanToken = token;
-    if ((token.startsWith('"') && token.endsWith('"')) ||
-        (token.startsWith("'") && token.endsWith("'"))) {
-      cleanToken = token.substring(1, token.length - 1);
-      console.log("Removed quotes, new token:", cleanToken);
-    }
-
-    // Также убираем возможные переносы строк
-    cleanToken = cleanToken.replace(/\n/g, '').replace(/\r/g, '').trim();
-    console.log("Final token to send:", cleanToken);
-
-    const url = `${BASE}/users/info`;
-    console.log("Request URL:", url);
-
-    try {
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": cleanToken
-        }
-      });
-
-      console.log("Response status:", res.status, res.statusText);
-
-      if (!res.ok) {
-        const errorText = await res.text().catch(() => "(no body)");
-        console.error("Error response:", errorText);
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
-      }
-
-      const data = await res.json();
-      console.log("Success! User data:", data);
-      return data;
-
-    } catch (error) {
-      console.error("Fetch error:", error);
-      throw error;
-    }
+  if (!token) {
+    throw new Error("Invalid token provided");
   }
 
-  throw new Error("Invalid token provided");
+  const url = `${BASE}/users/info`;
+  console.log("Request URL:", url);
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Auth-Token": token
+      }
+    });
+
+    console.log("Response status:", res.status, res.statusText);
+
+    if (res.status === 400) {
+      console.log("Token expired, attempting refresh...");
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (refreshToken) {
+        try {
+          const newAccessToken = await refreshTokenRequest(refreshToken);
+          console.log("Token refreshed, retrying user info...");
+
+          // Повторяем запрос с новым токеном
+          const retryRes = await fetch(url, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Auth-Token": newAccessToken
+            }
+          });
+
+          if (!retryRes.ok) {
+            const errorText = await retryRes.text();
+            throw new Error(`HTTP ${retryRes.status}: ${errorText}`);
+          }
+
+          const data = await retryRes.json();
+          console.log("Success after refresh!");
+          return data;
+
+        } catch (refreshError) {
+          console.error("Refresh failed:", refreshError);
+          throw new Error(`Authentication failed: ${refreshError.message}`);
+        }
+      }
+    }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Error response:", errorText);
+      throw new Error(`HTTP ${res.status}: ${errorText}`);
+    }
+
+    const data = await res.json();
+    console.log("Success! User data:", data);
+    return data;
+
+  } catch (error) {
+    console.error("Fetch error:", error);
+    throw error;
+  }
 }
 
 /**
@@ -331,23 +333,33 @@ export const uploadFile = async (token, file, path, onProgress) => {
     throw new Error("Файл не выбран");
   }
 
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+  const useChunkedUpload = file.size > CHUNK_SIZE;
+
+  console.log(`Using ${useChunkedUpload ? 'CHUNKED' : 'SIMPLE'} upload`);
+
+  if (useChunkedUpload) {
+    return await uploadFileChunked(token, file, path, onProgress);
+  } else {
+    return await uploadFileSimple(token, file, path, onProgress);
+  }
+};
+
+/**
+ * Простая загрузка файла (для файлов ≤5MB)
+ */
+const uploadFileSimple = async (token, file, path, onProgress) => {
+  console.log("Using simple upload");
+
   const formData = new FormData();
   formData.append("file", file);
 
-  // Посмотрим, что внутри FormData
-  console.log("FormData entries:");
-  for (let [key, value] of formData.entries()) {
-    console.log(`  ${key}:`, value);
-  }
-
-  const url = `${BASE}/files/upload?path=${encodeURIComponent(path || "/")}`;
+  const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
   console.log("📤 Upload URL:", url);
 
   try {
-    // Создаем контроллер для отслеживания запроса
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.warn("⚠️ Upload timeout after 30 seconds");
       controller.abort();
     }, 30000);
 
@@ -358,8 +370,8 @@ export const uploadFile = async (token, file, path, onProgress) => {
       method: "POST",
       headers: {
         "X-Auth-Token": token,
-        "X-File-Tags": "user_upload"
-        // НЕ добавляем Content-Type для FormData!
+        "X-File-Tags": "user_upload",
+        "X-File-Size": file.size
       },
       body: formData,
       signal: controller.signal
@@ -369,45 +381,184 @@ export const uploadFile = async (token, file, path, onProgress) => {
     const endTime = Date.now();
     console.log(`⏱️ Request took ${endTime - startTime}ms`);
 
-    console.log("📥 Response received:");
-    console.log("- Status:", response.status, response.statusText);
-    console.log("- Headers:", Object.fromEntries(response.headers.entries()));
-    console.log("- OK?:", response.ok);
+    console.log("📥 Response received:", response.status, response.statusText);
 
-    // Получаем ответ как текст сначала
-    const responseText = await response.text();
-    console.log("- Response text length:", responseText.length);
-    console.log("- Response text (first 500 chars):", responseText.substring(0, 500));
+    if (onProgress) onProgress(100);
 
     if (!response.ok) {
-      console.error("❌ Upload failed!");
-      console.error("Full error response:", responseText);
+      const responseText = await response.text();
+      console.error("❌ Upload failed:", responseText);
       throw new Error(`Upload failed: ${response.status} ${responseText}`);
     }
 
-    // Пытаемся парсить как JSON
-    let result;
+    const responseText = await response.text();
     try {
-      result = JSON.parse(responseText);
-      console.log("✅ Upload successful! Parsed result:", result);
+      return JSON.parse(responseText);
     } catch (e) {
-      console.log("⚠️ Response is not valid JSON, returning as text");
-      result = responseText;
+      return responseText;
     }
-
-    return result;
 
   } catch (error) {
-    console.error("🔥 Fetch error in uploadFile:", error);
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-
-    if (error.name === 'AbortError') {
-      throw new Error("Upload timeout - возможно, файл слишком большой или проблемы с сетью");
-    }
+    console.error("🔥 Fetch error:", error);
     throw error;
   }
 };
+
+// Базовый URL, предполагается, что он определен где-то выше в коде.
+// const BASE = "http://localhost:8080/api";
+
+const CHUNK_SIZE = 8 * 1024;
+
+/**
+ * Создает ReadableStream из объекта File для потоковой передачи.
+ * @param {File} file - Объект файла.
+ * @param {function(number): void} onProgress - Колбэк для обновления прогресса.
+ * @returns {ReadableStream}
+ */
+
+const createFileStream = (file, onProgress) => {
+    let offset = 0;
+    const totalSize = file.size;
+    let isReading = false;
+
+    return new ReadableStream({
+        start(controller) {
+            console.log("Stream started for file:", file.name, "size:", totalSize);
+
+            // Сразу начинаем чтение
+            readNextChunk(controller).catch(error => {
+                controller.error(error);
+            });
+        },
+
+        cancel(reason) {
+            console.log("Stream cancelled:", reason);
+        }
+    });
+
+    async function readNextChunk(controller) {
+        if (offset >= totalSize || isReading) {
+            return;
+        }
+
+        isReading = true;
+
+        try {
+            const end = Math.min(offset + CHUNK_SIZE, totalSize);
+            const slice = file.slice(offset, end);
+
+            // Используем arrayBuffer() вместо FileReader для простоты
+            const arrayBuffer = await slice.arrayBuffer();
+            const chunk = new Uint8Array(arrayBuffer);
+
+            // Отправляем чанк в поток
+            controller.enqueue(chunk);
+
+            // Обновляем смещение
+            offset += chunk.byteLength;
+
+            // Обновляем прогресс
+            if (onProgress) {
+                const progress = Math.round((offset / totalSize) * 100);
+                onProgress(progress);
+            }
+
+            console.log(`Chunk ${Math.ceil(offset / CHUNK_SIZE)}: ${chunk.byteLength} bytes, total: ${offset}/${totalSize} (${progress || 0}%)`);
+
+            // Если файл еще не полностью прочитан, запрашиваем следующий чанк
+            if (offset < totalSize) {
+                // Используем requestAnimationFrame или setTimeout для асинхронности
+                await new Promise(resolve => setTimeout(resolve, 0));
+                await readNextChunk(controller);
+            } else {
+                // Файл полностью прочитан
+                console.log("File fully read, closing stream...");
+                controller.close();
+            }
+        } catch (error) {
+            console.error("Error reading chunk:", error);
+            controller.error(error);
+        } finally {
+            isReading = false;
+        }
+    }
+};
+
+/**
+ * Чанкованная загрузка файла (для файлов >5MB)
+ * @param {string} token - Токен авторизации
+ * @param {File} file - Объект файла
+ * @param {string} path - Путь сохранения на сервере
+ * @param {function(number): void} onProgress - Колбэк для обновления прогресса
+ */
+const uploadFileChunked = async (token, file, path, onProgress) => {
+    console.log("Using chunked upload");
+    console.log(`📊 File: ${file.name}, Size: ${file.size} bytes`);
+
+    const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
+    console.log("📤 Upload URL:", url);
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+            console.warn("Upload timeout (30s)");
+        }, 30000);
+
+        console.log("🔄 Creating readable stream...");
+
+        // Более простая альтернатива: используем сразу доступный поток
+        // const fileStream = file.stream();
+
+        const fileStream = createFileStream(file, onProgress);
+
+        console.log("🚀 Sending chunked fetch request...");
+        const startTime = Date.now();
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "X-Auth-Token": token,
+                "X-File-Tags": "user_upload",
+                "X-File-Size": file.size
+            },
+            body: fileStream,
+            signal: controller.signal,
+            duplex: "half"
+        });
+
+        clearTimeout(timeoutId);
+        const endTime = Date.now();
+        console.log(`⏱️ Request took ${endTime - startTime}ms`);
+        console.log("📥 Response received:", response.status, response.statusText);
+
+        if (!response.ok) {
+            const responseText = await response.text();
+            console.error("❌ Upload failed:", responseText);
+            throw new Error(`Upload failed: ${response.status} ${responseText}`);
+        }
+
+        const responseText = await response.text();
+        console.log("📄 Response body:", responseText);
+
+        try {
+            return JSON.parse(responseText);
+        } catch (e) {
+            console.warn("Response is not JSON, returning as text");
+            return responseText;
+        }
+
+    } catch (error) {
+        console.error("🔥 Fetch error during chunked upload:", error);
+
+        if (error.name === 'AbortError') {
+            throw new Error('Upload timeout or cancelled');
+        }
+
+        throw error;
+    }
+};
+
 
 /**
  * downloadFile
@@ -468,11 +619,10 @@ export const deleteFile = async (token, path) => {
 export const renameFile = async (token, oldPath, newPath) => {
   console.log("renameFile request:", { oldPath, newPath });
 
-  const res = await fetch(`${BASE}/files?path=${encodeURIComponent(oldPath)}`, {
+  const res = await fetch(`${BASE}/files?path=${encodeURIComponent(oldPath)}&newPath=${encodeURIComponent(newPath)}`, {
     method: "PUT",
     headers: {
-      "X-Auth-Token": token,
-      "X-File-New-Path": newPath
+      "X-Auth-Token": token
     }
   });
 
@@ -657,3 +807,47 @@ export const updateUserInfo = async (token, updates) => {
 
   return await res.json();
 };
+
+export async function refreshTokenRequest(refreshToken) {
+  try {
+    console.log("Refresh token request");
+
+    const res = await fetch(`${BASE}/users/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Refresh-Token": refreshToken
+      }
+    });
+
+    console.log("Refresh response status:", res.status, res.statusText);
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "(no body)");
+      console.error("Refresh error:", res.status, text);
+      throw new Error(`Token refresh failed: ${res.status} ${text}`);
+    }
+
+    const data = await parseJsonSafe(res);
+    console.log("Refresh response:", data);
+
+    const newAccessToken = data?.accessToken || data?.AccessToken || data?.token;
+    const newRefreshToken = data?.refreshToken || data?.RefreshToken || refreshToken;
+
+    if (!newAccessToken) {
+      throw new Error("No new access token received");
+    }
+
+    // Обновляем токены в localStorage
+    localStorage.setItem("accessToken", newAccessToken);
+    if (newRefreshToken && newRefreshToken !== refreshToken) {
+      localStorage.setItem("refreshToken", newRefreshToken);
+    }
+
+    return newAccessToken;
+
+  } catch (error) {
+    console.error("Refresh token request failed:", error);
+    throw error;
+  }
+}

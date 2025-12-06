@@ -1,17 +1,16 @@
-import { apiRequest } from "./client";
+import api from "./client";
 
+export const userApi = {
+  info() {
+    return api.get("/users/info");
+  },
 
-export const UserAPI = {
-  info: () => apiRequest("/users/info"),
+  update({ newUsername, oldPassword, newPassword }) {
+    const headers = {};
+    if (newUsername) headers["X-New-Username"] = newUsername;
+    if (oldPassword) headers["X-Old-Password"] = oldPassword;
+    if (newPassword) headers["X-New-Password"] = newPassword;
 
-
-  update: (newUsername, oldPassword, newPassword) =>
-      apiRequest("/users/update", {
-        method: "POST",
-        headers: {
-          ...(newUsername ? { "X-New-Username": newUsername } : {}),
-          ...(oldPassword ? { "X-Old-Password": oldPassword } : {}),
-          ...(newPassword ? { "X-New-Password": newPassword } : {})
-        }
-      })
+    return api.post("/users/update", null, { headers });
+  }
 };

@@ -1,10 +1,6 @@
-import axios from "axios";
-
-const api = axios.create({
-  baseURL: "http://localhost:8083/api", // подгони под свой backend
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-export default api;
+// src/api/index.js
+// Реэкспортируем все из существующих файлов
+export * from './auth.js';
+export * from './files.js';
+export * from './directories.js';
+export * from './user.js';

@@ -13,7 +13,7 @@ public class EnvironmentConfigSource extends ConfigSource {
   Map<String, String> envVars = new HashMap<>();
 
   public EnvironmentConfigSource(String filePath) {
-    loadEnvFile(filePath);
+    //loadEnvFile(filePath);
   }
 
   @Override

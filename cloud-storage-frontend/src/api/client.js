@@ -1,19 +1,16 @@
-export const API_BASE = "http://localhost:8082";
+import axios from "axios";
 
+const api = axios.create({
+  baseURL: "http://localhost:8080/api",
+});
 
-export async function apiRequest(path, method = 'GET', headers = {}, body = null) {
-  const response = await fetch(API_BASE + path, {
-    method,
-    headers,
-    body,
-  });
-
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || 'Request failed');
+// автоматически добавляем X-Auth-Token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers["X-Auth-Token"] = token;
   }
+  return config;
+});
 
-
-  return response;
-}
+export default api;

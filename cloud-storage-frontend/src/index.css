@@ -3,5 +3,6 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gradient-to-br from-blue-600 to-indigo-700;
+  background-color: #f2f6ff;
+  font-family: Arial, sans-serif;
 }

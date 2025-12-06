@@ -1,20 +1,39 @@
-import { apiRequest } from './client';
+const BASE = "http://localhost:8081/api";
 
+export async function loginRequest(email, password) {
+  try {
+    const res = await fetch(`${BASE}/users/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Auth-Email": email,
+        "X-Auth-Password": password
+      }
+    });
 
-export async function login(email, password) {
-  const res = await apiRequest('/users/login', 'GET', {
-    'X-Auth-Email': email,
-    'X-Auth-Password': password,
-  });
-  return res.json();
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.token;
+  } catch {
+    return null;
+  }
 }
 
+export async function registerRequest(email, password, username) {
+  try {
+    const res = await fetch(`${BASE}/users/auth/register`, {
+      method: "POST",
+      headers: {
+        "X-Auth-Email": email,
+        "X-Auth-Password": password,
+        "X-Auth-Username": username
+      }
+    });
 
-export async function register(email, username, password) {
-  const res = await apiRequest('/users/register', 'GET', {
-    'X-Auth-Email': email,
-    'X-Auth-Password': password,
-    'X-Auth-Username': username,
-  });
-  return res.json();
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.token;
+  } catch {
+    return null;
+  }
 }

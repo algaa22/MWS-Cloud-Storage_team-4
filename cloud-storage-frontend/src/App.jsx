@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import FileBrowser from './components/FileBrowser';
 import Landing from './pages/Landing';
+import SettingsPage from './components/SettingsPage';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -43,6 +44,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/register" element={<Register />} />
             <Route
                 path="/files/*"

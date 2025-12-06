@@ -85,7 +85,7 @@ public record UsersRequestHandler(UserController userController) {
   }
 
   public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request)
-      throws HeaderNotFoundException, UserNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, UserNotFoundException, ValidationFailedException, WrongPasswordException {
     Optional<String> newUsername = RequestUtils.getHeader(request, "X-New-Username");
     Optional<String> oldUserPassword = RequestUtils.getHeader(request, "X-Old-Password");
     Optional<String> newUserPassword = RequestUtils.getHeader(request, "X-New-Password");

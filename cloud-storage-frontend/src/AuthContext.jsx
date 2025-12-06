@@ -10,16 +10,54 @@ export function AuthProvider({ children }) {
     return storedUser ? JSON.parse(storedUser) : null;
   });
   const [token, setToken] = useState(() => {
-    return localStorage.getItem("token") || null;
+    return localStorage.getItem("accessToken") || null; // Изменено с "token" на "accessToken"
   });
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Используем ref для предотвращения бесконечных рендеров
   const isInitialMount = useRef(true);
 
+  // Функция для обновления данных пользователя
+  const updateUser = (updates) => {
+    setUser(prev => {
+      const updated = { ...prev, ...updates };
+      localStorage.setItem("user", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Функция для загрузки информации о пользователе
+  const loadUserData = async (authToken) => {
+    try {
+      console.log("AuthContext: Loading user info with token...");
+      const userInfo = await getUserInfo(authToken);
+      console.log("AuthContext: User loaded successfully:", userInfo);
+
+      // Извлекаем username из разных возможных полей
+      const username = userInfo.username || userInfo.Username ||
+          userInfo.email?.split('@')[0] || 'User';
+
+      const email = userInfo.email || userInfo.Email || '';
+
+      const formattedUser = {
+        username,
+        email,
+        ...userInfo
+      };
+
+      localStorage.setItem("user", JSON.stringify(formattedUser));
+      setUser(formattedUser);
+      setIsAuthenticated(true);
+      return formattedUser;
+
+    } catch (error) {
+      console.error('AuthContext: Failed to load user info:', error.message);
+      return null;
+    }
+  };
+
   useEffect(() => {
-    console.log("AuthContext: useEffect triggered, token changed:",
+    console.log("AuthContext: useEffect triggered, token:",
         token ? `${token.substring(0, 20)}...` : "null");
 
     async function loadUser() {
@@ -32,36 +70,27 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        console.log("AuthContext: Loading user info with token...");
-        const userInfo = await getUserInfo(token);
-        console.log("AuthContext: User loaded successfully");
-
-        // Сохраняем пользователя в localStorage и state
-        localStorage.setItem("user", JSON.stringify(userInfo));
-        setUser(userInfo);
-        setIsAuthenticated(true);
+        await loadUserData(token);
       } catch (error) {
         console.error('AuthContext: Failed to load user info:', error.message);
 
-        // Только для определенных ошибок очищаем
+        // Очищаем при ошибках авторизации
         if (error.message.includes("401") || error.message.includes("403") ||
             error.message.includes("TOKEN_INVALID") || error.message.includes("expired")) {
           console.log("AuthContext: Token invalid, clearing all data");
-          localStorage.removeItem("token");
+          localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
         }
-        // Для других ошибок (сеть и т.д.) не очищаем - может быть временная проблема
       } finally {
         setLoading(false);
       }
     }
 
-    // Загружаем пользователя только при изменении token
     loadUser();
-  }, [token]); // Зависимость только от token
+  }, [token]);
 
   async function login(email, password) {
     console.log('AuthContext: login called with email:', email);
@@ -75,19 +104,16 @@ export function AuthProvider({ children }) {
         throw new Error("No token received from server");
       }
 
-      // Сохраняем токен
-      localStorage.setItem("token", t);
+      // Сохраняем токен как accessToken
+      localStorage.setItem("accessToken", t);
       setToken(t);
 
-      // Получаем информацию о пользователе
-      console.log("AuthContext: Fetching user info...");
-      const userInfo = await getUserInfo(t);
-      console.log("AuthContext: User info received");
+      // Загружаем информацию о пользователе
+      const userData = await loadUserData(t);
 
-      // Сохраняем пользователя
-      localStorage.setItem("user", JSON.stringify(userInfo));
-      setUser(userInfo);
-      setIsAuthenticated(true);
+      if (!userData) {
+        throw new Error("Failed to load user data");
+      }
 
       console.log('AuthContext: Login completed successfully');
       return true;
@@ -96,7 +122,7 @@ export function AuthProvider({ children }) {
       console.error('AuthContext: Login failed:', error.message);
 
       // Очищаем при ошибке
-      localStorage.removeItem("token");
+      localStorage.removeItem("accessToken");
       localStorage.removeItem("user");
       setToken(null);
       setUser(null);
@@ -117,24 +143,31 @@ export function AuthProvider({ children }) {
         throw new Error("No token received");
       }
 
-      // Сохраняем токен
-      localStorage.setItem("token", t);
+      // Сохраняем токен как accessToken
+      localStorage.setItem("accessToken", t);
       setToken(t);
 
-      // Получаем пользователя
-      const userInfo = await getUserInfo(t);
+      // Создаем временного пользователя до загрузки данных с сервера
+      const tempUser = {
+        username: username,
+        email: email
+      };
 
-      // Сохраняем пользователя
-      localStorage.setItem("user", JSON.stringify(userInfo));
-      setUser(userInfo);
+      localStorage.setItem("user", JSON.stringify(tempUser));
+      setUser(tempUser);
       setIsAuthenticated(true);
+
+      // Загружаем полные данные с сервера
+      setTimeout(() => {
+        loadUserData(t);
+      }, 100);
 
       console.log('AuthContext: Registration successful');
       return true;
 
     } catch (error) {
       console.error('AuthContext: Registration failed:', error.message);
-      localStorage.removeItem("token");
+      localStorage.removeItem("accessToken");
       localStorage.removeItem("user");
       setToken(null);
       setUser(null);
@@ -145,7 +178,7 @@ export function AuthProvider({ children }) {
 
   function logout() {
     console.log('AuthContext: logout called');
-    localStorage.removeItem("token");
+    localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);
@@ -159,10 +192,11 @@ export function AuthProvider({ children }) {
     register,
     logout,
     loading,
-    isAuthenticated
+    isAuthenticated,
+    updateUser,
+    loadUserData
   };
 
-  // Логируем только важные изменения
   if (isInitialMount.current) {
     console.log("AuthContext: Initial mount");
     isInitialMount.current = false;

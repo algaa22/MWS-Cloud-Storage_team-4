@@ -766,34 +766,105 @@ export const deleteFolder = async (token, folderPath) => {
   return true;
 };
 
+
 /**
- * updateUserInfo
+ * updateUserInfo - версия с заголовками
  */
 export const updateUserInfo = async (token, updates) => {
-  console.log("updateUserInfo request:", updates);
+  console.log("=== UPDATE USER INFO DEBUG ===");
+  console.log("Updates:", updates);
 
-  const headers = {
-    "Content-Type": "application/json"
+  // Проверка: если меняем пароль, нужен старый пароль
+  if (updates.newPassword && !updates.oldPassword) {
+    throw new Error("Old password is required when changing password");
+  }
+
+  // Создаем тело запроса
+  const body = {
+    userToken: token
   };
 
+  // Создаем заголовки
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Auth-Token": token
+  };
+
+  // Добавляем данные в заголовки
   if (updates.newUsername) {
-    headers["X-New-Username"] = updates.newUsername;
+    body.newName = updates.newUsername; // Для JSON тела
+    headers["X-New-Username"] = updates.newUsername; // Для заголовка
   }
+
   if (updates.oldPassword && updates.newPassword) {
-    headers["X-Old-Password"] = updates.oldPassword;
-    headers["X-New-Password"] = updates.newPassword;
+    body.oldPassword = updates.oldPassword; // Для JSON тела
+    body.newPassword = updates.newPassword; // Для JSON тела
+    headers["X-Old-Password"] = updates.oldPassword; // Для заголовка
+    headers["X-New-Password"] = updates.newPassword; // Для заголовка
   }
 
-  const res = await fetchWithTokenRefresh(`${BASE}/users/update`, {
-    method: "POST",
-    headers
-  }, token);
+  console.log("Headers:", headers);
+  console.log("Body:", JSON.stringify(body));
 
-  console.log("updateUserInfo status:", res.status);
+  const url = `${BASE}/users/auth/update`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(body) // Отправляем оба способа
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => "(no body)");
+      throw new Error(`Update failed: ${res.status} ${errorText}`);
+    }
+
+    return await res.json();
+
+  } catch (error) {
+    console.error("Update error:", error);
+    throw error;
+  }
+};
+
+export const updateUserInfoComprehensive = async (token, updates) => {
+  console.log("=== COMPREHENSIVE UPDATE USER INFO ===");
+  console.log("Updates:", updates);
+
+  // Проверяем, что есть что обновлять
+  if (!updates.NewUsername && !updates.newPassword) {
+    throw new Error("Please provide NewUsername or newPassword to update");
+  }
+
+  const body = {
+    userToken: token
+  };
+
+  // Копируем все поля из updates в body
+  if (updates.NewUsername) body.NewUsername = updates.NewUsername;
+  if (updates.newPassword) body.newPassword = updates.newPassword;
+
+  // Может быть и другие поля, если сервер их поддерживает
+  if (updates.email) body.email = updates.email;
+  if (updates.name) body.name = updates.name;
+
+  console.log("Final request body:", JSON.stringify(body));
+
+  const url = `${BASE}/users/auth/update`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Auth-Token": token
+    },
+    body: JSON.stringify(body)
+  });
 
   if (!res.ok) {
-    const txt = await res.text().catch(() => "(no body)");
-    throw new Error(`Update failed: ${res.status} ${txt}`);
+    const errorText = await res.text().catch(() => "(no body)");
+    throw new Error(`Update failed: ${res.status} ${errorText}`);
   }
 
   return await res.json();

@@ -102,6 +102,11 @@ export default function FileBrowser() {
         storageData.total = userData.storageTotal || userData.totalStorage || userData.storageLimit || userData.total || storageData.total;
       }
 
+      if (userData.freeSpace !== undefined && userData.storageLimit !== undefined) {
+        storageData.used = userData.storageLimit - userData.freeSpace;
+        storageData.total = userData.storageLimit;
+      }
+
       // Вычисляем остальные значения
       const percentage = storageData.total > 0 ? Math.round((storageData.used / storageData.total) * 100) : 0;
 
@@ -412,9 +417,13 @@ export default function FileBrowser() {
     if (!bytes && bytes !== 0) return "—";
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+
+    const value = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
+    const unit = sizes[i];
+
+    return `${value} ${unit}`;
   };
 
   const getFileIcon = (fileName) => {
@@ -473,7 +482,7 @@ export default function FileBrowser() {
 
   return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white p-4">
-        {/* Header */}
+
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Облачное хранилище</h1>
 
@@ -482,23 +491,37 @@ export default function FileBrowser() {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 hover:bg-white/30 transition-colors"
             >
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                {user?.username?.[0]?.toUpperCase() || "U"}
+              {/* Иконка с первой буквой username */}
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                {((user?.name || user?.email || "U").charAt(0)).toUpperCase()}
               </div>
-              <span>{user?.username || "Пользователь"}</span>
+              {/* Real username или email если username нет */}
+              <span className="font-medium">
+        {user?.name || user?.email?.split('@')[0] || "Пользователь"}
+      </span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
 
             {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white/20 backdrop-blur-xl rounded-xl shadow-2xl py-3 z-50">
+                <div className="absolute right-0 mt-2 w-72 bg-white/20 backdrop-blur-xl rounded-2xl shadow-2xl py-3 z-50 border border-white/10">
                   <div className="px-4 py-3 border-b border-white/20">
-                    <p className="font-medium">{user?.email || user?.username}</p>
-                    <p className="text-sm text-white/70 mt-1">Лимит хранилища: {storageInfo.formattedTotal}</p>
-
-                    {/* Прогресс-бар использования памяти */}
-                    <div className="mt-3">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-white/80">Использовано: {storageInfo.formattedUsed}</span>
-                        <span className="text-white/80">{storageInfo.percentage}%</span>
+                    {/* Иконка и имя в меню */}
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                        {(user?.name?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-bold">{user?.username || user?.email?.split('@')[0] || "Пользователь"}</p>
+                        {user?.email && <p className="text-sm text-white/70">{user.email}</p>}
+                      </div>
+                    </div>
+                    {/* Информация о хранилище */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/80">Хранилище:</span>
+                        <span className="text-blue-300">{storageInfo.formattedUsed}</span>
                       </div>
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
@@ -506,22 +529,36 @@ export default function FileBrowser() {
                             style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
                         />
                       </div>
-                      <div className="text-xs text-white/60 mt-1 text-right">
-                        Осталось: {formatFileSize(storageInfo.total - storageInfo.used)}
+                      <div className="flex justify-between text-xs text-white/60">
+                        <span>Лимит: {storageInfo.formattedTotal}</span>
+                        <span>Осталось: {formatFileSize(storageInfo.total - storageInfo.used)}</span>
                       </div>
                     </div>
                   </div>
+
+                  {/* Кнопка настроек профиля */}
                   <button
-                      onClick={() => {}}
-                      className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        navigate("/settings");
+                      }}
+                      className="flex items-center w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-t border-white/10"
                   >
-                    Настройки профиля
+                    <svg className="w-5 h-5 mr-3 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Настройки профиля</span>
                   </button>
+
                   <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
+                      className="flex items-center w-full text-left px-4 py-3 hover:bg-white/10 transition-colors text-red-300 border-t border-white/10"
                   >
-                    Выйти
+                    <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Выйти</span>
                   </button>
                 </div>
             )}

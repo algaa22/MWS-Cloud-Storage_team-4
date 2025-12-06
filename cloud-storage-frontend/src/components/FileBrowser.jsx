@@ -19,7 +19,6 @@ export default function FileBrowser() {
 
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
-  // Variant B: currentPath ends with '/', root = ''
   const [currentPath, setCurrentPath] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -27,14 +26,15 @@ export default function FileBrowser() {
   const [itemMenuPosition, setItemMenuPosition] = useState({ x: 0, y: 0 });
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [newFolderName, setNewFolderName] = useState("");
   const [renameText, setRenameText] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [fileInfoData, setFileInfoData] = useState(null);
 
-  // normalize helper: ensure folder path ends with slash, root is ''
   const normalizeCurrentPath = (p) => {
     if (!p || p === "" || p === "/") return "";
     return p.endsWith("/") ? p : p + "/";
@@ -59,12 +59,9 @@ export default function FileBrowser() {
 
     console.log("Calling fetchFiles...");
     fetchFiles();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, currentPath]); // Зависимость от token и currentPath
+  }, [token, currentPath]);
 
   const computeFullPathForItem = (item) => {
-    // If item already has fullPath, use it
     if (item.fullPath && typeof item.fullPath === "string" && item.fullPath !== "") {
       return item.fullPath;
     }
@@ -72,12 +69,10 @@ export default function FileBrowser() {
     const name = item.name || "";
     const parent = item.path || "";
 
-    // If parent is empty => top-level
     if (!parent || parent === "." || parent === "/") {
       return item.type === "folder" ? `${name}/` : `${name}`;
     }
 
-    // Ensure parent ends with '/'
     const parentNormalized = parent.endsWith("/") ? parent : parent + "/";
 
     return item.type === "folder" ? `${parentNormalized}${name}/` : `${parentNormalized}${name}`;
@@ -104,7 +99,6 @@ export default function FileBrowser() {
         return;
       }
 
-      // Normalize items: compute fullPath and keep name/type/size/fileCount
       const normalized = data.map((it) => {
         const type = it.type || (it.name && it.name.endsWith("/") ? "folder" : "file");
         const rawName = it.name || "";
@@ -122,15 +116,11 @@ export default function FileBrowser() {
         };
       });
 
-      // Filter only items that belong to currentPath (robustness)
-      // Because server returns items for this directory, but double-check:
       const filtered = normalized.filter((it) => {
-        // If currentPath is root ('') accept items whose fullPath does not contain a parent prefix
         if (!currentPath) return true;
         return it.fullPath.startsWith(currentPath);
       });
 
-      // Split into files and folders (folders first)
       const foldersList = filtered.filter((it) => it.type === "folder");
       const filesList = filtered.filter((it) => it.type !== "folder");
 
@@ -157,14 +147,50 @@ export default function FileBrowser() {
     console.log("Clicked item:", item);
 
     if (item.type === "folder") {
-      // item.fullPath is like 'folder123/' or 'parent/sub/'
       const folderPath = normalizeCurrentPath(item.fullPath);
       setCurrentPath(folderPath);
     } else {
-      // For file - open context menu
       setSelectedItem(item);
       setShowItemMenu(true);
       setItemMenuPosition({ x: event.clientX, y: event.clientY });
+    }
+  };
+
+  const getReadableFileType = (mimeType) => {
+    const typeMap = {
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Документ Word',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Таблица Excel',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'Презентация',
+      'application/pdf': 'PDF документ',
+      'image/jpeg': 'Изображение JPEG',
+      'image/png': 'Изображение PNG',
+      'image/gif': 'Изображение GIF',
+      'text/plain': 'Текстовый файл',
+      'application/msword': 'Документ Word',
+      'application/vnd.ms-excel': 'Таблица Excel',
+      'application/zip': 'Архив ZIP',
+      'application/x-rar-compressed': 'Архив RAR',
+      'audio/mpeg': 'Аудио MP3',
+      'video/mp4': 'Видео MP4',
+      'application/octet-stream': 'Бинарный файл'
+    };
+
+    return typeMap[mimeType] || mimeType || "—";
+  };
+
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "—";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateString;
     }
   };
 
@@ -187,11 +213,13 @@ export default function FileBrowser() {
           break;
         case "info":
           const info = await apiGetFileInfo(token, selectedItem.fullPath);
-          alert(
-              `Информация о файле:\nИмя: ${info.name}\nРазмер: ${formatFileSize(
-                  info.size || 0
-              )}\nТип: ${info.type || info.mime_type || "—"}\nДата: ${info.modified ? new Date(info.modified).toLocaleString() : "—"}`
-          );
+          const formattedInfo = {
+            ...info,
+            readableType: getReadableFileType(info.mimeType || info.type || info.mime_type),
+            formattedDate: formatDateForDisplay(info.updatedAt || info.lastModified || info.modified)
+          };
+          setFileInfoData(formattedInfo);
+          setShowInfoModal(true);
           break;
       }
     } catch (err) {
@@ -207,21 +235,34 @@ export default function FileBrowser() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    console.log("File selected:", {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    });
+
     try {
       setUploading(true);
       setUploadProgress(0);
 
-      // currentPath already ends with '/', root = ''
       const targetPath = currentPath ? `${currentPath}${file.name}` : file.name;
+      console.log("Target path:", targetPath);
+
+      console.log("File size before upload:", file.size, "bytes");
+
       await apiUploadFile(token, file, targetPath, (progress) => {
+        console.log("Upload progress:", progress);
         setUploadProgress(progress);
       });
 
+      console.log("Upload completed successfully");
       await fetchFiles();
       setShowUploadModal(false);
+
     } catch (err) {
       console.error("Upload error:", err);
-      setError("Ошибка при загрузке файла");
+      console.error("Error details:", err.message);
+      setError(`Ошибка при загрузке файла: ${err.message}`);
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -233,7 +274,6 @@ export default function FileBrowser() {
     if (!newFolderName.trim()) return;
 
     try {
-      // currentPath ends with '/' or is ''
       const folderPath = currentPath ? `${currentPath}${newFolderName}/` : `${newFolderName}/`;
       await apiCreateFolder(token, folderPath);
       setNewFolderName("");
@@ -251,13 +291,11 @@ export default function FileBrowser() {
     try {
       const item = selectedItem;
       const isFolder = item.type === "folder";
-      const oldFull = item.fullPath; // folder: ends with '/', file: no trailing '/'
+      const oldFull = item.fullPath;
       let newFull;
       if (isFolder) {
-        // replace last segment before trailing slash
         newFull = oldFull.replace(/[^\/]+\/$/, `${renameText}/`);
       } else {
-        // replace last segment after last slash
         newFull = oldFull.replace(/[^\/]+$/, renameText);
       }
 
@@ -304,10 +342,8 @@ export default function FileBrowser() {
     return iconMap[extension] || "📄";
   };
 
-  // Breadcrumb helpers for variant B (trailing slash)
   const renderBreadcrumbs = () => {
     if (!currentPath) return null;
-    // remove trailing slash for splitting
     const trimmed = currentPath.replace(/\/$/, "");
     const parts = trimmed.split("/").filter(Boolean);
     return parts.map((part, index, arr) => {
@@ -351,9 +387,7 @@ export default function FileBrowser() {
                     <p className="text-sm text-white/70">Хранилище: 2.4 GB / 10 GB</p>
                   </div>
                   <button
-                      onClick={() => {
-                        /* profile */
-                      }}
+                      onClick={() => {}}
                       className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors"
                   >
                     Настройки профиля
@@ -503,6 +537,112 @@ export default function FileBrowser() {
                   </button>
                   <button onClick={handleCreateFolder} className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700">
                     Создать
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+
+        {/* File Info Modal */}
+        {showInfoModal && fileInfoData && (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+              <div className="bg-gradient-to-br from-gray-900 to-blue-900 rounded-2xl p-6 w-full max-w-md border border-white/10 shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-white flex items-center">
+                    <span className="mr-2">📄</span>
+                    Информация о файле
+                  </h3>
+                  <button
+                      onClick={() => {
+                        setShowInfoModal(false);
+                        setFileInfoData(null);
+                      }}
+                      className="text-white/70 hover:text-white text-2xl bg-white/10 w-8 h-8 rounded-full flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* File header */}
+                  <div className="flex items-center space-x-4 p-4 bg-white/10 rounded-xl">
+                    <div className="text-4xl">{getFileIcon(fileInfoData.name)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-lg truncate">{fileInfoData.name}</div>
+                      <div className="text-sm text-white/60 truncate">{fileInfoData.path}</div>
+                    </div>
+                  </div>
+
+                  {/* Info grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/10 p-3 rounded-xl">
+                      <div className="text-sm text-white/60 mb-1">Размер</div>
+                      <div className="font-medium">{formatFileSize(fileInfoData.size)}</div>
+                    </div>
+
+                    <div className="bg-white/10 p-3 rounded-xl">
+                      <div className="text-sm text-white/60 mb-1">Тип файла</div>
+                      <div className="font-medium">{fileInfoData.readableType}</div>
+                    </div>
+
+                    <div className="bg-white/10 p-3 rounded-xl">
+                      <div className="text-sm text-white/60 mb-1">Видимость</div>
+                      <div className="font-medium">
+                    <span className={fileInfoData.visibility === 'public' ? 'text-green-400' : 'text-blue-400'}>
+                      {fileInfoData.visibility === 'public' ? 'Публичный' : 'Приватный'}
+                    </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/10 p-3 rounded-xl">
+                      <div className="text-sm text-white/60 mb-1">Дата изменения</div>
+                      <div className="font-medium">{fileInfoData.formattedDate}</div>
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  {fileInfoData.tags && (
+                      <div className="bg-white/10 p-3 rounded-xl">
+                        <div className="text-sm text-white/60 mb-2">Теги</div>
+                        <div className="flex flex-wrap gap-2">
+                          {fileInfoData.tags.split(',').map((tag, idx) => (
+                              <span key={idx} className="bg-blue-500/30 text-blue-300 px-3 py-1 rounded-full text-sm">
+                        {tag.trim()}
+                      </span>
+                          ))}
+                        </div>
+                      </div>
+                  )}
+
+                  {/* Additional info */}
+                  <div className="bg-white/10 p-3 rounded-xl">
+                    <div className="text-sm text-white/60 mb-2">Дополнительно</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>MIME-тип:</div>
+                      <div className="text-white/80">{fileInfoData.mimeType || fileInfoData.type || "—"}</div>
+
+                      {fileInfoData.isolated !== undefined && (
+                          <>
+                            <div>Изолирован:</div>
+                            <div className={fileInfoData.isolated ? 'text-yellow-400' : 'text-green-400'}>
+                              {fileInfoData.isolated ? 'Да' : 'Нет'}
+                            </div>
+                          </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                      onClick={() => {
+                        setShowInfoModal(false);
+                        setFileInfoData(null);
+                      }}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-colors flex items-center"
+                  >
+                    <span className="mr-2">✓</span>
+                    Закрыть
                   </button>
                 </div>
               </div>

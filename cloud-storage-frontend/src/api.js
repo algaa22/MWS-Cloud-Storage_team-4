@@ -118,14 +118,6 @@ export async function registerRequest(email, password, username) {
   }
 }
 
-/**
- * Get user info
- */
-// В файле api.js исправьте функцию getUserInfo:
-
-/**
- * Get user info - используем правильный endpoint из документации
- */
 export async function getUserInfo(token) {
   console.log("=== getUserInfo DEBUG ===");
   console.log("Token received:", token);
@@ -207,69 +199,109 @@ export async function logoutRequest(token) {
  * getFiles - Согласно документации
  */
 export const getFiles = async (token, currentPath = "") => {
-  console.log("getFiles called with path:", currentPath || "(root)");
+  console.log("=== GET FILES WITH GET REQUEST FOR SIZE ===");
 
-  if (!token) {
-    console.error("No token provided to getFiles");
-    throw new Error("Требуется авторизация");
-  }
+  if (!token) throw new Error("Требуется авторизация");
 
-  // Собираем параметры согласно документации
   const params = new URLSearchParams();
   params.append("includeDirectories", "true");
+  if (currentPath) params.append("directory", currentPath);
 
-  if (currentPath) {
-    params.append("directory", currentPath);
-  }
-
-  const url = `${BASE}/files/list?${params.toString()}`;
-  console.log("Request URL:", url);
+  const listUrl = `${BASE}/files/list?${params.toString()}`;
 
   try {
-    const response = await fetch(url, {
+    // 1. Получаем список файлов
+    const listResponse = await fetch(listUrl, {
       headers: {
         "X-Auth-Token": token,
         "Accept": "application/json"
       }
     });
 
-    console.log("Response status:", response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "(no body)");
-      console.error("Server error:", response.status, errorText);
-      throw new Error(`Server error ${response.status}: ${errorText}`);
+    if (!listResponse.ok) {
+      const errorText = await listResponse.text();
+      throw new Error(`Server error ${listResponse.status}: ${errorText}`);
     }
 
-    const data = await parseJsonSafe(response);
-    console.log("Raw response:", data);
+    const data = await listResponse.json();
+    const files = data?.files || data || [];
 
-    // Обрабатываем ответ
-    if (Array.isArray(data)) {
-      return data.map(item => ({
-        name: item.name || "",
-        path: item.path || "",
-        type: item.type || (item.name && item.name.endsWith("/") ? "folder" : "file"),
-        size: item.size || 0,
-        id: item.id || item.path || Math.random().toString(),
-        fullPath: item.path || ""
-      }));
-    } else if (data && Array.isArray(data.files)) {
-      return data.files.map(item => ({
-        name: item.name || "",
-        path: item.path || "",
-        type: item.type || (item.name && item.name.endsWith("/") ? "folder" : "file"),
-        size: item.size || 0,
-        id: item.id || item.path || Math.random().toString(),
-        fullPath: item.path || ""
-      }));
+    console.log(`Found ${files.length} items`);
+
+    // 2. Функция для получения информации о файле через GET
+    const getFileInfo = async (filePath) => {
+      try {
+        const infoUrl = `${BASE}/files/info?path=${encodeURIComponent(filePath)}`;
+        console.log(`Getting info for: ${filePath}`);
+
+        const infoResponse = await fetch(infoUrl, {
+          headers: {
+            "X-Auth-Token": token,
+            "Accept": "application/json"
+          }
+        });
+
+        if (infoResponse.ok) {
+          const infoData = await infoResponse.json();
+          console.log(`Info for ${filePath}:`, infoData);
+          return infoData;
+        } else {
+          console.warn(`Cannot get info for ${filePath}:`, infoResponse.status);
+        }
+      } catch (error) {
+        console.warn(`Error getting info for ${filePath}:`, error.message);
+      }
+      return null;
+    };
+
+    // 3. Обрабатываем файлы
+    const result = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const item = files[i];
+      const path = item.path || "";
+      const name = path.split('/').pop() || `file_${i}`;
+
+      // Определяем тип
+      let type = "file";
+      let size = 0;
+      let fileInfo = null;
+
+      if (path.endsWith('/')) {
+        // Это папка
+        type = "folder";
+      } else {
+        // Это файл - получаем информацию
+        fileInfo = await getFileInfo(path);
+        if (fileInfo) {
+          size = fileInfo.Size || fileInfo.size || 0;
+        }
+
+        // Небольшая пауза между запросами
+        if (i < files.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+
+      result.push({
+        name: name,
+        path: path,
+        type: type,
+        size: size,
+        id: item.id || path || Math.random().toString(),
+        fullPath: path,
+        _raw: item,
+        _info: fileInfo // сохраняем полную информацию для отладки
+      });
+
+      console.log(`Processed ${i+1}/${files.length}: ${name} (${type}, ${size} bytes)`);
     }
 
-    console.warn("Unexpected response format:", data);
-    return [];
+    console.log("Final result:", result);
+    return result;
 
   } catch (err) {
-    console.error("Fetch error in getFiles:", err);
+    console.error("Error in getFiles:", err);
     throw err;
   }
 };
@@ -277,37 +309,103 @@ export const getFiles = async (token, currentPath = "") => {
 /**
  * uploadFile
  */
+
 export const uploadFile = async (token, file, path, onProgress) => {
-  console.log("uploadFile request:", { path, file: file?.name });
+  console.log("=== UPLOAD FILE DEBUG ===");
+  console.log("Parameters received:");
+  console.log("- Token length:", token?.length);
+  console.log("- Token first 20 chars:", token?.substring(0, 20));
+  console.log("- File:", file);
+  console.log("- File name:", file?.name);
+  console.log("- File size:", file?.size);
+  console.log("- File type:", file?.type);
+  console.log("- Path:", path);
+
+  if (!token) {
+    console.error("❌ NO TOKEN PROVIDED!");
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!file) {
+    console.error("❌ NO FILE PROVIDED!");
+    throw new Error("Файл не выбран");
+  }
 
   const formData = new FormData();
   formData.append("file", file);
 
-  const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
-  console.log("Upload URL:", url);
+  // Посмотрим, что внутри FormData
+  console.log("FormData entries:");
+  for (let [key, value] of formData.entries()) {
+    console.log(`  ${key}:`, value);
+  }
+
+  const url = `${BASE}/files/upload?path=${encodeURIComponent(path || "/")}`;
+  console.log("📤 Upload URL:", url);
 
   try {
-    const res = await fetch(url, {
+    // Создаем контроллер для отслеживания запроса
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.warn("⚠️ Upload timeout after 30 seconds");
+      controller.abort();
+    }, 30000);
+
+    console.log("🔄 Sending fetch request...");
+
+    const startTime = Date.now();
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "X-Auth-Token": token,
         "X-File-Tags": "user_upload"
+        // НЕ добавляем Content-Type для FormData!
       },
-      body: formData
+      body: formData,
+      signal: controller.signal
     });
 
-    console.log("uploadFile status:", res.status, res.statusText);
+    clearTimeout(timeoutId);
+    const endTime = Date.now();
+    console.log(`⏱️ Request took ${endTime - startTime}ms`);
 
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "(no body)");
-      console.error("Upload failed:", res.status, txt);
-      throw new Error(`Upload failed: ${res.status} ${txt}`);
+    console.log("📥 Response received:");
+    console.log("- Status:", response.status, response.statusText);
+    console.log("- Headers:", Object.fromEntries(response.headers.entries()));
+    console.log("- OK?:", response.ok);
+
+    // Получаем ответ как текст сначала
+    const responseText = await response.text();
+    console.log("- Response text length:", responseText.length);
+    console.log("- Response text (first 500 chars):", responseText.substring(0, 500));
+
+    if (!response.ok) {
+      console.error("❌ Upload failed!");
+      console.error("Full error response:", responseText);
+      throw new Error(`Upload failed: ${response.status} ${responseText}`);
     }
 
-    return await res.json();
-  } catch (err) {
-    console.error("Upload error:", err);
-    throw err;
+    // Пытаемся парсить как JSON
+    let result;
+    try {
+      result = JSON.parse(responseText);
+      console.log("✅ Upload successful! Parsed result:", result);
+    } catch (e) {
+      console.log("⚠️ Response is not valid JSON, returning as text");
+      result = responseText;
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error("🔥 Fetch error in uploadFile:", error);
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+
+    if (error.name === 'AbortError') {
+      throw new Error("Upload timeout - возможно, файл слишком большой или проблемы с сетью");
+    }
+    throw error;
   }
 };
 
@@ -320,8 +418,7 @@ export const downloadFile = async (token, path, filename) => {
   const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
   const res = await fetch(url, {
     headers: {
-      "X-Auth-Token": token,
-      "X-Download-Mode": "chunked"
+      "X-Auth-Token": token
     }
   });
 
@@ -392,25 +489,98 @@ export const renameFile = async (token, oldPath, newPath) => {
 /**
  * getFileInfo
  */
+/**
+ * getFileInfo - Получение полной информации о файле
+ */
 export const getFileInfo = async (token, path) => {
-  console.log("getFileInfo request:", { path });
+  console.log("=== GET FILE INFO DEBUG ===");
+  console.log("Token length:", token?.length);
+  console.log("Path:", path);
 
-  const res = await fetch(`${BASE}/files/info?path=${encodeURIComponent(path)}`, {
-    headers: {
-      "X-Auth-Token": token,
-      "Accept": "application/json"
-    }
-  });
-
-  console.log("getFileInfo status:", res.status, res.statusText);
-
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "(no body)");
-    console.error("Failed to get file info:", res.status, txt);
-    throw new Error(`Failed to get file info: ${res.status} ${txt}`);
+  if (!token) {
+    console.error("❌ No token provided");
+    throw new Error("Требуется авторизация");
   }
-  return res.json();
+
+  if (!path) {
+    console.error("❌ No path provided");
+    throw new Error("Путь к файлу не указан");
+  }
+
+  const url = `${BASE}/files/info?path=${encodeURIComponent(path)}`;
+  console.log("Request URL:", url);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "X-Auth-Token": token,
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      }
+    });
+
+    console.log("Response status:", response.status, response.statusText);
+    console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "(no body)");
+      console.error("Error response:", errorText);
+      throw new Error(`Failed to get file info: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("Raw response from server:", data);
+
+    // ВАЖНО: Сервер возвращает данные с заглавными буквами!
+    // "Path", "Type", "Size", "Visibility" и т.д.
+
+    // Форматируем ответ в удобный вид
+    const fileInfo = {
+      // Основная информация
+      name: data.name || data.Name || path.split('/').pop() || "unknown",
+      path: data.path || data.Path || path,
+      size: data.size || data.Size || 0,
+      type: data.type || data.Type || "unknown",
+      mimeType: data.mimeType || data.MimeType || data.Type || "application/octet-stream",
+
+      // Дополнительная информация
+      visibility: data.visibility || data.Visibility || "private",
+      isolated: data.isolated || data.Isolated || false,
+      tags: data.tags || data.Tags || "",
+
+      // Даты (если есть)
+      createdAt: data.createdAt || data.CreatedAt || data.created_at,
+      updatedAt: data.updatedAt || data.UpdatedAt || data.updated_at,
+      lastModified: data.lastModified || data.LastModified,
+
+      // Размер в читаемом формате
+      formattedSize: formatFileSize(data.size || data.Size || 0),
+
+      // Исходные данные для отладки
+      _raw: data
+    };
+
+    console.log("Formatted file info:", fileInfo);
+    return fileInfo;
+
+  } catch (error) {
+    console.error("Fetch error in getFileInfo:", error);
+    throw error;
+  }
 };
+
+/**
+ * Вспомогательная функция для форматирования размера файла
+ */
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
 
 /**
  * createFolder - Используем /api/directories как в документации

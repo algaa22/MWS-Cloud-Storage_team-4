@@ -24,6 +24,64 @@ function pickTokenFromResponse(data) {
   );
 }
 
+/**
+ * Вспомогательная функция для выполнения запроса с автоматическим обновлением токена
+ */
+async function fetchWithTokenRefresh(url, options = {}, token) {
+  // Если токен не передан явно, берем из localStorage
+  let currentToken = token || localStorage.getItem("accessToken");
+
+  if (!currentToken) {
+    throw new Error("Требуется авторизация");
+  }
+
+  // Добавляем токен в заголовки, если его там еще нет
+  const headers = {
+    ...options.headers,
+    "X-Auth-Token": currentToken
+  };
+
+  try {
+    const res = await fetch(url, { ...options, headers });
+
+    // Если токен истек (400 или 401 статус), пытаемся обновить
+    if (res.status === 400 || res.status === 401) {
+      console.log("Token expired, attempting refresh...");
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (refreshToken) {
+        try {
+          const newAccessToken = await refreshTokenRequest(refreshToken);
+          console.log("Token refreshed successfully");
+
+          // Обновляем токен в заголовках
+          headers["X-Auth-Token"] = newAccessToken;
+
+          // Повторяем запрос с новым токеном
+          const retryRes = await fetch(url, { ...options, headers });
+
+          if (!retryRes.ok) {
+            const errorText = await retryRes.text();
+            throw new Error(`HTTP ${retryRes.status}: ${errorText}`);
+          }
+
+          return retryRes;
+        } catch (refreshError) {
+          console.error("Refresh failed:", refreshError);
+          throw new Error(`Authentication failed: ${refreshError.message}`);
+        }
+      } else {
+        throw new Error("Refresh token not available");
+      }
+    }
+
+    return res;
+  } catch (error) {
+    console.error("Fetch error:", error);
+    throw error;
+  }
+}
+
 export async function loginRequest(email, password) {
   try {
     console.log("Login request to:", `${BASE}/users/auth/login`);
@@ -104,6 +162,7 @@ export async function registerRequest(email, password, username) {
   }
 }
 
+// В api.js, обновите функцию getUserInfo чтобы она возвращала информацию о хранилище:
 export async function getUserInfo(token) {
   console.log("=== getUserInfo DEBUG ===");
 
@@ -115,49 +174,14 @@ export async function getUserInfo(token) {
   console.log("Request URL:", url);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTokenRefresh(url, {
       method: "GET",
       headers: {
-        "Content-Type": "application/json",
-        "X-Auth-Token": token
+        "Content-Type": "application/json"
       }
-    });
+    }, token);
 
     console.log("Response status:", res.status, res.statusText);
-
-    if (res.status === 400) {
-      console.log("Token expired, attempting refresh...");
-      const refreshToken = localStorage.getItem("refreshToken");
-
-      if (refreshToken) {
-        try {
-          const newAccessToken = await refreshTokenRequest(refreshToken);
-          console.log("Token refreshed, retrying user info...");
-
-          // Повторяем запрос с новым токеном
-          const retryRes = await fetch(url, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Auth-Token": newAccessToken
-            }
-          });
-
-          if (!retryRes.ok) {
-            const errorText = await retryRes.text();
-            throw new Error(`HTTP ${retryRes.status}: ${errorText}`);
-          }
-
-          const data = await retryRes.json();
-          console.log("Success after refresh!");
-          return data;
-
-        } catch (refreshError) {
-          console.error("Refresh failed:", refreshError);
-          throw new Error(`Authentication failed: ${refreshError.message}`);
-        }
-      }
-    }
 
     if (!res.ok) {
       const errorText = await res.text();
@@ -167,7 +191,69 @@ export async function getUserInfo(token) {
 
     const data = await res.json();
     console.log("Success! User data:", data);
-    return data;
+
+    // Парсим информацию о хранилище из ответа
+    // Могут быть разные форматы, проверяем все варианты
+    const storageInfo = {
+      used: 0,
+      total: 10 * 1024 * 1024 * 1024, // 10GB по умолчанию
+      formattedUsed: '0 Bytes',
+      formattedTotal: '10 GB',
+      percentage: 0
+    };
+
+    // Вариант 1: Прямые поля storageUsed/storageTotal
+    if (data.storageUsed !== undefined) {
+      storageInfo.used = data.storageUsed;
+    } else if (data.usedStorage !== undefined) {
+      storageInfo.used = data.usedStorage;
+    } else if (data.used !== undefined) {
+      storageInfo.used = data.used;
+    } else if (data.Used !== undefined) {
+      storageInfo.used = data.Used;
+    }
+
+    if (data.storageTotal !== undefined) {
+      storageInfo.total = data.storageTotal;
+    } else if (data.totalStorage !== undefined) {
+      storageInfo.total = data.totalStorage;
+    } else if (data.total !== undefined) {
+      storageInfo.total = data.total;
+    } else if (data.Total !== undefined) {
+      storageInfo.total = data.Total;
+    } else if (data.storageLimit !== undefined) {
+      storageInfo.total = data.storageLimit;
+    } else if (data.limit !== undefined) {
+      storageInfo.total = data.limit;
+    }
+
+    // Вариант 2: Объект storage
+    if (data.storage && typeof data.storage === 'object') {
+      storageInfo.used = data.storage.used || data.storage.Used || storageInfo.used;
+      storageInfo.total = data.storage.total || data.storage.Total || data.storage.limit || storageInfo.total;
+    }
+
+    // Вариант 3: Свободное место (free)
+    if (data.freeSpace !== undefined && data.storageLimit !== undefined) {
+      storageInfo.used = data.storageLimit - data.freeSpace;
+      storageInfo.total = data.storageLimit;
+    } else if (data.free !== undefined && data.total !== undefined) {
+      storageInfo.used = data.total - data.free;
+      storageInfo.total = data.total;
+    }
+
+    // Вычисляем процент и форматируем
+    storageInfo.percentage = storageInfo.total > 0 ?
+        Math.round((storageInfo.used / storageInfo.total) * 100) : 0;
+    storageInfo.formattedUsed = formatBytes(storageInfo.used);
+    storageInfo.formattedTotal = formatBytes(storageInfo.total);
+
+    console.log("Parsed storage info:", storageInfo);
+
+    return {
+      ...data,
+      storageInfo
+    };
 
   } catch (error) {
     console.error("Fetch error:", error);
@@ -182,17 +268,22 @@ export async function logoutRequest(token) {
   try {
     console.log("Logout request");
 
-    const res = await fetch(`${BASE}/users/auth/logout`, {
-      method: "POST",
-      headers: {
-        "X-Auth-Token": token
-      }
-    });
+    const res = await fetchWithTokenRefresh(`${BASE}/users/auth/logout`, {
+      method: "POST"
+    }, token);
 
     console.log("Logout response status:", res.status);
+
+    // Очищаем токены при выходе
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+
     return res.ok;
   } catch (error) {
     console.error("Logout request failed:", error);
+    // В любом случае очищаем токены при ошибке выхода
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     return false;
   }
 }
@@ -213,12 +304,11 @@ export const getFiles = async (token, currentPath = "") => {
 
   try {
     // 1. Получаем список файлов
-    const listResponse = await fetch(listUrl, {
+    const listResponse = await fetchWithTokenRefresh(listUrl, {
       headers: {
-        "X-Auth-Token": token,
         "Accept": "application/json"
       }
-    });
+    }, token);
 
     if (!listResponse.ok) {
       const errorText = await listResponse.text();
@@ -236,12 +326,11 @@ export const getFiles = async (token, currentPath = "") => {
         const infoUrl = `${BASE}/files/info?path=${encodeURIComponent(filePath)}`;
         console.log(`Getting info for: ${filePath}`);
 
-        const infoResponse = await fetch(infoUrl, {
+        const infoResponse = await fetchWithTokenRefresh(infoUrl, {
           headers: {
-            "X-Auth-Token": token,
             "Accept": "application/json"
           }
-        });
+        }, token);
 
         if (infoResponse.ok) {
           const infoData = await infoResponse.json();
@@ -311,7 +400,6 @@ export const getFiles = async (token, currentPath = "") => {
 /**
  * uploadFile
  */
-
 export const uploadFile = async (token, file, path, onProgress) => {
   console.log("=== UPLOAD FILE DEBUG ===");
   console.log("Parameters received:");
@@ -366,32 +454,32 @@ const uploadFileSimple = async (token, file, path, onProgress) => {
     console.log("🔄 Sending fetch request...");
 
     const startTime = Date.now();
-    const response = await fetch(url, {
+
+    const res = await fetchWithTokenRefresh(url, {
       method: "POST",
       headers: {
-        "X-Auth-Token": token,
         "X-File-Tags": "user_upload",
         "X-File-Size": file.size
       },
       body: formData,
       signal: controller.signal
-    });
+    }, token);
 
     clearTimeout(timeoutId);
     const endTime = Date.now();
     console.log(`⏱️ Request took ${endTime - startTime}ms`);
 
-    console.log("📥 Response received:", response.status, response.statusText);
+    console.log("📥 Response received:", res.status, res.statusText);
 
     if (onProgress) onProgress(100);
 
-    if (!response.ok) {
-      const responseText = await response.text();
+    if (!res.ok) {
+      const responseText = await res.text();
       console.error("❌ Upload failed:", responseText);
-      throw new Error(`Upload failed: ${response.status} ${responseText}`);
+      throw new Error(`Upload failed: ${res.status} ${responseText}`);
     }
 
-    const responseText = await response.text();
+    const responseText = await res.text();
     try {
       return JSON.parse(responseText);
     } catch (e) {
@@ -405,61 +493,72 @@ const uploadFileSimple = async (token, file, path, onProgress) => {
 };
 
 const uploadFileChunked = async (token, file, path, onProgress) => {
-    console.log("Using modern fetch stream upload");
+  console.log("Using modern fetch stream upload");
 
-    const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
-    const totalSize = file.size;
-    let uploaded = 0;
+  const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
+  const totalSize = file.size;
+  let uploaded = 0;
 
-    try {
-        const controller = new AbortController();
+  try {
+    const controller = new AbortController();
 
-        const fileStream = new ReadableStream({
-            async start(controller) {
-                try {
-                    for (let offset = 0; offset < totalSize; offset += CHUNK_SIZE) {
-                        const end = Math.min(offset + CHUNK_SIZE, totalSize);
-                        const chunk = file.slice(offset, end);
-                        const arrayBuffer = await chunk.arrayBuffer();
+    const fileStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for (let offset = 0; offset < totalSize; offset += CHUNK_SIZE) {
+            const end = Math.min(offset + CHUNK_SIZE, totalSize);
+            const chunk = file.slice(offset, end);
+            const arrayBuffer = await chunk.arrayBuffer();
 
-                        controller.enqueue(arrayBuffer);
+            controller.enqueue(arrayBuffer);
 
-                        uploaded = end;
-                        if (onProgress) {
-                            onProgress(Math.round((uploaded / totalSize) * 100));
-                        }
-
-                        console.log(`Sent chunk: ${offset}-${end} (${arrayBuffer.byteLength} bytes)`);
-
-                        await new Promise(resolve => setTimeout(resolve, 10));
-                    }
-                    controller.close();
-
-                } catch (error) {
-                    controller.error(error);
-                }
+            uploaded = end;
+            if (onProgress) {
+              onProgress(Math.round((uploaded / totalSize) * 100));
             }
-        });
 
-        console.log("📤 Sending request with stream body...");
+            console.log(`Sent chunk: ${offset}-${end} (${arrayBuffer.byteLength} bytes)`);
 
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "X-Auth-Token": token,
-                "X-File-Tags": "user_upload",
-                "X-File-Size": file.size
-            },
-            body: fileStream,
-            signal: controller.signal,
-            duplex: "half"
-        });
-    } catch (error) {
-        // ...
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
+          controller.close();
+
+        } catch (error) {
+          controller.error(error);
+        }
+      }
+    });
+
+    console.log("📤 Sending request with stream body...");
+
+    const res = await fetchWithTokenRefresh(url, {
+      method: "POST",
+      headers: {
+        "X-File-Tags": "user_upload",
+        "X-File-Size": file.size
+      },
+      body: fileStream,
+      signal: controller.signal,
+      duplex: "half"
+    }, token);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Upload failed: ${res.status} ${errorText}`);
     }
+
+    const responseText = await res.text();
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      return responseText;
+    }
+
+  } catch (error) {
+    console.error("🔥 Stream upload error:", error);
+    throw error;
+  }
 };
-
-
 
 /**
  * downloadFile
@@ -468,29 +567,31 @@ export const downloadFile = async (token, path, filename) => {
   console.log("downloadFile request:", { path, filename });
 
   const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
-  const res = await fetch(url, {
-    headers: {
-      "X-Auth-Token": token
+
+  try {
+    const res = await fetchWithTokenRefresh(url, {}, token);
+
+    console.log("downloadFile status:", res.status, res.statusText);
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "(no body)");
+      console.error("Download failed:", res.status, txt);
+      throw new Error(`Download failed: ${res.status} ${txt}`);
     }
-  });
 
-  console.log("downloadFile status:", res.status, res.statusText);
-
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "(no body)");
-    console.error("Download failed:", res.status, txt);
-    throw new Error(`Download failed: ${res.status} ${txt}`);
+    const blob = await res.blob();
+    const urlBlob = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = urlBlob;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(urlBlob);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error("Download error:", error);
+    throw error;
   }
-
-  const blob = await res.blob();
-  const urlBlob = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = urlBlob;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(urlBlob);
-  document.body.removeChild(a);
 };
 
 /**
@@ -499,10 +600,13 @@ export const downloadFile = async (token, path, filename) => {
 export const deleteFile = async (token, path) => {
   console.log("deleteFile request:", { path });
 
-  const res = await fetch(`${BASE}/files?path=${encodeURIComponent(path)}`, {
-    method: "DELETE",
-    headers: { "X-Auth-Token": token }
-  });
+  const res = await fetchWithTokenRefresh(
+      `${BASE}/files?path=${encodeURIComponent(path)}`,
+      {
+        method: "DELETE"
+      },
+      token
+  );
 
   console.log("deleteFile status:", res.status, res.statusText);
 
@@ -520,12 +624,11 @@ export const deleteFile = async (token, path) => {
 export const renameFile = async (token, oldPath, newPath) => {
   console.log("renameFile request:", { oldPath, newPath });
 
-  const res = await fetch(`${BASE}/files?path=${encodeURIComponent(oldPath)}&newPath=${encodeURIComponent(newPath)}`, {
-    method: "PUT",
-    headers: {
-      "X-Auth-Token": token
-    }
-  });
+  const url = `${BASE}/files?path=${encodeURIComponent(oldPath)}&newPath=${encodeURIComponent(newPath)}`;
+
+  const res = await fetchWithTokenRefresh(url, {
+    method: "PUT"
+  }, token);
 
   console.log("renameFile status:", res.status, res.statusText);
 
@@ -539,9 +642,6 @@ export const renameFile = async (token, oldPath, newPath) => {
 
 /**
  * getFileInfo
- */
-/**
- * getFileInfo - Получение полной информации о файле
  */
 export const getFileInfo = async (token, path) => {
   console.log("=== GET FILE INFO DEBUG ===");
@@ -562,16 +662,14 @@ export const getFileInfo = async (token, path) => {
   console.log("Request URL:", url);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTokenRefresh(url, {
       headers: {
-        "X-Auth-Token": token,
         "Accept": "application/json",
         "Content-Type": "application/json"
       }
-    });
+    }, token);
 
     console.log("Response status:", response.status, response.statusText);
-    console.log("Response headers:", Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "(no body)");
@@ -582,32 +680,19 @@ export const getFileInfo = async (token, path) => {
     const data = await response.json();
     console.log("Raw response from server:", data);
 
-    // ВАЖНО: Сервер возвращает данные с заглавными буквами!
-    // "Path", "Type", "Size", "Visibility" и т.д.
-
-    // Форматируем ответ в удобный вид
     const fileInfo = {
-      // Основная информация
       name: data.name || data.Name || path.split('/').pop() || "unknown",
       path: data.path || data.Path || path,
       size: data.size || data.Size || 0,
       type: data.type || data.Type || "unknown",
       mimeType: data.mimeType || data.MimeType || data.Type || "application/octet-stream",
-
-      // Дополнительная информация
       visibility: data.visibility || data.Visibility || "private",
       isolated: data.isolated || data.Isolated || false,
       tags: data.tags || data.Tags || "",
-
-      // Даты (если есть)
       createdAt: data.createdAt || data.CreatedAt || data.created_at,
       updatedAt: data.updatedAt || data.UpdatedAt || data.updated_at,
       lastModified: data.lastModified || data.LastModified,
-
-      // Размер в читаемом формате
       formattedSize: formatFileSize(data.size || data.Size || 0),
-
-      // Исходные данные для отладки
       _raw: data
     };
 
@@ -639,10 +724,13 @@ function formatFileSize(bytes) {
 export const createFolder = async (token, folderPath) => {
   console.log("createFolder request:", { folderPath });
 
-  const res = await fetch(`${BASE}/directories?path=${encodeURIComponent(folderPath)}`, {
-    method: "PUT", // Согласно документации: PUT для создания папки
-    headers: { "X-Auth-Token": token }
-  });
+  const res = await fetchWithTokenRefresh(
+      `${BASE}/directories?path=${encodeURIComponent(folderPath)}`,
+      {
+        method: "PUT"
+      },
+      token
+  );
 
   console.log("createFolder status:", res.status, res.statusText);
 
@@ -660,10 +748,13 @@ export const createFolder = async (token, folderPath) => {
 export const deleteFolder = async (token, folderPath) => {
   console.log("deleteFolder request:", { folderPath });
 
-  const res = await fetch(`${BASE}/directories?path=${encodeURIComponent(folderPath)}`, {
-    method: "DELETE",
-    headers: { "X-Auth-Token": token }
-  });
+  const res = await fetchWithTokenRefresh(
+      `${BASE}/directories?path=${encodeURIComponent(folderPath)}`,
+      {
+        method: "DELETE"
+      },
+      token
+  );
 
   console.log("deleteFolder status:", res.status, res.statusText);
 
@@ -682,8 +773,7 @@ export const updateUserInfo = async (token, updates) => {
   console.log("updateUserInfo request:", updates);
 
   const headers = {
-    "Content-Type": "application/json",
-    "X-Auth-Token": token
+    "Content-Type": "application/json"
   };
 
   if (updates.newUsername) {
@@ -694,10 +784,10 @@ export const updateUserInfo = async (token, updates) => {
     headers["X-New-Password"] = updates.newPassword;
   }
 
-  const res = await fetch(`${BASE}/users/update`, {
+  const res = await fetchWithTokenRefresh(`${BASE}/users/update`, {
     method: "POST",
     headers
-  });
+  }, token);
 
   console.log("updateUserInfo status:", res.status);
 
@@ -749,6 +839,74 @@ export async function refreshTokenRequest(refreshToken) {
 
   } catch (error) {
     console.error("Refresh token request failed:", error);
+    // Очищаем токены при неудачном обновлении
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     throw error;
   }
+}
+
+// В конец api.js добавьте:
+/**
+ * getUserStorageInfo - Получение информации о хранилище пользователя
+ */
+export const getUserStorageInfo = async (token) => {
+  console.log("=== GET USER STORAGE INFO ===");
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  try {
+    const url = `${BASE}/users/storage`;
+    console.log("Request URL:", url);
+
+    const response = await fetchWithTokenRefresh(url, {
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      }
+    }, token);
+
+    console.log("Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      // Если эндпоинт не существует, попробуем получить из user info
+      console.log("Storage endpoint not available, trying user info");
+      return null;
+    }
+
+    const data = await response.json();
+    console.log("Storage info:", data);
+
+    // Нормализуем ответ (сервер может использовать разные названия полей)
+    const used = data.used || data.Used || data.usedBytes || 0;
+    const total = data.total || data.Total || data.limit || data.Limit
+        || data.totalBytes || (10 * 1024 * 1024 * 1024); // 10GB по умолчанию
+
+    return {
+      used,
+      total,
+      percentage: total > 0 ? Math.round((used / total) * 100) : 0,
+      formattedUsed: formatBytes(used),
+      formattedTotal: formatBytes(total),
+      ...data
+    };
+
+  } catch (error) {
+    console.error("Error getting storage info:", error);
+    return null;
+  }
+}
+
+// Вспомогательная функция для форматирования байтов (добавьте в начало файла)
+function formatBytes(bytes) {
+  if (!bytes && bytes !== 0) return '0 Bytes';
+  if (bytes === 0) return '0 Bytes';
+
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }

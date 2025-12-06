@@ -78,11 +78,7 @@ public class UserService {
 
     Optional<SessionDto> session = userSessionService.findSessionByEmail(user.getEmail());
     SessionDto usedSession;
-    if (session.isPresent()) {
-      usedSession = session.get();
-    } else {
-      usedSession = userSessionService.createSession(user);
-    }
+    usedSession = session.orElseGet(() -> userSessionService.createSession(user));
     RefreshTokenEntity refreshToken = refreshTokenService.create(user.getId());
 
     return new TokenPairDto(usedSession.token(), refreshToken.getToken());

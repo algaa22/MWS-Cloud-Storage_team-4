@@ -1,30 +1,43 @@
 package com.mipt.team4.cloud_storage_backend.netty.server;
 
 import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
+import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
 import com.mipt.team4.cloud_storage_backend.netty.handler.CorsHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handler.Http2RequestHandler;
 import com.mipt.team4.cloud_storage_backend.netty.pipeline.PipelineSelector;
+import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioIoHandler;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
+import java.io.IOException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.concurrent.CountDownLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NettyServer {
   private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
-  private final CountDownLatch startupLatch = new CountDownLatch(1);
+  private final CountDownLatch startupLatch;
   private final FileController fileController;
   private final DirectoryController directoryController;
   private final UserController userController;
 
-  private Channel serverChannel;
+  private Channel httpServerChannel;
+  private Channel httpsServerChannel;
+
+  protected enum ServerProtocol {
+    HTTP,
+    HTTPS
+  }
 
   public NettyServer(
       FileController fileController,
@@ -33,53 +46,90 @@ public class NettyServer {
     this.fileController = fileController;
     this.directoryController = directoryController;
     this.userController = userController;
+
+    int serversCount = NettyConfig.INSTANCE.isEnableHttps() ? 2 : 1;
+    startupLatch = new CountDownLatch(serversCount);
   }
 
   public void start() {
-    try (EventLoopGroup bossGroup =
-            new MultiThreadIoEventLoopGroup(
-                NettyConfig.INSTANCE.getBossThreads(), NioIoHandler.newFactory());
+    try (EventLoopGroup bossGroup = new NioEventLoopGroup(NettyConfig.INSTANCE.getBossThreads());
         EventLoopGroup workerGroup =
-            new MultiThreadIoEventLoopGroup(
-                NettyConfig.INSTANCE.getWorkerThreads(), NioIoHandler.newFactory())) {
+            new NioEventLoopGroup(NettyConfig.INSTANCE.getWorkerThreads())) {
 
-      ServerBootstrap bootstrap = new ServerBootstrap();
-      bootstrap
-          .group(bossGroup, workerGroup)
-          .channel(NioServerSocketChannel.class)
-          .option(ChannelOption.SO_REUSEADDR, true)
-          .childHandler(new CustomChannelInitializer());
+      // TODO: refactor
+      httpServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTP);
 
-      ChannelFuture future = bootstrap.bind(NettyConfig.INSTANCE.getPort()).sync();
-      logger.info("Netty server started on port " + NettyConfig.INSTANCE.getPort());
+      if (NettyConfig.INSTANCE.isEnableHttps())
+        httpsServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTPS);
 
-      startupLatch.countDown();
+      if (httpServerChannel != null) {
+        httpsServerChannel.closeFuture().sync();
+        logger.info("Netty HTTPS server stopped");
+      }
 
-      serverChannel = future.channel();
-      serverChannel.closeFuture().sync();
-
-      logger.info("Netty server stopped");
+      if (httpServerChannel != null) {
+        httpServerChannel.closeFuture().sync();
+        logger.info("Netty HTTP server stopped");
+      }
     } catch (Exception e) {
       throw new ServerStartException(e);
     }
   }
 
   public void stop() {
-    if (serverChannel != null) serverChannel.close();
+    if (httpServerChannel != null) httpServerChannel.close();
   }
 
   public CountDownLatch getStartupLatch() {
     return startupLatch;
   }
 
+  private Channel startServer(
+      EventLoopGroup bossGroup, EventLoopGroup workerGroup, ServerProtocol protocol)
+      throws InterruptedException {
+    ServerBootstrap bootstrap = new ServerBootstrap();
+    bootstrap
+        .group(bossGroup, workerGroup)
+        .channel(NioServerSocketChannel.class)
+        .option(ChannelOption.SO_REUSEADDR, true)
+        .childHandler(new CustomChannelInitializer(protocol));
+
+    int port =
+        protocol == ServerProtocol.HTTPS
+            ? NettyConfig.INSTANCE.getHttpsPort()
+            : NettyConfig.INSTANCE.getHttpPort();
+
+    startupLatch.countDown();
+    logger.info("Netty " + protocol.name() + " started on port " + port);
+
+    return bootstrap.bind(port).sync().channel();
+  }
+
+  // TODO: в отдельный класс?
   class CustomChannelInitializer extends ChannelInitializer<SocketChannel> {
+    private final ServerProtocol protocol;
+
+    public CustomChannelInitializer(ServerProtocol protocol) {
+      this.protocol = protocol;
+    }
+
     @Override
-    protected void initChannel(SocketChannel socketChannel)  {
+    protected void initChannel(SocketChannel socketChannel)
+        throws IOException,
+            UnrecoverableKeyException,
+            CertificateException,
+            NoSuchAlgorithmException,
+            KeyStoreException {
       ChannelPipeline pipeline = socketChannel.pipeline();
 
-      pipeline.addLast("httpCodec", new HttpServerCodec());
-      pipeline.addLast("cors", new CorsHandler());
-      pipeline.addLast("pipeSelector", new PipelineSelector(fileController, directoryController, userController));
+      if (protocol == ServerProtocol.HTTPS) {
+        pipeline.addLast(SslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
+        pipeline.addLast(new Http2RequestHandler(fileController, directoryController, userController));
+      } else {
+        pipeline.addLast(new HttpServerCodec());
+        pipeline.addLast(new CorsHandler());
+        pipeline.addLast(new PipelineSelector(fileController, directoryController, userController));
+      }
     }
   }
 }

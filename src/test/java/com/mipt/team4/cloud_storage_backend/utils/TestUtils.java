@@ -47,7 +47,7 @@ public class TestUtils {
   }
 
   public static String createUriString(String endpoint) {
-    return "http://localhost:" + NettyConfig.INSTANCE.getPort() + endpoint;
+    return "http://localhost:" + NettyConfig.INSTANCE.getHttpPort() + endpoint;
   }
 
   public static JsonNode getRootNodeFromResponse(HttpResponse<String> response) throws IOException {

@@ -6,22 +6,30 @@ import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 public enum NettyConfig {
   INSTANCE;
 
-  private final int port;
+  private final int httpPort;
+  private final int httpsPort;
   private final int bossThreads;
   private final int workerThreads;
   private final int startTimeoutSec;
+  private final boolean enableHttps;
 
   NettyConfig() {
     ConfigSource source = new YamlConfigSource("config.yml");
 
-    this.port = source.getInt("netty.port").orElseThrow();
+    this.httpPort = source.getInt("netty.http-port").orElseThrow();
+    this.httpsPort = source.getInt("netty.https-port").orElseThrow();
     this.bossThreads = source.getInt("netty.boss-threads").orElseThrow();
     this.workerThreads = source.getInt("netty.worker-threads").orElseThrow();
     this.startTimeoutSec = source.getInt("netty.start-timeout-sec").orElseThrow();
+    this.enableHttps = source.getBoolean("netty.enable-https").orElseThrow();
   }
 
-  public int getPort() {
-    return port;
+  public int getHttpPort() {
+    return httpPort;
+  }
+
+  public int getHttpsPort() {
+    return httpsPort;
   }
 
   public int getBossThreads() {
@@ -34,5 +42,9 @@ public enum NettyConfig {
 
   public int getStartTimeoutSec() {
     return startTimeoutSec;
+  }
+
+  public boolean isEnableHttps() {
+    return enableHttps;
   }
 }

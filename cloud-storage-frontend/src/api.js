@@ -1,5 +1,5 @@
 // src/api.js
-const BASE = "http://localhost:8081/api";
+const BASE = "https://localhost:8443/api";
 
 /**
  * Helpers
@@ -404,116 +404,44 @@ const uploadFileSimple = async (token, file, path, onProgress) => {
   }
 };
 
-// Базовый URL, предполагается, что он определен где-то выше в коде.
-// const BASE = "http://localhost:8080/api";
-
-const CHUNK_SIZE = 8 * 1024;
-
-/**
- * Создает ReadableStream из объекта File для потоковой передачи.
- * @param {File} file - Объект файла.
- * @param {function(number): void} onProgress - Колбэк для обновления прогресса.
- * @returns {ReadableStream}
- */
-
-const createFileStream = (file, onProgress) => {
-    let offset = 0;
-    const totalSize = file.size;
-    let isReading = false;
-
-    return new ReadableStream({
-        start(controller) {
-            console.log("Stream started for file:", file.name, "size:", totalSize);
-
-            // Сразу начинаем чтение
-            readNextChunk(controller).catch(error => {
-                controller.error(error);
-            });
-        },
-
-        cancel(reason) {
-            console.log("Stream cancelled:", reason);
-        }
-    });
-
-    async function readNextChunk(controller) {
-        if (offset >= totalSize || isReading) {
-            return;
-        }
-
-        isReading = true;
-
-        try {
-            const end = Math.min(offset + CHUNK_SIZE, totalSize);
-            const slice = file.slice(offset, end);
-
-            // Используем arrayBuffer() вместо FileReader для простоты
-            const arrayBuffer = await slice.arrayBuffer();
-            const chunk = new Uint8Array(arrayBuffer);
-
-            // Отправляем чанк в поток
-            controller.enqueue(chunk);
-
-            // Обновляем смещение
-            offset += chunk.byteLength;
-
-            // Обновляем прогресс
-            if (onProgress) {
-                const progress = Math.round((offset / totalSize) * 100);
-                onProgress(progress);
-            }
-
-            console.log(`Chunk ${Math.ceil(offset / CHUNK_SIZE)}: ${chunk.byteLength} bytes, total: ${offset}/${totalSize} (${progress || 0}%)`);
-
-            // Если файл еще не полностью прочитан, запрашиваем следующий чанк
-            if (offset < totalSize) {
-                // Используем requestAnimationFrame или setTimeout для асинхронности
-                await new Promise(resolve => setTimeout(resolve, 0));
-                await readNextChunk(controller);
-            } else {
-                // Файл полностью прочитан
-                console.log("File fully read, closing stream...");
-                controller.close();
-            }
-        } catch (error) {
-            console.error("Error reading chunk:", error);
-            controller.error(error);
-        } finally {
-            isReading = false;
-        }
-    }
-};
-
-/**
- * Чанкованная загрузка файла (для файлов >5MB)
- * @param {string} token - Токен авторизации
- * @param {File} file - Объект файла
- * @param {string} path - Путь сохранения на сервере
- * @param {function(number): void} onProgress - Колбэк для обновления прогресса
- */
 const uploadFileChunked = async (token, file, path, onProgress) => {
-    console.log("Using chunked upload");
-    console.log(`📊 File: ${file.name}, Size: ${file.size} bytes`);
+    console.log("Using modern fetch stream upload");
 
     const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
-    console.log("📤 Upload URL:", url);
+    const totalSize = file.size;
+    let uploaded = 0;
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-            controller.abort();
-            console.warn("Upload timeout (30s)");
-        }, 30000);
 
-        console.log("🔄 Creating readable stream...");
+        const fileStream = new ReadableStream({
+            async start(controller) {
+                try {
+                    for (let offset = 0; offset < totalSize; offset += CHUNK_SIZE) {
+                        const end = Math.min(offset + CHUNK_SIZE, totalSize);
+                        const chunk = file.slice(offset, end);
+                        const arrayBuffer = await chunk.arrayBuffer();
 
-        // Более простая альтернатива: используем сразу доступный поток
-        // const fileStream = file.stream();
+                        controller.enqueue(arrayBuffer);
 
-        const fileStream = createFileStream(file, onProgress);
+                        uploaded = end;
+                        if (onProgress) {
+                            onProgress(Math.round((uploaded / totalSize) * 100));
+                        }
 
-        console.log("🚀 Sending chunked fetch request...");
-        const startTime = Date.now();
+                        console.log(`Sent chunk: ${offset}-${end} (${arrayBuffer.byteLength} bytes)`);
+
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                    }
+                    controller.close();
+
+                } catch (error) {
+                    controller.error(error);
+                }
+            }
+        });
+
+        console.log("📤 Sending request with stream body...");
 
         const response = await fetch(url, {
             method: "POST",
@@ -526,38 +454,11 @@ const uploadFileChunked = async (token, file, path, onProgress) => {
             signal: controller.signal,
             duplex: "half"
         });
-
-        clearTimeout(timeoutId);
-        const endTime = Date.now();
-        console.log(`⏱️ Request took ${endTime - startTime}ms`);
-        console.log("📥 Response received:", response.status, response.statusText);
-
-        if (!response.ok) {
-            const responseText = await response.text();
-            console.error("❌ Upload failed:", responseText);
-            throw new Error(`Upload failed: ${response.status} ${responseText}`);
-        }
-
-        const responseText = await response.text();
-        console.log("📄 Response body:", responseText);
-
-        try {
-            return JSON.parse(responseText);
-        } catch (e) {
-            console.warn("Response is not JSON, returning as text");
-            return responseText;
-        }
-
     } catch (error) {
-        console.error("🔥 Fetch error during chunked upload:", error);
-
-        if (error.name === 'AbortError') {
-            throw new Error('Upload timeout or cancelled');
-        }
-
-        throw error;
+        // ...
     }
 };
+
 
 
 /**

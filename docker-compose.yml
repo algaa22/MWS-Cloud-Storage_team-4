@@ -3,7 +3,8 @@ services:
     image: cloud-storage-app
     container_name: cloud-storage-app
     ports:
-      - "8081:8081"
+      - "8081:8081" # HTTP
+      - "8443:8443" # HTTPS
     depends_on:
       postgres:
         condition: service_healthy

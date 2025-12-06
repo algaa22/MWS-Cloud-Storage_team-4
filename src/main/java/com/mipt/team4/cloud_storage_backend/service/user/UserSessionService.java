@@ -48,7 +48,7 @@ public class UserSessionService {
     Optional<SessionDto> session = getSession(token);
 
     if (session.isEmpty()) {
-      throw new InvalidSessionException(token);
+      throw new InvalidSessionException("No session with specified token was found");
     }
 
     cleanExpiredBlacklistedTokens();

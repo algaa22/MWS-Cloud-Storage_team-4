@@ -52,3 +52,7 @@ node_modules/
 /cloud-storage-backend.iml
 /.env
 /src/main/resources/.env
+/src/main/resources/ssl/server.crt
+/src/main/resources/ssl/server.csr
+/src/main/resources/ssl/server.key
+/src/main/resources/ssl/server.p12

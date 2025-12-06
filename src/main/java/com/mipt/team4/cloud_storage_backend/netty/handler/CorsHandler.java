@@ -28,16 +28,15 @@ public class CorsHandler extends ChannelDuplexHandler {
 
   private void sendPreflightResponse(ChannelHandlerContext ctx) {
     DefaultFullHttpResponse response =
-        new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NO_CONTENT);
 
     addCorsHeaders(response);
-    response.headers().set("Content-Type", "text/plain");
-    response.headers().set("Content-Length", "0");
 
-    ctx.writeAndFlush(response);
+    ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
   }
 
   private void addCorsHeaders(HttpResponse response) {
+    // TODO: hardcoding
     response.headers().set("Access-Control-Allow-Origin", "http://localhost:5173");
     response
         .headers()

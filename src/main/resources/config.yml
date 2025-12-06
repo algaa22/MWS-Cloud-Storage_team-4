@@ -1,8 +1,10 @@
 netty:
-  port: 8081
+  http-port: 8081
+  https-port: 8443
   boss-threads: 1
   worker-threads: 4
   start-timeout-sec: 5
+  enable-https: true
 
 storage:
   http:

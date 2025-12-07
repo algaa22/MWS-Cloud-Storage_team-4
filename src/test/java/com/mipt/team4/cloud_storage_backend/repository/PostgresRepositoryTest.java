@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
@@ -89,7 +89,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
   @Test
   void shouldAddAndDeleteFile_WithSameId()
-      throws StorageFileAlreadyExistsException, StorageFileNotFoundException {
+      throws StorageFileAlreadyExistsException, StorageEntityNotFoundException {
     StorageEntity testFile = createTestFile();
 
     fileMetadataRepository.addFile(testFile);

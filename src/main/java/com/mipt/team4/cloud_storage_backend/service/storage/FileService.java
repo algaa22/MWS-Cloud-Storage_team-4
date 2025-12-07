@@ -4,7 +4,7 @@ import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
@@ -150,12 +150,12 @@ public class FileService {
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationDto fileDownload)
-      throws UserNotFoundException, StorageFileNotFoundException {
+      throws UserNotFoundException, StorageEntityNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(fileDownload.userToken());
 
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileDownload.path());
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileDownload.path()));
+        entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(fileDownload.path()));
 
     return new FileDownloadDto(
         fileDownload.path(),
@@ -165,24 +165,24 @@ public class FileService {
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
-      throws UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
+      throws UserNotFoundException, StorageEntityNotFoundException, FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(deleteFileRequest.userToken());
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, deleteFileRequest.path());
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(deleteFileRequest.path()));
+        entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(deleteFileRequest.path()));
 
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
   }
 
   public DownloadedChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)
-      throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
+      throws UserNotFoundException, StorageEntityNotFoundException, StorageIllegalAccessException {
     UUID userId = userSessionService.extractUserIdFromToken(fileChunkRequest.userToken());
     Optional<StorageEntity> entityOpt =
         storageRepository.getFile(userId, fileChunkRequest.filePath());
 
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileChunkRequest.filePath()));
+        entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(fileChunkRequest.filePath()));
 
     long chunkSize = fileChunkRequest.chunkSize();
     long offset = fileChunkRequest.chunkIndex() * chunkSize;
@@ -202,21 +202,21 @@ public class FileService {
   }
 
   public StorageDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
-      throws UserNotFoundException, StorageFileNotFoundException {
+      throws UserNotFoundException, StorageEntityNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(fileInfoRequest.userToken());
 
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userUuid, fileInfoRequest.path());
-    if (entityOpt.isEmpty()) throw new StorageFileNotFoundException(fileInfoRequest.path());
+    if (entityOpt.isEmpty()) throw new StorageEntityNotFoundException(fileInfoRequest.path());
 
     return FileMapper.toDto(entityOpt.get());
   }
 
   public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto fileInfo)
-      throws UserNotFoundException, StorageFileNotFoundException, StorageIllegalAccessException {
+      throws UserNotFoundException, StorageEntityNotFoundException, StorageIllegalAccessException {
     UUID userUuid = userSessionService.extractUserIdFromToken(fileInfo.userToken());
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userUuid, fileInfo.path());
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileInfo.path()));
+        entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(fileInfo.path()));
 
     return new FileChunkedDownloadDto(
         entity.getEntityId(), fileInfo.path(), entity.getMimeType(), entity.getSize());
@@ -224,7 +224,7 @@ public class FileService {
 
   public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadata)
       throws UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           StorageFileAlreadyExistsException {
 
     UUID userId = userSessionService.extractUserIdFromToken(changeFileMetadata.userToken());
@@ -233,7 +233,7 @@ public class FileService {
         storageRepository.getFile(userId, changeFileMetadata.oldPath());
 
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(changeFileMetadata.oldPath()));
+        entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(changeFileMetadata.oldPath()));
 
     if (changeFileMetadata.newPath().isPresent()) {
       Optional<StorageEntity> existingFile =

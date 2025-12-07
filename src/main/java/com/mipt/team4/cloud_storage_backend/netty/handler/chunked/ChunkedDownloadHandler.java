@@ -4,7 +4,7 @@ import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
@@ -26,7 +26,7 @@ public class ChunkedDownloadHandler {
   // TODO: refactor
   public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
       throws UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           ValidationFailedException,
           QueryParameterNotFoundException,
           HeaderNotFoundException {

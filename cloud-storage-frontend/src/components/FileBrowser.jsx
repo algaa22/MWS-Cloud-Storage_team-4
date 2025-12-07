@@ -10,6 +10,7 @@ import {
   renameFile as apiRenameFile,
   getFileInfo as apiGetFileInfo,
   createFolder as apiCreateFolder,
+  deleteFolder as apiDeleteFolder,
   getUserInfo // Добавляем новый метод
 } from "../api.js";
 
@@ -306,6 +307,42 @@ export default function FileBrowser() {
     }
   };
 
+  // Функция для извлечения имени из пути
+  const getItemName = (item) => {
+    if (item.name && item.name !== "") {
+      return item.name;
+    }
+
+    if (item.fullPath) {
+      const path = item.fullPath;
+      const parts = path.split('/').filter(p => p && p !== '');
+      return parts.length > 0 ? parts[parts.length - 1] : "Папка";
+    }
+
+    return item.id || "Объект";
+  };
+
+  // Добавьте эту функцию после handleCreateFolder
+  const handleDeleteFolder = async (folder) => {
+    if (!folder || !folder.fullPath) return;
+
+    const confirmMessage = folder.fileCount
+      ? `Удалить папку "${getItemName(folder)}" с ${folder.fileCount} файлами? Это действие нельзя отменить.`
+      : `Удалить папку "${getItemName(folder)}"?`;
+
+    if (window.confirm(confirmMessage)) {
+      try {
+        await apiDeleteFolder(token, folder.fullPath);
+        await fetchFiles();
+        await loadStorageInfo(); // Обновляем информацию о памяти
+        setError(""); // Очищаем ошибки если были
+      } catch (err) {
+        console.error("Delete folder error:", err);
+        setError(`Ошибка при удалении папки: ${err.message}`);
+      }
+    }
+  };
+
   const handleFileAction = async (action) => {
     if (!selectedItem) return;
 
@@ -314,27 +351,59 @@ export default function FileBrowser() {
     try {
       switch (action) {
         case "download":
-          await apiDownloadFile(token, selectedItem.fullPath, selectedItem.name, selectedItem.size);
+          if (selectedItem.type === "file") {
+            await apiDownloadFile(token, selectedItem.fullPath, selectedItem.name, selectedItem.size);
+          } else {
+            setError("Папки нельзя скачать");
+          }
           break;
         case "rename":
           setRenameText(selectedItem.name || "");
           break;
         case "delete":
-          if (window.confirm(`Удалить "${selectedItem.name}"?`)) {
-            await apiDeleteFile(token, selectedItem.fullPath);
+          // В case "delete":
+          const itemType = selectedItem.type === "folder" ? "папку" : "файл";
+          const itemName = getItemName(selectedItem);
+
+          if (window.confirm(`Удалить ${itemType} "${itemName}"?`)) {
+            if (selectedItem.type === "folder") {
+              // Удаляем папку
+              await apiDeleteFolder(token, selectedItem.fullPath);
+            } else {
+              // Удаляем файл
+              await apiDeleteFile(token, selectedItem.fullPath);
+            }
             await fetchFiles();
             await loadStorageInfo(); // Обновляем информацию о памяти
           }
           break;
         case "info":
-          const info = await apiGetFileInfo(token, selectedItem.fullPath);
-          const formattedInfo = {
-            ...info,
-            readableType: getReadableFileType(info.mimeType || info.type || info.mime_type),
-            formattedDate: formatDateForDisplay(info.updatedAt || info.lastModified || info.modified)
-          };
-          setFileInfoData(formattedInfo);
-          setShowInfoModal(true);
+          if (selectedItem.type === "file") {
+            const info = await apiGetFileInfo(token, selectedItem.fullPath);
+            const formattedInfo = {
+              ...info,
+              readableType: getReadableFileType(info.mimeType || info.type || info.mime_type),
+              formattedDate: formatDateForDisplay(info.updatedAt || info.lastModified || info.modified)
+            };
+            setFileInfoData(formattedInfo);
+            setShowInfoModal(true);
+          } else {
+            // Для папок можно показать базовую информацию
+            setFileInfoData({
+              name: selectedItem.name,
+              path: selectedItem.fullPath,
+              type: "Папка",
+              readableType: "Папка",
+              size: 0,
+              formattedSize: "—",
+              fileCount: selectedItem.fileCount || 0,
+              formattedDate: "—",
+              visibility: "private",
+              tags: "",
+              mimeType: "folder"
+            });
+            setShowInfoModal(true);
+          }
           break;
       }
     } catch (err) {
@@ -385,6 +454,108 @@ export default function FileBrowser() {
       setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  // Добавьте эту функцию в компонент
+  const renderModernNavigation = () => {
+    const parts = currentPath ? currentPath.split('/').filter(p => p !== '') : [];
+
+    return (
+      <div className="mb-8">
+        {/* Основная навигационная панель */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex-1">
+            <div className="flex items-center flex-wrap gap-2">
+              {/* Кнопка "Главная" */}
+              <button
+                onClick={() => setCurrentPath("")}
+                className="flex items-center bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl transition-all duration-200 group"
+              >
+                <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span className="font-medium">Главная</span>
+              </button>
+
+              {/* Полный путь с кликабельными элементами */}
+              {parts.length > 0 && (
+                <div className="flex items-center flex-wrap gap-1">
+                  {parts.map((part, index) => {
+                    const pathTo = parts.slice(0, index + 1).join('/') + '/';
+                    const isLast = index === parts.length - 1;
+
+                    return (
+                      <React.Fragment key={index}>
+                        {/* Разделитель */}
+                        <div className="text-white/30 mx-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+
+                        {/* Элемент пути */}
+                        {isLast ? (
+                          <div className="flex items-center bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white px-4 py-2.5 rounded-xl border border-white/10">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2-2h4l2 2h4a2 2 0 012 2v10a2 2 0 01-2 2H5z" />
+                            </svg>
+                            <span className="font-medium">{part}</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setCurrentPath(pathTo)}
+                            className="flex items-center bg-white/5 hover:bg-white/10 text-white/90 hover:text-white px-4 py-2.5 rounded-xl transition-all duration-200 group"
+                          >
+                            <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2-2h4l2 2h4a2 2 0 012 2v10a2 2 0 01-2 2H5z" />
+                            </svg>
+                            <span className="font-medium">{part}</span>
+                          </button>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Кнопки действий */}
+          <div className="flex items-center gap-2">
+            {/* Кнопка "Назад" */}
+            {currentPath && (
+              <button
+                onClick={() => {
+                  const newParts = [...parts];
+                  newParts.pop();
+                  const newPath = newParts.length > 0 ? newParts.join('/') + '/' : '';
+                  setCurrentPath(newPath);
+                }}
+                className="flex items-center bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl transition-all duration-200 group"
+                title="Вернуться на уровень вверх"
+              >
+                <svg className="w-5 h-5 mr-2 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="font-medium">Назад</span>
+              </button>
+            )}
+
+            {/* Кнопка "Обновить" */}
+            <button
+              onClick={fetchFiles}
+              className="flex items-center bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl transition-all duration-200 group"
+              title="Обновить содержимое папки"
+            >
+              <svg className="w-5 h-5 mr-2 group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span className="font-medium">Обновить</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const handleCreateFolder = async () => {
@@ -521,7 +692,7 @@ export default function FileBrowser() {
             <h1 className="text-3xl md:text-4xl font-bold text-white">
               MWS Cloud Storage
             </h1>
-            <p className="text-white/60 text-sm mt-1">Безопасное хранение файлов</p>
+            <p className="text-white/60 text-sm mt-1">Ваше персональное облако</p>
           </div>
 
           {/* Пользователь справа */}
@@ -657,20 +828,37 @@ export default function FileBrowser() {
 
               <div className="hidden md:block h-8 w-px bg-white/20" />
 
-              <div className="text-center">
-                <div className="text-xl font-bold">{files.length + folders.length}</div>
-                <div className="text-xs text-white/60">файлов и папок</div>
+              <div className="flex items-center space-x-6">
+                {/* Папки */}
+                <div className="text-center">
+                  <div className="text-xl font-bold text-blue-300">{folders.length}</div>
+                  <div className="text-xs text-white/60">папок</div>
+                </div>
+
+                {/* Разделитель */}
+                <div className="h-8 w-px bg-white/20"></div>
+
+                {/* Файлы */}
+                <div className="text-center">
+                  <div className="text-xl font-bold text-green-300">{files.length}</div>
+                  <div className="text-xs text-white/60">файлов</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Основная область с файлами */}
+        {/* Основная область с файлами */}
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 min-h-[60vh] mb-6">
+
+          {/* ★★★ НАВИГАЦИОННАЯ ПАНЕЛЬ ★★★ */}
+          {renderModernNavigation()}
+
           {error && (
-              <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center">
-                {error}
-              </div>
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center">
+              {error}
+            </div>
           )}
 
           {loading ? (
@@ -683,54 +871,39 @@ export default function FileBrowser() {
                 <div className="text-6xl mb-4 opacity-50">📁</div>
                 <p className="text-xl mb-2">Папка пуста</p>
                 <p className="text-white/70">Загрузите файл или создайте папку</p>
-
-                {/* Информация о памяти для пустой папки */}
-                {storageInfo.percentage > 0 && (
-                    <div className="mt-6 bg-white/5 rounded-xl p-4 max-w-md w-full">
-                      <div className="text-sm text-white/60 mb-2">Использование хранилища:</div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm">{storageInfo.formattedUsed}</span>
-                        <span className="text-sm">{storageInfo.formattedTotal}</span>
-                      </div>
-                      <div className="w-full bg-gray-700/50 rounded-full h-2">
-                        <div
-                            className="h-2 rounded-full bg-blue-500 transition-all duration-300"
-                            style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                )}
               </div>
           ) : (
               <>
                 {/* Статистика текущей папки */}
-                <div className="mb-6 p-4 bg-white/5 rounded-xl">
-                  <div className="flex flex-wrap gap-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-300">{folders.length}</div>
-                      <div className="text-sm text-white/60">Папок</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-300">{files.length}</div>
-                      <div className="text-sm text-white/60">Файлов</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-yellow-300">
-                        {storageLoading ? "..." : formatFileSize(storageInfo.used)}
-                      </div>
-                      <div className="text-sm text-white/60">Использовано памяти:</div>
-                    </div>
-                  </div>
-                </div>
+{/*                 <div className="mb-6 p-4 bg-white/5 rounded-xl"> */}
+{/*                   <div className="flex flex-wrap gap-6"> */}
+{/*                     <div className="text-center"> */}
+{/*                       <div className="text-2xl font-bold text-blue-300">{folders.length}</div> */}
+{/*                       <div className="text-sm text-white/60">Папок</div> */}
+{/*                     </div> */}
+{/*                     <div className="text-center"> */}
+{/*                       <div className="text-2xl font-bold text-green-300">{files.length}</div> */}
+{/*                       <div className="text-sm text-white/60">Файлов</div> */}
+{/*                     </div> */}
+{/*                     <div className="text-center"> */}
+{/*                       <div className="text-2xl font-bold text-yellow-300"> */}
+{/*                         {storageLoading ? "..." : formatFileSize(storageInfo.used)} */}
+{/*                       </div> */}
+{/*                       <div className="text-sm text-white/60">Использовано памяти:</div> */}
+{/*                     </div> */}
+{/*                   </div> */}
+{/*                 </div> */}
 
                 {/* Сетка файлов и папок */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {/* Папки */}
                   {folders.map((folder) => (
+                    <div key={folder.id || folder.fullPath}
+                      className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group relative"
+                    >
                       <div
-                          key={folder.id || folder.fullPath}
-                          onClick={(e) => handleItemClick(folder, e)}
-                          className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group"
+                        onClick={(e) => handleItemClick(folder, e)}
+                        className="mb-2"
                       >
                         <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">📁</div>
                         <p className="truncate text-sm font-medium">
@@ -741,11 +914,26 @@ export default function FileBrowser() {
                           })()}
                         </p>
                         {folder.fileCount ? (
-                            <p className="text-xs text-white/50 mt-1">{folder.fileCount} файлов</p>
+                          <p className="text-xs text-white/50 mt-1">{folder.fileCount} файлов</p>
                         ) : (
-                            <p className="text-xs text-white/30 mt-1">Папка</p>
+                          <p className="text-xs text-white/30 mt-1">Папка</p>
                         )}
                       </div>
+
+                      {/* Кнопка удаления папки */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFolder(folder);
+                        }}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-1.5 rounded-lg"
+                        title="Удалить папку"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   ))}
 
                   {/* Файлы */}
@@ -990,16 +1178,29 @@ export default function FileBrowser() {
 
         {/* Context menu */}
         {showItemMenu && selectedItem && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowItemMenu(false)} />
-              <div className="fixed bg-gray-800 rounded-xl shadow-2xl py-2 z-50 min-w-[200px]" style={{ left: itemMenuPosition.x, top: itemMenuPosition.y }}>
-                <button onClick={() => handleFileAction("download")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">📥 Скачать</button>
-                <button onClick={() => handleFileAction("rename")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">✏️ Переименовать</button>
-                <button onClick={() => handleFileAction("info")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">ℹ️ Информация</button>
-                <div className="border-t border-white/20 my-1" />
-                <button onClick={() => handleFileAction("delete")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300">🗑️ Удалить</button>
-              </div>
-            </>
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowItemMenu(false)} />
+            <div className="fixed bg-gray-800 rounded-xl shadow-2xl py-2 z-50 min-w-[200px]" style={{ left: itemMenuPosition.x, top: itemMenuPosition.y }}>
+              {selectedItem.type === "file" && (
+                <button onClick={() => handleFileAction("download")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
+                  📥 Скачать
+                </button>
+              )}
+              <button onClick={() => handleFileAction("rename")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
+                ✏️ Переименовать
+              </button>
+              <button onClick={() => handleFileAction("info")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
+                ℹ️ Информация
+              </button>
+              <div className="border-t border-white/20 my-1" />
+              <button
+                onClick={() => handleFileAction("delete")}
+                className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
+              >
+                {selectedItem.type === "folder" ? "🗑️ Удалить папку" : "🗑️ Удалить файл"}
+              </button>
+            </div>
+          </>
         )}
 
         {/* Rename modal */}

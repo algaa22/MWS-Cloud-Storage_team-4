@@ -8,7 +8,7 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundExcept
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -60,17 +60,17 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
         }
       } catch (QueryParameterNotFoundException
-          | InvalidSessionException
-          | ValidationFailedException
-          | HeaderNotFoundException
-          | UserNotFoundException
-          | UserAlreadyExistsException
-          | InvalidEmailOrPassword
-          | WrongPasswordException
-          | StorageFileNotFoundException
-          | StorageFileAlreadyExistsException
-          | StorageIllegalAccessException
-          | IOException e) {
+               | InvalidSessionException
+               | ValidationFailedException
+               | HeaderNotFoundException
+               | UserNotFoundException
+               | UserAlreadyExistsException
+               | InvalidEmailOrPassword
+               | WrongPasswordException
+               | StorageEntityNotFoundException
+               | StorageFileAlreadyExistsException
+               | StorageIllegalAccessException
+               | IOException e) {
         ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       }
     } else {
@@ -81,7 +81,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request)
       throws QueryParameterNotFoundException,
           UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           ValidationFailedException,
           StorageIllegalAccessException,
           IOException,
@@ -113,7 +113,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws QueryParameterNotFoundException,
           UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           ValidationFailedException,
           FileNotFoundException,
           StorageFileAlreadyExistsException {

@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
@@ -68,7 +68,7 @@ public class StorageRepository {
   }
 
   public void deleteFile(UUID userId, String path)
-      throws StorageFileNotFoundException, FileNotFoundException {
+      throws StorageEntityNotFoundException, FileNotFoundException {
     metadataRepository.deleteFile(userId, path);
     contentRepository.hardDeleteFile(path);
   }
@@ -83,7 +83,7 @@ public class StorageRepository {
   }
 
   public void deleteFile(StorageEntity storageEntity)
-          throws StorageFileNotFoundException, FileNotFoundException {
+          throws StorageEntityNotFoundException, FileNotFoundException {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
 
     metadataRepository.deleteFile(storageEntity.getUserId(), storageEntity.getPath());

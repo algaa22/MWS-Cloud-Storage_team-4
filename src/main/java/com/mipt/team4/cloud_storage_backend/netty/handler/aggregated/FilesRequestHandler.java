@@ -7,7 +7,7 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
@@ -61,7 +61,7 @@ public record FilesRequestHandler(FileController fileController) {
   }
 
   public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken)
-      throws UserNotFoundException, StorageFileNotFoundException, ValidationFailedException {
+      throws UserNotFoundException, StorageEntityNotFoundException, ValidationFailedException {
     StorageDto storageDto =
         fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
 
@@ -80,7 +80,7 @@ public record FilesRequestHandler(FileController fileController) {
 
   public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           ValidationFailedException,
           StorageIllegalAccessException,
           FileNotFoundException {
@@ -92,7 +92,7 @@ public record FilesRequestHandler(FileController fileController) {
   public void handleChangeFileMetadataRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken)
       throws UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           StorageFileAlreadyExistsException,
           ValidationFailedException {
     Optional<String> newFilePath = RequestUtils.getQueryParam(request, "newPath");
@@ -134,7 +134,7 @@ public record FilesRequestHandler(FileController fileController) {
   public void handleDownloadFileRequest(
       ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           ValidationFailedException,
           IOException {
     FileDownloadDto fileDownload =

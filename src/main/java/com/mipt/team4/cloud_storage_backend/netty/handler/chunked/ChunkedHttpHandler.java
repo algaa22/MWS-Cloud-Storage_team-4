@@ -6,7 +6,7 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundExcept
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
@@ -43,16 +43,16 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
         handleHttpContent(ctx, content);
       }
     } catch (StorageFileAlreadyExistsException
-        | UserNotFoundException
-        | UploadSessionNotFoundException
-        | HeaderNotFoundException
-        | TransferAlreadyStartedException
-        | TransferNotStartedYetException
-        | StorageFileNotFoundException
-        | TooSmallFilePartException
-        | ValidationFailedException
-        | StorageIllegalAccessException
-        | QueryParameterNotFoundException e) {
+             | UserNotFoundException
+             | UploadSessionNotFoundException
+             | HeaderNotFoundException
+             | TransferAlreadyStartedException
+             | TransferNotStartedYetException
+             | StorageEntityNotFoundException
+             | TooSmallFilePartException
+             | ValidationFailedException
+             | StorageIllegalAccessException
+             | QueryParameterNotFoundException e) {
       ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
     } catch (CombineChunksToPartException | MissingFilePartException e) {
       ResponseHelper.sendInternalServerErrorResponse(ctx);
@@ -63,7 +63,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
   private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws StorageFileAlreadyExistsException,
           UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           ValidationFailedException,
           StorageIllegalAccessException,
           QueryParameterNotFoundException,
@@ -80,7 +80,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
           QueryParameterNotFoundException,
           HeaderNotFoundException,
           TransferAlreadyStartedException,
-          StorageFileNotFoundException {
+          StorageEntityNotFoundException {
     String uri = request.uri();
     HttpMethod method = request.method();
 

@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
@@ -55,7 +55,7 @@ public class FileController {
   public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto request)
       throws ValidationFailedException,
           UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           StorageIllegalAccessException {
     request.validate();
     return service.getFileDownloadInfo(request);
@@ -64,7 +64,7 @@ public class FileController {
   public DownloadedChunkDto getFileChunk(GetFileChunkDto request)
       throws ValidationFailedException,
           UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           StorageIllegalAccessException {
     request.validate();
     return service.getFileChunk(request);
@@ -77,7 +77,7 @@ public class FileController {
   }
 
   public StorageDto getFileInfo(SimpleFileOperationDto request)
-      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
+      throws ValidationFailedException, UserNotFoundException, StorageEntityNotFoundException {
     request.validate();
     return service.getFileInfo(request);
   }
@@ -86,7 +86,7 @@ public class FileController {
       throws ValidationFailedException,
           StorageIllegalAccessException,
           UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           FileNotFoundException {
     request.validate();
     service.deleteFile(request);
@@ -101,7 +101,7 @@ public class FileController {
   public void changeFileMetadata(ChangeFileMetadataDto request)
       throws ValidationFailedException,
           UserNotFoundException,
-          StorageFileNotFoundException,
+          StorageEntityNotFoundException,
           StorageFileAlreadyExistsException {
     request.validate();
     service.changeFileMetadata(request);
@@ -110,7 +110,7 @@ public class FileController {
   public FileDownloadDto downloadFile(SimpleFileOperationDto request)
       throws ValidationFailedException,
           UserNotFoundException,
-          StorageFileNotFoundException {
+          StorageEntityNotFoundException {
     request.validate();
     return service.downloadFile(request);
   }

@@ -316,6 +316,7 @@ export const getFiles = async (token, currentPath = "") => {
     const files = data?.files || data || [];
 
     console.log(`Found ${files.length} items`);
+    console.log("Raw server response:", files); // ДОБАВЬТЕ ЭТУ СТРОКУ
 
     // 2. Функция для получения информации о файле через GET
     const getFileInfo = async (filePath) => {
@@ -348,27 +349,46 @@ export const getFiles = async (token, currentPath = "") => {
     for (let i = 0; i < files.length; i++) {
       const item = files[i];
       const path = item.path || "";
-      const name = path.split('/').pop() || `file_${i}`;
+
+      // УЛУЧШЕННОЕ ИЗВЛЕЧЕНИЕ ИМЕНИ
+      let name = "Без имени";
+
+      // Вариант 1: Если у item есть явное поле name
+      if (item.name && item.name.trim() !== "") {
+        name = item.name;
+      }
+      // Вариант 2: Извлекаем из path
+      else if (path) {
+        const pathParts = path.split('/').filter(p => p && p !== '');
+        if (pathParts.length > 0) {
+          name = pathParts[pathParts.length - 1];
+        }
+      }
+      // Вариант 3: Используем индекс как крайний вариант
+      else {
+        name = `Объект ${i + 1}`;
+      }
 
       // Определяем тип
       let type = "file";
       let size = 0;
       let fileInfo = null;
 
-      if (path.endsWith('/')) {
-        // Это папка
+      // УЛУЧШЕННОЕ ОПРЕДЕЛЕНИЕ ТИПА
+      if (item.type === "folder" || item.type === "directory" || path.endsWith('/')) {
         type = "folder";
       } else {
+        type = "file";
         // Это файл - получаем информацию
         fileInfo = await getFileInfo(path);
         if (fileInfo) {
           size = fileInfo.Size || fileInfo.size || 0;
         }
+      }
 
-        // Небольшая пауза между запросами
-        if (i < files.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
+      // Небольшая пауза между запросами
+      if (i < files.length - 1 && type === "file") {
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       result.push({
@@ -378,11 +398,17 @@ export const getFiles = async (token, currentPath = "") => {
         size: size,
         id: item.id || path || Math.random().toString(),
         fullPath: path,
-        _raw: item,
-        _info: fileInfo // сохраняем полную информацию для отладки
+        _raw: item, // сохраняем сырой ответ сервера для отладки
+        _info: fileInfo
       });
 
-      console.log(`Processed ${i+1}/${files.length}: ${name} (${type}, ${size} bytes)`);
+      console.log(`Processed ${i+1}/${files.length}:`, {
+        name: name,
+        path: path,
+        type: type,
+        size: size,
+        rawItem: item
+      });
     }
 
     console.log("Final result:", result);
@@ -790,7 +816,6 @@ export const deleteFolder = async (token, folderPath) => {
   }
   return true;
 };
-
 
 /**
  * updateUserInfo - версия с заголовками

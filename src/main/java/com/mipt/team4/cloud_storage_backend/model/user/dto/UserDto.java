@@ -9,7 +9,7 @@ public record UserDto(
     String email,
     String password,
     long storageLimit,
-    long used_storage,
+    long usedStorage,
     LocalDateTime createdAt,
     boolean isActive
   ) {}

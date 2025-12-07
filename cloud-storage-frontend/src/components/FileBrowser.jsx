@@ -440,6 +440,20 @@ export default function FileBrowser() {
     return `${value} ${unit}`;
   };
 
+  const formatPercentage = (value) => {
+      const roundedUp = Math.ceil(value * 100) / 100;
+      let formatted = roundedUp.toFixed(2);
+
+      if (formatted.endsWith('.00')) {
+        return formatted.slice(0, -3);
+      }
+
+      formatted = formatted.replace(/(\.\d)0$/, '$1');
+
+      return formatted;
+  };
+
+
   const getFileIcon = (fileName) => {
     const extension = (fileName || "").split(".").pop().toLowerCase();
     const iconMap = {
@@ -642,7 +656,7 @@ export default function FileBrowser() {
             <div className="flex items-center space-x-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-300">
-                  {storageLoading ? "0" : Math.round(storageInfo.percentage)}%
+                  {storageLoading ? "0" : formatPercentage(storageInfo.used / storageInfo.total)}%
                 </div>
                 <div className="text-xs text-white/60">заполнено</div>
               </div>
@@ -708,7 +722,7 @@ export default function FileBrowser() {
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-yellow-300">
-                        {formatFileSize(files.reduce((sum, file) => sum + (file.size || 0), 0))}
+                        {storageLoading ? "..." : formatFileSize(storageInfo.used)}
                       </div>
                       <div className="text-sm text-white/60">Использовано памяти:</div>
                     </div>

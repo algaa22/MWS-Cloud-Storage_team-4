@@ -76,7 +76,8 @@ public record UsersRequestHandler(UserController userController) {
 
     rootNode.put("Name", userInfo.name());
     rootNode.put("Email", userInfo.email());
-    rootNode.put("Storage limit", userInfo.storageLimit());
+    rootNode.put("StorageLimit", userInfo.storageLimit());
+    rootNode.put("UsedStorage", userInfo.usedStorage());
     rootNode.put("IsActive", userInfo.isActive());
 
     ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);

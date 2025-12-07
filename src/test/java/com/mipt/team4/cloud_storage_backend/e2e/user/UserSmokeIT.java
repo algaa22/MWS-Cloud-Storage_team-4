@@ -85,6 +85,7 @@ public class UserSmokeIT extends BaseUserIT {
 
   // TODO: update user info
 
+  // TODO: проверка на ответ
   @Test
   public void shouldGetUserInfo() throws IOException, InterruptedException {
     HttpResponse<String> register =

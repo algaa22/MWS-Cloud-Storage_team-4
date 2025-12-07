@@ -192,8 +192,13 @@ export async function getUserInfo(token) {
     const data = await res.json();
     console.log("Success! User data:", data);
 
+    // ДОБАВЬТЕ ОТЛАДОЧНЫЙ ВЫВОД ДЛЯ ПРОВЕРКИ
+    console.log("=== DEBUG: Checking storage fields ===");
+    console.log("data.UsedStorage:", data.UsedStorage, typeof data.UsedStorage);
+    console.log("data.StorageLimit:", data.StorageLimit, typeof data.StorageLimit);
+    console.log("All data keys:", Object.keys(data));
+
     // Парсим информацию о хранилище из ответа
-    // Могут быть разные форматы, проверяем все варианты
     const storageInfo = {
       used: 0,
       total: 10 * 1024 * 1024 * 1024, // 10GB по умолчанию
@@ -202,46 +207,35 @@ export async function getUserInfo(token) {
       percentage: 0
     };
 
-    // Вариант 1: Прямые поля storageUsed/storageTotal
-    if (data.storageUsed !== undefined) {
-      storageInfo.used = data.storageUsed;
-    } else if (data.usedStorage !== undefined) {
-      storageInfo.used = data.usedStorage;
-    } else if (data.used !== undefined) {
-      storageInfo.used = data.used;
-    } else if (data.Used !== undefined) {
-      storageInfo.used = data.Used;
+    // Проверяем поля без пробелов (как в вашем коде сервера)
+    if (data.UsedStorage !== undefined) {
+      storageInfo.used = Number(data.UsedStorage) || 0;
+      console.log("UsedStorage found:", storageInfo.used);
     }
 
-    if (data.storageTotal !== undefined) {
-      storageInfo.total = data.storageTotal;
-    } else if (data.totalStorage !== undefined) {
-      storageInfo.total = data.totalStorage;
-    } else if (data.total !== undefined) {
-      storageInfo.total = data.total;
-    } else if (data.Total !== undefined) {
-      storageInfo.total = data.Total;
-    } else if (data.storageLimit !== undefined) {
-      storageInfo.total = data.storageLimit;
-    } else if (data.limit !== undefined) {
-      storageInfo.total = data.limit;
+    if (data.StorageLimit !== undefined) {
+      storageInfo.total = Number(data.StorageLimit) || 10 * 1024 * 1024 * 1024;
+      console.log("StorageLimit found:", storageInfo.total);
     }
 
-    // Вариант 2: Объект storage
-    if (data.storage && typeof data.storage === 'object') {
-      storageInfo.used = data.storage.used || data.storage.Used
-          || storageInfo.used;
-      storageInfo.total = data.storage.total || data.storage.Total
-          || data.storage.limit || storageInfo.total;
+    // Также проверяем варианты с маленькой буквы (на всякий случай)
+    if (data.usedStorage !== undefined && storageInfo.used === 0) {
+      storageInfo.used = Number(data.usedStorage) || 0;
+      console.log("usedStorage found:", storageInfo.used);
     }
 
-    // Вариант 3: Свободное место (free)
-    if (data.freeSpace !== undefined && data.storageLimit !== undefined) {
-      storageInfo.used = data.storageLimit - data.freeSpace;
-      storageInfo.total = data.storageLimit;
-    } else if (data.free !== undefined && data.total !== undefined) {
-      storageInfo.used = data.total - data.free;
-      storageInfo.total = data.total;
+    if (data.storageLimit !== undefined && storageInfo.total === 10 * 1024 * 1024 * 1024) {
+      storageInfo.total = Number(data.storageLimit) || 10 * 1024 * 1024 * 1024;
+      console.log("storageLimit found:", storageInfo.total);
+    }
+
+    // Проверяем стандартные варианты
+    if (data.used !== undefined && storageInfo.used === 0) {
+      storageInfo.used = Number(data.used) || 0;
+    }
+
+    if (data.total !== undefined && storageInfo.total === 10 * 1024 * 1024 * 1024) {
+      storageInfo.total = Number(data.total) || 10 * 1024 * 1024 * 1024;
     }
 
     // Вычисляем процент и форматируем
@@ -251,6 +245,7 @@ export async function getUserInfo(token) {
     storageInfo.formattedTotal = formatBytes(storageInfo.total);
 
     console.log("Parsed storage info:", storageInfo);
+    console.log("Percentage:", storageInfo.percentage + "%");
 
     return {
       ...data,
@@ -546,7 +541,7 @@ const uploadFileChunked = async (token, file, path, onProgress) => {
       duplex: "half"
     }, token);
 
-    clearTimeout(timeoutId); // Очищаем таймаут после получения ответа
+    clearTimeout(timeoutId);
 
     console.log("📥 Response received:", res.status, res.statusText);
 

@@ -14,6 +14,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
@@ -22,13 +23,18 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FileService {
-  private final StorageRepository storageRepository;
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
   private final UserSessionService userSessionService;
+  private final StorageRepository storageRepository;
+  private final UserRepository userRepository;
 
-  public FileService(StorageRepository storageRepository, UserSessionService userSessionService) {
+  public FileService(
+      StorageRepository storageRepository,
+      UserRepository userRepository,
+      UserSessionService userSessionService) {
     this.storageRepository = storageRepository;
     this.userSessionService = userSessionService;
+    this.userRepository = userRepository;
   }
 
   // TODO: soft delete?
@@ -107,6 +113,7 @@ public class FileService {
 
       storageRepository.completeMultipartUpload(
           fileEntity, uploadState.getUploadId(), uploadState.getETags());
+      userRepository.increaseUsedStorage(userId, uploadState.getFileSize());
 
       return new ChunkedUploadFileResultDto(
           session.path(), uploadState.getFileSize(), uploadState.getTotalParts());
@@ -139,6 +146,7 @@ public class FileService {
             false);
 
     storageRepository.addFile(entity, data);
+    userRepository.increaseUsedStorage(userId, data.length);
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationDto fileDownload)
@@ -150,7 +158,10 @@ public class FileService {
         entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileDownload.path()));
 
     return new FileDownloadDto(
-        fileDownload.path(), entityOpt.get().getMimeType(), storageRepository.downloadFile(entity), entity.getSize());
+        fileDownload.path(),
+        entityOpt.get().getMimeType(),
+        storageRepository.downloadFile(entity),
+        entity.getSize());
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)
@@ -161,6 +172,7 @@ public class FileService {
         entityOpt.orElseThrow(() -> new StorageFileNotFoundException(deleteFileRequest.path()));
 
     storageRepository.deleteFile(entity);
+    userRepository.decreaseUsedStorage(userId, entity.getSize());
   }
 
   public DownloadedChunkDto getFileChunk(GetFileChunkDto fileChunkRequest)

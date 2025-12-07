@@ -13,7 +13,7 @@ public class UserMapper {
         dto.email(),
         dto.password(),
         dto.storageLimit(),
-        dto.used_storage(),
+        dto.usedStorage(),
         dto.createdAt(),
         dto.isActive());
   }

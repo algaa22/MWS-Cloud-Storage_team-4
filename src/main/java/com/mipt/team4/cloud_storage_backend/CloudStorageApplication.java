@@ -55,7 +55,7 @@ public class CloudStorageApplication {
     RefreshTokenRepository refreshTokenRepository = new RefreshTokenRepository(postgresConnection);
     RefreshTokenService refreshTokenService = new RefreshTokenService(refreshTokenRepository);
 
-    FileService fileService = new FileService(storageRepository, userSessionService);
+    FileService fileService = new FileService(storageRepository, userRepository, userSessionService);
     DirectoryService directoryService = new DirectoryService(storageRepository, userSessionService);
     UserService userService =
         new UserService(userRepository, userSessionService, refreshTokenService);

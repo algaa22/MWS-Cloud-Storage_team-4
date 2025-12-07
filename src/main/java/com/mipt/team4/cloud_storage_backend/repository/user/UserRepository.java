@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.user;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -91,30 +91,33 @@ public class UserRepository {
   }
 
   public void updateInfo(UUID id, String newName, String newPasswordHash) {
-    if (newName == null && newPasswordHash == null) {
-      throw new IllegalArgumentException("At least one parameter must be provided");
-    }
-
     List<String> updates = new ArrayList<>();
     List<Object> params = new ArrayList<>();
 
-    if (newName != null) {
-      updates.add("username = ?");
-      params.add(newName);
-    }
+    updates.add("username = ?");
+    updates.add("password_hash = ?");
 
-    if (newPasswordHash != null) {
-      updates.add("password_hash = ?");
-      params.add(newPasswordHash); // Это уже хеш!
-    }
-
-    if (updates.isEmpty()) {
-      return;
-    }
-
+    params.add(newName);
+    params.add(newPasswordHash);
     params.add(id);
+
     String sql = String.format("UPDATE users SET %s WHERE id = ?;", String.join(", ", updates));
 
     postgres.executeUpdate(sql, params);
   }
+
+  public void increaseUsedStorage(UUID id, long delta) {
+    changeUsedStorage(id, delta);
   }
+
+  public void decreaseUsedStorage(UUID id, long delta) {
+    changeUsedStorage(id, -delta);
+  }
+
+  private void changeUsedStorage(UUID id, long delta) {
+    postgres.executeUpdate(
+            "UPDATE users SET used_storage = GREATEST(0, used_storage + ?) WHERE id = ?;",
+            List.of(delta, id)
+    );
+  }
+}

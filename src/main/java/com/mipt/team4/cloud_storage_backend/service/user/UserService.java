@@ -125,20 +125,46 @@ public class UserService {
     return new TokenPairDto(newSession.token(), newRefreshToken.getToken());
   }
 
-  public void updateUserInfo(UpdateUserInfoDto updateUserInfoDto) throws UserNotFoundException {
+  public void updateUserInfo(UpdateUserInfoDto updateUserInfoDto)
+      throws UserNotFoundException, WrongPasswordException {
+
     UUID id = userSessionService.extractUserIdFromToken(updateUserInfoDto.userToken());
     Optional<UserEntity> userOpt = userRepository.getUserById(id);
-    UserEntity entity =
-        userOpt.orElseThrow(() -> new UserNotFoundException(updateUserInfoDto.userToken()));
+    UserEntity entity = userOpt.orElseThrow(() -> new UserNotFoundException(updateUserInfoDto.userToken()));
 
-    if (updateUserInfoDto.newName().isPresent()) {
-      entity.setName(String.valueOf(updateUserInfoDto.newName()));
-    }
+    // Если меняем пароль - проверяем старый пароль
     if (updateUserInfoDto.newPassword().isPresent()) {
       entity.setPasswordHash(String.valueOf(updateUserInfoDto.newPassword()));
     }
+      // Получаем старый пароль из DTO
+      if (updateUserInfoDto.oldPassword().isEmpty()) {
+        throw new IllegalArgumentException("Old password is required when changing password");
+      }
 
+      String oldPassword = updateUserInfoDto.oldPassword().get();
+      String currentPasswordHash = entity.getPasswordHash();
+
+      // Проверяем что старый пароль верный
+      if (!PasswordHasher.verify(oldPassword, currentPasswordHash)) {
+        throw new WrongPasswordException();
+      }
+
+      // Хешируем новый пароль
+      String newPasswordHash = PasswordHasher.hash(updateUserInfoDto.newPassword().get());
+      entity.setPasswordHash(newPasswordHash);
+
+    // Обновляем имя, если предоставлено
+    if (updateUserInfoDto.newName().isPresent()) {
+      entity.setName(updateUserInfoDto.newName().get());
+    }
+
+    // Обновляем в репозитории
     userRepository.updateInfo(
-        id, updateUserInfoDto.newName().get(), updateUserInfoDto.newPassword().get());
+        id,
+        updateUserInfoDto.newName().orElse(entity.getName()),
+        updateUserInfoDto.newPassword()
+            .map(PasswordHasher::hash)
+            .orElse(entity.getPasswordHash())
+    );
   }
 }

@@ -54,7 +54,7 @@ public class UserController {
     return service.getUserInfo(request);
   }
 
-  public void updateUserInfo(UpdateUserInfoDto request) throws ValidationFailedException, UserNotFoundException {
+  public void updateUserInfo(UpdateUserInfoDto request) throws ValidationFailedException, UserNotFoundException, WrongPasswordException {
     request.validate();
     service.updateUserInfo(request);
   }

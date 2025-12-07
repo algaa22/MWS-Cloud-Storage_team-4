@@ -3,6 +3,8 @@ package com.mipt.team4.cloud_storage_backend.repository.user;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -88,9 +90,31 @@ public class UserRepository {
     return result.getFirst();
   }
 
-  public void updateInfo(UUID id, String newName, String newPassword) {
-    postgres.executeUpdate(
-        "UPDATE users SET username = ? newPassword = ? WHERE ID = ?;",
-        List.of(newName, newPassword, id));
+  public void updateInfo(UUID id, String newName, String newPasswordHash) {
+    if (newName == null && newPasswordHash == null) {
+      throw new IllegalArgumentException("At least one parameter must be provided");
+    }
+
+    List<String> updates = new ArrayList<>();
+    List<Object> params = new ArrayList<>();
+
+    if (newName != null) {
+      updates.add("username = ?");
+      params.add(newName);
+    }
+
+    if (newPasswordHash != null) {
+      updates.add("password_hash = ?");
+      params.add(newPasswordHash); // Это уже хеш!
+    }
+
+    if (updates.isEmpty()) {
+      return;
+    }
+
+    params.add(id);
+    String sql = String.format("UPDATE users SET %s WHERE id = ?;", String.join(", ", updates));
+
+    postgres.executeUpdate(sql, params);
   }
-}
+  }

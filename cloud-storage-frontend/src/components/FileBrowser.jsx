@@ -9,7 +9,8 @@ import {
   deleteFile as apiDeleteFile,
   renameFile as apiRenameFile,
   getFileInfo as apiGetFileInfo,
-  createFolder as apiCreateFolder
+  createFolder as apiCreateFolder,
+  getUserInfo // Добавляем новый метод
 } from "../api.js";
 
 export default function FileBrowser() {
@@ -35,6 +36,17 @@ export default function FileBrowser() {
   const [error, setError] = useState("");
   const [fileInfoData, setFileInfoData] = useState(null);
 
+
+  // Добавляем состояние для информации о памяти
+  const [storageInfo, setStorageInfo] = useState({
+    used: 0,
+    total: 10 * 1024 * 1024 * 1024, // 10GB по умолчанию
+    percentage: 0,
+    formattedUsed: '0 Bytes',
+    formattedTotal: '10 GB'
+  });
+  const [storageLoading, setStorageLoading] = useState(true);
+
   const normalizeCurrentPath = (p) => {
     if (!p || p === "" || p === "/") return "";
     return p.endsWith("/") ? p : p + "/";
@@ -57,9 +69,109 @@ export default function FileBrowser() {
       return;
     }
 
+    const loadData = async () => {
+      setLoading(true);
+      setStorageLoading(true); // <-- Начинаем загрузку хранилища
+
+      try {
+        await fetchFiles();
+        await loadStorageInfo(); // Ждем завершения
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setLoading(false);
+        setStorageLoading(false); // <-- Завершаем загрузку
+      }
+    };
+
     console.log("Calling fetchFiles...");
-    fetchFiles();
+    loadData();
   }, [token, currentPath]);
+
+  // Функция для загрузки информации о хранилище
+  const loadStorageInfo = async () => {
+    if (!token) return;
+
+    try {
+      setStorageLoading(true);
+      const userData = await getUserInfo(token);
+      console.log("User info loaded:", userData);
+
+      //setUserDetails(userData);
+
+      // Извлекаем информацию о хранилище
+      let storageData = {
+        used: 0,
+        total: 10 * 1024 * 1024 * 1024, // 10GB по умолчанию
+      };
+
+      // Проверяем разные варианты получения данных о хранилище
+      if (userData.storageInfo) {
+        storageData = userData.storageInfo;
+      } else if (userData.storage) {
+        storageData.used = userData.storage.used || userData.storage.Used || 0;
+        storageData.total = userData.storage.total || userData.storage.Total || userData.storage.limit || storageData.total;
+      } else if (userData.storageUsed !== undefined || userData.usedStorage !== undefined) {
+        storageData.used = userData.storageUsed || userData.usedStorage || userData.used || 0;
+        storageData.total = userData.storageTotal || userData.totalStorage || userData.storageLimit || userData.total || storageData.total;
+      }
+
+      if (userData.freeSpace !== undefined && userData.storageLimit !== undefined) {
+        storageData.used = userData.storageLimit - userData.freeSpace;
+        storageData.total = userData.storageLimit;
+      }
+
+      // Вычисляем остальные значения
+      const percentage = storageData.total > 0 ? Math.round((storageData.used / storageData.total) * 100) : 0;
+
+      setStorageInfo({
+        used: storageData.used,
+        total: storageData.total,
+        percentage,
+        formattedUsed: formatFileSize(storageData.used),
+        formattedTotal: formatFileSize(storageData.total)
+      });
+
+    } catch (err) {
+      console.error("Error loading user info:", err);
+      // Если ошибка, показываем данные из файлов
+      if (files.length > 0) {
+        calculateStorageFromFiles();
+      }
+    } finally {
+      setStorageLoading(false);
+    }
+  };
+
+  // Функция для вычисления занятого места из файлов
+  const calculateStorageFromFiles = () => {
+    if (files.length === 0 && folders.length === 0) return;
+
+    let totalUsed = 0;
+    files.forEach(file => {
+      if (file.type === 'file' && file.size) {
+        totalUsed += file.size;
+      }
+    });
+
+    // Применяем лимит из storageInfo или используем значение по умолчанию
+    const totalLimit = storageInfo.total || (10 * 1024 * 1024 * 1024); // 10GB по умолчанию
+    const percentage = totalLimit > 0 ? Math.round((totalUsed / totalLimit) * 100) : 0;
+
+    setStorageInfo(prev => ({
+      ...prev,
+      used: totalUsed,
+      percentage,
+      formattedUsed: formatFileSize(totalUsed)
+    }));
+  };
+
+  // Обновляем расчет памяти при изменении файлов
+  useEffect(() => {
+    if (files.length > 0) {
+      calculateStorageFromFiles();
+    }
+  }, [files]);
 
   const computeFullPathForItem = (item) => {
     if (item.fullPath && typeof item.fullPath === "string" && item.fullPath !== "") {
@@ -211,6 +323,7 @@ export default function FileBrowser() {
           if (window.confirm(`Удалить "${selectedItem.name}"?`)) {
             await apiDeleteFile(token, selectedItem.fullPath);
             await fetchFiles();
+            await loadStorageInfo(); // Обновляем информацию о памяти
           }
           break;
         case "info":
@@ -229,8 +342,8 @@ export default function FileBrowser() {
       setError(`Ошибка: ${err.message}`);
     } finally {
       if (action !== "rename") {
-          setShowItemMenu(false);
-          setSelectedItem(null);
+        setShowItemMenu(false);
+        setSelectedItem(null);
       }
     }
   };
@@ -251,7 +364,6 @@ export default function FileBrowser() {
 
       const targetPath = currentPath ? `${currentPath}${file.name}` : file.name;
       console.log("Target path:", targetPath);
-
       console.log("File size before upload:", file.size, "bytes");
 
       await apiUploadFile(token, file, targetPath, (progress) => {
@@ -261,6 +373,7 @@ export default function FileBrowser() {
 
       console.log("Upload completed successfully");
       await fetchFiles();
+      await loadStorageInfo(); // Обновляем информацию о памяти
       setShowUploadModal(false);
 
     } catch (err) {
@@ -318,9 +431,13 @@ export default function FileBrowser() {
     if (!bytes && bytes !== 0) return "—";
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+
+    const value = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
+    const unit = sizes[i];
+
+    return `${value} ${unit}`;
   };
 
   const getFileIcon = (fileName) => {
@@ -369,58 +486,178 @@ export default function FileBrowser() {
     });
   };
 
+  // Функция для получения цвета прогресс-бара в зависимости от заполненности
+  const getProgressBarColor = (percentage) => {
+    if (percentage < 50) return 'bg-green-500';
+    if (percentage < 75) return 'bg-yellow-500';
+    if (percentage < 90) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
+
   return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white p-4">
-        {/* Header */}
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Облачное хранилище</h1>
 
+        {/* Верхняя панель с заголовком и пользователем в одну строку */}
+        <header className="flex justify-between items-center mb-10">
+          {/* Заголовок слева */}
+          {/* Пустой блок для балансировки слева */}
+          <div className="w-32"></div>
+
+          {/* Заголовок по центру */}
+          <div className="text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-white">
+              MWS Cloud Storage
+            </h1>
+            <p className="text-white/60 text-sm mt-1">Безопасное хранение файлов</p>
+          </div>
+
+          {/* Пользователь справа */}
           <div className="relative">
             <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 hover:bg-white/30 transition-colors"
+                className="flex items-center space-x-3 bg-white/10 hover:bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 transition-all duration-200 border border-white/10 hover:border-white/20"
             >
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                {user?.username?.[0]?.toUpperCase() || "U"}
+              {/* Иконка с первой буквой */}
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500/90 to-purple-500/90 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
               </div>
-              <span>{user?.username || "Пользователь"}</span>
+              {/* Имя пользователя */}
+              <div className="text-left">
+            <span className="font-medium text-white text-sm block">
+              {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+            </span>
+                {user?.email && <span className="text-white/50 text-xs block">{user.email}</span>}
+              </div>
+              <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
 
             {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white/20 backdrop-blur-xl rounded-xl shadow-2xl py-2 z-50">
-                  <div className="px-4 py-2 border-b border-white/20">
-                    <p className="font-medium">{user?.email}</p>
-                    <p className="text-sm text-white/70">Хранилище: 2.4 GB / 10 GB</p>
+                <div className="absolute right-0 mt-2 w-72 bg-gray-800/95 backdrop-blur-xl rounded-xl shadow-2xl py-3 z-50 border border-white/10">
+                  <div className="px-4 py-3 border-b border-white/10">
+                    {/* Иконка и имя в меню */}
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">
+                          {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+                        </p>
+                        {user?.email && <p className="text-white/60 text-xs mt-0.5">{user.email}</p>}
+                      </div>
+                    </div>
+                    {/* Информация о хранилище */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/80">Хранилище:</span>
+                        <span className="text-blue-300 font-medium">{storageInfo.formattedUsed}</span>
+                      </div>
+                      <div className="w-full bg-gray-700/60 rounded-full h-2 overflow-hidden">
+                        <div
+                            className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(storageInfo.percentage)}`}
+                            style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-white/50">
+                        <span>Лимит: {storageInfo.formattedTotal}</span>
+                        <span>Осталось: {formatFileSize(storageInfo.total - storageInfo.used)}</span>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Кнопка настроек профиля */}
                   <button
-                      onClick={() => {}}
-                      className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        navigate("/settings");
+                      }}
+                      className="flex items-center w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors border-t border-white/10"
                   >
-                    Настройки профиля
+                    <svg className="w-4 h-4 mr-3 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm">Настройки профиля</span>
                   </button>
+
                   <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
+                      className="flex items-center w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors text-red-300 border-t border-white/10"
                   >
-                    Выйти
+                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span className="text-sm">Выйти</span>
                   </button>
                 </div>
             )}
           </div>
         </header>
 
-        {/* Breadcrumbs */}
-        <div className="mb-6">
-          <button
-              onClick={() => setCurrentPath("")}
-              className="text-white/70 hover:text-white"
-          >
-            Главная
-          </button>
-          {currentPath && renderBreadcrumbs()}
+        {/* Панель информации о памяти */}
+        <div className="mb-6 bg-white/10 backdrop-blur-sm rounded-xl p-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-lg font-medium">Ваше хранилище</div>
+                <div className="text-sm">
+                  {storageLoading ? (
+                      <span className="text-white/70 animate-pulse">Загрузка...</span>
+                  ) : (
+                      <>
+                        <span className="text-blue-300">{storageInfo.formattedUsed}</span>
+                        <span className="text-white/60"> / </span>
+                        <span>{storageInfo.formattedTotal}</span>
+                      </>
+                  )}
+                </div>
+              </div>
+
+              {/* Основной прогресс-бар */}
+              <div className="w-full bg-gray-700/50 rounded-full h-3 overflow-hidden">
+                {storageLoading ? (
+                    <div className="h-3 bg-gradient-to-r from-blue-500/30 to-purple-500/30 animate-pulse rounded-full w-full"></div>
+                ) : (
+                    <div
+                        className={`h-3 rounded-full transition-all duration-500 ${getProgressBarColor(storageInfo.percentage)}`}
+                        style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
+                    />
+                )}
+              </div>
+
+              <div className="flex justify-between text-sm mt-1">
+        <span className="text-white/60">
+  {storageLoading ? "Получение информации..." :
+      files.length === 0 && folders.length === 0 ? "Хранилище пусто" :`Использовано ${storageInfo.percentage}%`
+  }
+</span>
+                <span className="text-white/60">
+          {storageLoading ? "..." : `Осталось: ${formatFileSize(storageInfo.total - storageInfo.used)}`}
+        </span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-300">
+                  {storageLoading ? "0" : Math.round(storageInfo.percentage)}%
+                </div>
+                <div className="text-xs text-white/60">заполнено</div>
+              </div>
+
+              <div className="hidden md:block h-8 w-px bg-white/20" />
+
+              <div className="text-center">
+                <div className="text-xl font-bold">{files.length + folders.length}</div>
+                <div className="text-xs text-white/60">файлов и папок</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Main area */}
+        {/* Основная область с файлами */}
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 min-h-[60vh] mb-6">
           {error && (
               <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center">
@@ -431,64 +668,109 @@ export default function FileBrowser() {
           {loading ? (
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+                <span className="ml-3">Загрузка файлов...</span>
               </div>
           ) : files.length === 0 && folders.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center">
-                <div className="text-6xl mb-4">📁</div>
-                <p className="text-xl mb-2">Файлов нет</p>
-                <p className="text-white/70">Загрузите файл, и он появится здесь!</p>
+                <div className="text-6xl mb-4 opacity-50">📁</div>
+                <p className="text-xl mb-2">Папка пуста</p>
+                <p className="text-white/70">Загрузите файл или создайте папку</p>
+
+                {/* Информация о памяти для пустой папки */}
+                {storageInfo.percentage > 0 && (
+                    <div className="mt-6 bg-white/5 rounded-xl p-4 max-w-md w-full">
+                      <div className="text-sm text-white/60 mb-2">Использование хранилища:</div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm">{storageInfo.formattedUsed}</span>
+                        <span className="text-sm">{storageInfo.formattedTotal}</span>
+                      </div>
+                      <div className="w-full bg-gray-700/50 rounded-full h-2">
+                        <div
+                            className="h-2 rounded-full bg-blue-500 transition-all duration-300"
+                            style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                )}
               </div>
           ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {/* Folders */}
-                {folders.map((folder) => (
-                    <div
-                        key={folder.id || folder.fullPath}
-                        onClick={(e) => handleItemClick(folder, e)}
-                        className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105"
-                    >
-                      <div className="text-4xl mb-2">📁</div>
-                      <p className="truncate text-sm">
-                        {(() => {
-                          const path = folder.fullPath || "";
-                          const parts = path.split("/").filter(p => p);
-                          return parts.length > 0 ? parts[parts.length - 1] : "Папка";
-                        })()}
-                      </p>
-                      {folder.fileCount ? (
-                          <p className="text-xs text-white/50 mt-1">{folder.fileCount} файлов</p>
-                      ) : null}
+              <>
+                {/* Статистика текущей папки */}
+                <div className="mb-6 p-4 bg-white/5 rounded-xl">
+                  <div className="flex flex-wrap gap-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-300">{folders.length}</div>
+                      <div className="text-sm text-white/60">Папок</div>
                     </div>
-                ))}
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-300">{files.length}</div>
+                      <div className="text-sm text-white/60">Файлов</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-yellow-300">
+                        {formatFileSize(files.reduce((sum, file) => sum + (file.size || 0), 0))}
+                      </div>
+                      <div className="text-sm text-white/60">Использовано памяти:</div>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Files */}
-                {files.map((file) => (
-                    <div
-                        key={file.id || file.fullPath}
-                        onClick={(e) => handleItemClick(file, e)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setSelectedItem(file);
-                          setShowItemMenu(true);
-                          setItemMenuPosition({ x: e.clientX, y: e.clientY });
-                        }}
-                        className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105"
-                    >
-                      <div className="text-4xl mb-2">{getFileIcon(file.name)}</div>
-                      <p className="truncate text-sm">{file.name}</p>
-                      <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
-                    </div>
-                ))}
-              </div>
+                {/* Сетка файлов и папок */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {/* Папки */}
+                  {folders.map((folder) => (
+                      <div
+                          key={folder.id || folder.fullPath}
+                          onClick={(e) => handleItemClick(folder, e)}
+                          className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group"
+                      >
+                        <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">📁</div>
+                        <p className="truncate text-sm font-medium">
+                          {(() => {
+                            const path = folder.fullPath || "";
+                            const parts = path.split("/").filter(p => p);
+                            return parts.length > 0 ? parts[parts.length - 1] : "Папка";
+                          })()}
+                        </p>
+                        {folder.fileCount ? (
+                            <p className="text-xs text-white/50 mt-1">{folder.fileCount} файлов</p>
+                        ) : (
+                            <p className="text-xs text-white/30 mt-1">Папка</p>
+                        )}
+                      </div>
+                  ))}
+
+                  {/* Файлы */}
+                  {files.map((file) => (
+                      <div
+                          key={file.id || file.fullPath}
+                          onClick={(e) => handleItemClick(file, e)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setSelectedItem(file);
+                            setShowItemMenu(true);
+                            setItemMenuPosition({ x: e.clientX, y: e.clientY });
+                          }}
+                          className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group"
+                      >
+                        <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">
+                          {getFileIcon(file.name)}
+                        </div>
+                        <p className="truncate text-sm font-medium">{file.name}</p>
+                        <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
+                      </div>
+                  ))}
+                </div>
+              </>
           )}
         </div>
 
-        {/* Bottom buttons */}
+        {/* Кнопки внизу */}
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-4">
           <button
               onClick={() => setShowUploadModal(true)}
               disabled={uploading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-colors flex items-center space-x-2 disabled:opacity-50"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-colors flex items-center space-x-2 disabled:opacity-50 shadow-lg"
           >
             {uploading ? (
                 <>
@@ -505,29 +787,68 @@ export default function FileBrowser() {
 
           <button
               onClick={() => setShowFolderModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium transition-colors flex items-center space-x-2"
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium transition-colors flex items-center space-x-2 shadow-lg"
           >
             <span>📁</span>
             <span>Создать папку</span>
           </button>
         </div>
 
-        {/* Upload modal */}
+
+        {/* Модальное окно загрузки с информацией о памяти */}
         {showUploadModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
                 <h3 className="text-xl font-bold mb-4">Загрузить файл</h3>
-                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="w-full mb-4" />
+
+                {/* Информация о доступном месте */}
+                <div className="mb-4 p-3 bg-white/10 rounded-xl">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Доступно:</span>
+                    <span className="font-medium text-green-300">
+              {storageLoading ? "..." : formatFileSize(storageInfo.total - storageInfo.used)}
+            </span>
+                  </div>
+                  <div className="flex justify-between text-xs text-white/60 mb-2">
+                    <span>Использовано: {storageLoading ? "..." : storageInfo.formattedUsed}</span>
+                    <span>Лимит: {storageLoading ? "..." : storageInfo.formattedTotal}</span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    {storageLoading ? (
+                        <div className="h-2 bg-gradient-to-r from-blue-500/30 to-green-500/30 animate-pulse rounded-full w-full"></div>
+                    ) : (
+                        <div
+                            className={`h-2 rounded-full ${getProgressBarColor(storageInfo.percentage)}`}
+                            style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
+                        />
+                    )}
+                  </div>
+                </div>
+
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="w-full mb-4 p-3 bg-white/20 rounded-xl cursor-pointer hover:bg-white/30 transition-colors"
+                />
                 {uploading && (
                     <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
                       <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                     </div>
                 )}
                 <div className="flex justify-end space-x-3">
-                  <button onClick={() => setShowUploadModal(false)} className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30" disabled={uploading}>
+                  <button
+                      onClick={() => setShowUploadModal(false)}
+                      className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+                      disabled={uploading || storageLoading}
+                  >
                     Отмена
                   </button>
-                  <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700" disabled={uploading}>
+                  <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors"
+                      disabled={uploading || storageLoading}
+                  >
                     Выбрать файл
                   </button>
                 </div>

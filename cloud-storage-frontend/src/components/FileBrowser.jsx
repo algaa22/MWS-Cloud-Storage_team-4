@@ -612,6 +612,7 @@ export default function FileBrowser() {
   };
 
   const formatPercentage = (value) => {
+      value *= 100;
       const roundedUp = Math.ceil(value * 100) / 100;
       let formatted = roundedUp.toFixed(2);
 

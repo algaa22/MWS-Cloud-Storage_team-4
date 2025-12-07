@@ -115,6 +115,5 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     ResponseHelper.sendInternalServerErrorResponse(ctx);
 
     chunkedUpload.cleanup();
-    chunkedDownload.cleanup();
   }
 }

@@ -28,7 +28,7 @@ public class UserRepository {
         List.of(
             userEntity.getId(),
             userEntity.getEmail(),
-            userEntity.getPassword(),
+            userEntity.getPasswordHash(),
             userEntity.getName(),
             userEntity.getStorageLimit(),
             userEntity.getUsedStorage(),

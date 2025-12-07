@@ -216,7 +216,7 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public byte[] downloadFile(String s3Key) {
+  public InputStream downloadFile(String s3Key) {
     try {
       return minioClient
           .getObject(
@@ -224,8 +224,7 @@ public class MinioContentRepository implements FileContentRepository {
                   .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
                   .object(s3Key)
                   .build())
-          .get()
-          .readAllBytes();
+          .get();
     } catch (InsufficientDataException
         | XmlParserException
         | NoSuchAlgorithmException

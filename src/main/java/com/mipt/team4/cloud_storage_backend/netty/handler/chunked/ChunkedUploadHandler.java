@@ -27,6 +27,8 @@ import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
+
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;

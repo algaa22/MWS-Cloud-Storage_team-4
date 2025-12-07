@@ -20,6 +20,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,9 +68,9 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           | InvalidEmailOrPassword
           | WrongPasswordException
           | StorageFileNotFoundException
-          | FileNotFoundException
           | StorageFileAlreadyExistsException
-          | StorageIllegalAccessException e) {
+          | StorageIllegalAccessException
+          | IOException e) {
         ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
       }
     } else {
@@ -82,7 +84,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           StorageFileNotFoundException,
           ValidationFailedException,
           StorageIllegalAccessException,
-          FileNotFoundException,
+          IOException,
           StorageFileAlreadyExistsException,
           HeaderNotFoundException {
     String userToken = extractUserTokenFromRequest(request);

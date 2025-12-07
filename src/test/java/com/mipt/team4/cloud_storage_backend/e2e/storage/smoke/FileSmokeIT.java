@@ -41,17 +41,22 @@ public class FileSmokeIT extends BaseStorageIT {
   @Test
   public void shouldUploadAndDownloadFile_Chunked() throws IOException {
     try (CloseableHttpClient apacheClient = TestUtils.createApacheClient()) {
+      byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
+
       FileChunkedTransferITUtils.UploadResult uploadResult =
           FileChunkedTransferITUtils.sendUploadRequest(
-              apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH, BIG_FILE_LOCAL_PATH, "");
+              apacheClient,
+              currentUserToken,
+              DEFAULT_FILE_TARGET_PATH,
+              BIG_FILE_LOCAL_PATH,
+              "",
+              fileData.length);
       assertEquals(HttpStatus.SC_OK, uploadResult.statusCode());
 
       FileChunkedTransferITUtils.DownloadResult downloadResult =
           FileChunkedTransferITUtils.sendDownloadRequest(
               apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH);
       assertEquals(HttpStatus.SC_OK, downloadResult.statusCode());
-
-      byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
 
       assertDownloadResponseValid(downloadResult, fileData.length);
       assertDownloadedChunksMatchOriginalFile(downloadResult, fileData);
@@ -144,7 +149,7 @@ public class FileSmokeIT extends BaseStorageIT {
   }
 
   private void assertDownloadResponseValid(
-          FileChunkedTransferITUtils.DownloadResult downloadResult, int fileSize) {
+      FileChunkedTransferITUtils.DownloadResult downloadResult, int fileSize) {
     Map<String, String> headers = downloadResult.headers();
 
     String receivedTransferEncoding = headers.get(HttpHeaderNames.TRANSFER_ENCODING.toString());
@@ -156,7 +161,8 @@ public class FileSmokeIT extends BaseStorageIT {
     assertEquals(String.valueOf(fileSize), receivedFileSize);
   }
 
-  private void assertDownloadedChunksMatchOriginalFile(FileChunkedTransferITUtils.DownloadResult downloadResult, byte[] fileData) {
+  private void assertDownloadedChunksMatchOriginalFile(
+      FileChunkedTransferITUtils.DownloadResult downloadResult, byte[] fileData) {
     int offset = 0;
 
     for (byte[] chunk : downloadResult.chunks()) {

@@ -9,7 +9,7 @@ public class UserEntity {
   boolean isActive;
   private String name;
   private String email;
-  private String password;
+  private String passwordHash;
   private long storageLimit;
   private long usedStorage;
   private LocalDateTime createdAt;
@@ -18,7 +18,7 @@ public class UserEntity {
     this.id = id;
     this.name = name;
     this.email = email;
-    this.password = password;
+    this.passwordHash = password;
     this.storageLimit = StorageConfig.INSTANCE.getDefaultStorageLimit();
     this.usedStorage = 0L;
     this.createdAt = LocalDateTime.now();
@@ -38,7 +38,7 @@ public class UserEntity {
     this.id = id;
     this.name = name;
     this.email = email;
-    this.password = password;
+    this.passwordHash = password;
     this.storageLimit = storageLimit;
     this.usedStorage = usedStorage;
     this.createdAt = createdAt;
@@ -65,12 +65,12 @@ public class UserEntity {
     this.email = email;
   }
 
-  public String getPassword() {
-    return password;
+  public String getPasswordHash() {
+    return passwordHash;
   }
 
-  public void setPassword(String password) {
-    this.password = password;
+  public void setPasswordHash(String passwordHash) {
+    this.passwordHash = passwordHash;
   }
 
   public long getStorageLimit() {

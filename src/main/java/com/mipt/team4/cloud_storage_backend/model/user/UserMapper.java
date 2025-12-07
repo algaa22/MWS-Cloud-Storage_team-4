@@ -23,7 +23,7 @@ public class UserMapper {
         entity.getId(),
         entity.getName(),
         entity.getEmail(),
-        entity.getPassword(),
+        entity.getPasswordHash(),
         entity.getStorageLimit(),
         entity.getUsedStorage(),
         entity.getCreatedAt(),

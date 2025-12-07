@@ -13,6 +13,7 @@ public enum PipelineType {
 
   public static PipelineType from(HttpRequest request) throws ParseException {
     if (request.method() == HttpMethod.POST) {
+      // TODO: или Transfer-Encoding
       int fileSize =
           SafeParser.parseInt("File size", RequestUtils.getHeader(request, "X-File-Size", "0"));
 

@@ -17,7 +17,6 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
-
 import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -151,7 +150,7 @@ public class FileService {
         entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileDownload.path()));
 
     return new FileDownloadDto(
-        fileDownload.path(), entityOpt.get().getMimeType(), storageRepository.downloadFile(entity));
+        fileDownload.path(), entityOpt.get().getMimeType(), storageRepository.downloadFile(entity), entity.getSize());
   }
 
   public void deleteFile(SimpleFileOperationDto deleteFileRequest)

@@ -9,7 +9,7 @@ public enum StorageConfig {
 
   private final String jwtSecretKey;
   private final int maxAggregatedContentLength;
-  private final long fileDownloadChunkSize;
+  private final int fileDownloadChunkSize;
   private final long defaultStorageLimit;
   private final long accessTokenExpirationSec;
   private final long refreshTokenExpirationSec;
@@ -23,7 +23,7 @@ public enum StorageConfig {
     this.maxAggregatedContentLength =
         yamlSource.getInt("storage.http.max-aggregated-content-length").orElseThrow();
     this.fileDownloadChunkSize =
-        yamlSource.getLong("storage.http.file-download-chunk-size").orElseThrow();
+        yamlSource.getInt("storage.http.file-download-chunk-size").orElseThrow();
     this.maxFileChunkSize = yamlSource.getLong("storage.http.max-file-chunk-size").orElseThrow();
     this.minFilePartSize =
         yamlSource.getLong("storage.repository.minio.min-file-part-size").orElseThrow();
@@ -49,7 +49,7 @@ public enum StorageConfig {
     return maxAggregatedContentLength;
   }
 
-  public long getFileDownloadChunkSize() {
+  public int getFileDownloadChunkSize() {
     return fileDownloadChunkSize;
   }
 

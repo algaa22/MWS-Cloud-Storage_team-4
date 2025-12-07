@@ -110,8 +110,6 @@ public class FileController {
   public FileDownloadDto downloadFile(SimpleFileOperationDto request)
       throws ValidationFailedException,
           UserNotFoundException,
-          StorageIllegalAccessException,
-          FileNotFoundException,
           StorageFileNotFoundException {
     request.validate();
     return service.downloadFile(request);

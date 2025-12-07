@@ -17,6 +17,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,7 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
         currentPipeline = PipelineType.from(request);
       } catch (ParseException e) {
         ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+        ReferenceCountUtil.release(msg);
         return;
       }
 

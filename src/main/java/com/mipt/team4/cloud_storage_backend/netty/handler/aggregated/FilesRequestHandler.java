@@ -21,6 +21,8 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 
@@ -134,11 +136,12 @@ public record FilesRequestHandler(FileController fileController) {
       throws UserNotFoundException,
           StorageFileNotFoundException,
           ValidationFailedException,
-          StorageIllegalAccessException,
-          FileNotFoundException {
+          IOException {
     FileDownloadDto fileDownload =
         fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
 
-    ResponseHelper.sendBinaryResponse(ctx, fileDownload.mimeType(), fileDownload.data());
+    try (InputStream fileStream = fileDownload.fileStream()) {
+      ResponseHelper.sendBinaryResponse(ctx, fileDownload.mimeType(), fileStream.readAllBytes());
+    }
   }
 }

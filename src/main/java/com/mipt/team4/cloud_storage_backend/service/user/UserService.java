@@ -72,7 +72,7 @@ public class UserService {
     if (userOpt.isEmpty()) throw new InvalidEmailOrPassword();
 
     UserEntity user = userOpt.get();
-    if (!PasswordHasher.verify(loginRequest.password(), user.getPassword())) {
+    if (!PasswordHasher.verify(loginRequest.password(), user.getPasswordHash())) {
       throw new WrongPasswordException();
     }
 
@@ -135,7 +135,7 @@ public class UserService {
       entity.setName(String.valueOf(updateUserInfoDto.newName()));
     }
     if (updateUserInfoDto.newPassword().isPresent()) {
-      entity.setPassword(String.valueOf(updateUserInfoDto.newPassword()));
+      entity.setPasswordHash(String.valueOf(updateUserInfoDto.newPassword()));
     }
 
     userRepository.updateInfo(

@@ -25,8 +25,6 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Optional;
 
 public record UsersRequestHandler(UserController userController) {
-  private static final ObjectMapper mapper = new ObjectMapper();
-
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException, ValidationFailedException, UserAlreadyExistsException {
     TokenPairDto tokenPair =

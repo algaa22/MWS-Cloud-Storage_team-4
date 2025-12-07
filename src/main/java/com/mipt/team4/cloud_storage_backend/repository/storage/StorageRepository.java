@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnecti
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 
 import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -61,7 +62,7 @@ public class StorageRepository {
     contentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
   }
 
-  public byte[] downloadFile(StorageEntity storageEntity) {
+  public InputStream downloadFile(StorageEntity storageEntity) {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
     return contentRepository.downloadFile(s3Key);
   }

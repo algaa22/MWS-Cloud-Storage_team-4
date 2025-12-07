@@ -62,7 +62,7 @@ public class NettyServer {
       if (NettyConfig.INSTANCE.isEnableHttps())
         httpsServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTPS);
 
-      if (httpServerChannel != null) {
+      if (httpsServerChannel != null) {
         httpsServerChannel.closeFuture().sync();
         logger.info("Netty HTTPS server stopped");
       }
@@ -124,7 +124,8 @@ public class NettyServer {
 
       if (protocol == ServerProtocol.HTTPS) {
         pipeline.addLast(SslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
-        pipeline.addLast(new Http2RequestHandler(fileController, directoryController, userController));
+        pipeline.addLast(
+            new Http2RequestHandler(fileController, directoryController, userController));
       } else {
         pipeline.addLast(new HttpServerCodec());
         pipeline.addLast(new CorsHandler());

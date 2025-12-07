@@ -2,200 +2,55 @@ package com.mipt.team4.cloud_storage_backend.netty.handler.chunked;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.DownloadedChunkDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedDownloadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
-import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.netty.handler.stream.ChunkedInput;
 
 public class ChunkedDownloadHandler {
-  private static final Logger logger = LoggerFactory.getLogger(ChunkedDownloadHandler.class);
   private final FileController fileController;
-
-  // TODO: вынести в класс состояния
-  private boolean isInProgress = false;
-  private String currentFilePath;
-  private String currentUserToken;
-  private long sentBytes = 0;
-  private int sentChunks = 0;
-  private int totalChunks;
 
   public ChunkedDownloadHandler(FileController fileController) {
     this.fileController = fileController;
   }
 
+  // TODO: refactor
   public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
-      throws TransferAlreadyStartedException,
-          UserNotFoundException,
+      throws UserNotFoundException,
           StorageFileNotFoundException,
-          StorageIllegalAccessException,
           ValidationFailedException,
-          QueryParameterNotFoundException {
-    if (isInProgress) throw new TransferAlreadyStartedException();
+          QueryParameterNotFoundException,
+          HeaderNotFoundException {
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    String filePath = RequestUtils.getRequiredQueryParam(request, "path");
 
-    FileChunkedDownloadDto fileInfo;
+    FileDownloadDto fileDownload =
+        fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
 
-    try {
-      parseDownloadRequestMetadata(request);
-      fileInfo =
-          fileController.getFileDownloadInfo(
-              new SimpleFileOperationDto(currentFilePath, currentUserToken));
-    } catch (Exception e) {
-      cleanup();
-      throw e;
-    }
-
-    isInProgress = true;
-    totalChunks = calculateTotalChunks(fileInfo.size());
-
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "Started chunked download. User={}, file={}, chunks={}",
-          currentUserToken,
-          currentFilePath,
-          totalChunks);
-    }
-
-    sendInitialHeaders(ctx, fileInfo);
-    sendNextChunk(ctx);
-  }
-
-  private void sendInitialHeaders(ChannelHandlerContext ctx, FileChunkedDownloadDto fileInfo) {
-    HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
-
-    response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
-    response.headers().set("X-File-Path", fileInfo.path());
-    response.headers().set("X-File-Size", fileInfo.size());
-
+    HttpResponse response =
+        new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileDownload.size());
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_OCTET_STREAM);
+    response.headers().set("X-File-Path", fileDownload.filePath());
+    response.headers().set("X-File-Size", fileDownload.size());
     ctx.write(response);
-  }
 
-  private void sendNextChunk(ChannelHandlerContext ctx) {
-    if (sentChunks >= totalChunks) {
-      finishChunkedDownload(ctx);
-      return;
-    }
+    ChunkedInput<HttpContent> chunkedInput =
+        new ReliableChunkedInput(
+            fileDownload.fileStream(),
+            StorageConfig.INSTANCE.getFileDownloadChunkSize(),
+            fileDownload.size());
 
-    DownloadedChunkDto fileChunk;
-    int chunkIndex = sentChunks;
-
-    try {
-      fileChunk =
-          fileController.getFileChunk(
-              new GetFileChunkDto(
-                  currentUserToken,
-                  currentFilePath,
-                  chunkIndex,
-                  StorageConfig.INSTANCE.getFileDownloadChunkSize()));
-    } catch (ValidationFailedException
-        | UserNotFoundException
-        | StorageFileNotFoundException
-        | StorageIllegalAccessException e) {
-      if (logger.isDebugEnabled())
-        logger.error("Download failed, closing connection: {}", e.getMessage());
-
-      ctx.close();
-      cleanup();
-      return;
-    }
-
-    HttpContent httpChunk = new DefaultHttpContent(Unpooled.copiedBuffer(fileChunk.chunkData()));
-
-    ChannelFutureListener listener =
-        createChunkSendListener(ctx, chunkIndex, fileChunk.chunkData().length);
-    ctx.writeAndFlush(httpChunk).addListener(listener);
-  }
-
-  private ChannelFutureListener createChunkSendListener(
-      ChannelHandlerContext ctx, int chunkIndex, int chunkSize) {
-    return future -> {
-      if (future.isSuccess()) {
-        handleChunkSendSuccess(ctx, chunkSize);
-      } else {
-        handleChunkSendFailure(ctx, chunkIndex, future.cause());
-      }
-    };
-  }
-
-  private void handleChunkSendSuccess(ChannelHandlerContext ctx, int chunkSize) {
-    sentChunks++;
-    sentBytes += chunkSize;
-
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "Sent chunk {}/{}: size={}",
-          sentChunks,
-          totalChunks,
-          chunkSize);
-    }
-
-    // TODO: или нужно с try-with-resources?
-    ctx.channel().eventLoop().execute(() -> sendNextChunk(ctx));
-  }
-
-  private void finishChunkedDownload(ChannelHandlerContext ctx) {
-    LastHttpContent lastContent = LastHttpContent.EMPTY_LAST_CONTENT;
-
-    ChannelFutureListener listener = createLastContentSendListener(ctx);
-    ctx.writeAndFlush(lastContent).addListener(listener);
-
-    cleanup();
-  }
-
-  public void cleanup() {
-    isInProgress = false;
-    currentFilePath = null;
-    currentUserToken = null;
-    sentBytes = 0;
-    sentChunks = 0;
-    totalChunks = 0;
-  }
-
-  private void handleChunkSendFailure(ChannelHandlerContext ctx, int chunkIndex, Throwable cause) {
-    logger.error("Failed to send chunk. Chunk={}, file={}", chunkIndex, currentFilePath);
-    ResponseHelper.sendErrorResponse(
-            ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, cause.getMessage())
-        .addListener(ChannelFutureListener.CLOSE);
-  }
-
-  private ChannelFutureListener createLastContentSendListener(ChannelHandlerContext ctx) {
-    return future -> {
-      if (future.isSuccess()) {
-        if (logger.isDebugEnabled())
-          logger.debug(
-              "Completed chunked download. File={}, chunks={}, bytes={}",
-              currentFilePath,
-              sentChunks,
-              sentBytes);
-      } else {
-        logger.error(
-            "Failed to send last content. File={}", currentFilePath);
-        ResponseHelper.sendInternalServerErrorResponse(ctx).addListener(ChannelFutureListener.CLOSE);
-      }
-    };
-  }
-
-  private int calculateTotalChunks(long fileSize) {
-    return (int) Math.ceil((double) fileSize / StorageConfig.INSTANCE.getFileDownloadChunkSize());
-  }
-
-  private void parseDownloadRequestMetadata(HttpRequest request)
-      throws QueryParameterNotFoundException {
-    currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
-    currentUserToken = request.headers().get("X-Auth-Token", "");
+    ChannelFuture future = ctx.writeAndFlush(chunkedInput);
+    future.addListener(ChannelFutureListener.CLOSE);
   }
 }

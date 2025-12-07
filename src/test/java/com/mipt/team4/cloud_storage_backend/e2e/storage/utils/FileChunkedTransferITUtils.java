@@ -48,7 +48,8 @@ public class FileChunkedTransferITUtils {
       String userToken,
       String targetFilePath,
       String filePath,
-      String fileTags)
+      String fileTags,
+      long fileSize)
       throws IOException {
     HttpPost request =
         new HttpPost(TestUtils.createUriString("/api/files/upload?path=" + targetFilePath));
@@ -60,6 +61,7 @@ public class FileChunkedTransferITUtils {
     request.setEntity(entity);
     request.setHeader("X-Auth-Token", userToken);
     request.setHeader("X-File-Tags", fileTags);
+    request.setHeader("X-File-Size", fileSize); // TODO: file size?
 
     return client.execute(request, UploadResult::from);
   }

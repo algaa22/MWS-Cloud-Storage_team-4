@@ -202,7 +202,7 @@ export default function FileBrowser() {
     try {
       switch (action) {
         case "download":
-          await apiDownloadFile(token, selectedItem.fullPath, selectedItem.name);
+          await apiDownloadFile(token, selectedItem.fullPath, selectedItem.name, selectedItem.size);
           break;
         case "rename":
           setRenameText(selectedItem.name || "");

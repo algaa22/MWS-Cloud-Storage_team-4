@@ -8,7 +8,7 @@ public class CorsHandler extends ChannelDuplexHandler {
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     if (msg instanceof HttpRequest request) {
       if (request.method() == HttpMethod.OPTIONS) {
-        sendPreflightResponse(ctx);
+        sendPreflightResponse(ctx, request);
         return;
       }
     }
@@ -26,9 +26,9 @@ public class CorsHandler extends ChannelDuplexHandler {
     super.write(ctx, msg, promise);
   }
 
-  private void sendPreflightResponse(ChannelHandlerContext ctx) {
+  private void sendPreflightResponse(ChannelHandlerContext ctx, HttpRequest request) {
     DefaultFullHttpResponse response =
-        new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NO_CONTENT);
+        new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.NO_CONTENT);
 
     addCorsHeaders(response);
 
@@ -48,13 +48,16 @@ public class CorsHandler extends ChannelDuplexHandler {
             "Content-Type, "
                 + "Transfer-Encoding, "
                 + "X-Auth-Email, X-Auth-Password, X-Auth-Token, X-Auth-Username, "
-                + "X-File-Size, X-File-Tags, X-File-New-Path, X-File-Visibility, "
+                + "X-Download-Mode, X-File-Size, X-File-Tags, X-File-New-Path, X-File-Visibility, "
                 + "X-New-Username, X-Old-Password, X-New-Password, "
-                + "X-Refresh-Token, X-Requested-With, Authorization");
+                + "X-Refresh-Token, X-Requested-With, Authorization, "
+                + "X-File-Path");
     response.headers().set("Access-Control-Allow-Credentials", "true");
     response
         .headers()
-        .set("Access-Control-Expose-Headers", "Content-Disposition, X-File-Name, X-File-Size");
+        .set(
+            "Access-Control-Expose-Headers",
+            "Content-Disposition, X-File-Name, X-File-Size, X-File-Path");
     response.headers().set("Access-Control-Max-Age", "3600");
   }
 }

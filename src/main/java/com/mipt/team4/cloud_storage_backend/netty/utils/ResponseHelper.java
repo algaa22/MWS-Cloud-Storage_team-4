@@ -118,8 +118,7 @@ public class ResponseHelper {
   }
 
   private static void addDefaultHeadersToResponse(FullHttpResponse response) {
-    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
     response.headers().set(HttpHeaderNames.CONNECTION, "keep-alive");
-    response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache?
+    response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache? CORS?
   }
 }

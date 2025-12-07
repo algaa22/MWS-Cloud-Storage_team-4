@@ -351,9 +351,6 @@ export const uploadFile = async (token, file, path, onProgress) => {
 const uploadFileSimple = async (token, file, path, onProgress) => {
   console.log("Using simple upload");
 
-  const formData = new FormData();
-  formData.append("file", file);
-
   const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
   console.log("📤 Upload URL:", url);
 
@@ -371,9 +368,10 @@ const uploadFileSimple = async (token, file, path, onProgress) => {
       headers: {
         "X-Auth-Token": token,
         "X-File-Tags": "user_upload",
-        "X-File-Size": file.size
+        "X-File-Size": file.size,
+        "Content-Type": file.type || "application/octet-stream"
       },
-      body: formData,
+      body: file,
       signal: controller.signal
     });
 
@@ -404,41 +402,45 @@ const uploadFileSimple = async (token, file, path, onProgress) => {
   }
 };
 
+/**
+ * Надежная чанкованная загрузка файла с использованием Fetch API и ReadableStream
+ */
 const uploadFileChunked = async (token, file, path, onProgress) => {
     console.log("Using modern fetch stream upload");
 
     const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
     const totalSize = file.size;
     let uploaded = 0;
+    // Определите CHUNK_SIZE где-то глобально или передайте сюда
+    const CHUNK_SIZE = 5 * 1024 * 1024; // Пример: 5MB
 
     try {
         const controller = new AbortController();
+        // Добавляем таймаут для всего запроса (например, 2 минуты)
+        const timeoutId = setTimeout(() => {
+            console.error("Upload request timed out!");
+            controller.abort();
+        }, 120000); // 120 секунд
 
         const fileStream = new ReadableStream({
-            async start(controller) {
-                try {
-                    for (let offset = 0; offset < totalSize; offset += CHUNK_SIZE) {
-                        const end = Math.min(offset + CHUNK_SIZE, totalSize);
-                        const chunk = file.slice(offset, end);
-                        const arrayBuffer = await chunk.arrayBuffer();
+          async start(controller) {
+            console.log("Stream started");
 
-                        controller.enqueue(arrayBuffer);
+            for (let offset = 0; offset < totalSize; offset += CHUNK_SIZE) {
+              console.log(`Preparing chunk from ${offset}`);
+              const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, totalSize));
+              const arrayBuffer = await chunk.arrayBuffer();
 
-                        uploaded = end;
-                        if (onProgress) {
-                            onProgress(Math.round((uploaded / totalSize) * 100));
-                        }
+              console.log(`Enqueuing chunk of ${arrayBuffer.byteLength} bytes`);
+              controller.enqueue(new Uint8Array(arrayBuffer));
 
-                        console.log(`Sent chunk: ${offset}-${end} (${arrayBuffer.byteLength} bytes)`);
-
-                        await new Promise(resolve => setTimeout(resolve, 10));
-                    }
-                    controller.close();
-
-                } catch (error) {
-                    controller.error(error);
-                }
+              // Добавьте небольшую задержку между чанками
+              await new Promise(resolve => setTimeout(resolve, 1));
             }
+
+            console.log("All chunks sent, closing stream");
+            controller.close();
+          }
         });
 
         console.log("📤 Sending request with stream body...");
@@ -448,49 +450,92 @@ const uploadFileChunked = async (token, file, path, onProgress) => {
             headers: {
                 "X-Auth-Token": token,
                 "X-File-Tags": "user_upload",
-                "X-File-Size": file.size
+                "X-File-Size": file.size,
+                "Content-Type": "application/octet-stream" // Явно указываем тип
+                // Браузер сам выберет Transfer-Encoding (Content-Length или chunked)
             },
             body: fileStream,
             signal: controller.signal,
-            duplex: "half"
+            duplex: "half" // Необходимо для потоковой отправки тела
         });
+
+        clearTimeout(timeoutId); // Очищаем таймаут после получения ответа
+
+        console.log("📥 Response received:", response.status, response.statusText);
+
+        if (onProgress) onProgress(100);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ Upload failed:", errorText);
+            throw new Error(`Upload failed: ${response.status} ${errorText}`);
+        }
+
+        // Возвращаем JSON-ответ от сервера
+        return await response.json();
+
     } catch (error) {
-        // ...
+        console.error("🔥 Fetch error:", error);
+        // Добавьте сюда логику очистки таймаута, если ошибка произошла до fetch()
+        throw error;
     }
 };
+
 
 
 
 /**
  * downloadFile
  */
-export const downloadFile = async (token, path, filename) => {
-  console.log("downloadFile request:", { path, filename });
+export const downloadFile = async (token, path, filename, fileSize) => {
+    console.log("downloadFile request:", { path, filename, fileSize });
 
-  const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
-  const res = await fetch(url, {
-    headers: {
-      "X-Auth-Token": token
+    const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
+
+    // TODO: вынести уже в переменную
+    const CHUNKED_DOWNLOAD_THRESHOLD = 5 * 1024 * 1024;
+    const useChunkedMode = fileSize > CHUNKED_DOWNLOAD_THRESHOLD;
+
+    const headers = {
+        "X-Auth-Token": token
+    };
+
+    if (useChunkedMode) {
+        headers["X-Download-Mode"] = "chunked";
+        console.log("Using chunked download mode");
+    } else {
+        console.log("Using default (aggregated) download mode");
     }
-  });
 
-  console.log("downloadFile status:", res.status, res.statusText);
+    try {
+        const res = await fetch(url, {
+            headers: headers
+        });
 
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "(no body)");
-    console.error("Download failed:", res.status, txt);
-    throw new Error(`Download failed: ${res.status} ${txt}`);
-  }
+        console.log("downloadFile status:", res.status, res.statusText);
 
-  const blob = await res.blob();
-  const urlBlob = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = urlBlob;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(urlBlob);
-  document.body.removeChild(a);
+        if (!res.ok) {
+            const txt = await res.text().catch(() => "(no body)");
+            console.error("Download failed:", res.status, txt);
+            throw new Error(`Download failed: ${res.status} ${txt}`);
+        }
+
+        // Fetch API автоматически обрабатывает входящий поток (chunked transfer encoding)
+        // и собирает его в Blob. Дальнейшая логика остается прежней.
+        const blob = await res.blob();
+        const urlBlob = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = urlBlob;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(urlBlob);
+        document.body.removeChild(a);
+
+    } catch (error) {
+        console.error("🔥 Fetch error:", error);
+        throw error;
+    }
 };
 
 /**

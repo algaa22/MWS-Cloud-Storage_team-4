@@ -229,8 +229,10 @@ export async function getUserInfo(token) {
 
     // Вариант 2: Объект storage
     if (data.storage && typeof data.storage === 'object') {
-      storageInfo.used = data.storage.used || data.storage.Used || storageInfo.used;
-      storageInfo.total = data.storage.total || data.storage.Total || data.storage.limit || storageInfo.total;
+      storageInfo.used = data.storage.used || data.storage.Used
+          || storageInfo.used;
+      storageInfo.total = data.storage.total || data.storage.Total
+          || data.storage.limit || storageInfo.total;
     }
 
     // Вариант 3: Свободное место (free)

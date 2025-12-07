@@ -69,9 +69,23 @@ export default function FileBrowser() {
       return;
     }
 
+    const loadData = async () => {
+      setLoading(true);
+      setStorageLoading(true); // <-- Начинаем загрузку хранилища
+
+      try {
+        await fetchFiles();
+        await loadStorageInfo(); // Ждем завершения
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setLoading(false);
+        setStorageLoading(false); // <-- Завершаем загрузку
+      }
+    };
+
     console.log("Calling fetchFiles...");
-    fetchFiles();
-    loadStorageInfo(); // Загружаем информацию о памяти
+    loadData();
   }, [token, currentPath]);
 
   // Функция для загрузки информации о хранилище
@@ -483,53 +497,70 @@ export default function FileBrowser() {
   return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white p-4">
 
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Облачное хранилище</h1>
+        {/* Верхняя панель с заголовком и пользователем в одну строку */}
+        <header className="flex justify-between items-center mb-10">
+          {/* Заголовок слева */}
+          {/* Пустой блок для балансировки слева */}
+          <div className="w-32"></div>
 
+          {/* Заголовок по центру */}
+          <div className="text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-white">
+              MWS Cloud Storage
+            </h1>
+            <p className="text-white/60 text-sm mt-1">Безопасное хранение файлов</p>
+          </div>
+
+          {/* Пользователь справа */}
           <div className="relative">
             <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 hover:bg-white/30 transition-colors"
+                className="flex items-center space-x-3 bg-white/10 hover:bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 transition-all duration-200 border border-white/10 hover:border-white/20"
             >
-              {/* Иконка с первой буквой username */}
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                {((user?.name || user?.email || "U").charAt(0)).toUpperCase()}
+              {/* Иконка с первой буквой */}
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500/90 to-purple-500/90 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
               </div>
-              {/* Real username или email если username нет */}
-              <span className="font-medium">
-        {user?.name || user?.email?.split('@')[0] || "Пользователь"}
-      </span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {/* Имя пользователя */}
+              <div className="text-left">
+            <span className="font-medium text-white text-sm block">
+              {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+            </span>
+                {user?.email && <span className="text-white/50 text-xs block">{user.email}</span>}
+              </div>
+              <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
             {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-72 bg-white/20 backdrop-blur-xl rounded-2xl shadow-2xl py-3 z-50 border border-white/10">
-                  <div className="px-4 py-3 border-b border-white/20">
+                <div className="absolute right-0 mt-2 w-72 bg-gray-800/95 backdrop-blur-xl rounded-xl shadow-2xl py-3 z-50 border border-white/10">
+                  <div className="px-4 py-3 border-b border-white/10">
                     {/* Иконка и имя в меню */}
                     <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                        {(user?.name?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-bold">{user?.username || user?.email?.split('@')[0] || "Пользователь"}</p>
-                        {user?.email && <p className="text-sm text-white/70">{user.email}</p>}
+                        <p className="font-semibold text-white">
+                          {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+                        </p>
+                        {user?.email && <p className="text-white/60 text-xs mt-0.5">{user.email}</p>}
                       </div>
                     </div>
                     {/* Информация о хранилище */}
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-white/80">Хранилище:</span>
-                        <span className="text-blue-300">{storageInfo.formattedUsed}</span>
+                        <span className="text-blue-300 font-medium">{storageInfo.formattedUsed}</span>
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div className="w-full bg-gray-700/60 rounded-full h-2 overflow-hidden">
                         <div
                             className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(storageInfo.percentage)}`}
                             style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
                         />
                       </div>
-                      <div className="flex justify-between text-xs text-white/60">
+                      <div className="flex justify-between text-xs text-white/50">
                         <span>Лимит: {storageInfo.formattedTotal}</span>
                         <span>Осталось: {formatFileSize(storageInfo.total - storageInfo.used)}</span>
                       </div>
@@ -542,23 +573,23 @@ export default function FileBrowser() {
                         setShowUserMenu(false);
                         navigate("/settings");
                       }}
-                      className="flex items-center w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-t border-white/10"
+                      className="flex items-center w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors border-t border-white/10"
                   >
-                    <svg className="w-5 h-5 mr-3 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-3 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    <span>Настройки профиля</span>
+                    <span className="text-sm">Настройки профиля</span>
                   </button>
 
                   <button
                       onClick={handleLogout}
-                      className="flex items-center w-full text-left px-4 py-3 hover:bg-white/10 transition-colors text-red-300 border-t border-white/10"
+                      className="flex items-center w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors text-red-300 border-t border-white/10"
                   >
-                    <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
-                    <span>Выйти</span>
+                    <span className="text-sm">Выйти</span>
                   </button>
                 </div>
             )}
@@ -624,18 +655,6 @@ export default function FileBrowser() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Breadcrumbs */}
-        <div className="mb-6 flex items-center">
-          <button
-              onClick={() => setCurrentPath("")}
-              className="text-white/70 hover:text-white flex items-center"
-          >
-            <span className="mr-2">🏠</span>
-            Главная
-          </button>
-          {currentPath && renderBreadcrumbs()}
         </div>
 
         {/* Основная область с файлами */}

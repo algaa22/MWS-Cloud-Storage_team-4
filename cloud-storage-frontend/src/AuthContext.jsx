@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
     return storedUser ? JSON.parse(storedUser) : null;
   });
   const [token, setToken] = useState(() => {
-    return localStorage.getItem("accessToken") || null; // Изменено с "token" на "accessToken"
+    return localStorage.getItem("accessToken") || null;
   });
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -31,19 +31,30 @@ export function AuthProvider({ children }) {
     try {
       console.log("AuthContext: Loading user info with token...");
       const userInfo = await getUserInfo(authToken);
-      console.log("AuthContext: User loaded successfully:", userInfo);
+      console.log("AuthContext: Raw user info from server:", userInfo);
+
+      // ДЕТАЛЬНАЯ ОТЛАДКА: посмотрим все поля
+      if (userInfo) {
+        console.log("AuthContext: All user info fields:", Object.keys(userInfo));
+        console.log("AuthContext: username field:", userInfo.username);
+        console.log("AuthContext: name field:", userInfo.name);
+        console.log("AuthContext: email field:", userInfo.email);
+      }
 
       // Извлекаем username из разных возможных полей
-      const username = userInfo.username || userInfo.Username ||
-          userInfo.email?.split('@')[0] || 'User';
+      // Сервер скорее всего возвращает 'name', а не 'username'
+      const username = userInfo.Name.split('@')[0] || 'User';
 
       const email = userInfo.email || userInfo.Email || '';
 
       const formattedUser = {
-        username,
-        email,
+        username: username,  // Используем 'name' с сервера
+        name: username,      // Дублируем для совместимости
+        email: email,
         ...userInfo
       };
+
+      console.log("AuthContext: Formatted user object:", formattedUser);
 
       localStorage.setItem("user", JSON.stringify(formattedUser));
       setUser(formattedUser);
@@ -147,9 +158,10 @@ export function AuthProvider({ children }) {
       localStorage.setItem("accessToken", t);
       setToken(t);
 
-      // Создаем временного пользователя до загрузки данных с сервера
+      // Создаем временного пользователя с именем из регистрации
       const tempUser = {
-        username: username,
+        username: username,  // Используем имя из формы регистрации
+        name: username,      // Дублируем для совместимости
         email: email
       };
 
@@ -157,9 +169,32 @@ export function AuthProvider({ children }) {
       setUser(tempUser);
       setIsAuthenticated(true);
 
-      // Загружаем полные данные с сервера
-      setTimeout(() => {
-        loadUserData(t);
+      // Загружаем полные данные с сервера, но не перезаписываем имя
+      setTimeout(async () => {
+        try {
+          const serverUserData = await getUserInfo(t);
+          console.log("AuthContext: Server data after registration:", serverUserData);
+
+          let finalUsername = username; // По умолчанию оставляем имя из регистрации
+
+          if (serverUserData?.name && serverUserData.name !== "User" && serverUserData.name !== "") {
+            finalUsername = serverUserData.name;
+          }
+
+          const finalUser = {
+            username: finalUsername,
+            name: finalUsername,
+            email: email,
+            ...serverUserData
+          };
+
+          console.log("AuthContext: Final user after registration:", finalUser);
+          localStorage.setItem("user", JSON.stringify(finalUser));
+          setUser(finalUser);
+        } catch (loadError) {
+          console.warn("AuthContext: Could not fetch user info after registration:", loadError);
+          // Оставляем временного пользователя
+        }
       }, 100);
 
       console.log('AuthContext: Registration successful');

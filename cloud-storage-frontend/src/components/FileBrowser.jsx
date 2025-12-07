@@ -453,7 +453,6 @@ export default function FileBrowser() {
       return formatted;
   };
 
-
   const getFileIcon = (fileName) => {
     const extension = (fileName || "").split(".").pop().toLowerCase();
     const iconMap = {
@@ -642,11 +641,6 @@ export default function FileBrowser() {
               </div>
 
               <div className="flex justify-between text-sm mt-1">
-        <span className="text-white/60">
-  {storageLoading ? "Получение информации..." :
-      files.length === 0 && folders.length === 0 ? "Хранилище пусто" :`Использовано ${storageInfo.percentage}%`
-  }
-</span>
                 <span className="text-white/60">
           {storageLoading ? "..." : `Осталось: ${formatFileSize(storageInfo.total - storageInfo.used)}`}
         </span>
@@ -658,7 +652,7 @@ export default function FileBrowser() {
                 <div className="text-2xl font-bold text-blue-300">
                   {storageLoading ? "0" : formatPercentage(storageInfo.used / storageInfo.total)}%
                 </div>
-                <div className="text-xs text-white/60">заполнено</div>
+                <div className="text-xs text-white/60">использовано</div>
               </div>
 
               <div className="hidden md:block h-8 w-px bg-white/20" />
@@ -833,7 +827,7 @@ export default function FileBrowser() {
                     ) : (
                         <div
                             className={`h-2 rounded-full ${getProgressBarColor(storageInfo.percentage)}`}
-                            style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
+                            style={{ width: `${formatPercentage(storageInfo.used / storageInfo.total)}%` }}
                         />
                     )}
                   </div>

@@ -516,74 +516,91 @@ const uploadFileSimple = async (token, file, path, onProgress) => {
 /**
  * Надежная чанкованная загрузка файла с использованием Fetch API и ReadableStream
  */
+/**
+ * Надежная чанкованная загрузка файла с отслеживанием прогресса
+ */
 const uploadFileChunked = async (token, file, path, onProgress) => {
-  console.log("Using modern fetch stream upload");
+  console.log("Using chunked upload with progress tracking");
 
-    const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
-    const totalSize = file.size;
-    let uploaded = 0;
-    // Определите CHUNK_SIZE где-то глобально или передайте сюда
-    const CHUNK_SIZE = 5 * 1024 * 1024; // Пример: 5MB
+  const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
+  const totalSize = file.size;
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+  let uploaded = 0;
 
-    try {
-        const controller = new AbortController();
-        // Добавляем таймаут для всего запроса (например, 2 минуты)
-        const timeoutId = setTimeout(() => {
-            console.error("Upload request timed out!");
-            controller.abort();
-        }, 120000); // 120 секунд
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error("Upload request timed out!");
+      controller.abort();
+    }, 120000); // 120 секунд
 
-        const fileStream = new ReadableStream({
-          async start(controller) {
-            console.log("Stream started");
-
-            for (let offset = 0; offset < totalSize; offset += CHUNK_SIZE) {
-              console.log(`Preparing chunk from ${offset}`);
-              const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, totalSize));
-              const arrayBuffer = await chunk.arrayBuffer();
-
-              console.log(`Enqueuing chunk of ${arrayBuffer.byteLength} bytes`);
-              controller.enqueue(new Uint8Array(arrayBuffer));
-
-              // Добавьте небольшую задержку между чанками
-              await new Promise(resolve => setTimeout(resolve, 1));
-            }
-
-            console.log("All chunks sent, closing stream");
-            controller.close();
-          }
-        });
-
-    console.log("📤 Sending request with stream body...");
-
-    const res = await fetchWithTokenRefresh(url, {
-      method: "POST",
-      headers: {
-        "X-File-Tags": "user_upload",
-        "X-File-Size": file.size
-      },
-      body: fileStream,
-      signal: controller.signal,
-      duplex: "half"
-    }, token);
-
-    clearTimeout(timeoutId);
-
-    console.log("📥 Response received:", res.status, res.statusText);
-
-    if (onProgress) onProgress(100);
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        console.error("❌ Upload failed:", errorText);
-        throw new Error(`Upload failed: ${res.status} ${errorText}`);
+    // Создаем массив для хранения всех чанков
+    const chunks = [];
+    for (let offset = 0; offset < totalSize; offset += CHUNK_SIZE) {
+      const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, totalSize));
+      chunks.push(chunk);
     }
 
-    // Возвращаем JSON-ответ от сервера
-    return await res.json();
+    console.log(`Total chunks: ${chunks.length}, Total size: ${totalSize} bytes`);
+
+    // Для отслеживания прогресса используем XMLHttpRequest вместо fetch
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('X-Auth-Token', token);
+      xhr.setRequestHeader('X-File-Tags', 'user_upload');
+      xhr.setRequestHeader('X-File-Size', totalSize);
+
+      // Отслеживаем прогресс загрузки
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          console.log(`Upload progress: ${progress}% (${event.loaded}/${event.total} bytes)`);
+          onProgress(progress);
+        }
+      };
+
+      xhr.onload = () => {
+        clearTimeout(timeoutId);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            console.log("Upload completed successfully");
+            if (onProgress) onProgress(100);
+            resolve(response);
+          } catch (e) {
+            console.log("Upload response (non-JSON):", xhr.responseText);
+            if (onProgress) onProgress(100);
+            resolve(xhr.responseText);
+          }
+        } else {
+          console.error(`Upload failed: ${xhr.status} ${xhr.statusText}`);
+          reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`));
+        }
+      };
+
+      xhr.onerror = () => {
+        clearTimeout(timeoutId);
+        console.error("Upload XHR error");
+        reject(new Error('Network error during upload'));
+      };
+
+      xhr.ontimeout = () => {
+        console.error("Upload timeout");
+        reject(new Error('Upload timeout'));
+      };
+
+      // Отправляем файл как FormData
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', path);
+
+      xhr.send(formData);
+    });
 
   } catch (error) {
-    console.error("🔥 Stream upload error:", error);
+    console.error("Chunked upload error:", error);
     throw error;
   }
 };

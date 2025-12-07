@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOpe
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import java.io.FileNotFoundException;
 import java.util.List;
@@ -15,12 +16,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class DirectoryService {
-  private final StorageRepository storageRepository;
   private final UserSessionService userSessionService;
+  private final StorageRepository storageRepository;
+  private final UserRepository userRepository;
 
   public DirectoryService(
-      StorageRepository storageRepository, UserSessionService userSessionService) {
+          StorageRepository storageRepository, UserRepository userRepository, UserSessionService userSessionService) {
     this.storageRepository = storageRepository;
+    this.userRepository = userRepository;
     this.userSessionService = userSessionService;
   }
 
@@ -55,10 +58,11 @@ public class DirectoryService {
     String oldDirectoryPath = changeDirectory.oldDirectoryPath();
     String newDirectoryPath = changeDirectory.newDirectoryPath();
 
-    List<String> directoryFiles =
+    List<StorageEntity> directoryFiles =
         storageRepository.getFilePathsList(userId, true, oldDirectoryPath);
 
-    for (String oldFilePath : directoryFiles) {
+    for (StorageEntity oldFile : directoryFiles) {
+      String oldFilePath = oldFile.getPath();
       Optional<StorageEntity> fileOpt = storageRepository.getFile(userId, oldFilePath);
       if (fileOpt.isEmpty()) throw new StorageEntityNotFoundException(oldFilePath);
 
@@ -82,10 +86,11 @@ public class DirectoryService {
 
     storageRepository.deleteFile(directoryEntity.orElse(null));
 
-    List<String> directoryFiles = storageRepository.getFilePathsList(userId, true, directoryPath);
+    List<StorageEntity> directoryFiles = storageRepository.getFilePathsList(userId, true, directoryPath);
 
-    for (String filePath : directoryFiles) {
-      storageRepository.deleteFile(userId, filePath);
+    for (StorageEntity file : directoryFiles) {
+      userRepository.decreaseUsedStorage(userId, file.getSize());
+      storageRepository.deleteFile(userId, file.getPath());
     }
   }
 }

@@ -48,15 +48,16 @@ public class CloudStorageApplication {
     JwtService jwtService =
         new JwtService(
             StorageConfig.INSTANCE.getAccessTokenExpirationSec(),
-            StorageConfig.INSTANCE.getRefreshTokenExpirationSec()
-            );
+            StorageConfig.INSTANCE.getRefreshTokenExpirationSec());
     UserSessionService userSessionService = new UserSessionService(jwtService);
 
     RefreshTokenRepository refreshTokenRepository = new RefreshTokenRepository(postgresConnection);
     RefreshTokenService refreshTokenService = new RefreshTokenService(refreshTokenRepository);
 
-    FileService fileService = new FileService(storageRepository, userRepository, userSessionService);
-    DirectoryService directoryService = new DirectoryService(storageRepository, userSessionService);
+    FileService fileService =
+        new FileService(storageRepository, userRepository, userSessionService);
+    DirectoryService directoryService =
+        new DirectoryService(storageRepository, userRepository, userSessionService);
     UserService userService =
         new UserService(userRepository, userSessionService, refreshTokenService);
 

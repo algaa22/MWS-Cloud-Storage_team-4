@@ -49,8 +49,8 @@ public class StorageRepository {
     return contentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
   }
 
-  public List<String> getFilePathsList(UUID userId, boolean includeDirectories, String searchDirectory) {
-    return metadataRepository.getFilesPathsList(userId, includeDirectories, searchDirectory);
+  public List<StorageEntity> getFilePathsList(UUID userId, boolean includeDirectories, String searchDirectory) {
+    return metadataRepository.getFilesList(userId, includeDirectories, searchDirectory);
   }
 
   public void completeMultipartUpload(

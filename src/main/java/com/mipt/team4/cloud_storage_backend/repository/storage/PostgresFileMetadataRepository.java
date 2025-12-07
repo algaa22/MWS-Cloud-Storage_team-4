@@ -1,10 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,18 +42,18 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public List<String> getFilesPathsList(
-      UUID id, boolean includeDirectories, String searchDirectory) {
+  public List<StorageEntity> getFilesList(
+      UUID userId, boolean includeDirectories, String searchDirectory) {
     // TODO: параметр recursive
     String query =
-        "SELECT path FROM files WHERE owner_id = ? AND path LIKE ? AND path NOT LIKE ? AND path != ? AND is_deleted = FALSE";
+        "SELECT * FROM files WHERE owner_id = ? AND path LIKE ? AND path NOT LIKE ? AND path != ? AND is_deleted = FALSE";
 
     if (!includeDirectories) query += " AND is_directory = FALSE";
 
     return postgres.executeQuery(
         query,
-        List.of(id, searchDirectory + "%", searchDirectory + "%/_%", searchDirectory),
-        rs -> rs.getString("path"));
+        List.of(userId, searchDirectory + "%", searchDirectory + "%/_%", searchDirectory),
+        rs -> resultToStorageEntity(userId, rs));
   }
 
   @Override
@@ -62,17 +64,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
         postgres.executeQuery(
             "SELECT * FROM files WHERE owner_id = ? AND path = ?;",
             List.of(userId, path),
-            rs ->
-                new StorageEntity(
-                    UUID.fromString(rs.getString("id")),
-                    userId,
-                    rs.getString("path"),
-                    rs.getString("mime_type"),
-                    rs.getString("visibility"),
-                    rs.getLong("file_size"),
-                    rs.getBoolean("is_deleted"),
-                    FileTagsMapper.toList(rs.getString("tags")),
-                    rs.getBoolean("is_directory")));
+            rs -> resultToStorageEntity(userId, rs));
 
     if (result.isEmpty()) return Optional.empty();
 
@@ -109,5 +101,18 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             List.of(userId, path),
             rs -> (rs.getBoolean(1)));
     return result.getFirst();
+  }
+
+  private StorageEntity resultToStorageEntity(UUID userId, ResultSet rs) throws SQLException {
+    return new StorageEntity(
+        UUID.fromString(rs.getString("id")),
+        userId,
+        rs.getString("path"),
+        rs.getString("mime_type"),
+        rs.getString("visibility"),
+        rs.getLong("file_size"),
+        rs.getBoolean("is_deleted"),
+        FileTagsMapper.toList(rs.getString("tags")),
+        rs.getBoolean("is_directory"));
   }
 }

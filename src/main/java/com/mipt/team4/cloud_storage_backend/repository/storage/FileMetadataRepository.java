@@ -11,7 +11,7 @@ import java.util.UUID;
 public interface FileMetadataRepository {
   void addFile(StorageEntity fileEntity) throws StorageFileAlreadyExistsException;
 
-  List<String> getFilesPathsList(UUID id, boolean includeDirectories, String searchDirectory);
+  List<StorageEntity> getFilesList(UUID id, boolean includeDirectories, String searchDirectory);
 
   Optional<StorageEntity> getFile(UUID userId, String path);
 

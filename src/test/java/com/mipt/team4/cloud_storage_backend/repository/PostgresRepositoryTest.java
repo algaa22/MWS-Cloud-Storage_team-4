@@ -14,10 +14,8 @@ import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 
 import java.time.LocalDateTime;
-import java.time.Year;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,7 +23,7 @@ import org.junit.jupiter.api.Test;
 
 public class PostgresRepositoryTest extends BasePostgresTest {
   private static PostgresFileMetadataRepository fileMetadataRepository;
-  private static UserRepository userRepository;
+  public static UserRepository userRepository;
   private static PostgresConnection postgresConnection;
   private static UUID testUserUuid;
 

@@ -49,7 +49,8 @@ public class UserService {
         userEntity.isActive());
   }
 
-  public TokenPairDto registerUser(RegisterRequestDto registerRequest) throws UserAlreadyExistsException {
+  public TokenPairDto registerUser(RegisterRequestDto registerRequest)
+      throws UserAlreadyExistsException {
     if (userRepository.getUserByEmail(registerRequest.email()).isPresent())
       throw new UserAlreadyExistsException(registerRequest.email());
 
@@ -98,7 +99,8 @@ public class UserService {
     }
   }
 
-  public TokenPairDto refreshTokens(RefreshTokenDto refreshTokenRequest) throws InvalidSessionException {
+  public TokenPairDto refreshTokens(RefreshTokenDto refreshTokenRequest)
+      throws InvalidSessionException {
     String refreshToken = refreshTokenRequest.refreshToken();
     RefreshTokenEntity stored = refreshTokenService.validate(refreshToken);
 
@@ -130,30 +132,23 @@ public class UserService {
 
     UUID id = userSessionService.extractUserIdFromToken(updateUserInfoDto.userToken());
     Optional<UserEntity> userOpt = userRepository.getUserById(id);
-    UserEntity entity = userOpt.orElseThrow(() -> new UserNotFoundException(updateUserInfoDto.userToken()));
+    UserEntity entity =
+        userOpt.orElseThrow(() -> new UserNotFoundException(updateUserInfoDto.userToken()));
 
-    // Если меняем пароль - проверяем старый пароль
-    if (updateUserInfoDto.newPassword().isPresent()) {
-      entity.setPasswordHash(String.valueOf(updateUserInfoDto.newPassword()));
-    }
-      // Получаем старый пароль из DTO
-      if (updateUserInfoDto.oldPassword().isEmpty()) {
-        throw new IllegalArgumentException("Old password is required when changing password");
-      }
-
+    if (updateUserInfoDto.oldPassword().isPresent()) {
       String oldPassword = updateUserInfoDto.oldPassword().get();
       String currentPasswordHash = entity.getPasswordHash();
 
-      // Проверяем что старый пароль верный
       if (!PasswordHasher.verify(oldPassword, currentPasswordHash)) {
         throw new WrongPasswordException();
       }
+    }
 
-      // Хешируем новый пароль
+    if (updateUserInfoDto.newPassword().isPresent()) {
       String newPasswordHash = PasswordHasher.hash(updateUserInfoDto.newPassword().get());
       entity.setPasswordHash(newPasswordHash);
+    }
 
-    // Обновляем имя, если предоставлено
     if (updateUserInfoDto.newName().isPresent()) {
       entity.setName(updateUserInfoDto.newName().get());
     }
@@ -162,9 +157,6 @@ public class UserService {
     userRepository.updateInfo(
         id,
         updateUserInfoDto.newName().orElse(entity.getName()),
-        updateUserInfoDto.newPassword()
-            .map(PasswordHasher::hash)
-            .orElse(entity.getPasswordHash())
-    );
+        updateUserInfoDto.newPassword().map(PasswordHasher::hash).orElse(entity.getPasswordHash()));
   }
 }

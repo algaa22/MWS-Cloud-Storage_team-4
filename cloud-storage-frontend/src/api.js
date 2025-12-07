@@ -548,18 +548,18 @@ const uploadFileChunked = async (token, file, path, onProgress) => {
 
     clearTimeout(timeoutId); // Очищаем таймаут после получения ответа
 
-            console.log("📥 Response received:", res.status, res.statusText);
+    console.log("📥 Response received:", res.status, res.statusText);
 
-            if (onProgress) onProgress(100);
+    if (onProgress) onProgress(100);
 
-            if (!res.ok) {
-                const errorText = await res.text();
-                console.error("❌ Upload failed:", errorText);
-                throw new Error(`Upload failed: ${res.status} ${errorText}`);
-            }
+    if (!res.ok) {
+        const errorText = await res.text();
+        console.error("❌ Upload failed:", errorText);
+        throw new Error(`Upload failed: ${res.status} ${errorText}`);
+    }
 
-            // Возвращаем JSON-ответ от сервера
-            return await res.json();
+    // Возвращаем JSON-ответ от сервера
+    return await res.json();
 
   } catch (error) {
     console.error("🔥 Stream upload error:", error);

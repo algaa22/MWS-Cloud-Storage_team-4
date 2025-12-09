@@ -10,6 +10,7 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotF
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.io.FileNotFoundException;
@@ -70,10 +71,10 @@ public class FileController {
     return service.getFileChunk(request);
   }
 
-  public List<String> getFilePathsList(GetFilePathsListDto request)
+  public List<StorageEntity> getFileList(GetFilePathsListDto request)
       throws ValidationFailedException, UserNotFoundException {
     request.validate();
-    return service.getFilePathsList(request);
+    return service.getFileList(request);
   }
 
   public StorageDto getFileInfo(SimpleFileOperationDto request)

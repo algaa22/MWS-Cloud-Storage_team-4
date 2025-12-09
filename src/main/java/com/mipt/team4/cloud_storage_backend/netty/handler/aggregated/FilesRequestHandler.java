@@ -11,6 +11,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFo
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
@@ -39,18 +40,18 @@ public record FilesRequestHandler(FileController fileController) {
             RequestUtils.getQueryParam(request, "includeDirectories", "false"));
     String searchDirectory = RequestUtils.getQueryParam(request, "directory", "");
 
-    List<String> paths =
-        fileController.getFilePathsList(
+    List<StorageEntity> files =
+        fileController.getFileList(
             new GetFilePathsListDto(userToken, includeDirectories, searchDirectory));
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();
 
-    if (paths != null) {
-      for (String path : paths) {
+    if (files != null) {
+      for (StorageEntity file : files) {
         ObjectNode fileNode = mapper.createObjectNode();
-        fileNode.put("path", path);
+        fileNode.put("path", file.getPath());
         filesArray.add(fileNode);
       }
     }

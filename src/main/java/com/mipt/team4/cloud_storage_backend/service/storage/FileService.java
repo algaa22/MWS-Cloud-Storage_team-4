@@ -194,7 +194,7 @@ public class FileService {
         fileChunkRequest.filePath(), fileChunkRequest.chunkIndex(), chunkData);
   }
 
-  public List<String> getFilePathsList(GetFilePathsListDto filePathsRequest)
+  public List<StorageEntity> getFileList(GetFilePathsListDto filePathsRequest)
       throws UserNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(filePathsRequest.userToken());
     return storageRepository.getFilePathsList(

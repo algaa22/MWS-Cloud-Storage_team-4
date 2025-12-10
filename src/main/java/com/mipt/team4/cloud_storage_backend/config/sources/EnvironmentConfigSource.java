@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.config.sources;
 
+import com.mipt.team4.cloud_storage_backend.exception.utils.InputStreamNotFoundException;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import java.io.*;
 import java.util.HashMap;
@@ -13,7 +14,7 @@ public class EnvironmentConfigSource extends ConfigSource {
   Map<String, String> envVars = new HashMap<>();
 
   public EnvironmentConfigSource(String filePath) {
-    //loadEnvFile(filePath);
+    loadEnvFile(filePath);
   }
 
   @Override
@@ -51,7 +52,9 @@ public class EnvironmentConfigSource extends ConfigSource {
           envVars.put(key, value);
         }
       }
-    } catch (IOException _) {
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } catch (InputStreamNotFoundException _) {
       logger.warn(".env file not found: path={}", filePath);
     }
   }

@@ -32,7 +32,7 @@ MINIO_PASSWORD=super_secret_password_123
 
 JWT_SECRET_KEY=d8f4a9c3e7b2f6a1d9e4c8b3f7a2e5d1f9c6b4e8a3d7f2c9e1b5f8d3a6c9e4b7
 ```
-3. **Настройте конфигурационный файл `resources/config.yml`**
+3. **Настройте конфигурационный файл `src/main/resources/config.yml`**
 4. **Соберите docker-образ**
 
 В корневой папке проекта запустите:

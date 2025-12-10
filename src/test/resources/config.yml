@@ -1,5 +1,5 @@
 netty:
-  http-port: 8081
+  http-port: 8080
   https-port: 8443
   boss-threads: 1
   worker-threads: 4

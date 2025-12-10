@@ -873,7 +873,7 @@ export const updateUserInfo = async (token, updates) => {
   console.log("Headers:", headers);
   console.log("Body:", JSON.stringify(body));
 
-  const url = `${BASE}/users/auth/update`;
+  const url = `${BASE}/users/update`;
 
   try {
     const res = await fetch(url, {
@@ -918,7 +918,7 @@ export const updateUserInfoComprehensive = async (token, updates) => {
 
   console.log("Final request body:", JSON.stringify(body));
 
-  const url = `${BASE}/users/auth/update`;
+  const url = `${BASE}/users/update`;
 
   const res = await fetch(url, {
     method: "POST",

@@ -147,7 +147,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         usersRequestHandler.handleRegisterRequest(ctx, request);
       else if (uri.equals("/api/users/auth/logout"))
         usersRequestHandler.handleLogoutRequest(ctx, request);
-      else if (uri.equals("/api/users/auth/update"))
+      else if (uri.equals("/api/users/update"))
         usersRequestHandler.handleUpdateUserRequest(ctx, request);
       else if (uri.equals("/api/users/auth/refresh"))
         usersRequestHandler.handleRefreshTokenRequest(ctx, request);

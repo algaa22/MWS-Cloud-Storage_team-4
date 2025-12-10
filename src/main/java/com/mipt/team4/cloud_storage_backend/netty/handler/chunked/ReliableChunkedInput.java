@@ -40,6 +40,8 @@ class ReliableChunkedInput implements ChunkedInput<HttpContent> {
     stream.close();
   }
 
+  // TODO: refactor
+
   @Override
   public HttpContent readChunk(ByteBufAllocator allocator) throws Exception {
     if (ended) {

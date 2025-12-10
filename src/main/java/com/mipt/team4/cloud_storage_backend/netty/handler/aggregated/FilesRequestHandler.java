@@ -38,11 +38,15 @@ public record FilesRequestHandler(FileController fileController) {
         SafeParser.parseBoolean(
             "Include directories",
             RequestUtils.getQueryParam(request, "includeDirectories", "false"));
-    String searchDirectory = RequestUtils.getQueryParam(request, "directory", "");
+    boolean recursive =
+            SafeParser.parseBoolean(
+                    "Recursive",
+                    RequestUtils.getQueryParam(request, "recursive", "false"));
+    Optional<String> searchDirectory = RequestUtils.getQueryParam(request, "directory");
 
     List<StorageEntity> files =
         fileController.getFileList(
-            new GetFilePathsListDto(userToken, includeDirectories, searchDirectory));
+            new GetFileListDto(userToken, includeDirectories, recursive, searchDirectory));
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();

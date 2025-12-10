@@ -93,15 +93,6 @@ public class ResponseHelper {
     return response;
   }
 
-  public static FullHttpResponse createRawResponse(HttpResponseStatus status) {
-    FullHttpResponse response =
-        new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER);
-
-    addDefaultHeadersToResponse(response);
-
-    return response;
-  }
-
   public static void sendBinaryResponse(ChannelHandlerContext ctx, String mimeType, byte[] data) {
     ctx.writeAndFlush(createBinaryResponse(mimeType, data));
   }
@@ -120,5 +111,6 @@ public class ResponseHelper {
   private static void addDefaultHeadersToResponse(FullHttpResponse response) {
     response.headers().set(HttpHeaderNames.CONNECTION, "keep-alive");
     response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache? CORS?
+    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
   }
 }

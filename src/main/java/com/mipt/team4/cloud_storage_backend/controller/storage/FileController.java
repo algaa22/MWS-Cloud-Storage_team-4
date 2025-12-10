@@ -53,7 +53,7 @@ public class FileController {
     return service.completeChunkedUpload(request);
   }
 
-  public List<StorageEntity> getFileList(GetFilePathsListDto request)
+  public List<StorageEntity> getFileList(GetFileListDto request)
       throws ValidationFailedException, UserNotFoundException {
     request.validate();
     return service.getFileList(request);

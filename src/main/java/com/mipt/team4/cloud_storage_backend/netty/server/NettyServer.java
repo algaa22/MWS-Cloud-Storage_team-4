@@ -57,6 +57,7 @@ public class NettyServer {
             new NioEventLoopGroup(NettyConfig.INSTANCE.getWorkerThreads())) {
 
       // TODO: refactor
+      // TODO: зачем и HTTP, и HTTPS
       httpServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTP);
 
       if (NettyConfig.INSTANCE.isEnableHttps())
@@ -68,6 +69,7 @@ public class NettyServer {
       }
 
       if (httpServerChannel != null) {
+        // TODO: нормальный shutdown
         httpServerChannel.closeFuture().sync();
         logger.info("Netty HTTP server stopped");
       }
@@ -99,10 +101,12 @@ public class NettyServer {
             ? NettyConfig.INSTANCE.getHttpsPort()
             : NettyConfig.INSTANCE.getHttpPort();
 
-    startupLatch.countDown();
-    logger.info("Netty " + protocol.name() + " started on port " + port);
+    Channel channel = bootstrap.bind(port).sync().channel();
 
-    return bootstrap.bind(port).sync().channel();
+    logger.info("Netty " + protocol.name() + " started on port " + port);
+    startupLatch.countDown();
+
+    return channel;
   }
 
   // TODO: в отдельный класс?
@@ -128,7 +132,7 @@ public class NettyServer {
             new Http2RequestHandler(fileController, directoryController, userController));
       } else {
         pipeline.addLast(new HttpServerCodec());
-        pipeline.addLast(new CorsHandler());
+        pipeline.addLast(new CorsHandler()); // TODO: нужен ли CORS в HTTP?
         pipeline.addLast(new PipelineSelector(fileController, directoryController, userController));
       }
     }

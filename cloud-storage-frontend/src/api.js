@@ -612,54 +612,54 @@ const uploadFileChunked = async (token, file, path, onProgress) => {
  * downloadFile
  */
 export const downloadFile = async (token, path, filename, fileSize) => {
-    console.log("downloadFile request:", { path, filename, fileSize });
+  console.log("downloadFile request:", { path, filename, fileSize });
 
-    const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
+  const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
 
-    // TODO: вынести уже в переменную
-    const CHUNKED_DOWNLOAD_THRESHOLD = 5 * 1024 * 1024;
-    const useChunkedMode = fileSize > CHUNKED_DOWNLOAD_THRESHOLD;
+  // TODO: вынести уже в переменную
+  const CHUNKED_DOWNLOAD_THRESHOLD = 5 * 1024 * 1024;
+  const useChunkedMode = fileSize > CHUNKED_DOWNLOAD_THRESHOLD;
 
-    const headers = {
-        "X-Auth-Token": token
-    };
+  const headers = {
+    "X-Auth-Token": token
+  };
 
-    if (useChunkedMode) {
-        headers["X-Download-Mode"] = "chunked";
-        console.log("Using chunked download mode");
-    } else {
-        console.log("Using default (aggregated) download mode");
+  if (useChunkedMode) {
+    headers["X-Download-Mode"] = "chunked";
+    console.log("Using chunked download mode");
+  } else {
+    console.log("Using default (aggregated) download mode");
+  }
+
+  try {
+    const res = await fetch(url, {
+      headers: headers
+    });
+
+    console.log("downloadFile status:", res.status, res.statusText);
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "(no body)");
+      console.error("Download failed:", res.status, txt);
+      throw new Error(`Download failed: ${res.status} ${txt}`);
     }
 
-    try {
-        const res = await fetch(url, {
-            headers: headers
-        });
+    // Fetch API автоматически обрабатывает входящий поток (chunked transfer encoding)
+    // и собирает его в Blob. Дальнейшая логика остается прежней.
+    const blob = await res.blob();
+    const urlBlob = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = urlBlob;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(urlBlob);
+    document.body.removeChild(a);
 
-        console.log("downloadFile status:", res.status, res.statusText);
-
-        if (!res.ok) {
-            const txt = await res.text().catch(() => "(no body)");
-            console.error("Download failed:", res.status, txt);
-            throw new Error(`Download failed: ${res.status} ${txt}`);
-        }
-
-        // Fetch API автоматически обрабатывает входящий поток (chunked transfer encoding)
-        // и собирает его в Blob. Дальнейшая логика остается прежней.
-        const blob = await res.blob();
-        const urlBlob = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = urlBlob;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(urlBlob);
-        document.body.removeChild(a);
-
-    } catch (error) {
-        console.error("🔥 Fetch error:", error);
-        throw error;
-    }
+  } catch (error) {
+    console.error("🔥 Fetch error:", error);
+    throw error;
+  }
 };
 
 /**
@@ -1036,6 +1036,354 @@ export const getUserStorageInfo = async (token) => {
     return null;
   }
 }
+
+export const uploadFileWithTags = async (token, file, path, onProgress, tags = []) => {
+  console.log("=== UPLOAD FILE WITH TAGS ===");
+  console.log("Tags:", tags);
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!file) {
+    throw new Error("Файл не выбран");
+  }
+
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+  const useChunkedUpload = file.size > CHUNK_SIZE;
+
+  console.log(`Using ${useChunkedUpload ? 'CHUNKED' : 'SIMPLE'} upload`);
+
+  const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
+
+  // Преобразуем теги в строку
+  const tagsString = Array.isArray(tags) ? tags.join(',') : tags;
+
+  if (useChunkedUpload) {
+    return await uploadFileChunkedWithTags(token, file, path, onProgress, tagsString);
+  } else {
+    return await uploadFileSimpleWithTags(token, file, path, onProgress, tagsString);
+  }
+};
+
+/**
+ * Простая загрузка с тегами
+ */
+const uploadFileSimpleWithTags = async (token, file, path, onProgress, tagsString) => {
+  console.log("Using simple upload with tags");
+
+  const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
+  console.log("Upload URL:", url);
+  console.log("Tags:", tagsString);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 30000);
+
+    const res = await fetchWithTokenRefresh(url, {
+      method: "POST",
+      headers: {
+        "X-File-Tags": tagsString || "user_upload",
+        "X-File-Size": file.size,
+        "Content-Type": file.type || "application/octet-stream"
+      },
+      body: file,
+      signal: controller.signal
+    }, token);
+
+    clearTimeout(timeoutId);
+
+    if (onProgress) onProgress(100);
+
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error("Upload failed:", responseText);
+      throw new Error(`Upload failed: ${res.status} ${responseText}`);
+    }
+
+    const responseText = await res.text();
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      return responseText;
+    }
+
+  } catch (error) {
+    console.error("Upload error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Чанковая загрузка с тегами
+ */
+const uploadFileChunkedWithTags = async (token, file, path, onProgress, tagsString) => {
+  console.log("Using chunked upload with tags");
+
+  const url = `${BASE}/files/upload?path=${encodeURIComponent(path)}`;
+  const totalSize = file.size;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('X-Auth-Token', token);
+    xhr.setRequestHeader('X-File-Tags', tagsString || "user_upload");
+    xhr.setRequestHeader('X-File-Size', totalSize);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        console.log(`Upload progress: ${progress}%`);
+        onProgress(progress);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          if (onProgress) onProgress(100);
+          resolve(response);
+        } catch (e) {
+          if (onProgress) onProgress(100);
+          resolve(xhr.responseText);
+        }
+      } else {
+        console.error(`Upload failed: ${xhr.status} ${xhr.statusText}`);
+        reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`));
+      }
+    };
+
+    xhr.onerror = () => {
+      console.error("Upload XHR error");
+      reject(new Error('Network error during upload'));
+    };
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+
+    xhr.send(formData);
+  });
+};
+
+/**
+ * getFileTags - Получение тегов файла
+ */
+export const getFileTags = async (token, path) => {
+  console.log("=== GET FILE TAGS ===");
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!path) {
+    throw new Error("Путь к файлу не указан");
+  }
+
+  const url = `${BASE}/files/info?path=${encodeURIComponent(path)}`;
+
+  try {
+    const response = await fetchWithTokenRefresh(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      }
+    }, token);
+
+    if (!response.ok) {
+      return { tags: [] };
+    }
+
+    const data = await response.json();
+
+    // Извлекаем теги из ответа
+    let tagsArray = [];
+
+    if (data.tags && typeof data.tags === 'string') {
+      tagsArray = data.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+    } else if (Array.isArray(data.tags)) {
+      tagsArray = data.tags;
+    } else if (data.Tags && typeof data.Tags === 'string') {
+      tagsArray = data.Tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+    }
+
+    return { tags: tagsArray };
+
+  } catch (error) {
+    console.error("Error getting file tags:", error);
+    return { tags: [] };
+  }
+};
+
+/**
+ * updateFileTags - Обновление тегов файла
+ */
+export const updateFileTags = async (token, path, tags) => {
+  console.log("=== UPDATE FILE TAGS ===");
+  console.log("Path:", path);
+  console.log("Tags:", tags);
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!path) {
+    throw new Error("Путь к файлу не указан");
+  }
+
+  // Преобразуем теги в строку
+  const tagsArray = Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').filter(t => t.trim()) : []);
+  const tagsString = tagsArray.join(',');
+
+  const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
+  console.log("Request URL:", url);
+  console.log("Tags to update:", tagsString);
+
+  try {
+    // Используем тот же путь для newPath, чтобы не переименовывать
+    const response = await fetchWithTokenRefresh(url, {
+      method: "PUT",
+      headers: {
+        "X-File-Tags": tagsString,
+        "X-File-Visibility": "private", // Добавляем дефолтную видимость
+        "X-New-File-Path": path // Используем тот же путь
+      }
+    }, token);
+
+    console.log("Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "(no body)");
+      console.error("Error response:", errorText);
+
+      // Если ошибка из-за X-New-File-Path, пробуем без него
+      if (errorText.includes("New file Path")) {
+        console.log("Trying without X-New-File-Path...");
+        const response2 = await fetchWithTokenRefresh(url, {
+          method: "PUT",
+          headers: {
+            "X-File-Tags": tagsString,
+            "X-File-Visibility": "private"
+          }
+        }, token);
+
+        if (!response2.ok) {
+          const errorText2 = await response2.text();
+          throw new Error(`Failed to update file tags: ${response2.status} ${errorText2}`);
+        }
+
+        return await response2.json().catch(() => ({ success: true }));
+      }
+
+      throw new Error(`Failed to update file tags: ${response.status} ${errorText}`);
+    }
+
+    try {
+      return await response.json();
+    } catch (e) {
+      return { success: true, message: "Tags updated successfully" };
+    }
+
+  } catch (error) {
+    console.error("Error updating file tags:", error);
+    throw error;
+  }
+};
+
+/**
+ * updateFileVisibility - Обновление видимости файла
+ */
+export const updateFileVisibility = async (token, path, visibility) => {
+  console.log("=== UPDATE FILE VISIBILITY ===");
+  console.log("Path:", path);
+  console.log("Visibility:", visibility);
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!path) {
+    throw new Error("Путь к файлу не указан");
+  }
+
+  const validVisibilities = ['public', 'private'];
+  if (!validVisibilities.includes(visibility)) {
+    throw new Error(`Invalid visibility. Must be one of: ${validVisibilities.join(', ')}`);
+  }
+
+  const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
+
+  try {
+    const response = await fetchWithTokenRefresh(url, {
+      method: "PUT",
+      headers: {
+        "X-File-Visibility": visibility,
+        "X-File-Tags": "", // Пустые теги
+        "X-New-File-Path": path // Используем тот же путь
+      }
+    }, token);
+
+    console.log("Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "(no body)");
+      throw new Error(`Failed to update visibility: ${response.status} ${errorText}`);
+    }
+
+    try {
+      return await response.json();
+    } catch (e) {
+      return { success: true, visibility: visibility };
+    }
+
+  } catch (error) {
+    console.error("Error updating file visibility:", error);
+    throw error;
+  }
+};
+
+/**
+ * getAllUserTags - Получение всех уникальных тегов пользователя
+ */
+export const getAllUserTags = async (token) => {
+  console.log("=== GET ALL USER TAGS ===");
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  try {
+    const files = await getFiles(token, "");
+    const allTags = new Set();
+
+    for (const file of files) {
+      if (file.type === "file") {
+        try {
+          const tagsData = await getFileTags(token, file.fullPath);
+          if (tagsData.tags && Array.isArray(tagsData.tags)) {
+            tagsData.tags.forEach(tag => {
+              if (tag && typeof tag === 'string' && tag.trim()) {
+                allTags.add(tag.trim());
+              }
+            });
+          }
+        } catch (error) {
+          console.log(`Could not get tags for ${file.name}:`, error.message);
+        }
+      }
+    }
+
+    return Array.from(allTags).sort();
+
+  } catch (error) {
+    console.error("Error collecting tags:", error);
+    return [];
+  }
+};
 
 // Вспомогательная функция для форматирования байтов (добавьте в начало файла)
 function formatBytes(bytes) {

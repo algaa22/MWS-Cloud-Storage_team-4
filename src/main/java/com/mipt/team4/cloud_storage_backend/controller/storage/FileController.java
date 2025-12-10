@@ -53,24 +53,6 @@ public class FileController {
     return service.completeChunkedUpload(request);
   }
 
-  public FileChunkedDownloadDto getFileDownloadInfo(SimpleFileOperationDto request)
-      throws ValidationFailedException,
-          UserNotFoundException,
-          StorageEntityNotFoundException,
-          StorageIllegalAccessException {
-    request.validate();
-    return service.getFileDownloadInfo(request);
-  }
-
-  public DownloadedChunkDto getFileChunk(GetFileChunkDto request)
-      throws ValidationFailedException,
-          UserNotFoundException,
-          StorageEntityNotFoundException,
-          StorageIllegalAccessException {
-    request.validate();
-    return service.getFileChunk(request);
-  }
-
   public List<StorageEntity> getFileList(GetFilePathsListDto request)
       throws ValidationFailedException, UserNotFoundException {
     request.validate();

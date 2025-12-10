@@ -59,7 +59,7 @@ public class DirectoryService {
     String newDirectoryPath = changeDirectory.newDirectoryPath();
 
     List<StorageEntity> directoryFiles =
-        storageRepository.getFilePathsList(userId, true, oldDirectoryPath);
+        storageRepository.getFileList(userId, true, true, oldDirectoryPath);
 
     for (StorageEntity oldFile : directoryFiles) {
       String oldFilePath = oldFile.getPath();
@@ -86,7 +86,7 @@ public class DirectoryService {
 
     storageRepository.deleteFile(directoryEntity.orElse(null));
 
-    List<StorageEntity> directoryFiles = storageRepository.getFilePathsList(userId, true, directoryPath);
+    List<StorageEntity> directoryFiles = storageRepository.getFileList(userId, true, true, directoryPath);
 
     for (StorageEntity file : directoryFiles) {
       userRepository.decreaseUsedStorage(userId, file.getSize());

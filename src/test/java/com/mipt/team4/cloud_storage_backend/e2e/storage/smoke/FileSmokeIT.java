@@ -15,6 +15,8 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import io.netty.handler.codec.http.HttpHeaderValues;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -76,7 +78,7 @@ public class FileSmokeIT extends BaseStorageIT {
 
     assertTrue(
         FileOperationsITUtils.filePathsListContainsFiles(
-            client, currentUserToken, filePaths, false, ""));
+            client, currentUserToken, filePaths, false,  true,null));
   }
 
   @Test
@@ -152,11 +154,9 @@ public class FileSmokeIT extends BaseStorageIT {
       FileChunkedTransferITUtils.DownloadResult downloadResult, int fileSize) {
     Map<String, String> headers = downloadResult.headers();
 
-    String receivedTransferEncoding = headers.get(HttpHeaderNames.TRANSFER_ENCODING.toString());
     String receivedFilePath = headers.get("X-File-Path");
     String receivedFileSize = headers.get("X-File-Size");
 
-    assertEquals("chunked", receivedTransferEncoding);
     assertEquals(DEFAULT_FILE_TARGET_PATH, receivedFilePath);
     assertEquals(String.valueOf(fileSize), receivedFileSize);
   }

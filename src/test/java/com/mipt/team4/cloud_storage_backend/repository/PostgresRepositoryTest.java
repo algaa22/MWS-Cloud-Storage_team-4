@@ -66,7 +66,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     fileMetadataRepository.addFile(testFile);
 
     Optional<StorageEntity> receivedTestFile =
-        fileMetadataRepository.getFile(testUserUuid, "some/newPath.xml");
+        fileMetadataRepository.getFile(testUserUuid, "some/path.xml");
 
     assertTrue(receivedTestFile.isPresent());
     assertTrue(receivedTestFile.get().fullEquals(testFile));
@@ -104,7 +104,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     try {
       postgresConnection.executeUpdate(
-          "INSERT INTO users (newPath, email, password_hash, username, storage_limit, used_storage, is_active) "
+          "INSERT INTO users (path, email, password_hash, username, storage_limit, used_storage, is_active) "
               + "VALUES (?, ?, ?, ?, ?, ?, ?)",
           List.of(
               testUserUuid, "test@example.com", "password", "test_user", 10737418240L, 0, true));
@@ -117,7 +117,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     return new StorageEntity(
         UUID.randomUUID(),
         testUserUuid,
-        "some/newPath.xml",
+        "some/path.xml",
         "application/xml",
         "public",
         52,

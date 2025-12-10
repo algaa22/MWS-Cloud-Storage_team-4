@@ -55,10 +55,6 @@ public class TestUtils {
     return mapper.readTree(response.body());
   }
 
-  public static String getHeader(HttpResponse<?> response, String header) {
-    return response.headers().firstValue(header).orElse(null);
-  }
-
   public static CloseableHttpClient createApacheClient() {
     return HttpClients.custom()
         .setConnectionManager(new PoolingHttpClientConnectionManager())

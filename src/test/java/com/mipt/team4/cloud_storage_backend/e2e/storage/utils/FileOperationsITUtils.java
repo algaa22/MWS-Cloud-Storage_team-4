@@ -14,9 +14,16 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public class FileOperationsITUtils {
   public static boolean filePathsListContainsFiles(
-          HttpClient client, String userToken, List<String> filePaths, boolean includeDirectories, String searchDirectory) throws IOException, InterruptedException {
+      HttpClient client,
+      String userToken,
+      List<String> filePaths,
+      boolean includeDirectories,
+      boolean recursive,
+      String searchDirectory)
+      throws IOException, InterruptedException {
     HttpResponse<String> response =
-            sendGetFilePathsListRequest(client, userToken, includeDirectories, searchDirectory);
+        sendGetFilePathsListRequest(
+            client, userToken, includeDirectories, recursive, searchDirectory);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
     JsonNode filesNode = TestUtils.getRootNodeFromResponse(response).get("files");
@@ -33,13 +40,21 @@ public class FileOperationsITUtils {
   }
 
   public static HttpResponse<String> sendGetFilePathsListRequest(
-      HttpClient client, String userToken, boolean includeDirectories, String searchDirectory)
+      HttpClient client,
+      String userToken,
+      boolean includeDirectories,
+      boolean recursive,
+      String searchDirectory)
       throws IOException, InterruptedException {
+    String endpoint =
+        "/api/files/list?includeDirectories=" + includeDirectories + "&recursive=" + recursive;
+
+    if (searchDirectory != null) {
+      endpoint += "&directory=" + searchDirectory;
+    }
+
     HttpRequest request =
-        TestUtils.createRequest("/api/files/list?includeDirectories=" + includeDirectories + "&?directory=" + searchDirectory)
-            .header("X-Auth-Token", userToken)
-            .GET()
-            .build();
+        TestUtils.createRequest(endpoint).header("X-Auth-Token", userToken).GET().build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
@@ -71,8 +86,15 @@ public class FileOperationsITUtils {
   public static HttpResponse<String> sendChangeFilePathRequest(
       HttpClient client, String userToken, String oldTargetFilePath, String newTargetFilePath)
       throws IOException, InterruptedException {
-    return sendChangeFileMetadataRequest(
-        client, userToken, oldTargetFilePath, "X-File-New-Path", newTargetFilePath);
+    // TODO: dublicate
+    HttpRequest request =
+        TestUtils.createRequest(
+                "/api/files?path=" + oldTargetFilePath + "&newPath=" + newTargetFilePath)
+            .header("X-Auth-Token", userToken)
+            .PUT(HttpRequest.BodyPublishers.noBody())
+            .build();
+
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   public static HttpResponse<String> sendChangeFileVisibilityRequest(
@@ -92,15 +114,14 @@ public class FileOperationsITUtils {
   public static HttpResponse<String> sendChangeFileMetadataRequest(
       HttpClient client,
       String userToken,
-      String targetFilePath,
-      String newPath,
+      String oldTargetPath,
+      String newTargetPath,
       String newVisibility,
       String newTags)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/files?path=" + targetFilePath)
+        TestUtils.createRequest("/api/files?path=" + oldTargetPath + "&newPath=" + newTargetPath)
             .header("X-Auth-Token", userToken)
-            .header("X-File-New-Path", newPath)
             .header("X-File-New-Visibility", newVisibility)
             .header("X-File-New-Tags", newTags)
             .PUT(HttpRequest.BodyPublishers.noBody())

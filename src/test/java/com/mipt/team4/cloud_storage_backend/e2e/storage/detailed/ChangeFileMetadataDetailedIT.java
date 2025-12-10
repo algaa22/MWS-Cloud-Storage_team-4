@@ -10,9 +10,7 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUt
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
@@ -29,25 +27,20 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
   @Test
   public void shouldNotDoX_WhenSpecifyDirectory() throws IOException, InterruptedException {
     HttpResponse<String> response =
-            client.send(
-                    createRawRequestWithToken(currentUserToken,  "/api/files?path=dir/"),
-                    HttpResponse.BodyHandlers.ofString());
+        client.send(
+            createRawRequestWithToken(currentUserToken, "/api/files?path=dir/"),
+            HttpResponse.BodyHandlers.ofString());
 
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
     assertTrue(containsValidationError(response, "Old file path"));
   }
 
   @Test
-  public void shouldNotDoX_WhenSpecifyDirectoryInNewPath() throws IOException, InterruptedException {
+  public void shouldNotDoX_WhenSpecifyDirectoryInNewPath()
+      throws IOException, InterruptedException {
     HttpResponse<String> response =
-            client.send(
-                    TestUtils.createRequest("/api/files?path=_")
-                            .header("X-Auth-Token", currentUserToken)
-                            .header("X-File-Tags", "")
-                            .header("X-File-New-Path", "dir/")
-                            .PUT(HttpRequest.BodyPublishers.noBody())
-                            .build(),
-                    HttpResponse.BodyHandlers.ofString());
+        FileOperationsITUtils.sendChangeFileMetadataRequest(
+            client, currentUserToken, DEFAULT_FILE_TARGET_PATH, "dir/", NEW_VISIBILITY, NEW_TAGS);
 
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
     assertTrue(containsValidationError(response, "New file path"));
@@ -80,12 +73,13 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
   }
 
   @Test
-  public void shouldNotUpdateFile_WhenVisibilityIsInvalid() throws IOException, InterruptedException {
+  public void shouldNotUpdateFile_WhenVisibilityIsInvalid()
+      throws IOException, InterruptedException {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
     HttpResponse<String> response =
-            FileOperationsITUtils.sendChangeFileVisibilityRequest(
-                    client, currentUserToken, DEFAULT_FILE_TARGET_PATH, "asdsad");
+        FileOperationsITUtils.sendChangeFileVisibilityRequest(
+            client, currentUserToken, DEFAULT_FILE_TARGET_PATH, "asdsad");
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
     containsValidationError(response, "Visibility");
   }
@@ -105,8 +99,8 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
     assertEquals(HttpStatus.SC_OK, changeFileTagsResponse.statusCode());
 
     HttpResponse<String> changeFilePathResponse =
-            FileOperationsITUtils.sendChangeFilePathRequest(
-                    client, currentUserToken, DEFAULT_FILE_TARGET_PATH, NEW_PATH);
+        FileOperationsITUtils.sendChangeFilePathRequest(
+            client, currentUserToken, DEFAULT_FILE_TARGET_PATH, NEW_PATH);
     assertEquals(HttpStatus.SC_OK, changeFilePathResponse.statusCode());
 
     assertFileInfoChanged(DEFAULT_FILE_TARGET_PATH, NEW_PATH, NEW_VISIBILITY, NEW_TAGS);

@@ -20,7 +20,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
             client, currentUserToken, DEFAULT_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_CREATED, createDirectoryResponse.statusCode());
 
-    assertTrue(filePathsListContainsFiles(List.of(DEFAULT_DIRECTORY_PATH), ""));
+    assertTrue(filePathsListContainsFiles(List.of(DEFAULT_DIRECTORY_PATH), null));
   }
 
   @Test
@@ -38,7 +38,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
             client, currentUserToken, DEFAULT_DIRECTORY_PATH, NEW_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_OK, changePathResponse.statusCode());
 
-    assertFalse(filePathsListContainsFiles(testFiles, DEFAULT_FILE_TARGET_PATH));
+    assertFalse(filePathsListContainsFiles(testFiles, DEFAULT_DIRECTORY_PATH));
     assertTrue(
         filePathsListContainsFiles(
             testFiles.stream()
@@ -78,9 +78,10 @@ public class DirectorySmokeIT extends BaseStorageIT {
     return testFiles;
   }
 
-  private boolean filePathsListContainsFiles(List<String> filePaths, String searchDirectory)
+  private boolean filePathsListContainsFiles(
+      List<String> filePaths, String searchDirectory)
       throws IOException, InterruptedException {
     return FileOperationsITUtils.filePathsListContainsFiles(
-        client, currentUserToken, filePaths, true, searchDirectory);
+        client, currentUserToken, filePaths, true, true, searchDirectory);
   }
 }

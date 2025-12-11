@@ -27,7 +27,7 @@ public class StorageRepository {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
 
     metadataRepository.addFile(storageEntity); // TODO: если ошибка в putObject
-    contentRepository.putObject(s3Key, data, storageEntity.getMimeType());
+    contentRepository.putObject(s3Key, data);
   }
 
   public Optional<StorageEntity> getFile(UUID userId, String path) {
@@ -76,11 +76,6 @@ public class StorageRepository {
 
   public void updateFile(StorageEntity entity) {
     metadataRepository.updateFile(entity);
-  }
-
-  public byte[] downloadFilePart(UUID userId, UUID fileId, long offset, long actualChunkSize) {
-    String s3Key = StoragePaths.getS3Key(userId, fileId);
-    return contentRepository.downloadFilePart(s3Key, offset, actualChunkSize);
   }
 
   public void deleteFile(StorageEntity storageEntity)

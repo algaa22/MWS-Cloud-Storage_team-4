@@ -8,11 +8,9 @@ public interface FileContentRepository {
 
   String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes);
 
-  byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize);
-
   void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags);
 
-  void putObject(String s3Key, byte[] data, String mimeType);
+  void putObject(String s3Key, byte[] data);
 
   InputStream downloadFile(String storagePath);
 

@@ -45,8 +45,7 @@ public class MinioContentRepository implements FileContentRepository {
     if (bucketExists(bucketName)) throw new BucketAlreadyExistsException(bucketName);
 
     try {
-      minioClient.makeBucket(
-          MakeBucketArgs.builder().bucket(MinioConfig.INSTANCE.getUserDataBucketName()).build());
+      minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
     } catch (InsufficientDataException
         | InternalException
         | InvalidKeyException
@@ -141,31 +140,6 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public byte[] downloadFilePart(String s3Key, long offset, long actualChunkSize) {
-    try {
-      return minioClient
-          .getObject(
-              GetObjectArgs.builder()
-                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
-                  .object(s3Key)
-                  .offset(offset)
-                  .length(actualChunkSize)
-                  .build())
-          .get()
-          .readAllBytes();
-    } catch (IOException
-        | InternalException
-        | InsufficientDataException
-        | XmlParserException
-        | InvalidKeyException
-        | NoSuchAlgorithmException
-        | ExecutionException
-        | InterruptedException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  @Override
   public void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
     Multimap<String, String> extraHeaders = createEmptyHeader();
     Multimap<String, String> extraQueryParams = createEmptyHeader();
@@ -194,23 +168,26 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public void putObject(String s3Key, byte[] data, String mimeType) {
+  public void putObject(String s3Key, byte[] data) {
     InputStream stream = new ByteArrayInputStream(data);
 
     try {
-      minioClient.putObject(
-          PutObjectArgs.builder()
-              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
-              .object(s3Key)
-              .stream(stream, data.length, -1)
-              .contentType(mimeType)
-              .build());
+      minioClient
+          .putObject(
+              PutObjectArgs.builder()
+                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .object(s3Key)
+                  .stream(stream, data.length, -1)
+                  .build())
+          .get();
     } catch (InsufficientDataException
         | XmlParserException
         | NoSuchAlgorithmException
         | IOException
         | InvalidKeyException
-        | InternalException e) {
+        | InternalException
+        | ExecutionException
+        | InterruptedException e) {
       throw new RuntimeException(e);
     }
   }

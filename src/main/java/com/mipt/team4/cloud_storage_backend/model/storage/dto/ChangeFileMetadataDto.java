@@ -22,11 +22,11 @@ public record ChangeFileMetadataDto(
                 "If new file path specified, it must not be directory",
                 Validators.validate(newPath.isEmpty(), null, null),
                 Validators.mustBeFilePath(null, newPath.orElse(null))),
-                Validators.any(
-                        "New file visibility",
-                        "If new file visibility specified, it must be has valid value",
-                        Validators.validate(visibility.isEmpty(), null, null),
-                        Validators.validateVisibility(visibility.orElse(null))),
+            Validators.any(
+                "New file visibility",
+                "If new file visibility specified, it must be has valid value",
+                Validators.validate(visibility.isEmpty(), null, null),
+                Validators.validateVisibility(visibility.orElse(null))),
             Validators.any(
                 "New file metadata",
                 "One of the fields {New file Path, File visibility, File tags} must be specified",

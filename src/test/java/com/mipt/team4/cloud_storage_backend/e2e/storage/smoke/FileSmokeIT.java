@@ -11,6 +11,7 @@ import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,7 +79,7 @@ public class FileSmokeIT extends BaseStorageIT {
 
     assertTrue(
         FileOperationsITUtils.filePathsListContainsFiles(
-            client, currentUserToken, filePaths, false,  true,null));
+            client, currentUserToken, filePaths, false, true, null));
   }
 
   @Test

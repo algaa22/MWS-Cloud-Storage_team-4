@@ -1,9 +1,9 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.handler.filters;
 
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 
-public class CorsHandler extends ChannelDuplexHandler {
+public class CorsFilter extends ChannelDuplexHandler {
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     if (msg instanceof HttpRequest request) {
@@ -51,7 +51,7 @@ public class CorsHandler extends ChannelDuplexHandler {
                 + "X-Download-Mode, X-File-Size, X-File-Tags, X-File-New-Path, X-File-Visibility, "
                 + "X-New-Username, X-Old-Password, X-New-Password, "
                 + "X-Refresh-Token, X-Requested-With, Authorization, "
-                + "X-File-Path");
+                + "X-File-Path, X-File-New-Visibility, X-File-New-Tags"); // TODO: все ли нужны
     response.headers().set("Access-Control-Allow-Credentials", "true");
     response
         .headers()

@@ -1220,133 +1220,6 @@ export const getFileTags = async (token, path) => {
 };
 
 /**
- * updateFileTags - Обновление тегов файла
- */
-export const updateFileTags = async (token, path, tags) => {
-  console.log("=== UPDATE FILE TAGS ===");
-  console.log("Path:", path);
-  console.log("Tags:", tags);
-
-  if (!token) {
-    throw new Error("Требуется авторизация");
-  }
-
-  if (!path) {
-    throw new Error("Путь к файлу не указан");
-  }
-
-  // Преобразуем теги в строку
-  const tagsArray = Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').filter(t => t.trim()) : []);
-  const tagsString = tagsArray.join(',');
-
-  const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
-  console.log("Request URL:", url);
-  console.log("Tags to update:", tagsString);
-
-  try {
-    // Используем тот же путь для newPath, чтобы не переименовывать
-    const response = await fetchWithTokenRefresh(url, {
-      method: "PUT",
-      headers: {
-        "X-File-Tags": tagsString,
-        "X-File-Visibility": "private", // Добавляем дефолтную видимость
-        "X-New-File-Path": path // Используем тот же путь
-      }
-    }, token);
-
-    console.log("Response status:", response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "(no body)");
-      console.error("Error response:", errorText);
-
-      // Если ошибка из-за X-New-File-Path, пробуем без него
-      if (errorText.includes("New file Path")) {
-        console.log("Trying without X-New-File-Path...");
-        const response2 = await fetchWithTokenRefresh(url, {
-          method: "PUT",
-          headers: {
-            "X-File-Tags": tagsString,
-            "X-File-Visibility": "private"
-          }
-        }, token);
-
-        if (!response2.ok) {
-          const errorText2 = await response2.text();
-          throw new Error(`Failed to update file tags: ${response2.status} ${errorText2}`);
-        }
-
-        return await response2.json().catch(() => ({ success: true }));
-      }
-
-      throw new Error(`Failed to update file tags: ${response.status} ${errorText}`);
-    }
-
-    try {
-      return await response.json();
-    } catch (e) {
-      return { success: true, message: "Tags updated successfully" };
-    }
-
-  } catch (error) {
-    console.error("Error updating file tags:", error);
-    throw error;
-  }
-};
-
-/**
- * updateFileVisibility - Обновление видимости файла
- */
-export const updateFileVisibility = async (token, path, visibility) => {
-  console.log("=== UPDATE FILE VISIBILITY ===");
-  console.log("Path:", path);
-  console.log("Visibility:", visibility);
-
-  if (!token) {
-    throw new Error("Требуется авторизация");
-  }
-
-  if (!path) {
-    throw new Error("Путь к файлу не указан");
-  }
-
-  const validVisibilities = ['public', 'private'];
-  if (!validVisibilities.includes(visibility)) {
-    throw new Error(`Invalid visibility. Must be one of: ${validVisibilities.join(', ')}`);
-  }
-
-  const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
-
-  try {
-    const response = await fetchWithTokenRefresh(url, {
-      method: "PUT",
-      headers: {
-        "X-File-Visibility": visibility,
-        "X-File-Tags": "", // Пустые теги
-        "X-New-File-Path": path // Используем тот же путь
-      }
-    }, token);
-
-    console.log("Response status:", response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "(no body)");
-      throw new Error(`Failed to update visibility: ${response.status} ${errorText}`);
-    }
-
-    try {
-      return await response.json();
-    } catch (e) {
-      return { success: true, visibility: visibility };
-    }
-
-  } catch (error) {
-    console.error("Error updating file visibility:", error);
-    throw error;
-  }
-};
-
-/**
  * getAllUserTags - Получение всех уникальных тегов пользователя
  */
 export const getAllUserTags = async (token) => {
@@ -1396,3 +1269,246 @@ function formatBytes(bytes) {
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+/**
+ * updateFileMetadata - Обновление всех метаданных файла за один запрос
+ */
+/**
+ * updateFileMetadata - Обновление всех метаданных файла за один запрос
+ */
+/**
+ * updateFileMetadata - Правильная версия согласно документации
+ */
+/**
+ * updateFileMetadata - Обновление метаданных файла с параметром recursive
+ */
+export const updateFileMetadata = async (token, path, updates) => {
+  console.log("=== UPDATE FILE METADATA WITH RECURSIVE ===");
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!path) {
+    throw new Error("Путь к файлу не указан");
+  }
+
+  // Проверяем, что есть хотя бы одно обновление
+  const hasUpdates = updates.tags !== undefined ||
+      updates.visibility !== undefined ||
+      updates.newPath !== undefined;
+
+  if (!hasUpdates) {
+    throw new Error("Nothing to update");
+  }
+
+  // Строим URL согласно документации
+  let url = `${BASE}/files?path=${encodeURIComponent(path)}`;
+
+  // Добавляем newPath как параметр URL если он есть
+  if (updates.newPath) {
+    url += `&newPath=${encodeURIComponent(updates.newPath)}`;
+  }
+
+  // Добавляем recursive=false по умолчанию (если не указано иное)
+  const recursive = updates.recursive !== undefined ? updates.recursive : false;
+  url += `&recursive=${recursive}`;
+
+  console.log("Request URL:", url);
+
+  // Создаем заголовки
+  const headers = {
+    'X-Auth-Token': token
+  };
+
+  // Добавляем опциональные заголовки
+  if (updates.visibility !== undefined) {
+    headers['X-File-Visibility'] = updates.visibility;
+  }
+
+  if (updates.tags !== undefined) {
+    const tagsArray = Array.isArray(updates.tags) ? updates.tags :
+        (typeof updates.tags === 'string' ? updates.tags.split(',').filter(t => t.trim()) : []);
+    headers['X-File-Tags'] = tagsArray.join(',');
+  }
+
+  console.log("Request headers:", headers);
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: headers
+    });
+
+    console.log("Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error response:", errorText);
+      throw new Error(`Failed to update metadata: ${response.status} ${errorText}`);
+    }
+
+    try {
+      return await response.json();
+    } catch (e) {
+      return { success: true };
+    }
+
+  } catch (error) {
+    console.error("Error updating file metadata:", error);
+    throw error;
+  }
+};
+
+/**
+ * updateFileTags - Обновление только тегов
+ */
+export const updateFileTags = async (token, path, tags) => {
+  console.log("=== UPDATE FILE TAGS ===");
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!path) {
+    throw new Error("Путь к файлу не указан");
+  }
+
+  // Преобразуем теги в строку
+  const tagsArray = Array.isArray(tags) ? tags :
+      (typeof tags === 'string' ? tags.split(',').filter(t => t.trim()) : []);
+  const tagsString = tagsArray.join(',');
+
+  // URL с тем же путем в newPath и recursive=false
+  const url = `${BASE}/files?path=${encodeURIComponent(path)}&newPath=${encodeURIComponent(path)}&recursive=false`;
+
+  console.log("Request URL:", url);
+  console.log("Tags:", tagsString);
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        'X-Auth-Token': token,
+        'X-File-Tags': tagsString
+      }
+    });
+
+    console.log("Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update tags: ${response.status} ${errorText}`);
+    }
+
+    try {
+      return await response.json();
+    } catch (e) {
+      return { success: true };
+    }
+
+  } catch (error) {
+    console.error("Error updating file tags:", error);
+    throw error;
+  }
+};
+
+/**
+ * updateFileVisibility - Обновление видимости
+ */
+export const updateFileVisibility = async (token, path, visibility) => {
+  console.log("=== UPDATE FILE VISIBILITY ===");
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!path) {
+    throw new Error("Путь к файлу не указан");
+  }
+
+  const validVisibilities = ['public', 'private'];
+  if (!validVisibilities.includes(visibility)) {
+    throw new Error(`Invalid visibility. Must be one of: ${validVisibilities.join(', ')}`);
+  }
+
+  // URL с тем же путем в newPath и recursive=false
+  const url = `${BASE}/files?path=${encodeURIComponent(path)}&newPath=${encodeURIComponent(path)}&recursive=false`;
+
+  console.log("Request URL:", url);
+  console.log("Visibility:", visibility);
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        'X-Auth-Token': token,
+        'X-File-Visibility': visibility
+      }
+    });
+
+    console.log("Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update visibility: ${response.status} ${errorText}`);
+    }
+
+    try {
+      return await response.json();
+    } catch (e) {
+      return { success: true, visibility: visibility };
+    }
+
+  } catch (error) {
+    console.error("Error updating file visibility:", error);
+    throw error;
+  }
+};
+
+/**
+ * updateFileName - Обновление только имени файла
+ */
+export const updateFileName = async (token, oldPath, newPath) => {
+  console.log("=== UPDATE FILE NAME ===");
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!oldPath || !newPath) {
+    throw new Error("Пути не указаны");
+  }
+
+  // URL с recursive=false
+  const url = `${BASE}/files?path=${encodeURIComponent(oldPath)}&newPath=${encodeURIComponent(newPath)}&recursive=false`;
+
+  console.log("Request URL:", url);
+  console.log("Renaming:", oldPath, "->", newPath);
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        'X-Auth-Token': token
+      }
+    });
+
+    console.log("Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to rename file: ${response.status} ${errorText}`);
+    }
+
+    try {
+      return await response.json();
+    } catch (e) {
+      return { success: true };
+    }
+
+  } catch (error) {
+    console.error("Error renaming file:", error);
+    throw error;
+  }
+};

@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler;
+package com.mipt.team4.cloud_storage_backend.netty.handler.filters;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
@@ -8,24 +8,20 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http2.Http2FlowController;
-import io.netty.handler.codec.http2.Http2FrameCodec;
 import io.netty.handler.codec.http2.Http2FrameCodecBuilder;
 import io.netty.handler.codec.http2.Http2MultiplexHandler;
-import io.netty.handler.codec.http2.Http2Settings;
 import io.netty.handler.codec.http2.Http2StreamFrameToHttpObjectCodec;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Http2RequestHandler extends ApplicationProtocolNegotiationHandler {
-  private static final Logger log = LoggerFactory.getLogger(Http2RequestHandler.class);
+public class Http2RequestFilter extends ApplicationProtocolNegotiationHandler {
   private final FileController fileController;
   private final DirectoryController directoryController;
   private final UserController userController;
 
-  public Http2RequestHandler(
+  public Http2RequestFilter(
       FileController fileController,
       DirectoryController directoryController,
       UserController userController) {
@@ -47,7 +43,7 @@ public class Http2RequestHandler extends ApplicationProtocolNegotiationHandler {
         @Override
         protected void initChannel(Channel ch) {
           ch.pipeline().addLast(new Http2StreamFrameToHttpObjectCodec(true));
-          ch.pipeline().addLast(new CorsHandler());
+          ch.pipeline().addLast(new CorsFilter());
           ch.pipeline().addLast(new PipelineSelector(fileController, directoryController, userController));
         }
       };
@@ -55,7 +51,7 @@ public class Http2RequestHandler extends ApplicationProtocolNegotiationHandler {
       ctx.pipeline().addLast(new Http2MultiplexHandler(streamInitializer));
     } else if (ApplicationProtocolNames.HTTP_1_1.equals(protocol)) {
       ctx.pipeline().addLast(new HttpServerCodec());
-      ctx.pipeline().addLast(new CorsHandler());
+      ctx.pipeline().addLast(new CorsFilter());
       ctx.pipeline()
               .addLast(new PipelineSelector(fileController, directoryController, userController));
     } else {

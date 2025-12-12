@@ -5,8 +5,8 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryControll
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
-import com.mipt.team4.cloud_storage_backend.netty.handler.CorsHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handler.Http2RequestHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handler.filters.CorsFilter;
+import com.mipt.team4.cloud_storage_backend.netty.handler.filters.Http2RequestFilter;
 import com.mipt.team4.cloud_storage_backend.netty.pipeline.PipelineSelector;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import io.netty.bootstrap.ServerBootstrap;
@@ -129,10 +129,10 @@ public class NettyServer {
       if (protocol == ServerProtocol.HTTPS) {
         pipeline.addLast(SslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
         pipeline.addLast(
-            new Http2RequestHandler(fileController, directoryController, userController));
+            new Http2RequestFilter(fileController, directoryController, userController));
       } else {
         pipeline.addLast(new HttpServerCodec());
-        pipeline.addLast(new CorsHandler()); // TODO: нужен ли CORS в HTTP?
+        pipeline.addLast(new CorsFilter()); // TODO: нужен ли CORS в HTTP?
         pipeline.addLast(new PipelineSelector(fileController, directoryController, userController));
       }
     }

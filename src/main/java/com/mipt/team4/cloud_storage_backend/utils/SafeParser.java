@@ -4,9 +4,11 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 
 public class SafeParser {
   public static Boolean parseBoolean(String field, String value) throws ParseException {
-    if (value == null) return null;
-
-    return Boolean.parseBoolean(value);
+    try {
+      return Boolean.parseBoolean(value);
+    } catch (NumberFormatException e) {
+      throw new ParseException(field, Boolean.class, value);
+    }
   }
 
   public static Integer parseInt(String field, String value) throws ParseException {

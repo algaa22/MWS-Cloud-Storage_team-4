@@ -22,11 +22,12 @@ public class StorageRepository {
     contentRepository = new MinioContentRepository(minioUrl);
   }
 
-  public void addFile(StorageEntity storageEntity, byte[] data) throws StorageFileAlreadyExistsException {
+  public void addFile(StorageEntity storageEntity, byte[] data)
+      throws StorageFileAlreadyExistsException {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
 
     metadataRepository.addFile(storageEntity); // TODO: если ошибка в putObject
-    contentRepository.putObject(s3Key, data, storageEntity.getMimeType());
+    contentRepository.putObject(s3Key, data);
   }
 
   public Optional<StorageEntity> getFile(UUID userId, String path) {
@@ -42,19 +43,19 @@ public class StorageRepository {
     return contentRepository.startMultipartUpload(s3Key);
   }
 
-  public String uploadPart(
-      String uploadId, UUID userId, UUID fileId, int partIndex, byte[] bytes) {
+  public String uploadPart(String uploadId, UUID userId, UUID fileId, int partIndex, byte[] bytes) {
     String s3Key = StoragePaths.getS3Key(userId, fileId);
     // TODO: параметры в дто?
     return contentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
   }
 
-  public List<StorageEntity> getFilePathsList(UUID userId, boolean includeDirectories, String searchDirectory) {
-    return metadataRepository.getFilesList(userId, includeDirectories, searchDirectory);
+  public List<StorageEntity> getFileList(
+      UUID userId, boolean includeDirectories, boolean recursive, String searchDirectory) {
+    return metadataRepository.getFilesList(userId, includeDirectories, recursive, searchDirectory);
   }
 
   public void completeMultipartUpload(
-          StorageEntity storageEntity, String uploadId, Map<Integer, String> eTags)
+      StorageEntity storageEntity, String uploadId, Map<Integer, String> eTags)
       throws StorageFileAlreadyExistsException {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
 
@@ -77,13 +78,8 @@ public class StorageRepository {
     metadataRepository.updateFile(entity);
   }
 
-  public byte[] downloadFilePart(UUID userId, UUID fileId, long offset, long actualChunkSize) {
-    String s3Key = StoragePaths.getS3Key(userId, fileId);
-    return contentRepository.downloadFilePart(s3Key, offset, actualChunkSize);
-  }
-
   public void deleteFile(StorageEntity storageEntity)
-          throws StorageEntityNotFoundException, FileNotFoundException {
+      throws StorageEntityNotFoundException, FileNotFoundException {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
 
     metadataRepository.deleteFile(storageEntity.getUserId(), storageEntity.getPath());

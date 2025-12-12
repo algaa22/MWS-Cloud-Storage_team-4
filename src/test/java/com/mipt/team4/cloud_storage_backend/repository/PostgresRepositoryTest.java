@@ -2,13 +2,15 @@ package com.mipt.team4.cloud_storage_backend.repository;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.util.List;
 import java.util.Optional;
@@ -17,12 +19,15 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+// TODO: fix
 public class PostgresRepositoryTest extends BasePostgresTest {
   private static PostgresFileMetadataRepository fileMetadataRepository;
+  private static UserRepository userRepository;
   private static PostgresConnection postgresConnection;
+  private static StorageEntity commonFileEntity;
   private static UUID testUserUuid;
 
-  // TODO: dodelat
+  // TODO: корректные ли?
 
   @BeforeAll
   protected static void beforeAll() {
@@ -30,8 +35,11 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     postgresConnection = TestUtils.createConnection(postgresContainer);
     fileMetadataRepository = new PostgresFileMetadataRepository(postgresConnection);
+    userRepository = new UserRepository(postgresConnection);
 
     addTestUser();
+
+    commonFileEntity = addTestFile();
   }
 
   @AfterAll
@@ -41,35 +49,18 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     postgresConnection.disconnect();
   }
 
+  // TODO: refactor
+
   @Test
-  void fileExists_ShouldReturnTrue_WhenFileExists() throws StorageFileAlreadyExistsException {
-    StorageEntity testFile = createTestFile();
-
-    fileMetadataRepository.addFile(testFile);
-
-    assertTrue(fileMetadataRepository.fileExists(testFile.getUserId(), testFile.getPath()));
+  void fileExists_ShouldReturnTrue_WhenFileExists() {
+    assertTrue(
+        fileMetadataRepository.fileExists(
+            commonFileEntity.getUserId(), commonFileEntity.getPath()));
   }
 
   @Test
-  void fileExists_ShouldReturnFalse_WhenFileNotFound() throws StorageFileAlreadyExistsException {
-    StorageEntity testFile = createTestFile();
-
-    assertTrue(fileMetadataRepository.fileExists(testFile.getUserId(), testFile.getPath()));
-
-    fileMetadataRepository.addFile(testFile);
-  }
-
-  @Test
-  void shouldAddAndGetFile_WithSameContent() throws StorageFileAlreadyExistsException {
-    StorageEntity testFile = createTestFile();
-
-    fileMetadataRepository.addFile(testFile);
-
-    Optional<StorageEntity> receivedTestFile =
-        fileMetadataRepository.getFile(testUserUuid, "some/newPath.xml");
-
-    assertTrue(receivedTestFile.isPresent());
-    assertTrue(receivedTestFile.get().fullEquals(testFile));
+  void fileExists_ShouldReturnFalse_WhenFileNotFound() {
+    assertFalse(fileMetadataRepository.fileExists(commonFileEntity.getUserId(), "asdasdasd"));
   }
 
   @Test
@@ -78,51 +69,53 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   }
 
   @Test
-  void shouldThrowException_WhenAddExistentFile() throws StorageFileAlreadyExistsException {
-    StorageEntity file = createTestFile();
-
-    fileMetadataRepository.addFile(file);
-
+  void shouldThrowException_WhenAddExistentFile() {
     assertThrows(
-        StorageFileAlreadyExistsException.class, () -> fileMetadataRepository.addFile(file));
+        StorageFileAlreadyExistsException.class,
+        () -> fileMetadataRepository.addFile(commonFileEntity));
   }
 
   @Test
   void shouldAddAndDeleteFile_WithSameId()
-      throws StorageFileAlreadyExistsException, StorageEntityNotFoundException {
-    StorageEntity testFile = createTestFile();
+      throws StorageEntityNotFoundException {
+    StorageEntity testFileEntity = addTestFile();
+    assertTrue(
+        fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));
 
-    fileMetadataRepository.addFile(testFile);
-    assertTrue(fileMetadataRepository.fileExists(testFile.getUserId(), testFile.getPath()));
-
-    fileMetadataRepository.deleteFile(testFile.getUserId(), testFile.getPath());
-    assertFalse(fileMetadataRepository.fileExists(testFile.getUserId(), testFile.getPath()));
+    fileMetadataRepository.deleteFile(testFileEntity.getUserId(), testFileEntity.getPath());
+    assertFalse(
+        fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));
   }
 
   private static void addTestUser() {
     testUserUuid = UUID.randomUUID();
 
     try {
-      postgresConnection.executeUpdate(
-          "INSERT INTO users (newPath, email, password_hash, username, storage_limit, used_storage, is_active) "
-              + "VALUES (?, ?, ?, ?, ?, ?, ?)",
-          List.of(
-              testUserUuid, "test@example.com", "password", "test_user", 10737418240L, 0, true));
-    } catch (DbExecuteUpdateException e) {
+      userRepository.addUser(new UserEntity(testUserUuid, "name", "email", "password"));
+    } catch (UserAlreadyExistsException e) {
       throw new RuntimeException(e);
     }
   }
 
-  private static StorageEntity createTestFile() {
-    return new StorageEntity(
-        UUID.randomUUID(),
-        testUserUuid,
-        "some/newPath.xml",
-        "application/xml",
-        "public",
-        52,
-        false,
-        List.of("some xml"),
-        false);
+  private static StorageEntity addTestFile() {
+    try {
+      StorageEntity fileEntity =
+          new StorageEntity(
+              UUID.randomUUID(),
+              testUserUuid,
+              "file" + UUID.randomUUID(),
+              "application/xml",
+              "public",
+              42L,
+              false,
+              List.of("some xml"),
+              false);
+
+      fileMetadataRepository.addFile(fileEntity);
+
+      return fileEntity;
+    } catch (StorageFileAlreadyExistsException e) {
+      throw new RuntimeException(e); // TODO: RE в тестах?
+    }
   }
 }

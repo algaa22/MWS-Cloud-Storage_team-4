@@ -45,7 +45,7 @@ public class ChunkedDownloadHandler {
     ctx.write(response);
 
     ChunkedInput<HttpContent> chunkedInput =
-        new ReliableChunkedInput(
+        new CustomChunkedInput(
             fileDownload.fileStream(),
             StorageConfig.INSTANCE.getFileDownloadChunkSize(),
             fileDownload.size());

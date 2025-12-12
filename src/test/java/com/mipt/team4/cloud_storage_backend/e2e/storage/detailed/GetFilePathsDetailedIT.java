@@ -20,7 +20,7 @@ public class GetFilePathsDetailedIT extends BaseDetailedFileIT {
   @Test
   public void shouldReturnEmptyList_ForNewUser() throws IOException, InterruptedException {
     HttpResponse<String> response =
-        FileOperationsITUtils.sendGetFilePathsListRequest(client, currentUserToken, false, "");
+        FileOperationsITUtils.sendGetFilePathsListRequest(client, currentUserToken, false,  true,null);
 
     JsonNode rootNode = TestUtils.getRootNodeFromResponse(response);
     assertFalse(rootNode.get("files").elements().hasNext());

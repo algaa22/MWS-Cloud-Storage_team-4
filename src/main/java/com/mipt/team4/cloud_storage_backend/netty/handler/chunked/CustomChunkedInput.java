@@ -11,8 +11,9 @@ import java.io.InputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class ReliableChunkedInput implements ChunkedInput<HttpContent> {
-  final Logger logger = LoggerFactory.getLogger(ReliableChunkedInput.class);
+// TODO: rename
+class CustomChunkedInput implements ChunkedInput<HttpContent> {
+  final Logger logger = LoggerFactory.getLogger(CustomChunkedInput.class);
 
   private final InputStream stream;
   private final int chunkSize;
@@ -20,7 +21,7 @@ class ReliableChunkedInput implements ChunkedInput<HttpContent> {
   private boolean ended = false;
   private long bytesSent = 0;
 
-  public ReliableChunkedInput(InputStream stream, int chunkSize, long totalSize) {
+  public CustomChunkedInput(InputStream stream, int chunkSize, long totalSize) {
     this.stream = stream;
     this.chunkSize = chunkSize;
     this.totalSize = totalSize;
@@ -39,6 +40,8 @@ class ReliableChunkedInput implements ChunkedInput<HttpContent> {
 
     stream.close();
   }
+
+  // TODO: refactor
 
   @Override
   public HttpContent readChunk(ByteBufAllocator allocator) throws Exception {

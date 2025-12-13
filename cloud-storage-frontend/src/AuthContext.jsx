@@ -1,4 +1,3 @@
-// src/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { loginRequest, registerRequest, getUserInfo } from "./api.js";
 
@@ -17,7 +16,6 @@ export function AuthProvider({ children }) {
 
   const isInitialMount = useRef(true);
 
-  // Функция для обновления данных пользователя
   const updateUser = (updates) => {
     setUser(prev => {
       const updated = { ...prev, ...updates };
@@ -26,14 +24,12 @@ export function AuthProvider({ children }) {
     });
   };
 
-  // Функция для загрузки информации о пользователе
   const loadUserData = async (authToken) => {
     try {
       console.log("AuthContext: Loading user info with token...");
       const userInfo = await getUserInfo(authToken);
       console.log("AuthContext: Raw user info from server:", userInfo);
 
-      // ДЕТАЛЬНАЯ ОТЛАДКА: посмотрим все поля
       if (userInfo) {
         console.log("AuthContext: All user info fields:", Object.keys(userInfo));
         console.log("AuthContext: username field:", userInfo.username);
@@ -41,15 +37,13 @@ export function AuthProvider({ children }) {
         console.log("AuthContext: email field:", userInfo.email);
       }
 
-      // Извлекаем username из разных возможных полей
-      // Сервер скорее всего возвращает 'name', а не 'username'
       const username = userInfo.Name.split('@')[0] || 'User';
 
       const email = userInfo.email || userInfo.Email || '';
 
       const formattedUser = {
-        username: username,  // Используем 'name' с сервера
-        name: username,      // Дублируем для совместимости
+        username: username,
+        name: username,
         email: email,
         ...userInfo
       };
@@ -85,7 +79,6 @@ export function AuthProvider({ children }) {
       } catch (error) {
         console.error('AuthContext: Failed to load user info:', error.message);
 
-        // Очищаем при ошибках авторизации
         if (error.message.includes("401") || error.message.includes("403") ||
             error.message.includes("TOKEN_INVALID") || error.message.includes("expired")) {
           console.log("AuthContext: Token invalid, clearing all data");
@@ -107,7 +100,6 @@ export function AuthProvider({ children }) {
     console.log('AuthContext: login called with email:', email);
 
     try {
-      // Получаем токен
       const t = await loginRequest(email, password);
       console.log('AuthContext: Token received, length:', t?.length);
 
@@ -115,11 +107,9 @@ export function AuthProvider({ children }) {
         throw new Error("No token received from server");
       }
 
-      // Сохраняем токен как accessToken
       localStorage.setItem("accessToken", t);
       setToken(t);
 
-      // Загружаем информацию о пользователе
       const userData = await loadUserData(t);
 
       if (!userData) {
@@ -132,7 +122,6 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('AuthContext: Login failed:', error.message);
 
-      // Очищаем при ошибке
       localStorage.removeItem("accessToken");
       localStorage.removeItem("user");
       setToken(null);
@@ -154,14 +143,12 @@ export function AuthProvider({ children }) {
         throw new Error("No token received");
       }
 
-      // Сохраняем токен как accessToken
       localStorage.setItem("accessToken", t);
       setToken(t);
 
-      // Создаем временного пользователя с именем из регистрации
       const tempUser = {
-        username: username,  // Используем имя из формы регистрации
-        name: username,      // Дублируем для совместимости
+        username: username,
+        name: username,
         email: email
       };
 
@@ -169,13 +156,12 @@ export function AuthProvider({ children }) {
       setUser(tempUser);
       setIsAuthenticated(true);
 
-      // Загружаем полные данные с сервера, но не перезаписываем имя
       setTimeout(async () => {
         try {
           const serverUserData = await getUserInfo(t);
           console.log("AuthContext: Server data after registration:", serverUserData);
 
-          let finalUsername = username; // По умолчанию оставляем имя из регистрации
+          let finalUsername = username;
 
           if (serverUserData?.name && serverUserData.name !== "User" && serverUserData.name !== "") {
             finalUsername = serverUserData.name;
@@ -193,7 +179,6 @@ export function AuthProvider({ children }) {
           setUser(finalUser);
         } catch (loadError) {
           console.warn("AuthContext: Could not fetch user info after registration:", loadError);
-          // Оставляем временного пользователя
         }
       }, 100);
 

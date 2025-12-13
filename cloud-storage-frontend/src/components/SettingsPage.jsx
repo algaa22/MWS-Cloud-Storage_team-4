@@ -1,4 +1,3 @@
-// src/components/SettingsPage.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +12,6 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState("");
   const [userDetails, setUserDetails] = useState(null);
 
-  // Формы
   const [usernameForm, setUsernameForm] = useState({
     newUsername: "",
     show: false
@@ -26,7 +24,6 @@ export default function SettingsPage() {
     show: false
   });
 
-  // Ошибка только для пароля
   const [passwordError, setPasswordError] = useState("");
 
   useEffect(() => {
@@ -100,7 +97,6 @@ export default function SettingsPage() {
       setSuccess("");
       setPasswordError(""); // Очищаем ошибку пароля
 
-      // Проверки
       if (!passwordForm.oldPassword || !passwordForm.newPassword) {
         setPasswordError("Пожалуйста, введите и старый, и новый пароль");
         setLoading(false);
@@ -145,7 +141,6 @@ export default function SettingsPage() {
           show: false
         });
       } else {
-        // Определяем тип ошибки
         const errorMsg = response.message || 'Неизвестная ошибка';
         if (errorMsg.includes("Password incorrect") ||
             errorMsg.includes("Wrong password") ||
@@ -159,7 +154,6 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("Password update error:", error);
 
-      // Преобразуем сообщение об ошибке
       if (error.message.includes("Password incorrect") ||
           error.message.includes("Wrong password")) {
         setPasswordError("Неверный текущий пароль");

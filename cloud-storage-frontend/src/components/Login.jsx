@@ -1,4 +1,3 @@
-// src/components/Login.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate, Link } from "react-router-dom";
@@ -12,7 +11,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Если уже авторизован - редирект
   useEffect(() => {
     console.log("Login component: isAuthenticated =", isAuthenticated);
     if (isAuthenticated) {

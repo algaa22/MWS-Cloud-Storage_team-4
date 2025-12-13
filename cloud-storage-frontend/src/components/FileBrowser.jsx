@@ -1,5 +1,3 @@
-// src/components/FileBrowser.jsx
-// src/components/FileBrowser.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -12,11 +10,8 @@ import {
   createFolder as apiCreateFolder,
   deleteFolder as apiDeleteFolder,
   getUserInfo,
-  // Добавляем новые функции
   getFileTags,
-  updateFileTags,
   getAllUserTags,
-  updateFileVisibility,
   uploadFileWithTags,
     updateFileMetadata
 } from "../api.js";
@@ -25,7 +20,7 @@ export default function FileBrowser() {
   const { user, logout, token } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-
+  const [success, setSuccess] = useState("");
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [currentPath, setCurrentPath] = useState("");
@@ -39,7 +34,6 @@ export default function FileBrowser() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [newFolderName, setNewFolderName] = useState("");
-  //const [renameText, setRenameText] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [fileInfoData, setFileInfoData] = useState(null);
@@ -51,8 +45,6 @@ export default function FileBrowser() {
   const [fileVisibility, setFileVisibility] = useState('private');
   const [isSavingChanges, setIsSavingChanges] = useState(false);
 
-
-  // Добавляем состояние для информации о памяти
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
     total: 10 * 1024 * 1024 * 1024, // 10GB по умолчанию
@@ -86,16 +78,16 @@ export default function FileBrowser() {
 
     const loadData = async () => {
       setLoading(true);
-      setStorageLoading(true); // <-- Начинаем загрузку хранилища
+      setStorageLoading(true);
 
       try {
         await fetchFiles();
-        await loadStorageInfo(); // Ждем завершения
+        await loadStorageInfo();
       } catch (error) {
         console.error("Error loading data:", error);
       } finally {
         setLoading(false);
-        setStorageLoading(false); // <-- Завершаем загрузку
+        setStorageLoading(false);
       }
     };
 
@@ -103,7 +95,6 @@ export default function FileBrowser() {
     loadData();
   }, [token, currentPath]);
 
-  // Функция для загрузки информации о хранилище
   const loadStorageInfo = async () => {
     if (!token) return;
 
@@ -112,15 +103,11 @@ export default function FileBrowser() {
       const userData = await getUserInfo(token);
       console.log("User info loaded:", userData);
 
-      //setUserDetails(userData);
-
-      // Извлекаем информацию о хранилище
       let storageData = {
         used: 0,
         total: 10 * 1024 * 1024 * 1024, // 10GB по умолчанию
       };
 
-      // Проверяем разные варианты получения данных о хранилище
       if (userData.storageInfo) {
         storageData = userData.storageInfo;
       } else if (userData.storage) {
@@ -136,7 +123,6 @@ export default function FileBrowser() {
         storageData.total = userData.storageLimit;
       }
 
-      // Вычисляем остальные значения
       const percentage = storageData.total > 0 ? Math.round((storageData.used / storageData.total) * 100) : 0;
 
       setStorageInfo({
@@ -149,7 +135,6 @@ export default function FileBrowser() {
 
     } catch (err) {
       console.error("Error loading user info:", err);
-      // Если ошибка, показываем данные из файлов
       if (files.length > 0) {
         calculateStorageFromFiles();
       }
@@ -158,7 +143,6 @@ export default function FileBrowser() {
     }
   };
 
-  // Функция для вычисления занятого места из файлов
   const calculateStorageFromFiles = () => {
     if (files.length === 0 && folders.length === 0) return;
 
@@ -169,7 +153,6 @@ export default function FileBrowser() {
       }
     });
 
-    // Применяем лимит из storageInfo или используем значение по умолчанию
     const totalLimit = storageInfo.total || (10 * 1024 * 1024 * 1024); // 10GB по умолчанию
     const percentage = totalLimit > 0 ? Math.round((totalUsed / totalLimit) * 100) : 0;
 
@@ -181,7 +164,6 @@ export default function FileBrowser() {
     }));
   };
 
-  // Обновляем расчет памяти при изменении файлов
   useEffect(() => {
     if (files.length > 0) {
       calculateStorageFromFiles();
@@ -334,7 +316,6 @@ export default function FileBrowser() {
     }
   };
 
-  // Функция для извлечения имени из пути
   const getItemName = (item) => {
     if (item.name && item.name !== "") {
       return item.name;
@@ -349,7 +330,6 @@ export default function FileBrowser() {
     return item.id || "Объект";
   };
 
-  // Добавьте эту функцию после handleCreateFolder
   const handleDeleteFolder = async (folder) => {
     if (!folder || !folder.fullPath) return;
 
@@ -361,8 +341,8 @@ export default function FileBrowser() {
       try {
         await apiDeleteFolder(token, folder.fullPath);
         await fetchFiles();
-        await loadStorageInfo(); // Обновляем информацию о памяти
-        setError(""); // Очищаем ошибки если были
+        await loadStorageInfo();
+        setError("");
       } catch (err) {
         console.error("Delete folder error:", err);
         setError(`Ошибка при удалении папки: ${err.message}`);
@@ -402,7 +382,6 @@ export default function FileBrowser() {
           }
           break;
         case "info":
-          // Загружаем информацию о файле
           const info = selectedItem.type === "file"
               ? await apiGetFileInfo(token, selectedItem.fullPath)
               : {
@@ -413,7 +392,6 @@ export default function FileBrowser() {
                 visibility: "private"
               };
 
-          // Загружаем теги для файла
           let fileTagsList = [];
           if (selectedItem.type === "file") {
             try {
@@ -425,10 +403,8 @@ export default function FileBrowser() {
             }
           }
 
-          // Загружаем доступные теги
           await loadAvailableTags();
 
-          // Устанавливаем данные
           setFileInfoData({
             ...info,
             readableType: selectedItem.type === "file"
@@ -440,7 +416,6 @@ export default function FileBrowser() {
             visibility: info.visibility || info.Visibility || "private"
           });
 
-          // Сбрасываем состояние редактирования
           setEditingFileName(false);
           setNewFileName(selectedItem.name || "");
           setFileTags(fileTagsList);
@@ -460,7 +435,6 @@ export default function FileBrowser() {
     }
   };
 
-  // Добавляем новые функции для работы с тегами
   const loadAvailableTags = async () => {
     try {
       const tags = await getAllUserTags(token);
@@ -473,118 +447,128 @@ export default function FileBrowser() {
     }
   };
 
-  const saveFileChanges = async () => {
-    if (!fileInfoData || !fileInfoData.item) return;
+  const handleSaveFileName = async () => {
+    if (!fileInfoData || !fileInfoData.item || !newFileName.trim() || newFileName === fileInfoData.name) {
+      return;
+    }
 
     setIsSavingChanges(true);
     setError("");
 
     try {
       const item = fileInfoData.item;
-      console.log("Saving changes for:", item.name, item.type);
+      const oldFull = item.fullPath;
+      const pathParts = oldFull.split('/');
+      pathParts[pathParts.length - 1] = newFileName.trim();
+      const newFullPath = pathParts.join('/');
 
-      const changes = [];
-      let newFullPath = item.fullPath;
+      const metadataUpdates = {
+        newPath: newFullPath,
+        recursive: item.type === "folder"
+      };
 
-      // 1. Переименование если изменилось имя
-      if (newFileName && newFileName.trim() !== "" && newFileName !== item.name) {
-        const oldFull = item.fullPath;
-        const pathParts = oldFull.split('/');
-        pathParts[pathParts.length - 1] = newFileName.trim();
-        newFullPath = pathParts.join('/');
+      await updateFileMetadata(token, item.fullPath, metadataUpdates);
 
-        console.log("Renaming:", oldFull, "->", newFullPath);
+      setFileInfoData({
+        ...fileInfoData,
+        name: newFileName,
+        path: newFullPath
+      });
 
-        // Для папок используем recursive=true, для файлов false
-        const recursive = item.type === "folder";
+      await fetchFiles();
+      await loadStorageInfo();
 
-        await updateFileName(token, oldFull, newFullPath);
-        changes.push(`Переименован в "${newFileName}"`);
+      setSuccess(`Файл переименован в "${newFileName}"`);
+      setEditingFileName(false);
 
-        // Обновляем item для следующих операций
-        item.fullPath = newFullPath;
-        item.name = newFileName;
-      }
-
-      // 2. Обновление метаданных файла (только для файлов)
-      if (item.type === "file") {
-        // Собираем все изменения для одного запроса
-        const metadataUpdates = {
-          recursive: false // Для файлов всегда false
-        };
-        let needsMetadataUpdate = false;
-
-        // Проверяем видимость
-        if (fileVisibility !== fileInfoData.visibility) {
-          metadataUpdates.visibility = fileVisibility;
-          needsMetadataUpdate = true;
-          changes.push(`Видимость изменена на ${fileVisibility === 'public' ? 'публичный' : 'приватный'}`);
-        }
-
-        // Проверяем теги
-        const currentTags = fileInfoData.tags || [];
-        const tagsChanged = JSON.stringify(currentTags.sort()) !== JSON.stringify(fileTags.sort());
-        if (tagsChanged) {
-          metadataUpdates.tags = fileTags;
-          needsMetadataUpdate = true;
-          changes.push(`Теги обновлены (${fileTags.length})`);
-        }
-
-        // Если нужно обновить метаданные
-        if (needsMetadataUpdate) {
-          console.log("Updating metadata:", metadataUpdates);
-
-          // Используем актуальный путь (новый если файл был переименован)
-          const targetPath = item.fullPath;
-
-          // Указываем тот же путь в newPath (чтобы не переименовывать)
-          metadataUpdates.newPath = targetPath;
-
-          await updateFileMetadata(token, targetPath, metadataUpdates);
-        }
-      }
-
-      // 3. Если были изменения, обновляем список
-      if (changes.length > 0) {
-        console.log("Changes made:", changes);
-
-        await fetchFiles();
-        await loadStorageInfo();
-
-        // Показываем успешное сообщение
-        const successMsg = `Изменения сохранены: ${changes.join(', ')}`;
-
-        // Создаем зеленое сообщение
-        setSuccess(successMsg);
-        setError("");
-
-        // Автоматически закрываем через 2 секунды
-        setTimeout(() => {
-          setShowInfoModal(false);
-          setFileInfoData(null);
-          setEditingFileName(false);
-          setFileTags([]);
-          setSuccess("");
-        }, 2000);
-
-        return;
-      } else {
-        // Если изменений не было, просто закрываем
-        console.log("No changes to save");
-        setShowInfoModal(false);
-        setFileInfoData(null);
-        setEditingFileName(false);
-        setFileTags([]);
-      }
+      setTimeout(() => {
+        setSuccess("");
+      }, 2000);
 
     } catch (error) {
-      console.error("Failed to save changes:", error);
-      setError(`Ошибка сохранения: ${error.message}`);
+      console.error("Failed to save file name:", error);
+      setError(`Ошибка переименования: ${error.message}`);
+    } finally {
       setIsSavingChanges(false);
     }
   };
 
-  // Обновляем функцию загрузки файла
+  const handleSaveVisibility = async (visibility) => {
+    if (!fileInfoData || !fileInfoData.item || fileInfoData.item.type !== "file") {
+      return;
+    }
+
+    setIsSavingChanges(true);
+    setError("");
+
+    try {
+      const item = fileInfoData.item;
+
+      const metadataUpdates = {
+        visibility: visibility,
+        recursive: false
+      };
+
+      await updateFileMetadata(token, item.fullPath, metadataUpdates);
+
+      setFileInfoData({
+        ...fileInfoData,
+        visibility: visibility
+      });
+
+      setSuccess(`Видимость изменена на ${visibility === 'public' ? 'публичный' : 'приватный'}`);
+
+      setTimeout(() => {
+        setSuccess("");
+      }, 2000);
+
+    } catch (error) {
+      console.error("Failed to save visibility:", error);
+      setError(`Ошибка изменения видимости: ${error.message}`);
+      setFileVisibility(fileInfoData.visibility || 'private');
+    } finally {
+      setIsSavingChanges(false);
+    }
+  };
+
+  const handleSaveTags = async (tags) => {
+    if (!fileInfoData || !fileInfoData.item || fileInfoData.item.type !== "file") {
+      return;
+    }
+
+    setIsSavingChanges(true);
+    setError("");
+
+    try {
+      const item = fileInfoData.item;
+
+      const metadataUpdates = {
+        tags: tags,
+        recursive: false
+      };
+
+      await updateFileMetadata(token, item.fullPath, metadataUpdates);
+
+      setFileInfoData({
+        ...fileInfoData,
+        tags: tags
+      });
+
+      setSuccess(`Теги обновлены`);
+
+      setTimeout(() => {
+        setSuccess("");
+      }, 2000);
+
+    } catch (error) {
+      console.error("Failed to save tags:", error);
+      setError(`Ошибка сохранения тегов: ${error.message}`);
+      setFileTags(fileInfoData.tags || []);
+    } finally {
+      setIsSavingChanges(false);
+    }
+  };
+
   const handleFileUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -595,7 +579,6 @@ export default function FileBrowser() {
 
       const targetPath = currentPath ? `${currentPath}${file.name}` : file.name;
 
-      // Используем новую функцию с тегами
       await uploadFileWithTags(token, file, targetPath, (progress) => {
         setUploadProgress(progress);
       }, uploadTags);
@@ -604,7 +587,7 @@ export default function FileBrowser() {
       await fetchFiles();
       await loadStorageInfo();
       setShowUploadModal(false);
-      setUploadTags([]); // Сбрасываем теги после загрузки
+      setUploadTags([]);
 
     } catch (err) {
       console.error("Upload error:", err);
@@ -616,21 +599,6 @@ export default function FileBrowser() {
     }
   };
 
-  const getTagsArray = (tags) => {
-    if (!tags) return [];
-
-    if (Array.isArray(tags)) {
-      return tags.map(tag => String(tag).trim()).filter(tag => tag);
-    }
-
-    if (typeof tags === 'string') {
-      return tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-    }
-
-    return [];
-  };
-
-  // Добавьте эту функцию в компонент
   const renderModernNavigation = () => {
     const parts = currentPath ? currentPath.split('/').filter(p => p !== '') : [];
 
@@ -736,31 +704,6 @@ export default function FileBrowser() {
     }
   };
 
-  const handleRename = async () => {
-    if (!selectedItem || !renameText.trim()) return;
-
-    try {
-      const item = selectedItem;
-      const isFolder = item.type === "folder";
-      const oldFull = item.fullPath;
-      let newFull;
-      if (isFolder) {
-        newFull = oldFull.replace(/[^\/]+\/$/, `${renameText}/`);
-      } else {
-        newFull = oldFull.replace(/[^\/]+$/, renameText);
-      }
-
-      await apiRenameFile(token, oldFull, newFull);
-      setRenameText(null);
-      setSelectedItem(null);
-
-      await fetchFiles();
-    } catch (err) {
-      console.error("Rename error:", err);
-      setError("Ошибка при переименовании");
-    }
-  };
-
   const formatFileSize = (bytes) => {
     if (!bytes && bytes !== 0) return "—";
     if (bytes === 0) return "0 Bytes";
@@ -813,28 +756,6 @@ export default function FileBrowser() {
     return iconMap[extension] || "📄";
   };
 
-  const renderBreadcrumbs = () => {
-    if (!currentPath) return null;
-    const trimmed = currentPath.replace(/\/$/, "");
-    const parts = trimmed.split("/").filter(Boolean);
-    return parts.map((part, index, arr) => {
-      const label = part;
-      const pathTo = arr.slice(0, index + 1).join("/") + "/";
-      return (
-          <React.Fragment key={index}>
-            <span className="mx-2">/</span>
-            <button
-                onClick={() => setCurrentPath(normalizeCurrentPath(pathTo))}
-                className="text-white/70 hover:text-white"
-            >
-              {label}
-            </button>
-          </React.Fragment>
-      );
-    });
-  };
-
-  // Функция для получения цвета прогресс-бара в зависимости от заполненности
   const getProgressBarColor = (percentage) => {
     if (percentage < 50) return 'bg-green-500';
     if (percentage < 75) return 'bg-yellow-500';
@@ -1038,26 +959,6 @@ export default function FileBrowser() {
               </div>
           ) : (
               <>
-                {/* Статистика текущей папки */}
-                {/*                 <div className="mb-6 p-4 bg-white/5 rounded-xl"> */}
-                {/*                   <div className="flex flex-wrap gap-6"> */}
-                {/*                     <div className="text-center"> */}
-                {/*                       <div className="text-2xl font-bold text-blue-300">{folders.length}</div> */}
-                {/*                       <div className="text-sm text-white/60">Папок</div> */}
-                {/*                     </div> */}
-                {/*                     <div className="text-center"> */}
-                {/*                       <div className="text-2xl font-bold text-green-300">{files.length}</div> */}
-                {/*                       <div className="text-sm text-white/60">Файлов</div> */}
-                {/*                     </div> */}
-                {/*                     <div className="text-center"> */}
-                {/*                       <div className="text-2xl font-bold text-yellow-300"> */}
-                {/*                         {storageLoading ? "..." : formatFileSize(storageInfo.used)} */}
-                {/*                       </div> */}
-                {/*                       <div className="text-sm text-white/60">Использовано памяти:</div> */}
-                {/*                     </div> */}
-                {/*                   </div> */}
-                {/*                 </div> */}
-
                 {/* Сетка файлов и папок */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {/* Папки */}
@@ -1246,10 +1147,21 @@ export default function FileBrowser() {
             </div>
         )}
 
-        // Замените существующее модальное окно File Info Modal на этот код:
         {showInfoModal && fileInfoData && (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
               <div className="bg-gradient-to-br from-gray-900 to-blue-900 rounded-2xl p-6 w-full max-w-md border border-white/10 shadow-2xl">
+                {error && (
+                    <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center text-sm">
+                      {error}
+                    </div>
+                )}
+
+                {success && (
+                    <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-xl text-center text-sm">
+                      {success}
+                    </div>
+                )}
+
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold text-white flex items-center">
                     <span className="mr-2">📄</span>
@@ -1261,238 +1173,220 @@ export default function FileBrowser() {
                         setFileInfoData(null);
                         setFileTags([]);
                       }}
-                      className="text-white/70 hover:text-white text-2xl bg-white/10 w-8 h-8 rounded-full flex items-center justify-center"
+                      className="text-white/70 hover:text-white text-2xl bg-white/10 w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
                   >
                     ×
                   </button>
                 </div>
 
-                <div className="space-y-4">
-                  {/* File header with edit button */}
-                  <div className="flex items-center space-x-4 p-4 bg-white/10 rounded-xl">
-                    <div className="text-4xl">{getFileIcon(fileInfoData.name)}</div>
-                    <div className="flex-1 min-w-0">
-                      {editingFileName ? (
-                          <div className="space-y-2">
-                            <input
-                                type="text"
-                                value={newFileName}
-                                onChange={(e) => setNewFileName(e.target.value)}
-                                className="w-full p-2 bg-white/20 rounded-lg text-white"
-                                placeholder="Новое имя файла"
-                                autoFocus
-                            />
-                            <div className="flex space-x-2">
-                              <button
-                                  onClick={() => {
-                                    if (newFileName.trim() && newFileName !== fileInfoData.name) {
-                                      // Сохраняем новое имя
-                                      setFileInfoData({
-                                        ...fileInfoData,
-                                        name: newFileName
-                                      });
-                                    }
-                                    setEditingFileName(false);
-                                  }}
-                                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
-                              >
-                                Сохранить
-                              </button>
-                              <button
-                                  onClick={() => {
-                                    setNewFileName(fileInfoData.name);
-                                    setEditingFileName(false);
-                                  }}
-                                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm"
-                              >
-                                Отмена
-                              </button>
-                            </div>
+                {/* File header with edit button */}
+                <div className="flex items-center space-x-4 p-4 bg-white/10 rounded-xl mb-4">
+                  <div className="text-4xl">{getFileIcon(fileInfoData.name)}</div>
+                  <div className="flex-1 min-w-0">
+                    {editingFileName ? (
+                        <div className="space-y-2">
+                          <input
+                              type="text"
+                              value={newFileName}
+                              onChange={(e) => setNewFileName(e.target.value)}
+                              onKeyDown={async (e) => {
+                                if (e.key === 'Enter' && newFileName.trim() && newFileName !== fileInfoData.name) {
+                                  try {
+                                    await handleSaveFileName();
+                                  } catch (error) {
+                                    console.error("Failed to save file name:", error);
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  setNewFileName(fileInfoData.name);
+                                  setEditingFileName(false);
+                                }
+                              }}
+                              className="w-full p-2 bg-white/20 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:bg-white/25"
+                              placeholder="Новое имя файла"
+                              autoFocus
+                          />
+                          <div className="flex space-x-2">
+                            <button
+                                onClick={handleSaveFileName}
+                                disabled={!newFileName.trim() || newFileName === fileInfoData.name}
+                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50 transition-colors"
+                            >
+                              Сохранить
+                            </button>
+                            <button
+                                onClick={() => {
+                                  setNewFileName(fileInfoData.name);
+                                  setEditingFileName(false);
+                                }}
+                                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm transition-colors"
+                            >
+                              Отмена
+                            </button>
                           </div>
-                      ) : (
-                          <>
-                            <div className="flex items-center justify-between">
-                              <div className="font-bold text-lg truncate">{fileInfoData.name}</div>
-                              <button
-                                  onClick={() => {
-                                    setNewFileName(fileInfoData.name);
-                                    setEditingFileName(true);
-                                  }}
-                                  className="text-blue-400 hover:text-blue-300 ml-2 flex-shrink-0"
-                                  title="Редактировать имя"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                            </div>
-                            <div className="text-sm text-white/60 truncate">{fileInfoData.path}</div>
-                          </>
-                      )}
-                    </div>
+                        </div>
+                    ) : (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <div className="font-bold text-lg truncate">{fileInfoData.name}</div>
+                            <button
+                                onClick={() => {
+                                  setNewFileName(fileInfoData.name);
+                                  setEditingFileName(true);
+                                }}
+                                className="text-blue-400 hover:text-blue-300 ml-2 flex-shrink-0 p-1 hover:bg-blue-500/20 rounded transition-colors"
+                                title="Редактировать имя"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="text-sm text-white/60 truncate">{fileInfoData.path}</div>
+                        </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Info grid */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-white/10 p-3 rounded-xl">
+                    <div className="text-sm text-white/60 mb-1">Размер</div>
+                    <div className="font-medium">{formatFileSize(fileInfoData.size)}</div>
                   </div>
 
-                  {/* Info grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/10 p-3 rounded-xl">
-                      <div className="text-sm text-white/60 mb-1">Размер</div>
-                      <div className="font-medium">{formatFileSize(fileInfoData.size)}</div>
-                    </div>
+                  <div className="bg-white/10 p-3 rounded-xl">
+                    <div className="text-sm text-white/60 mb-1">Тип файла</div>
+                    <div className="font-medium">{fileInfoData.readableType}</div>
+                  </div>
 
-                    <div className="bg-white/10 p-3 rounded-xl">
-                      <div className="text-sm text-white/60 mb-1">Тип файла</div>
-                      <div className="font-medium">{fileInfoData.readableType}</div>
-                    </div>
-
-                    <div className="bg-white/10 p-3 rounded-xl">
-                      <div className="text-sm text-white/60 mb-1">Видимость</div>
-                      <div className="font-medium">
+                  <div className="bg-white/10 p-3 rounded-xl">
+                    <div className="text-sm text-white/60 mb-1">Видимость</div>
+                    <div className="font-medium relative">
+                      <div className="relative">
                         <select
                             value={fileVisibility}
-                            onChange={(e) => setFileVisibility(e.target.value)}
-                            className="bg-transparent border-none focus:ring-0 p-0 text-sm"
+                            onChange={async (e) => {
+                              const newVisibility = e.target.value;
+                              setFileVisibility(newVisibility);
+                              if (fileInfoData.item && fileInfoData.item.type === "file") {
+                                try {
+                                  await handleSaveVisibility(newVisibility);
+                                } catch (error) {
+                                  console.error("Failed to save visibility:", error);
+                                }
+                              }
+                            }}
+                            className="w-full bg-white/10 hover:bg-white/15 text-white rounded-lg p-2 text-sm appearance-none cursor-pointer border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
                         >
-                          <option value="private" className="bg-gray-800">Приватный</option>
-                          <option value="public" className="bg-gray-800">Публичный</option>
+                          <option value="private" className="bg-gray-800 text-white">Приватный</option>
+                          <option value="public" className="bg-gray-800 text-white">Публичный</option>
                         </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white/70">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="bg-white/10 p-3 rounded-xl">
-                      <div className="text-sm text-white/60 mb-1">Дата изменения</div>
-                      <div className="font-medium">{fileInfoData.formattedDate}</div>
                     </div>
                   </div>
 
-                  {/* Tags section */}
-                  <div className="bg-white/10 p-4 rounded-xl">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="text-sm text-white/60">Теги</div>
-                      <button
-                          onClick={() => {
-                            const input = document.getElementById('tagInput');
-                            if (input) {
-                              input.focus();
-                            }
-                          }}
-                          className="text-blue-400 hover:text-blue-300 text-sm flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Добавить
-                      </button>
-                    </div>
+                  <div className="bg-white/10 p-3 rounded-xl">
+                    <div className="text-sm text-white/60 mb-1">Дата изменения</div>
+                    <div className="font-medium">{fileInfoData.formattedDate}</div>
+                  </div>
+                </div>
 
-                    {/* Tag input */}
-                    <div className="mb-3">
-                      <input
-                          id="tagInput"
-                          type="text"
-                          placeholder="Введите тег и нажмите Enter"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && e.target.value.trim()) {
-                              const newTag = e.target.value.trim();
-                              if (!fileTags.includes(newTag)) {
-                                setFileTags([...fileTags, newTag]);
-                              }
+                {/* Tags section */}
+                <div className="bg-white/10 p-4 rounded-xl mb-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="text-sm text-white/60">Теги файла</div>
+                    <div className="text-xs text-white/40">
+                      Нажмите × чтобы удалить тег
+                    </div>
+                  </div>
+
+                  {/* Tag input */}
+                  <div className="mb-3">
+                    <input
+                        id="tagInput"
+                        type="text"
+                        placeholder="Введите новый тег"
+                        onKeyDown={async (e) => {
+                          if (e.key === 'Enter' && e.target.value.trim()) {
+                            const newTag = e.target.value.trim();
+
+                            if (!fileTags.includes(newTag)) {
+                              const updatedTags = [...fileTags, newTag];
+                              setFileTags(updatedTags);
                               e.target.value = '';
-                            }
-                          }}
-                          className="w-full p-2 bg-white/20 rounded-lg text-white text-sm placeholder-white/50"
-                      />
-                    </div>
 
-                    {/* Current tags */}
-                    <div className="flex flex-wrap gap-2 mb-3">
+                              if (fileInfoData.item && fileInfoData.item.type === "file") {
+                                try {
+                                  await handleSaveTags(updatedTags);
+                                } catch (error) {
+                                  console.error("Failed to save tags:", error);
+                                  setFileTags(fileTags.filter(tag => tag !== newTag));
+                                }
+                              }
+                            }
+                          }
+                        }}
+                        className="w-full p-2 bg-white/20 rounded-lg text-white text-sm placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:bg-white/25 transition-all"
+                    />
+                    <div className="text-xs text-white/50 mt-1">
+                      Нажмите Enter для добавления тега
+                    </div>
+                  </div>
+
+                  {/* Current tags */}
+                  <div className="mt-3">
+                    <div className="text-xs text-white/60 mb-2">Текущие теги:</div>
+                    <div className="flex flex-wrap gap-2">
                       {fileTags.map((tag, idx) => (
-                          <div key={idx} className="flex items-center bg-blue-500/30 text-blue-300 px-3 py-1 rounded-full text-sm">
-                            <span>{tag}</span>
+                          <div key={idx} className="flex items-center bg-gradient-to-r from-blue-500/30 to-cyan-500/30 text-blue-200 px-3 py-1.5 rounded-full text-sm group border border-blue-500/20 hover:border-blue-400/30 transition-all">
+                            <span className="font-medium">{tag}</span>
                             <button
                                 type="button"
-                                onClick={() => removeTag(tag)}
-                                className="ml-2 text-blue-300 hover:text-white text-xs"
+                                onClick={async () => {
+                                  const updatedTags = fileTags.filter(t => t !== tag);
+                                  setFileTags(updatedTags);
+
+                                  if (fileInfoData.item && fileInfoData.item.type === "file") {
+                                    try {
+                                      await handleSaveTags(updatedTags);
+                                    } catch (error) {
+                                      console.error("Failed to save tags:", error);
+                                      setFileTags([...updatedTags, tag]);
+                                    }
+                                  }
+                                }}
+                                className="ml-2 text-blue-300 hover:text-white text-xs bg-blue-500/40 hover:bg-blue-500/60 w-5 h-5 rounded-full flex items-center justify-center transition-colors"
+                                title="Удалить тег"
                             >
                               ×
                             </button>
                           </div>
                       ))}
                       {fileTags.length === 0 && (
-                          <span className="text-white/50 text-sm">Теги не добавлены</span>
-                      )}
-                    </div>
-
-                    {/* Available tags */}
-                    {availableTags.length > 0 && (
-                        <div className="mt-3">
-                          <div className="text-xs text-white/60 mb-2">Доступные теги:</div>
-                          <div className="flex flex-wrap gap-2">
-                            {availableTags.map((tag, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => {
-                                      if (!fileTags.includes(tag)) {
-                                        setFileTags([...fileTags, tag]);
-                                      }
-                                    }}
-                                    className="text-xs bg-white/10 hover:bg-white/20 text-white/80 px-2 py-1 rounded-full transition-colors"
-                                    title="Добавить тег"
-                                >
-                                  {tag}
-                                </button>
-                            ))}
+                          <div className="text-white/50 text-sm italic bg-white/5 p-3 rounded-lg w-full text-center">
+                            У этого файла пока нет тегов.
                           </div>
-                        </div>
-                    )}
-                  </div>
-
-                  {/* Additional info */}
-                  <div className="bg-white/10 p-3 rounded-xl">
-                    <div className="text-sm text-white/60 mb-2">Дополнительно</div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>MIME-тип:</div>
-                      <div className="text-white/80">{fileInfoData.mimeType || fileInfoData.type || "—"}</div>
-
-                      {fileInfoData.isolated !== undefined && (
-                          <>
-                            <div>Изолирован:</div>
-                            <div className={fileInfoData.isolated ? 'text-yellow-400' : 'text-green-400'}>
-                              {fileInfoData.isolated ? 'Да' : 'Нет'}
-                            </div>
-                          </>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Action buttons */}
-                <div className="mt-6 flex justify-between">
+                {/* Close button */}
+                <div className="flex justify-end">
                   <button
                       onClick={() => {
                         setShowInfoModal(false);
                         setFileInfoData(null);
                         setFileTags([]);
                       }}
-                      className="px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition-colors"
+                      className="px-5 py-2.5 bg-gradient-to-r from-blue-600/80 to-cyan-600/80 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl font-medium transition-all hover:scale-105 active:scale-95 shadow-lg"
                   >
-                    Отмена
-                  </button>
-                  <button
-                      onClick={saveFileChanges}
-                      disabled={isSavingChanges}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-colors flex items-center disabled:opacity-50"
-                  >
-                    {isSavingChanges ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                          Сохранение...
-                        </>
-                    ) : (
-                        <>
-                          <span className="mr-2">✓</span>
-                          Сохранить изменения
-                        </>
-                    )}
+                    Закрыть
                   </button>
                 </div>
               </div>

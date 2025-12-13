@@ -1,4 +1,3 @@
-// src/components/Register.jsx
 import React from 'react';
 import { useState } from "react";
 import { useAuth } from "../AuthContext";

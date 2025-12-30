@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MinIOContainer;
@@ -27,42 +29,44 @@ class MinioContentRepositoryTest {
   }
 
   @Test
-  public void shouldCreateBucket() throws BucketAlreadyExistsException {
-    repository.createBucket("test");
-
-    assertTrue(repository.bucketExists("test"));
+  public void bucketExists_shouldReturnFalse_WhenBucketNotExists() {
+    assertFalse(repository.bucketExists("non-existent-bucket"));
   }
 
   @Test
-  public void shouldThrowBucketAlreadyExistsException() throws BucketAlreadyExistsException {
-    repository.createBucket("test2");
+  public void shouldCreateUnexistentBucket() throws BucketAlreadyExistsException {
+    assertTrue(repository.bucketExists(createTestBucket()));
+  }
 
+  @Test
+  public void shouldThrowBucketAlreadyExistsException() {
     assertThrows(
             BucketAlreadyExistsException.class,
-            () -> repository.createBucket("test2"));
+            () -> repository.createBucket(createTestBucket()));
   }
 
   @Test
   public void shouldPutObject() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream("files/small_file.txt").readAllBytes();
+    byte[] fileBytes = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
 
     repository.putObject("OwnerID/FileID", fileBytes);
+
   }
 
   @Test
-  public void shouldDownloadFile() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream("files/small_file.txt").readAllBytes();
+  public void shouldGetObject() throws IOException {
+    byte[] fileBytes = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
 
     repository.putObject("key", fileBytes);
 
-    try (InputStream result = repository.downloadFile("key")) {
+    try (InputStream result = repository.downloadObject("key")) {
       assertArrayEquals(fileBytes, result.readAllBytes());
     }
   }
 
   @Test
   public void shouldHardDeleteFile() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream("files/small_file.txt").readAllBytes();
+    byte[] fileBytes = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
 
     repository.putObject("OwnerID/FileID2", fileBytes);
 
@@ -70,15 +74,24 @@ class MinioContentRepositoryTest {
 
     assertThrows(
             RuntimeException.class,
-            () -> repository.downloadFile("OwnerID/FileID2"));
+            () -> repository.downloadObject("OwnerID/FileID2"));
   }
 
   @Test
   public void shouldDoMultipartUpload() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream("files/big_file.txt").readAllBytes();
+    byte[] fileBytes = FileLoader.getInputStream(TestConstants.BIG_FILE_LOCAL_PATH).readAllBytes();
 
     String S3Key = "OwnerID/FileID3";
     multipartUpload(fileBytes, S3Key);
+  }
+
+  private String createTestBucket() throws BucketAlreadyExistsException {
+    // TODO: String.format()
+    String bucketName = "bucket/" + UUID.randomUUID();
+
+    repository.createBucket(bucketName);
+
+    return bucketName;
   }
 
   private void multipartUpload(byte[] fileBytes, String S3Key) {

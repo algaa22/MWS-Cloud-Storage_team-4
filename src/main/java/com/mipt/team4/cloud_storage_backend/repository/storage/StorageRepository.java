@@ -65,7 +65,7 @@ public class StorageRepository {
 
   public InputStream downloadFile(StorageEntity storageEntity) {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
-    return contentRepository.downloadFile(s3Key);
+    return contentRepository.downloadObject(s3Key);
   }
 
   public void deleteFile(UUID userId, String path)

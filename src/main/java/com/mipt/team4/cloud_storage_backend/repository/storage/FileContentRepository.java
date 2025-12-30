@@ -12,7 +12,9 @@ public interface FileContentRepository {
 
   void putObject(String s3Key, byte[] data);
 
-  InputStream downloadFile(String storagePath);
+  InputStream downloadObject(String s3key);
+
+  boolean objectExists(String s3Key);
 
   void hardDeleteFile(String s3Key);
 }

@@ -6,6 +6,7 @@ import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.DirectoryOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
+import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
@@ -72,7 +73,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
       String filePath = directoryPath + "file" + i;
 
       testFiles.add(filePath);
-      simpleUploadFile(SMALL_FILE_LOCAL_PATH, filePath, "");
+      simpleUploadFile(TestConstants.SMALL_FILE_LOCAL_PATH, filePath, "");
     }
 
     return testFiles;

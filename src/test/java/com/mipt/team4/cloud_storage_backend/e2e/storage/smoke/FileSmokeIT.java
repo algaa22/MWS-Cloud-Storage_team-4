@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransfe
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
@@ -31,7 +32,7 @@ public class FileSmokeIT extends BaseStorageIT {
         FileSimpleTransferITUtils.sendDownloadRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
 
-    byte[] originalFile = FileLoader.getInputStream(SMALL_FILE_LOCAL_PATH).readAllBytes();
+    byte[] originalFile = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
     byte[] downloadedFile = downloadResponse.body();
 
     assertEquals(HttpStatus.SC_OK, downloadResponse.statusCode());
@@ -44,14 +45,14 @@ public class FileSmokeIT extends BaseStorageIT {
   @Test
   public void shouldUploadAndDownloadFile_Chunked() throws IOException {
     try (CloseableHttpClient apacheClient = TestUtils.createApacheClient()) {
-      byte[] fileData = FileLoader.getInputStream(BIG_FILE_LOCAL_PATH).readAllBytes();
+      byte[] fileData = FileLoader.getInputStream(TestConstants.BIG_FILE_LOCAL_PATH).readAllBytes();
 
       FileChunkedTransferITUtils.UploadResult uploadResult =
           FileChunkedTransferITUtils.sendUploadRequest(
               apacheClient,
               currentUserToken,
               DEFAULT_FILE_TARGET_PATH,
-              BIG_FILE_LOCAL_PATH,
+              TestConstants.BIG_FILE_LOCAL_PATH,
               "",
               fileData.length);
       assertEquals(HttpStatus.SC_OK, uploadResult.statusCode());
@@ -84,14 +85,14 @@ public class FileSmokeIT extends BaseStorageIT {
 
   @Test
   public void shouldGetFileInfo() throws IOException, InterruptedException {
-    simpleUploadFile(SMALL_FILE_LOCAL_PATH, DEFAULT_FILE_TARGET_PATH, "1,2,3");
+    simpleUploadFile(TestConstants.SMALL_FILE_LOCAL_PATH, DEFAULT_FILE_TARGET_PATH, "1,2,3");
 
     HttpResponse<String> response =
         FileOperationsITUtils.sendGetFileInfoRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
-    byte[] testFile = FileLoader.getInputStream(SMALL_FILE_LOCAL_PATH).readAllBytes();
+    byte[] testFile = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
 
     JsonNode rootNode = TestUtils.getRootNodeFromResponse(response);
     assertEquals(DEFAULT_FILE_TARGET_PATH, rootNode.get("Path").asText());

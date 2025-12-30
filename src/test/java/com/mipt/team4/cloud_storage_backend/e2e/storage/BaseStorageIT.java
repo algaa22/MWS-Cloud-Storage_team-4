@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.e2e.BaseIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.user.UserAuthUtils;
+import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpResponse;
@@ -16,8 +17,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public abstract class BaseStorageIT extends BaseIT {
-  protected static final String SMALL_FILE_LOCAL_PATH = "files/small_file.txt";
-  protected static final String BIG_FILE_LOCAL_PATH = "files/big_file.txt";
   protected static final String EMPTY_FILE_LOCAL_PATH = "files/empty_file";
   protected static final String DEFAULT_FILE_TARGET_PATH = "file";
   protected static final String DEFAULT_DIRECTORY_PATH = "dir1/dir2/";
@@ -37,7 +36,7 @@ public abstract class BaseStorageIT extends BaseIT {
   }
 
   protected void simpleUploadFile(String targetFilePath) throws IOException, InterruptedException {
-    simpleUploadFile(SMALL_FILE_LOCAL_PATH, targetFilePath, "");
+    simpleUploadFile(TestConstants.SMALL_FILE_LOCAL_PATH, targetFilePath, "");
   }
 
   protected void simpleUploadFile(String localFilePath, String targetFilePath, String fileTags)

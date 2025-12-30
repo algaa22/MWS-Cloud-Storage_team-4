@@ -40,13 +40,13 @@ public class ChunkedDownloadHandler {
         new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileDownload.size());
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_OCTET_STREAM);
-    response.headers().set("X-File-Path", fileDownload.filePath());
+    response.headers().set("X-File-Path", fileDownload.path());
     response.headers().set("X-File-Size", fileDownload.size());
     ctx.write(response);
 
     ChunkedInput<HttpContent> chunkedInput =
         new CustomChunkedInput(
-            fileDownload.fileStream(),
+            fileDownload.stream(),
             StorageConfig.INSTANCE.getFileDownloadChunkSize(),
             fileDownload.size());
 

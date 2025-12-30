@@ -145,7 +145,7 @@ public record FilesRequestHandler(FileController fileController) {
     FileDownloadDto fileDownload =
         fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
 
-    try (InputStream fileStream = fileDownload.fileStream()) {
+    try (InputStream fileStream = fileDownload.stream()) {
       ResponseHelper.sendBinaryResponse(ctx, fileDownload.mimeType(), fileStream.readAllBytes());
     }
   }

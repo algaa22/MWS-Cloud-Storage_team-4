@@ -7,7 +7,6 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExist
 import io.minio.BucketExistsArgs;
 import io.minio.CreateMultipartUploadResponse;
 import io.minio.GetObjectArgs;
-import io.minio.GetObjectResponse;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.PutObjectArgs;
@@ -25,7 +24,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public class MinioContentRepository implements FileContentRepository {
@@ -209,17 +207,17 @@ public class MinioContentRepository implements FileContentRepository {
   @Override
   public InputStream downloadObject(String s3Key) {
     try {
-      return getObject(s3Key).get();
-    } catch (ExecutionException
-             | InterruptedException e) {
+      return minioClient
+          .getObject(
+              GetObjectArgs.builder()
+                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .object(s3Key)
+                  .build()).get();
+    } catch (ExecutionException | InterruptedException | InsufficientDataException |
+             InternalException | InvalidKeyException | IOException | NoSuchAlgorithmException |
+             XmlParserException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  @Override
-  public boolean objectExists(String s3Key) {
-    // TODO: correct?
-    return getObject(s3Key) != null;
   }
 
   @Override
@@ -242,24 +240,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   private Multimap<String, String> createEmptyHeader() {
     return MultimapBuilder.hashKeys().arrayListValues().build();
-  }
-
-  private CompletableFuture<GetObjectResponse> getObject(String s3Key) {
-    try {
-      return minioClient
-          .getObject(
-              GetObjectArgs.builder()
-                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
-                  .object(s3Key)
-                  .build());
-    } catch (InsufficientDataException
-             | XmlParserException
-             | NoSuchAlgorithmException
-             | IOException
-             | InvalidKeyException
-             | InternalException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   private Part[] createPartArray(Map<Integer, String> eTags)

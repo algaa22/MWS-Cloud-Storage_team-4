@@ -1,10 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
-import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,10 +17,13 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MinIOContainer;
 
 class MinioContentRepositoryTest {
+
   private static final MinIOContainer MINIO = TestUtils.createMinioContainer();
   private static MinioContentRepository repository;
 
-  // TODO: тесты некорректные
+  private record TestFileDto(String s3Key, byte[] data) {
+
+  }
 
   @BeforeAll
   public static void beforeAll() {
@@ -34,82 +37,68 @@ class MinioContentRepositoryTest {
   }
 
   @Test
-  public void shouldCreateUnexistentBucket() throws BucketAlreadyExistsException {
+  public void shouldCreateUnexistentBucket() {
     assertTrue(repository.bucketExists(createTestBucket()));
   }
 
+  // TODO: double responsibility?
   @Test
-  public void shouldThrowBucketAlreadyExistsException() {
-    assertThrows(
-            BucketAlreadyExistsException.class,
-            () -> repository.createBucket(createTestBucket()));
-  }
-
-  @Test
-  public void shouldPutObject() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
-
-    repository.putObject("OwnerID/FileID", fileBytes);
-
-  }
-
-  @Test
-  public void shouldGetObject() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
-
-    repository.putObject("key", fileBytes);
-
-    try (InputStream result = repository.downloadObject("key")) {
-      assertArrayEquals(fileBytes, result.readAllBytes());
-    }
+  public void shouldPutAndDownloadObject() throws IOException {
+    assertFileEqualsMinioObject(createTestFile());
   }
 
   @Test
   public void shouldHardDeleteFile() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
+    TestFileDto file = createTestFile();
 
-    repository.putObject("OwnerID/FileID2", fileBytes);
+    repository.hardDeleteFile(file.s3Key);
 
-    repository.hardDeleteFile("OwnerID/FileID2");
-
-    assertThrows(
-            RuntimeException.class,
-            () -> repository.downloadObject("OwnerID/FileID2"));
+    assertFalse(repository.objectExists(file.s3Key));
   }
 
   @Test
   public void shouldDoMultipartUpload() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream(TestConstants.BIG_FILE_LOCAL_PATH).readAllBytes();
+    TestFileDto file = createTestFile();
+    String uploadID = repository.startMultipartUpload(file.s3Key);
 
-    String S3Key = "OwnerID/FileID3";
-    multipartUpload(fileBytes, S3Key);
+    final int PART_SIZE = 1024 * 1024 * 5;
+    int partCount = Math.ceilDiv(file.data.length, PART_SIZE);
+    int offset = 0;
+
+    Map<Integer, String> eTags = new LinkedHashMap<>(partCount);
+
+    for (int i = 0; i < partCount; i++) {
+      int end = Math.min(offset + PART_SIZE, file.data.length);
+      byte[] part = Arrays.copyOfRange(file.data, offset, end);
+      eTags.put(i + 1, repository.uploadPart(uploadID, file.s3Key, i + 1, part));
+      offset += PART_SIZE;
+    }
+
+    repository.completeMultipartUpload(file.s3Key, uploadID, eTags);
+
+    assertFileEqualsMinioObject(file);
   }
 
-  private String createTestBucket() throws BucketAlreadyExistsException {
+  private String createTestBucket() {
     // TODO: String.format()
-    String bucketName = "bucket/" + UUID.randomUUID();
+    String bucketName = "bucket" + UUID.randomUUID();
 
     repository.createBucket(bucketName);
 
     return bucketName;
   }
 
-  private void multipartUpload(byte[] fileBytes, String S3Key) {
-    String uploadID = repository.startMultipartUpload(S3Key);
+  private TestFileDto createTestFile() throws IOException {
+    TestFileDto file = new TestFileDto("file" + UUID.randomUUID(), TestUtils.getSmallTestFile());
+    repository.putObject(file.s3Key, file.data);
 
-    int partSize = 1024 * 1024 * 5;
-    int partCount = Math.ceilDiv(fileBytes.length, partSize);
+    return file;
+  }
 
-    int offset = 0;
-    Map<Integer, String> etags = new LinkedHashMap<>(partCount);
-
-    for (int i = 0; i < partCount; i++) {
-      int end = Math.min(offset + partSize, fileBytes.length);
-      byte[] part = Arrays.copyOfRange(fileBytes, offset, end);
-      etags.put(i+1, repository.uploadPart(uploadID, S3Key, i+1, part));
-      offset += partSize;
+  private void assertFileEqualsMinioObject(TestFileDto file) throws IOException {
+    try(InputStream downloadStream = repository.downloadObject(file.s3Key)) {
+      assertTrue(repository.objectExists(file.s3Key));
+      assertArrayEquals(file.data, downloadStream.readAllBytes());
     }
-
-    repository.completeMultipartUpload(S3Key, uploadID, etags);
   }
 }

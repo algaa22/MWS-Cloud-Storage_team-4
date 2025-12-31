@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
@@ -28,6 +30,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class MinioContentRepository implements FileContentRepository {
+
+  private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
 
   private MinioAsyncClient minioClient;
 
@@ -82,10 +86,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public String startMultipartUpload(String s3Key) {
-    // TODO: Think about headers...
-    Multimap<String, String> headers = createEmptyHeader();
-    Multimap<String, String> extraQueryParams = createEmptyHeader();
-
     CreateMultipartUploadResponse response;
 
     try {
@@ -95,8 +95,8 @@ public class MinioContentRepository implements FileContentRepository {
                   MinioConfig.INSTANCE.getUserDataBucketName(),
                   "eu-central-1",
                   s3Key,
-                  headers,
-                  extraQueryParams)
+                  EMPTY_MAP,
+                  EMPTY_MAP)
               .get();
     } catch (InsufficientDataException
              | InternalException
@@ -114,8 +114,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes) {
-    Multimap<String, String> extraHeaders = createEmptyHeader();
-    Multimap<String, String> extraQueryParams = createEmptyHeader();
     InputStream inputStream = new ByteArrayInputStream(bytes);
     UploadPartResponse response;
 
@@ -130,8 +128,8 @@ public class MinioContentRepository implements FileContentRepository {
                   bytes.length,
                   uploadId,
                   partNum,
-                  extraHeaders,
-                  extraQueryParams)
+                  EMPTY_MAP,
+                  EMPTY_MAP)
               .get();
     } catch (InterruptedException
              | XmlParserException
@@ -149,8 +147,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
-    Multimap<String, String> extraHeaders = createEmptyHeader();
-    Multimap<String, String> extraQueryParams = createEmptyHeader();
 
     try {
       minioClient
@@ -160,8 +156,8 @@ public class MinioContentRepository implements FileContentRepository {
               s3Key,
               uploadId,
               createPartArray(eTags),
-              extraHeaders,
-              extraQueryParams)
+              EMPTY_MAP,
+              EMPTY_MAP)
           .get();
     } catch (InsufficientDataException
              | InternalException
@@ -226,9 +222,11 @@ public class MinioContentRepository implements FileContentRepository {
 
       return true;
     } catch (ExecutionException e) {
-      if (e.getCause().getCause() instanceof ErrorResponseException errorResponseException)
-        if (errorResponseException.errorResponse().code().equals("NoSuchKey"))
+      if (e.getCause().getCause() instanceof ErrorResponseException errorResponseException) {
+        if (errorResponseException.errorResponse().code().equals("NoSuchKey")) {
           return false;
+        }
+      }
 
       throw new RuntimeException(e);
     } catch (InsufficientDataException | InternalException | InvalidKeyException | IOException |
@@ -253,10 +251,6 @@ public class MinioContentRepository implements FileContentRepository {
              | InternalException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  private Multimap<String, String> createEmptyHeader() {
-    return MultimapBuilder.hashKeys().arrayListValues().build();
   }
 
   private Part[] createPartArray(Map<Integer, String> eTags)

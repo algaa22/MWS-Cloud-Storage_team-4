@@ -2,6 +2,8 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
@@ -43,15 +45,13 @@ public class StorageRepository {
     return contentRepository.startMultipartUpload(s3Key);
   }
 
-  public String uploadPart(String uploadId, UUID userId, UUID fileId, int partIndex, byte[] bytes) {
-    String s3Key = StoragePaths.getS3Key(userId, fileId);
-    // TODO: параметры в дто?
-    return contentRepository.uploadPart(uploadId, s3Key, partIndex, bytes);
+  public String uploadPart(UploadPartRequest request) {
+    String s3Key = StoragePaths.getS3Key(request.userId(), request.fileId());
+    return contentRepository.uploadPart(request.uploadId(), s3Key, request.partIndex(), request.bytes());
   }
 
-  public List<StorageEntity> getFileList(
-      UUID userId, boolean includeDirectories, boolean recursive, String searchDirectory) {
-    return metadataRepository.getFilesList(userId, includeDirectories, recursive, searchDirectory);
+  public List<StorageEntity> getFileList(FileListFilter filter) {
+    return metadataRepository.getFilesList(filter);
   }
 
   public void completeMultipartUpload(

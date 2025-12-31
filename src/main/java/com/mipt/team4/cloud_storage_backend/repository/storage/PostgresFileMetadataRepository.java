@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
@@ -42,28 +43,27 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public List<StorageEntity> getFilesList(
-      UUID userId, boolean includeDirectories, boolean recursive, String searchDirectory) {
+  public List<StorageEntity> getFilesList(FileListFilter filter) {
     // TODO: параметр recursive
     String query =
         "SELECT * FROM files WHERE owner_id = ? AND path LIKE ? AND path != ? AND is_deleted = FALSE";
     List<Object> params = new ArrayList<>();
 
-    params.add(userId);
-    params.add(searchDirectory + "%");
-    params.add(searchDirectory);
+    params.add(filter.userId());
+    params.add(filter.searchDirectory() + "%");
+    params.add(filter.searchDirectory());
 
-    if (!recursive) {
+    if (!filter.recursive()) {
       query += " AND PATH NOT LIKE ?";
-      params.add(searchDirectory + "%/_%");
+      params.add(filter.searchDirectory() + "%/_%");
     }
 
-    if (!includeDirectories) query += " AND is_directory = FALSE";
+    if (!filter.includeDirectories()) query += " AND is_directory = FALSE";
 
     return postgres.executeQuery(
         query,
         params,
-        rs -> resultToStorageEntity(userId, rs));
+        rs -> resultToStorageEntity(filter.userId(), rs));
   }
 
   @Override

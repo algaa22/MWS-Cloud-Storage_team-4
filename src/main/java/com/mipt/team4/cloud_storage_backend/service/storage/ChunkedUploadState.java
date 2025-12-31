@@ -79,10 +79,6 @@ public class ChunkedUploadState {
     return partNum;
   }
 
-  public void setPartNum(int partNum) {
-    this.partNum = partNum;
-  }
-
   public void increaseTotalParts() {
     totalParts++;
   }

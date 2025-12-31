@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
@@ -41,7 +40,6 @@ class MinioContentRepositoryTest {
     assertTrue(repository.bucketExists(createTestBucket()));
   }
 
-  // TODO: double responsibility?
   @Test
   public void shouldPutAndDownloadObject() throws IOException {
     assertFileEqualsMinioObject(createTestFile());
@@ -80,8 +78,7 @@ class MinioContentRepositoryTest {
   }
 
   private String createTestBucket() {
-    // TODO: String.format()
-    String bucketName = "bucket" + UUID.randomUUID();
+    String bucketName = "bucket-" + UUID.randomUUID();
 
     repository.createBucket(bucketName);
 
@@ -96,7 +93,7 @@ class MinioContentRepositoryTest {
   }
 
   private void assertFileEqualsMinioObject(TestFileDto file) throws IOException {
-    try(InputStream downloadStream = repository.downloadObject(file.s3Key)) {
+    try (InputStream downloadStream = repository.downloadObject(file.s3Key)) {
       assertTrue(repository.objectExists(file.s3Key));
       assertArrayEquals(file.data, downloadStream.readAllBytes());
     }

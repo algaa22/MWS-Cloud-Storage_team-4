@@ -32,7 +32,7 @@ public class FileSmokeIT extends BaseStorageIT {
         FileSimpleTransferITUtils.sendDownloadRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
 
-    byte[] originalFile = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
+    byte[] originalFile = TestUtils.getSmallTestFile();
     byte[] downloadedFile = downloadResponse.body();
 
     assertEquals(HttpStatus.SC_OK, downloadResponse.statusCode());
@@ -45,7 +45,7 @@ public class FileSmokeIT extends BaseStorageIT {
   @Test
   public void shouldUploadAndDownloadFile_Chunked() throws IOException {
     try (CloseableHttpClient apacheClient = TestUtils.createApacheClient()) {
-      byte[] fileData = FileLoader.getInputStream(TestConstants.BIG_FILE_LOCAL_PATH).readAllBytes();
+      byte[] fileData = TestUtils.getBigTestFile();
 
       FileChunkedTransferITUtils.UploadResult uploadResult =
           FileChunkedTransferITUtils.sendUploadRequest(
@@ -92,7 +92,7 @@ public class FileSmokeIT extends BaseStorageIT {
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
-    byte[] testFile = FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
+    byte[] testFile = TestUtils.getSmallTestFile();
 
     JsonNode rootNode = TestUtils.getRootNodeFromResponse(response);
     assertEquals(DEFAULT_FILE_TARGET_PATH, rootNode.get("Path").asText());

@@ -36,7 +36,6 @@ public class PostgresConnection implements DatabaseConnection {
 
     try {
       connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword);
-      // TODO: миграции
     } catch (SQLException e) {
       throw new DbConnectionException(e);
     }

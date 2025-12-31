@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler.chunked;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -28,7 +28,6 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -110,7 +109,6 @@ public class ChunkedUploadHandler {
     }
   }
 
-  // TODO: а если коннект резко оборвётся?
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
       throws TransferNotStartedYetException,
           UserNotFoundException,

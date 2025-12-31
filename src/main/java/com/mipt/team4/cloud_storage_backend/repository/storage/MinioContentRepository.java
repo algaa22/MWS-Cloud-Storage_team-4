@@ -63,7 +63,6 @@ public class MinioContentRepository implements FileContentRepository {
              | IOException
              | NoSuchAlgorithmException
              | XmlParserException e) {
-      // TODO: exceptions, retry
       throw new RuntimeException(e);
     }
   }

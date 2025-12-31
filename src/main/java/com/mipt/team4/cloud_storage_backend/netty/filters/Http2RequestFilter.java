@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler.filters;
+package com.mipt.team4.cloud_storage_backend.netty.filters;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
@@ -13,8 +13,6 @@ import io.netty.handler.codec.http2.Http2MultiplexHandler;
 import io.netty.handler.codec.http2.Http2StreamFrameToHttpObjectCodec;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Http2RequestFilter extends ApplicationProtocolNegotiationHandler {
   private final FileController fileController;

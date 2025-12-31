@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler.chunked;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;

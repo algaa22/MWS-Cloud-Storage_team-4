@@ -70,7 +70,6 @@ public class ResponseHelper {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
-    // TODO: Json injection?
     // TODO: вместо String message - JsonNode message в ошибке валидации
     json.put("success", success);
     json.put("message", message);
@@ -87,8 +86,7 @@ public class ResponseHelper {
         new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer(json, StandardCharsets.UTF_8));
 
-    addDefaultHeadersToResponse(response);
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
+    addDefaultHeadersToResponse(response, "application/json");
 
     return response;
   }
@@ -102,15 +100,13 @@ public class ResponseHelper {
         new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(data));
 
-    addDefaultHeadersToResponse(response);
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
+    addDefaultHeadersToResponse(response, mimeType);
 
     return response;
   }
 
-  private static void addDefaultHeadersToResponse(FullHttpResponse response) {
-    response.headers().set(HttpHeaderNames.CONNECTION, "keep-alive");
-    response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache"); // TODO: no cache? CORS?
+  private static void addDefaultHeadersToResponse(FullHttpResponse response, String contentType) {
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
   }
 }

@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handler.aggregated;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;

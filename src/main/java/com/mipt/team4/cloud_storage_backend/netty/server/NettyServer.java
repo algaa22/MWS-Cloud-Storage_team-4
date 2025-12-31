@@ -5,8 +5,8 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryControll
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
-import com.mipt.team4.cloud_storage_backend.netty.handler.filters.CorsFilter;
-import com.mipt.team4.cloud_storage_backend.netty.handler.filters.Http2RequestFilter;
+import com.mipt.team4.cloud_storage_backend.netty.filters.CorsFilter;
+import com.mipt.team4.cloud_storage_backend.netty.filters.Http2RequestFilter;
 import com.mipt.team4.cloud_storage_backend.netty.pipeline.PipelineSelector;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import io.netty.bootstrap.ServerBootstrap;

@@ -17,6 +17,7 @@ public enum StorageConfig {
   private final long minFilePartSize;
 
   StorageConfig() {
+    // TODO: зачем каждый раз создавать Source
     ConfigSource yamlSource = new YamlConfigSource("config.yml");
     ConfigSource envSource = new EnvironmentConfigSource(".env");
 
@@ -37,10 +38,6 @@ public enum StorageConfig {
     this.jwtSecretKey = envSource.getString("jwt.secret.key").orElseThrow();
   }
 
-  public long getDefaultStorageLimit() {
-    return defaultStorageLimit;
-  }
-
   public String getJwtSecretKey() {
     return jwtSecretKey;
   }
@@ -59,6 +56,10 @@ public enum StorageConfig {
 
   public long getRefreshTokenExpirationSec() {
     return refreshTokenExpirationSec;
+  }
+
+  public long getDefaultStorageLimit() {
+    return defaultStorageLimit;
   }
 
   public long getMaxFileChunkSize() {

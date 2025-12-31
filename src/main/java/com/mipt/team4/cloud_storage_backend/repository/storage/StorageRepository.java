@@ -28,7 +28,7 @@ public class StorageRepository {
       throws StorageFileAlreadyExistsException {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
 
-    metadataRepository.addFile(storageEntity); // TODO: если ошибка в putObject
+    metadataRepository.addFile(storageEntity);
     contentRepository.putObject(s3Key, data);
   }
 

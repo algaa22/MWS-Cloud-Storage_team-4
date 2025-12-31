@@ -4,10 +4,9 @@ import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
-import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
-import com.mipt.team4.cloud_storage_backend.netty.handler.aggregated.AggregatedHttpHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handler.chunked.ChunkedHttpHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated.AggregatedHttpHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.chunked.ChunkedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
@@ -48,7 +47,6 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
     }
 
     if (msg instanceof HttpRequest request) {
-      // TODO: защита от атак (валидаторы)
       PipelineType currentPipeline;
 
       try {

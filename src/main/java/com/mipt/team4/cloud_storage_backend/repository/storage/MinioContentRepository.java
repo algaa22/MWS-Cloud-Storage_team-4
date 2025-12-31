@@ -3,39 +3,29 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
-import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
 import io.minio.BucketExistsArgs;
 import io.minio.CreateMultipartUploadResponse;
 import io.minio.GetObjectArgs;
-import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
-import io.minio.Result;
 import io.minio.StatObjectArgs;
 import io.minio.UploadPartResponse;
 import io.minio.errors.ErrorResponseException;
 import io.minio.errors.InsufficientDataException;
 import io.minio.errors.InternalException;
-import io.minio.errors.MinioException;
 import io.minio.errors.XmlParserException;
-import io.minio.messages.ErrorResponse;
-import io.minio.messages.Item;
 import io.minio.messages.Part;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import okhttp3.Response;
-import okhttp3.internal.http2.ErrorCode;
 
 public class MinioContentRepository implements FileContentRepository {
 
@@ -56,17 +46,11 @@ public class MinioContentRepository implements FileContentRepository {
       throw new RuntimeException(e);
     }
 
-    try {
-      createBucket(MinioConfig.INSTANCE.getUserDataBucketName());
-    } catch (BucketAlreadyExistsException _) {
-    }
+    createBucket(MinioConfig.INSTANCE.getUserDataBucketName());
   }
 
-  public void createBucket(String bucketName) throws BucketAlreadyExistsException {
-    if (bucketExists(bucketName)) {
-      throw new BucketAlreadyExistsException(bucketName);
-    }
-
+  @Override
+  public void createBucket(String bucketName) {
     try {
       minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
     } catch (InsufficientDataException
@@ -80,6 +64,7 @@ public class MinioContentRepository implements FileContentRepository {
     }
   }
 
+  @Override
   public boolean bucketExists(String bucketName) {
     try {
       return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build()).get();

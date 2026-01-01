@@ -4,18 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.EnvConfigSource;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public final class EnvironmentConfigTest {
 
-  private static EnvironmentConfigSource source;
+  private static EnvConfigSource source;
 
   @BeforeAll
   static void beforeAll() {
-    source = new EnvironmentConfigSource("config/test.env");
+    source = new EnvConfigSource("config/test.env");
   }
 
   @Test

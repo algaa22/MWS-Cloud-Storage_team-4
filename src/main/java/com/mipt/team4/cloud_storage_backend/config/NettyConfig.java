@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.factories.YamlConfigFactory;
 
 public enum NettyConfig {
   INSTANCE;
@@ -16,7 +17,7 @@ public enum NettyConfig {
   private final boolean enableHttps;
 
   NettyConfig() {
-    ConfigSource source = new YamlConfigSource("config.yml");
+    ConfigSource source = YamlConfigFactory.INSTANCE.getDefault();
 
     this.httpPort = source.getInt("netty.http-port").orElseThrow();
     this.httpsPort = source.getInt("netty.https-port").orElseThrow();

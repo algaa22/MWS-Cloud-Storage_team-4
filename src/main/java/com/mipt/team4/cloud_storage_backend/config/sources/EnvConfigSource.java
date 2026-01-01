@@ -12,12 +12,12 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EnvironmentConfigSource extends ConfigSource {
+public class EnvConfigSource extends ConfigSource {
 
-  private static final Logger logger = LoggerFactory.getLogger(EnvironmentConfigSource.class);
+  private static final Logger logger = LoggerFactory.getLogger(EnvConfigSource.class);
   Map<String, String> envVars = new HashMap<>();
 
-  public EnvironmentConfigSource(String filePath) {
+  public EnvConfigSource(String filePath) {
     loadEnvFile(filePath);
   }
 

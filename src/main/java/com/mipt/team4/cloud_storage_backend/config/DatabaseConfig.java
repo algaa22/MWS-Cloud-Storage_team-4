@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
-import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.factories.EnvConfigFactory;
 
 public enum DatabaseConfig {
   INSTANCE;
@@ -13,8 +13,7 @@ public enum DatabaseConfig {
 
   DatabaseConfig() {
     ConfigSource source =
-        new EnvironmentConfigSource(
-            ".env");
+        EnvConfigFactory.INSTANCE.getDefault();
 
     this.url = source.getString("db.url").orElseThrow();
     this.name = source.getString("db.name").orElseThrow();

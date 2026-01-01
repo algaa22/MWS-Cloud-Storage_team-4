@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.filters;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
 import com.mipt.team4.cloud_storage_backend.config.CorsConfig;
 import io.netty.channel.ChannelDuplexHandler;
@@ -13,7 +13,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
-public class CorsFilter extends ChannelDuplexHandler {
+public class CorsSecurityHandler extends ChannelDuplexHandler {
 
   private static final String ALLOWED_METHODS = String.join(", ",
       "GET", "POST", "DELETE", "OPTIONS");

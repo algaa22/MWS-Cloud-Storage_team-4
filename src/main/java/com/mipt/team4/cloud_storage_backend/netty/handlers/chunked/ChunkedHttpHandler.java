@@ -14,7 +14,7 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStarte
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
@@ -53,9 +53,9 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
              | ValidationFailedException
              | StorageIllegalAccessException
              | QueryParameterNotFoundException e) {
-      ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+      ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
     } catch (CombineChunksToPartException | MissingFilePartException e) {
-      ResponseHelper.sendInternalServerErrorResponse(ctx);
+      ResponseUtils.sendInternalServerErrorResponse(ctx);
       logger.error("Internal server error: {}", e.getMessage());
     }
   }
@@ -89,7 +89,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     } else if (uri.startsWith("/api/files") && method.equals(HttpMethod.GET)) {
       chunkedDownload.startChunkedDownload(ctx, request);
     } else {
-      ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }
 
@@ -112,7 +112,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     logger.error("Unhandled exception in channel from {}", ctx.channel().remoteAddress(), cause);
-    ResponseHelper.sendInternalServerErrorResponse(ctx);
+    ResponseUtils.sendInternalServerErrorResponse(ctx);
 
     chunkedUpload.cleanup();
   }

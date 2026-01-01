@@ -8,7 +8,7 @@ import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
-import com.mipt.team4.cloud_storage_backend.netty.server.NettyServer;
+import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.RefreshTokenRepository;
@@ -23,7 +23,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class CloudStorageApplication {
-  private static NettyServer server;
+  private static NettyServerManager server;
 
   public static void main(String[] args) {
     start(DatabaseConfig.INSTANCE.getUrl(), MinioConfig.INSTANCE.getUrl());
@@ -65,7 +65,7 @@ public class CloudStorageApplication {
     DirectoryController directoryController = new DirectoryController(directoryService);
     UserController userController = new UserController(userService);
 
-    server = new NettyServer(fileController, directoryController, userController);
+    server = new NettyServerManager(fileController, directoryController, userController);
 
     Thread serverThread =
         new Thread(

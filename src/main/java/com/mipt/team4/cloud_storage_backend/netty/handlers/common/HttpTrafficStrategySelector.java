@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.pipeline;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
@@ -7,10 +7,11 @@ import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated.AggregatedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.chunked.ChunkedHttpHandler;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
+import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
@@ -20,9 +21,8 @@ import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Sharable
-public class PipelineSelector extends ChannelInboundHandlerAdapter {
-  private static final Logger logger = LoggerFactory.getLogger(PipelineSelector.class);
+public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
+  private static final Logger logger = LoggerFactory.getLogger(HttpTrafficStrategySelector.class);
 
   private final FileController fileController;
   private final DirectoryController directoryController;
@@ -30,7 +30,30 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
 
   private PipelineType previousPipeline = null;
 
-  public PipelineSelector(
+  public enum PipelineType {
+    CHUNKED,
+    AGGREGATED;
+
+    public static PipelineType from(HttpRequest request) throws ParseException {
+      if (request.method() == HttpMethod.POST) {
+        // TODO: или Transfer-Encoding
+        int fileSize =
+            SafeParser.parseInt("File size", RequestUtils.getHeader(request, "X-File-Size", "0"));
+
+        if (fileSize > StorageConfig.INSTANCE.getMaxAggregatedContentLength()) return CHUNKED;
+      }
+
+      if (request.method() == HttpMethod.GET) {
+        String downloadMode = RequestUtils.getHeader(request, "X-Download-Mode", "");
+        if (downloadMode.equalsIgnoreCase("chunked")) return CHUNKED;
+      }
+
+      return AGGREGATED;
+    }
+  }
+
+
+  public HttpTrafficStrategySelector(
       FileController fileController,
       DirectoryController directoryController,
       UserController userController) {
@@ -52,7 +75,7 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
       try {
         currentPipeline = PipelineType.from(request);
       } catch (ParseException e) {
-        ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+        ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
         ReferenceCountUtil.release(msg);
         return;
       }
@@ -106,7 +129,7 @@ public class PipelineSelector extends ChannelInboundHandlerAdapter {
         "Unexpected message mimeType before pipeline configuration: {}",
         msg.getClass().getSimpleName());
 
-    ResponseHelper.sendErrorResponse(
+    ResponseUtils.sendErrorResponse(
             ctx,
             HttpResponseStatus.BAD_REQUEST,
             msg.getClass().getSimpleName() + " before pipeline configuration with HttpRequest")

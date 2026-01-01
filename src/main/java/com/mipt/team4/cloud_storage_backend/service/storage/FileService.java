@@ -50,8 +50,6 @@ public class FileService {
     this.userRepository = userRepository;
   }
 
-  // TODO: soft delete?
-
   public void startChunkedUploadSession(FileChunkedUploadDto uploadSession)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
     UUID userId = userSessionService.extractUserIdFromToken(uploadSession.userToken());

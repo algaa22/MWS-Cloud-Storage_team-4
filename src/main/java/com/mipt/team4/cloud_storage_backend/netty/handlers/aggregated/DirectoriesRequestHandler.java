@@ -9,7 +9,7 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeDirectoryPathDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOperationDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -21,7 +21,7 @@ public record DirectoriesRequestHandler(DirectoryController directoryController)
       throws UserNotFoundException, StorageFileAlreadyExistsException, ValidationFailedException {
     directoryController.createDirectory(new SimpleDirectoryOperationDto(userToken, directoryPath));
 
-    ResponseHelper.sendSuccessResponse(
+    ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.CREATED, "Directory successfully created");
   }
 
@@ -41,7 +41,7 @@ public record DirectoriesRequestHandler(DirectoryController directoryController)
     directoryController.changeDirectoryPath(
         new ChangeDirectoryPathDto(userToken, oldDirectoryPath, newDirectoryPath));
 
-    ResponseHelper.sendSuccessResponse(
+    ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "Directory path successfully changed");
   }
 
@@ -54,7 +54,7 @@ public record DirectoriesRequestHandler(DirectoryController directoryController)
 
     directoryController.deleteDirectory(new SimpleDirectoryOperationDto(userToken, directoryPath));
 
-    ResponseHelper.sendSuccessResponse(
+    ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "Directory successfully deleted");
   }
 }

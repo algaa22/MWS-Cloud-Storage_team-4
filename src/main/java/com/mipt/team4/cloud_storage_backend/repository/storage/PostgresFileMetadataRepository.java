@@ -44,7 +44,6 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   @Override
   public List<StorageEntity> getFilesList(FileListFilter filter) {
-    // TODO: параметр recursive
     String query =
         "SELECT * FROM files WHERE owner_id = ? AND path LIKE ? AND path != ? AND is_deleted = FALSE";
     List<Object> params = new ArrayList<>();

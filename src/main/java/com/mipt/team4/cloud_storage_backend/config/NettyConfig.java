@@ -11,6 +11,8 @@ public enum NettyConfig {
   private final int bossThreads;
   private final int workerThreads;
   private final int startTimeoutSec;
+  private final int shutdownTimeoutSec;
+  private final int shutdownQueryPeriodSec;
   private final boolean enableHttps;
 
   NettyConfig() {
@@ -20,7 +22,9 @@ public enum NettyConfig {
     this.httpsPort = source.getInt("netty.https-port").orElseThrow();
     this.bossThreads = source.getInt("netty.boss-threads").orElseThrow();
     this.workerThreads = source.getInt("netty.worker-threads").orElseThrow();
-    this.startTimeoutSec = source.getInt("netty.start-timeout-sec").orElseThrow();
+    this.startTimeoutSec = source.getInt("netty.start.timeout-sec").orElseThrow();
+    this.shutdownTimeoutSec = source.getInt("netty.shutdown.timeout-sec").orElseThrow();
+    this.shutdownQueryPeriodSec = source.getInt("netty.shutdown.query-period-sec").orElseThrow();
     this.enableHttps = source.getBoolean("netty.enable-https").orElseThrow();
   }
 
@@ -42,6 +46,14 @@ public enum NettyConfig {
 
   public int getStartTimeoutSec() {
     return startTimeoutSec;
+  }
+
+  public int getShutdownTimeoutSec() {
+    return shutdownTimeoutSec;
+  }
+
+  public int getShutdownQueryPeriodSec() {
+    return shutdownQueryPeriodSec;
   }
 
   public boolean isEnableHttps() {

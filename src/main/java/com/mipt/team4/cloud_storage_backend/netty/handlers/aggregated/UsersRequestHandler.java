@@ -18,7 +18,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -61,7 +61,7 @@ public record UsersRequestHandler(UserController userController) {
     userController.logoutUser(
         new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
-    ResponseHelper.sendSuccessResponse(
+    ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
   }
 
@@ -80,7 +80,7 @@ public record UsersRequestHandler(UserController userController) {
     rootNode.put("UsedStorage", userInfo.usedStorage());
     rootNode.put("IsActive", userInfo.isActive());
 
-    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
   public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request)
@@ -96,7 +96,7 @@ public record UsersRequestHandler(UserController userController) {
             newUserPassword,
             newUsername));
 
-    ResponseHelper.sendSuccessResponse(
+    ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "User info successfully changed");
   }
 
@@ -116,6 +116,6 @@ public record UsersRequestHandler(UserController userController) {
     rootNode.put("AccessToken", tokenPair.accessToken());
     rootNode.put("RefreshToken", tokenPair.refreshToken());
 
-    ResponseHelper.sendJsonResponse(ctx, status, rootNode);
+    ResponseUtils.sendJsonResponse(ctx, status, rootNode);
   }
 }

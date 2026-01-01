@@ -19,7 +19,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileR
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -170,6 +170,6 @@ public class ChunkedUploadHandler {
     json.put("fileSize", result.fileSize());
     json.put("totalParts", result.totalParts());
 
-    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
+    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
   }
 }

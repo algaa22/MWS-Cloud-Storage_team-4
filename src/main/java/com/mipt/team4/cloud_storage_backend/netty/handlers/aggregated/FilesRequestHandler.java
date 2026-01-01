@@ -13,7 +13,7 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
@@ -62,7 +62,7 @@ public record FilesRequestHandler(FileController fileController) {
 
     rootNode.set("files", filesArray);
 
-    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
   public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken)
@@ -80,7 +80,7 @@ public record FilesRequestHandler(FileController fileController) {
     rootNode.put("IsDeleted", storageDto.isDeleted());
     rootNode.put("Tags", FileTagsMapper.toString(storageDto.tags()));
 
-    ResponseHelper.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
   public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken)
@@ -91,7 +91,7 @@ public record FilesRequestHandler(FileController fileController) {
           FileNotFoundException {
     fileController.deleteFile(new SimpleFileOperationDto(filePath, userToken));
 
-    ResponseHelper.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
+    ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
   }
 
   public void handleChangeFileMetadataRequest(
@@ -112,7 +112,7 @@ public record FilesRequestHandler(FileController fileController) {
     fileController.changeFileMetadata(
         new ChangeFileMetadataDto(userToken, filePath, newFilePath, fileVisibility, fileTags));
 
-    ResponseHelper.sendSuccessResponse(
+    ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "File metadata successfully changed");
   }
 
@@ -133,7 +133,7 @@ public record FilesRequestHandler(FileController fileController) {
 
     fileController.uploadFile(new FileUploadDto(filePath, userToken, fileTags, fileData));
 
-    ResponseHelper.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
+    ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
   }
 
   public void handleDownloadFileRequest(
@@ -146,7 +146,7 @@ public record FilesRequestHandler(FileController fileController) {
         fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
 
     try (InputStream fileStream = fileDownload.stream()) {
-      ResponseHelper.sendBinaryResponse(ctx, fileDownload.mimeType(), fileStream.readAllBytes());
+      ResponseUtils.sendBinaryResponse(ctx, fileDownload.mimeType(), fileStream.readAllBytes());
     }
   }
 }

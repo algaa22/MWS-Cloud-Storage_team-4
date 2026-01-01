@@ -15,7 +15,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseHelper;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
@@ -57,7 +57,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         } else if (uri.startsWith("/api/users")) {
           handleUsersRequest(ctx, request);
         } else {
-          ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+          ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
         }
       } catch (QueryParameterNotFoundException
                | InvalidSessionException
@@ -71,10 +71,10 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
                | StorageFileAlreadyExistsException
                | StorageIllegalAccessException
                | IOException e) {
-        ResponseHelper.sendBadRequestExceptionResponse(ctx, e);
+        ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
       }
     } else {
-      ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }
 
@@ -105,7 +105,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
         else if (method.equals(HttpMethod.PUT))
           filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, filePath, userToken);
-        else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+        else ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
       }
     }
   }
@@ -128,7 +128,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         directorysRequestHandler.handleCreateDirectoryRequest(ctx, directoryPath, userToken);
       else if (method.equals(HttpMethod.DELETE))
         directorysRequestHandler.handleDeleteDirectoryRequest(ctx, directoryPath, userToken);
-      else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      else ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }
 
@@ -151,11 +151,11 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         usersRequestHandler.handleUpdateUserRequest(ctx, request);
       else if (uri.equals("/api/users/auth/refresh"))
         usersRequestHandler.handleRefreshTokenRequest(ctx, request);
-      else ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      else ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
     } else if (method.equals(HttpMethod.GET)) {
       if (uri.equals("/api/users/info")) usersRequestHandler.handleGetUserRequest(ctx, request);
     } else {
-      ResponseHelper.sendMethodNotSupportedResponse(ctx, uri, method);
+      ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }
 
@@ -166,6 +166,6 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     logger.error("Unhandled exception in channel from {}", ctx.channel().remoteAddress(), cause);
-    ResponseHelper.sendInternalServerErrorResponse(ctx);
+    ResponseUtils.sendInternalServerErrorResponse(ctx);
   }
 }

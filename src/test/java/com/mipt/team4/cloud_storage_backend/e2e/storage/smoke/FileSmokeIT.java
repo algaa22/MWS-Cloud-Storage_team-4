@@ -9,8 +9,8 @@ import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
-import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
+import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpResponse;
@@ -24,46 +24,29 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 public class FileSmokeIT extends BaseStorageIT {
 
   @Test
-  public void shouldUploadAndDownloadFile_Simple() throws IOException, InterruptedException {
+  public void shouldSimpleUploadAndDownloadFile() throws IOException, InterruptedException {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
-
-    HttpResponse<byte[]> downloadResponse =
-        FileSimpleTransferITUtils.sendDownloadRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
-
-    byte[] originalFile = TestUtils.getSmallTestFile();
-    byte[] downloadedFile = downloadResponse.body();
-
-    assertEquals(HttpStatus.SC_OK, downloadResponse.statusCode());
-    assertArrayEquals(downloadedFile, originalFile);
+    checkDownloadFile(apacheClient, TestFiles.SMALL_FILE.getData());
   }
 
   // TODO: тест на удаление файла во время скачивания/загрузки
   // TODO: проверки на content-type?
 
   @Test
-  public void shouldUploadAndDownloadFile_Chunked() throws IOException {
-    try (CloseableHttpClient apacheClient = TestUtils.createApacheClient()) {
-      byte[] fileData = TestUtils.getBigTestFile();
+  public void shouldChunkedUploadAndDownloadFile() throws IOException {
+    byte[] fileData = TestFiles.BIG_FILE.getData();
 
-      FileChunkedTransferITUtils.UploadResult uploadResult =
-          FileChunkedTransferITUtils.sendUploadRequest(
-              apacheClient,
-              currentUserToken,
-              DEFAULT_FILE_TARGET_PATH,
-              TestConstants.BIG_FILE_LOCAL_PATH,
-              "",
-              fileData.length);
-      assertEquals(HttpStatus.SC_OK, uploadResult.statusCode());
+    FileChunkedTransferITUtils.UploadResult uploadResult =
+        FileChunkedTransferITUtils.sendUploadRequest(
+            apacheClient,
+            currentUserToken,
+            DEFAULT_FILE_TARGET_PATH,
+            TestConstants.BIG_FILE_LOCAL_PATH,
+            "",
+            fileData.length);
+    assertEquals(HttpStatus.SC_OK, uploadResult.statusCode());
 
-      FileChunkedTransferITUtils.DownloadResult downloadResult =
-          FileChunkedTransferITUtils.sendDownloadRequest(
-              apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH);
-      assertEquals(HttpStatus.SC_OK, downloadResult.statusCode());
-
-      assertDownloadResponseValid(downloadResult, fileData.length);
-      assertDownloadedChunksMatchOriginalFile(downloadResult, fileData);
-    }
+    checkDownloadFile(apacheClient, fileData);
   }
 
   @Test
@@ -91,7 +74,7 @@ public class FileSmokeIT extends BaseStorageIT {
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
-    byte[] testFile = TestUtils.getSmallTestFile();
+    byte[] testFile = TestFiles.SMALL_FILE.getData();
 
     JsonNode rootNode = TestUtils.getRootNodeFromResponse(response);
     assertEquals(DEFAULT_FILE_TARGET_PATH, rootNode.get("Path").asText());
@@ -149,6 +132,16 @@ public class FileSmokeIT extends BaseStorageIT {
     assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
 
     assertFileInfoMatches(DEFAULT_FILE_TARGET_PATH, null, "1,2,3");
+  }
+
+  private void checkDownloadFile(CloseableHttpClient apacheClient, byte[] originalFileData) throws IOException {
+    FileChunkedTransferITUtils.DownloadResult downloadResult =
+        FileChunkedTransferITUtils.sendDownloadRequest(
+            apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH);
+    assertEquals(HttpStatus.SC_OK, downloadResult.statusCode());
+
+    assertDownloadResponseValid(downloadResult, originalFileData.length);
+    assertDownloadedChunksMatchOriginalFile(downloadResult, originalFileData);
   }
 
   private void assertDownloadResponseValid(

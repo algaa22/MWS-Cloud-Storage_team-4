@@ -62,12 +62,4 @@ public class TestUtils {
         .setConnectionManagerShared(false)
         .build();
   }
-
-  public static byte[] getSmallTestFile() throws IOException {
-    return FileLoader.getInputStream(TestConstants.SMALL_FILE_LOCAL_PATH).readAllBytes();
-  }
-
-  public static byte[] getBigTestFile() throws IOException {
-    return FileLoader.getInputStream(TestConstants.BIG_FILE_LOCAL_PATH).readAllBytes();
-  }
 }

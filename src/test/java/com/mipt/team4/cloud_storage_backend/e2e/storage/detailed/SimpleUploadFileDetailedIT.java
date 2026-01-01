@@ -37,6 +37,4 @@ public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
             client, currentUserToken, EMPTY_FILE_LOCAL_PATH, DEFAULT_FILE_TARGET_PATH, "");
     assertEquals(HttpStatus.SC_BAD_REQUEST, uploadResponse.statusCode());
   }
-
-  // TODO: test for very large file
 }

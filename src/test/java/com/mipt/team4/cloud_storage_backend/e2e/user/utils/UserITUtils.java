@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.e2e.user;
+package com.mipt.team4.cloud_storage_backend.e2e.user.utils;
 
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;

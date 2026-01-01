@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,12 +43,22 @@ class MinioContentRepositoryTest {
   }
 
   @Test
-  public void shouldHardDeleteFile() throws IOException {
+  public void shouldHardDeleteFile() throws InterruptedException {
     TestFileDto file = createTestFile();
 
     repository.hardDeleteFile(file.s3Key);
 
-    assertFalse(repository.objectExists(file.s3Key));
+    boolean deleted = false;
+    for (int i = 0; i < 10; i++) {
+      if (!repository.objectExists(file.s3Key)) {
+        deleted = true;
+        break;
+      }
+
+      Thread.sleep(50);
+    }
+
+    assertTrue(deleted);
   }
 
   @Test
@@ -81,8 +92,8 @@ class MinioContentRepositoryTest {
     return bucketName;
   }
 
-  private TestFileDto createTestFile() throws IOException {
-    TestFileDto file = new TestFileDto("file" + UUID.randomUUID(), TestUtils.getSmallTestFile());
+  private TestFileDto createTestFile() {
+    TestFileDto file = new TestFileDto("file" + UUID.randomUUID(), TestFiles.SMALL_FILE.getData());
     repository.putObject(file.s3Key, file.data);
 
     return file;

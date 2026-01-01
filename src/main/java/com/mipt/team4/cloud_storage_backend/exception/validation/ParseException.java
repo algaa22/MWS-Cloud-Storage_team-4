@@ -8,7 +8,7 @@ public class ParseException extends ValidationFailedException {
     super(
         new ValidationError(
             field,
-            "Field " + field + " with value " + value + " must be " + expectedType,
+            "Field %s with value %s must be %s".formatted(field, value, expectedType),
             "PARSE_" + expectedType));
   }
 }

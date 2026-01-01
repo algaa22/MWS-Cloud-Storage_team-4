@@ -1,10 +1,24 @@
 netty:
   http-port: 8080
   https-port: 8443
+  enable-https: false
   boss-threads: 1
   worker-threads: 4
-  start-timeout-sec: 5
-  enable-https: false
+
+  start:
+    timeout-sec: 5
+
+  shutdown:
+    quiet-period-sec: 2
+    timeout-sec: 15
+
+cors:
+  access-control:
+    allow-origin: "https://localhost:5173"
+    allow-credentials: true
+    max-age: 3600
+
+  cache-control: ""
 
 storage:
   http:

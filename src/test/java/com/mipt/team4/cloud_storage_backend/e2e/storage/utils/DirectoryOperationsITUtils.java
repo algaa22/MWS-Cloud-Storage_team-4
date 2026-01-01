@@ -39,7 +39,7 @@ public class DirectoryOperationsITUtils {
       String newDirectoryPath) throws IOException, InterruptedException {
     HttpRequest request =
         TestUtils.createRequest(
-                "/api/directories?from=" + oldDirectoryPath + "&to=" + newDirectoryPath)
+                "/api/directories?from=%s&to=%s".formatted(oldDirectoryPath, newDirectoryPath))
             .header("X-Auth-Token", currentUserToken)
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();

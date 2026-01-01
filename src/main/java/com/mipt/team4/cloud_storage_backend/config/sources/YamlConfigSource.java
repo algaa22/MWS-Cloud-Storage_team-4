@@ -37,67 +37,61 @@ public class YamlConfigSource extends ConfigSource {
   public Optional<Integer> getInt(String key) {
     Object value = configData.get(key);
 
-    if (value instanceof Integer) {
-      return Optional.of((int) value);
-    } else if (value instanceof String) {
-      return super.getInt(key);
-    }
-
-    throw new ConfigConvertException("Integer", key, value.toString());
+    return switch (value) {
+      case null -> Optional.empty();
+      case Integer i -> Optional.of((int) value);
+      case String s -> super.getInt(key);
+      default -> throw new ConfigConvertException("Integer", key, value.toString());
+    };
   }
 
   @Override
   public Optional<Float> getFloat(String key) {
     Object value = configData.get(key);
 
-    if (value instanceof Double) {
-      return Optional.of(((Double) value).floatValue());
-    } else if (value instanceof String) {
-      return super.getFloat(key);
-    }
-
-    throw new ConfigConvertException("Float", key, value.toString());
+    return switch (value) {
+      case null -> Optional.empty();
+      case Double v -> Optional.of(v.floatValue());
+      case String s -> super.getFloat(key);
+      default -> throw new ConfigConvertException("Float", key, value.toString());
+    };
   }
 
   @Override
   public Optional<Double> getDouble(String key) {
     Object value = configData.get(key);
 
-    if (value instanceof Double) {
-      return Optional.of((double) value);
-    } else if (value instanceof String) {
-      return super.getDouble(key);
-    }
-
-    throw new ConfigConvertException("Double", key, value.toString());
+    return switch (value) {
+      case null -> Optional.empty();
+      case Double v -> Optional.of((double) value);
+      case String s -> super.getDouble(key);
+      default -> throw new ConfigConvertException("Double", key, value.toString());
+    };
   }
 
   @Override
   public Optional<Long> getLong(String key) {
     Object value = configData.get(key);
 
-    if (value instanceof Long) {
-      return Optional.of((long) value);
-    } else if (value instanceof Integer) {
-      return Optional.of(((Integer) value).longValue());
-    } else if (value instanceof String) {
-      return super.getLong(key);
-    }
-
-    throw new ConfigConvertException("Long", key, value.toString());
+    return switch (value) {
+      case null -> Optional.empty();
+      case Long l -> Optional.of((long) value);
+      case Integer i -> Optional.of(i.longValue());
+      case String s -> super.getLong(key);
+      default -> throw new ConfigConvertException("Long", key, value.toString());
+    };
   }
 
   @Override
   public Optional<Boolean> getBoolean(String key) {
     Object value = configData.get(key);
 
-    if (value instanceof Boolean) {
-      return Optional.of((boolean) value);
-    } else if (value instanceof String) {
-      return super.getBoolean(key);
-    }
-
-    throw new ConfigConvertException("Boolean", key, value.toString());
+    return switch (value) {
+      case null -> Optional.empty();
+      case Boolean b -> Optional.of((boolean) value);
+      case String s -> super.getBoolean(key);
+      default -> throw new ConfigConvertException("Boolean", key, value.toString());
+    };
   }
 
   public Optional<List<String>> getStringList(String key) {

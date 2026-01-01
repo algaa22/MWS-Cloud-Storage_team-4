@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.utils.validation;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.NumberComparator;
 import java.util.List;
@@ -86,26 +87,26 @@ public class Validators {
       String field, String value, int minLength, int maxLength) {
     if (NumberComparator.greaterThan(minLength, maxLength)) {
       throw new IllegalArgumentException(
-          String.format("maxLength (%s) cannot be less than minLength (%s)", maxLength, minLength));
+          "maxLength (%s) cannot be less than minLength (%s)".formatted(maxLength, minLength));
     }
 
     return validate(
         value != null && value.length() >= minLength && value.length() <= maxLength,
-        field + " must contain " + minLength + " to " + maxLength + " characters",
+        "%s must contain %s to %s characters".formatted(field, minLength, maxLength),
         "MAX_LENGTH_" + maxLength);
   }
 
   public static ValidationResult maxLength(String field, String value, int maxLength) {
     return validate(
         value != null && value.length() <= maxLength,
-        field + " cannot exceed " + maxLength + " characters",
+        "%s cannot exceed %s characters".formatted(field, maxLength),
         "MAX_LENGTH_" + maxLength);
   }
 
   public static ValidationResult minLength(String field, String value, int minLength) {
     return validate(
         value != null && value.length() >= minLength,
-        field + " must contain at least " + minLength + " characters",
+        "%s must contain at least %s characters".formatted(field, minLength),
         "MIN_LENGTH_" + minLength);
   }
 
@@ -132,15 +133,15 @@ public class Validators {
         NumberComparator.greaterThanOrEqualsTo(value, minValue)
             && NumberComparator.lessThanOrEqualsTo(value, maxValue),
         field,
-        field + " must be between " + minValue + " and " + maxValue,
-        "NUMBER_RANGE_" + minValue + "-" + maxValue);
+        "%s must be between %s and %s".formatted(field, minValue, maxValue),
+        "NUMBER_RANGE_%s-%s".formatted(minValue, maxValue));
   }
 
   public static ValidationResult numberMax(String field, Number value, Number maxValue) {
     return validate(
         NumberComparator.lessThanOrEqualsTo(value, maxValue),
         field,
-        field + " must be less than or equal to " + maxValue,
+        "%s must be less than or equal to %s".formatted(field, maxValue),
         "NUMBER_MAX_" + maxValue);
   }
 
@@ -148,7 +149,7 @@ public class Validators {
     return validate(
         NumberComparator.greaterThanOrEqualsTo(value, minValue),
         field,
-        field + " must be greater than or equal to  " + minValue,
+        "%s must be greater than or equal to %s".formatted(field, minValue),
         "NUMBER_MIN_" + minValue);
   }
 
@@ -192,7 +193,7 @@ public class Validators {
             || visibility.equals("private")
             || visibility.equals("link_only")),
         "Visibility",
-        "Visibility must be one of this values: {public, private, link_only}",
+        "Visibility must be one of this values: {" + FileVisibility.NAMES + "}",
         "VISIBILITY");
   }
 

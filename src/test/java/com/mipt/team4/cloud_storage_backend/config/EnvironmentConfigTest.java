@@ -20,10 +20,10 @@ public final class EnvironmentConfigTest {
 
   @Test
   void shouldGetEnvVar() {
-    Optional<String> value = source.getString("USER");
+    Optional<String> value = source.getString("PATH");
 
     assertTrue(value.isPresent());
-    assertEquals(System.getenv("USER"), value.get());
+    assertEquals(System.getenv("PATH"), value.get());
   }
 
   @Test

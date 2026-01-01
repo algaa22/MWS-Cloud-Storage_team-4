@@ -33,12 +33,9 @@ import java.util.List;
 import java.util.Optional;
 
 public record FilesRequestHandler(FileController fileController) {
-  // TODO: параметры vs заголовки
-
   public void handleGetFilePathsListRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken)
       throws UserNotFoundException, ValidationFailedException {
-    // TODO: пагинация
     boolean includeDirectories =
         SafeParser.parseBoolean(
             "Include directories",
@@ -139,19 +136,5 @@ public record FilesRequestHandler(FileController fileController) {
     fileController.uploadFile(new FileUploadDto(filePath, userToken, fileTags, fileData));
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
-  }
-
-  public void handleDownloadFileRequest(
-      ChannelHandlerContext ctx, String filePath, String userToken)
-      throws UserNotFoundException,
-      StorageEntityNotFoundException,
-      ValidationFailedException,
-      IOException {
-    FileDownloadDto fileDownload =
-        fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
-
-    try (InputStream fileStream = fileDownload.stream()) {
-      ResponseUtils.sendBinaryResponse(ctx, fileDownload.mimeType(), fileStream.readAllBytes());
-    }
   }
 }

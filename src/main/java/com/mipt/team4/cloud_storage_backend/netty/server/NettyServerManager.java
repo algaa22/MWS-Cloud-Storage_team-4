@@ -69,7 +69,7 @@ public class NettyServerManager {
       return;
     }
 
-    logger.info("Stopping server...");
+    logger.info("Stopping servers...");
 
     closeServers();
     shutdownThreads();

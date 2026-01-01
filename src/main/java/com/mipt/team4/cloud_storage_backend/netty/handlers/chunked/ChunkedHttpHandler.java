@@ -113,9 +113,8 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    logger.error("Unhandled exception in channel from {}", ctx.channel().remoteAddress(), cause);
-    ResponseUtils.sendInternalServerErrorResponse(ctx);
-
     chunkedUpload.cleanup();
+
+    ctx.fireExceptionCaught(cause);
   }
 }

@@ -13,7 +13,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
-public class CorsSecurityHandler extends ChannelDuplexHandler {
+public class CorsHandler extends ChannelDuplexHandler {
 
   private static final String ALLOWED_METHODS = String.join(", ",
       "GET", "POST", "DELETE", "OPTIONS");

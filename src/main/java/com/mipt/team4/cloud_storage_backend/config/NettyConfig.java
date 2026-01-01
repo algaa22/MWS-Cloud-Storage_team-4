@@ -15,6 +15,7 @@ public enum NettyConfig {
   private final int shutdownTimeoutSec;
   private final int shutdownQueryPeriodSec;
   private final boolean enableHttps;
+  private final boolean enableLogging;
 
   NettyConfig() {
     ConfigSource source = YamlConfigFactory.INSTANCE.getDefault();
@@ -25,8 +26,9 @@ public enum NettyConfig {
     this.workerThreads = source.getInt("netty.worker-threads").orElseThrow();
     this.startTimeoutSec = source.getInt("netty.start.timeout-sec").orElseThrow();
     this.shutdownTimeoutSec = source.getInt("netty.shutdown.timeout-sec").orElseThrow();
-    this.shutdownQueryPeriodSec = source.getInt("netty.shutdown.query-period-sec").orElseThrow();
+    this.shutdownQueryPeriodSec = source.getInt("netty.shutdown.quiet-period-sec").orElseThrow();
     this.enableHttps = source.getBoolean("netty.enable-https").orElseThrow();
+    this.enableLogging = source.getBoolean("netty.enable-logging").orElseThrow();
   }
 
   public int getHttpPort() {
@@ -59,5 +61,9 @@ public enum NettyConfig {
 
   public boolean isEnableHttps() {
     return enableHttps;
+  }
+
+  public boolean isEnableLogging() {
+    return enableLogging;
   }
 }

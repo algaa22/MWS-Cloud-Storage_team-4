@@ -1,7 +1,8 @@
 netty:
+  enable-logging: false
+  enable-https: false
   http-port: 8080
   https-port: 8443
-  enable-https: true
   boss-threads: 1
   worker-threads: 4
 
@@ -17,8 +18,6 @@ cors:
     allow-origin: "https://localhost:5173"
     allow-credentials: true
     max-age: 3600
-
-  cache-control: ""
 
 storage:
   http:

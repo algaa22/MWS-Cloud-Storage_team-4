@@ -92,27 +92,9 @@ public class ResponseUtils {
         new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer(json, StandardCharsets.UTF_8));
 
-    addDefaultHeadersToResponse(response, "application/json");
-
-    return response;
-  }
-
-  public static void sendBinaryResponse(ChannelHandlerContext ctx, String mimeType, byte[] data) {
-    ctx.writeAndFlush(createBinaryResponse(mimeType, data));
-  }
-
-  public static FullHttpResponse createBinaryResponse(String mimeType, byte[] data) {
-    FullHttpResponse response =
-        new DefaultFullHttpResponse(
-            HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(data));
-
-    addDefaultHeadersToResponse(response, mimeType);
-
-    return response;
-  }
-
-  private static void addDefaultHeadersToResponse(FullHttpResponse response, String contentType) {
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
+
+    return response;
   }
 }

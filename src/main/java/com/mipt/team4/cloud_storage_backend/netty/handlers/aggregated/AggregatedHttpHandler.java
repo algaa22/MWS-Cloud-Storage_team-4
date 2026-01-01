@@ -102,7 +102,6 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       } else {
         switch (method.name()) {
           case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userToken);
-          case "GET"    -> filesRequestHandler.handleDownloadFileRequest(ctx, filePath, userToken);
           case "POST"   -> filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
           case "PUT"    -> filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, filePath, userToken);
           default       -> ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
@@ -164,11 +163,5 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
 
   private String extractUserTokenFromRequest(HttpRequest request) {
     return request.headers().get("X-Auth-Token", "");
-  }
-
-  @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    logger.error("Unhandled exception in channel from {}", ctx.channel().remoteAddress(), cause);
-    ResponseUtils.sendInternalServerErrorResponse(ctx);
   }
 }

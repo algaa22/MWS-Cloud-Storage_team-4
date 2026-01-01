@@ -1,8 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.netty.channel;
 
+import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.common.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.ProtocolNegotiationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
@@ -10,6 +12,8 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineUtils;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -37,6 +41,10 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
       throws IOException, UnrecoverableKeyException, CertificateException, NoSuchAlgorithmException, KeyStoreException {
     ChannelPipeline pipeline = socketChannel.pipeline();
 
+    if (NettyConfig.INSTANCE.isEnableLogging()) {
+      pipeline.addFirst(new LoggingHandler(LogLevel.INFO));
+    }
+
     if (protocol == ServerProtocol.HTTPS) {
       pipeline.addLast(SslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
       pipeline.addLast(
@@ -45,5 +53,7 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
       PipelineUtils.buildHttp11Pipeline(pipeline, fileController, directoryController,
           userController);
     }
+
+    pipeline.addLast(new GlobalErrorHandler());
   }
 }

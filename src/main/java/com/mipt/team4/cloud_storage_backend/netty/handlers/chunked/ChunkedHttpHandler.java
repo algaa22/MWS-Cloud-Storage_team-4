@@ -36,9 +36,6 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     this.chunkedDownload = new ChunkedDownloadHandler(fileController);
   }
 
-  // TODO: При обрыве соединения — загрузка прерывается, файл остаётся недозагруженным?
-  //       (resume-upload)
-
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
     try {

@@ -100,16 +100,12 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET)) {
         filesRequestHandler.handleGetFileInfoRequest(ctx, filePath, userToken);
       } else {
-        if (method.equals(HttpMethod.DELETE)) {
-          filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userToken);
-        } else if (method.equals(HttpMethod.GET)) {
-          filesRequestHandler.handleDownloadFileRequest(ctx, filePath, userToken);
-        } else if (method.equals(HttpMethod.POST)) {
-          filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
-        } else if (method.equals(HttpMethod.PUT)) {
-          filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, filePath, userToken);
-        } else {
-          ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+        switch (method.name()) {
+          case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userToken);
+          case "GET"    -> filesRequestHandler.handleDownloadFileRequest(ctx, filePath, userToken);
+          case "POST"   -> filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
+          case "PUT"    -> filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, filePath, userToken);
+          default       -> ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
         }
       }
     }
@@ -147,20 +143,15 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       UserAlreadyExistsException,
       InvalidEmailOrPassword,
       WrongPasswordException {
-    // TODO: switch-case?
     if (method.equals(HttpMethod.POST)) {
-      if (uri.equals("/api/users/auth/login")) {
-        usersRequestHandler.handleLoginRequest(ctx, request);
-      } else if (uri.equals("/api/users/auth/register")) {
-        usersRequestHandler.handleRegisterRequest(ctx, request);
-      } else if (uri.equals("/api/users/auth/logout")) {
-        usersRequestHandler.handleLogoutRequest(ctx, request);
-      } else if (uri.equals("/api/users/update")) {
-        usersRequestHandler.handleUpdateUserRequest(ctx, request);
-      } else if (uri.equals("/api/users/auth/refresh")) {
-        usersRequestHandler.handleRefreshTokenRequest(ctx, request);
-      } else {
-        ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+      switch (uri) {
+        case "/api/users/auth/login" -> usersRequestHandler.handleLoginRequest(ctx, request);
+        case "/api/users/auth/register" -> usersRequestHandler.handleRegisterRequest(ctx, request);
+        case "/api/users/auth/logout" -> usersRequestHandler.handleLogoutRequest(ctx, request);
+        case "/api/users/update" -> usersRequestHandler.handleUpdateUserRequest(ctx, request);
+        case "/api/users/auth/refresh" ->
+            usersRequestHandler.handleRefreshTokenRequest(ctx, request);
+        default -> ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
       }
     } else if (method.equals(HttpMethod.GET)) {
       if (uri.equals("/api/users/info")) {

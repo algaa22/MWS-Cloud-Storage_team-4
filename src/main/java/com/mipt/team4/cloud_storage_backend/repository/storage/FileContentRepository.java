@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.util.Map;
 
 public interface FileContentRepository {
+
   InputStream downloadObject(String s3key);
 
   String startMultipartUpload(String s3Key);

@@ -1,6 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.user.UserAuthUtils;
@@ -14,6 +17,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public abstract class BaseDetailedFileIT extends BaseStorageIT {
+
   private final PathParam pathParam;
   private final String rawEndpoint;
   private final String method;
@@ -29,7 +33,9 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
   @Test
   public void shouldEnforceUsersIsolation() throws IOException, InterruptedException {
-    if (!pathParam.isExistent()) return;
+    if (!pathParam.isExistent()) {
+      return;
+    }
 
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
@@ -51,7 +57,9 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
   @Test
   public void shouldNotDoX_WhenSpecifyNotExistentFile() throws IOException, InterruptedException {
-    if (pathParam != PathParam.EXISTENT_FILE) return;
+    if (pathParam != PathParam.EXISTENT_FILE) {
+      return;
+    }
 
     simpleUploadFile("asdfghjklasdasdflhgehsagjak");
 
@@ -64,7 +72,9 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
   @Test
   public void shouldNotDoX_WhenSpecifyDirectory() throws IOException, InterruptedException {
-    if (pathParam != PathParam.EXISTENT_FILE) return;
+    if (pathParam != PathParam.EXISTENT_FILE) {
+      return;
+    }
 
     HttpResponse<String> response =
         client.send(

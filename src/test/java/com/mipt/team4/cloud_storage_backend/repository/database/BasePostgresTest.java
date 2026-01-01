@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 public abstract class BasePostgresTest {
+
   protected static PostgreSQLContainer<?> postgresContainer;
   // TODO: два раза создается контейнер (еще в E2E) - норм?
 

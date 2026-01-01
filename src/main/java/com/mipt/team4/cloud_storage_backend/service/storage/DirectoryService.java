@@ -17,12 +17,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class DirectoryService {
+
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
 
   public DirectoryService(
-          StorageRepository storageRepository, UserRepository userRepository, UserSessionService userSessionService) {
+      StorageRepository storageRepository, UserRepository userRepository,
+      UserSessionService userSessionService) {
     this.storageRepository = storageRepository;
     this.userRepository = userRepository;
     this.userSessionService = userSessionService;
@@ -33,8 +35,9 @@ public class DirectoryService {
     UUID userId = userSessionService.extractUserIdFromToken(createDirectory.userToken());
     String directoryPath = createDirectory.directoryPath();
 
-    if (storageRepository.fileExists(userId, directoryPath))
+    if (storageRepository.fileExists(userId, directoryPath)) {
       throw new StorageFileAlreadyExistsException(directoryPath);
+    }
 
     StorageEntity directoryEntity =
         new StorageEntity(
@@ -42,9 +45,7 @@ public class DirectoryService {
             userId,
             directoryPath,
             "application/x-directory",
-            FileVisibility.PRIVATE.toString(),
             0,
-            false,
             List.of(),
             true);
 
@@ -53,8 +54,8 @@ public class DirectoryService {
 
   public void changeDirectoryPath(ChangeDirectoryPathDto changeDirectory)
       throws UserNotFoundException,
-          StorageFileAlreadyExistsException,
-          StorageEntityNotFoundException {
+      StorageFileAlreadyExistsException,
+      StorageEntityNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(changeDirectory.userToken());
     String oldDirectoryPath = changeDirectory.oldDirectoryPath();
     String newDirectoryPath = changeDirectory.newDirectoryPath();
@@ -65,11 +66,14 @@ public class DirectoryService {
     for (StorageEntity oldFile : directoryFiles) {
       String oldFilePath = oldFile.getPath();
       Optional<StorageEntity> fileOpt = storageRepository.getFile(userId, oldFilePath);
-      if (fileOpt.isEmpty()) throw new StorageEntityNotFoundException(oldFilePath);
+      if (fileOpt.isEmpty()) {
+        throw new StorageEntityNotFoundException(oldFilePath);
+      }
 
       String newFilePath = oldFilePath.replaceFirst(oldDirectoryPath, newDirectoryPath);
-      if (storageRepository.fileExists(userId, newFilePath))
+      if (storageRepository.fileExists(userId, newFilePath)) {
         throw new StorageFileAlreadyExistsException(newFilePath);
+      }
 
       StorageEntity fileEntity = fileOpt.get();
       fileEntity.setPath(newFilePath);
@@ -83,11 +87,14 @@ public class DirectoryService {
     String directoryPath = request.directoryPath();
 
     Optional<StorageEntity> directoryEntity = storageRepository.getFile(userId, directoryPath);
-    if (directoryEntity.isEmpty()) throw new StorageEntityNotFoundException(directoryPath);
+    if (directoryEntity.isEmpty()) {
+      throw new StorageEntityNotFoundException(directoryPath);
+    }
 
     storageRepository.deleteFile(directoryEntity.orElse(null));
 
-    List<StorageEntity> directoryFiles = storageRepository.getFileList(new FileListFilter(userId, true, true, directoryPath));
+    List<StorageEntity> directoryFiles = storageRepository.getFileList(
+        new FileListFilter(userId, true, true, directoryPath));
 
     for (StorageEntity file : directoryFiles) {
       userRepository.decreaseUsedStorage(userId, file.getSize());

@@ -12,4 +12,6 @@ public record UserDto(
     long usedStorage,
     LocalDateTime createdAt,
     boolean isActive
-  ) {}
+) {
+
+}

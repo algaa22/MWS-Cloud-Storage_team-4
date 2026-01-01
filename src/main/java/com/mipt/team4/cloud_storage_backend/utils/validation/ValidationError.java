@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public record ValidationError(String field, String message, String code) {
+
   public ValidationError(String field, String message) {
     this(field, message, null);
   }

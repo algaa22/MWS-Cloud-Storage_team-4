@@ -3,7 +3,6 @@ package com.mipt.team4.cloud_storage_backend.repository.user;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class UserRepository {
+
   private static final Logger logger = LoggerFactory.getLogger(UserRepository.class);
 
   PostgresConnection postgres;
@@ -22,7 +22,9 @@ public class UserRepository {
 
   public void addUser(UserEntity userEntity) throws UserAlreadyExistsException {
 
-    if (userExists(userEntity.getId())) throw new UserAlreadyExistsException(userEntity.getId());
+    if (userExists(userEntity.getId())) {
+      throw new UserAlreadyExistsException(userEntity.getId());
+    }
 
     postgres.executeUpdate(
         "INSERT INTO users (id, email, password_hash, username, storage_limit, used_storage, created_at, is_active)"
@@ -55,7 +57,9 @@ public class UserRepository {
                     rs.getTimestamp("created_at").toLocalDateTime(),
                     rs.getBoolean("is_active")));
 
-    if (result.isEmpty()) return Optional.empty();
+    if (result.isEmpty()) {
+      return Optional.empty();
+    }
 
     return Optional.ofNullable(result.getFirst());
   }
@@ -76,7 +80,9 @@ public class UserRepository {
                     rs.getTimestamp("created_at").toLocalDateTime(),
                     rs.getBoolean("is_active")));
 
-    if (result.isEmpty()) return Optional.empty();
+    if (result.isEmpty()) {
+      return Optional.empty();
+    }
 
     return Optional.ofNullable(result.getFirst());
   }
@@ -116,8 +122,8 @@ public class UserRepository {
 
   private void changeUsedStorage(UUID id, long delta) {
     postgres.executeUpdate(
-            "UPDATE users SET used_storage = GREATEST(0, used_storage + ?) WHERE id = ?;",
-            List.of(delta, id)
+        "UPDATE users SET used_storage = GREATEST(0, used_storage + ?) WHERE id = ?;",
+        List.of(delta, id)
     );
   }
 }

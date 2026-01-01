@@ -6,11 +6,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeFileMetadataDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileUploadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileListDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
@@ -39,9 +44,9 @@ public record FilesRequestHandler(FileController fileController) {
             "Include directories",
             RequestUtils.getQueryParam(request, "includeDirectories", "false"));
     boolean recursive =
-            SafeParser.parseBoolean(
-                    "Recursive",
-                    RequestUtils.getQueryParam(request, "recursive", "false"));
+        SafeParser.parseBoolean(
+            "Recursive",
+            RequestUtils.getQueryParam(request, "recursive", "false"));
     Optional<String> searchDirectory = RequestUtils.getQueryParam(request, "directory");
 
     List<StorageEntity> files =
@@ -85,10 +90,10 @@ public record FilesRequestHandler(FileController fileController) {
 
   public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
-          ValidationFailedException,
-          StorageIllegalAccessException,
-          FileNotFoundException {
+      StorageEntityNotFoundException,
+      ValidationFailedException,
+      StorageIllegalAccessException,
+      FileNotFoundException {
     fileController.deleteFile(new SimpleFileOperationDto(filePath, userToken));
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
@@ -97,9 +102,9 @@ public record FilesRequestHandler(FileController fileController) {
   public void handleChangeFileMetadataRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
-          StorageFileAlreadyExistsException,
-          ValidationFailedException {
+      StorageEntityNotFoundException,
+      StorageFileAlreadyExistsException,
+      ValidationFailedException {
     Optional<String> newFilePath = RequestUtils.getQueryParam(request, "newPath");
 
     Optional<String> fileVisibility =
@@ -119,9 +124,9 @@ public record FilesRequestHandler(FileController fileController) {
   public void handleUploadFileRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken)
       throws HeaderNotFoundException,
-          StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          ValidationFailedException {
+      StorageFileAlreadyExistsException,
+      UserNotFoundException,
+      ValidationFailedException {
     List<String> fileTags =
         FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
 
@@ -139,9 +144,9 @@ public record FilesRequestHandler(FileController fileController) {
   public void handleDownloadFileRequest(
       ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
-          ValidationFailedException,
-          IOException {
+      StorageEntityNotFoundException,
+      ValidationFailedException,
+      IOException {
     FileDownloadDto fileDownload =
         fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
 

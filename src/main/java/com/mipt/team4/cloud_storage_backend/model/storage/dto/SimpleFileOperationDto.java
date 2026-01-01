@@ -5,6 +5,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record SimpleFileOperationDto(String path, String userToken) {
+
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(

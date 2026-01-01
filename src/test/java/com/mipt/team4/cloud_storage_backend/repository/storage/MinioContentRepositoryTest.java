@@ -20,10 +20,6 @@ class MinioContentRepositoryTest {
   private static final MinIOContainer MINIO = TestUtils.createMinioContainer();
   private static MinioContentRepository repository;
 
-  private record TestFileDto(String s3Key, byte[] data) {
-
-  }
-
   @BeforeAll
   public static void beforeAll() {
     MINIO.start();
@@ -97,5 +93,9 @@ class MinioContentRepositoryTest {
       assertTrue(repository.objectExists(file.s3Key));
       assertArrayEquals(file.data, downloadStream.readAllBytes());
     }
+  }
+
+  private record TestFileDto(String s3Key, byte[] data) {
+
   }
 }

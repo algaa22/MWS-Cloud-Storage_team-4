@@ -1,13 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.e2e.user;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
-
 import java.io.IOException;
 import java.net.http.HttpResponse;
-
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 

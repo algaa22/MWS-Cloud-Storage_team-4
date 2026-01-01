@@ -8,10 +8,13 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 public class Validators {
+
   public static ValidationResult any(
       String groupName, String message, ValidationResult... results) {
     for (ValidationResult result : results) {
-      if (result.isValid()) return ValidationResult.valid();
+      if (result.isValid()) {
+        return ValidationResult.valid();
+      }
     }
 
     return new ValidationResult(false, List.of(new ValidationError(groupName, message)));
@@ -81,9 +84,10 @@ public class Validators {
 
   public static ValidationResult lengthRange(
       String field, String value, int minLength, int maxLength) {
-    if (NumberComparator.greaterThan(minLength, maxLength))
+    if (NumberComparator.greaterThan(minLength, maxLength)) {
       throw new IllegalArgumentException(
           String.format("maxLength (%s) cannot be less than minLength (%s)", maxLength, minLength));
+    }
 
     return validate(
         value != null && value.length() >= minLength && value.length() <= maxLength,
@@ -119,9 +123,10 @@ public class Validators {
 
   public static ValidationResult numberRange(
       String field, Number value, Number minValue, Number maxValue) {
-    if (NumberComparator.greaterThan(minValue, maxValue))
+    if (NumberComparator.greaterThan(minValue, maxValue)) {
       throw new IllegalArgumentException(
           String.format("maxValue (%s) cannot be less than minValue (%s)", maxValue, minValue));
+    }
 
     return validate(
         NumberComparator.greaterThanOrEqualsTo(value, minValue)
@@ -175,15 +180,17 @@ public class Validators {
 
   public static void throwExceptionIfNotValid(ValidationResult result)
       throws ValidationFailedException {
-    if (!result.isValid()) throw new ValidationFailedException(result);
+    if (!result.isValid()) {
+      throw new ValidationFailedException(result);
+    }
   }
 
   public static ValidationResult validateVisibility(String visibility) {
     return validate(
         visibility != null
             && (visibility.equals("public")
-                || visibility.equals("private")
-                || visibility.equals("link_only")),
+            || visibility.equals("private")
+            || visibility.equals("link_only")),
         "Visibility",
         "Visibility must be one of this values: {public, private, link_only}",
         "VISIBILITY");
@@ -208,7 +215,9 @@ public class Validators {
 
   public static ValidationResult validate(
       boolean condition, String field, String message, String code) {
-    if (!condition) return ValidationResult.error(field, message, code);
+    if (!condition) {
+      return ValidationResult.error(field, message, code);
+    }
 
     return ValidationResult.valid();
   }

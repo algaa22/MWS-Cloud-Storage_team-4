@@ -3,16 +3,20 @@ package com.mipt.team4.cloud_storage_backend.config.sources;
 import com.mipt.team4.cloud_storage_backend.exception.config.ConfigConvertException;
 import com.mipt.team4.cloud_storage_backend.exception.config.InvalidYamlException;
 import com.mipt.team4.cloud_storage_backend.exception.config.YamlLoadException;
+import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
-
-import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 public class YamlConfigSource extends ConfigSource {
+
   Map<String, Object> configData;
 
   public YamlConfigSource(String filePath) {
@@ -22,7 +26,9 @@ public class YamlConfigSource extends ConfigSource {
   @Override
   public Optional<String> getString(String key) {
     Object value = configData.get(key);
-    if (value == null) return Optional.empty();
+    if (value == null) {
+      return Optional.empty();
+    }
 
     return Optional.of(value.toString());
   }

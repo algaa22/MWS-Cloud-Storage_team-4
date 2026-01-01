@@ -51,42 +51,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     postgresConnection.disconnect();
   }
 
-  @Test
-  void fileExists_ShouldReturnTrue_WhenFileExists() {
-    assertTrue(
-        fileMetadataRepository.fileExists(
-            commonFileEntity.getUserId(), commonFileEntity.getPath()));
-  }
-
-  @Test
-  void fileExists_ShouldReturnFalse_WhenFileNotFound() {
-    assertFalse(fileMetadataRepository.fileExists(commonFileEntity.getUserId(), "non-existent-file"));
-  }
-
-  @Test
-  void shouldReturnNull_WhenGetNonexistentFile() {
-    assertFalse(fileMetadataRepository.getFile(testUserUuid, "non-existent-path").isPresent());
-  }
-
-  @Test
-  void shouldThrowException_WhenAddExistentFile() {
-    assertThrows(
-        StorageFileAlreadyExistsException.class,
-        () -> fileMetadataRepository.addFile(commonFileEntity));
-  }
-
-  @Test
-  void shouldAddAndDeleteFile_WithSameId()
-      throws StorageEntityNotFoundException, StorageFileAlreadyExistsException {
-    StorageEntity testFileEntity = addTestFile();
-    assertTrue(
-        fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));
-
-    fileMetadataRepository.deleteFile(testFileEntity.getUserId(), testFileEntity.getPath());
-    assertFalse(
-        fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));
-  }
-
   private static UUID addTestUser() throws UserAlreadyExistsException {
     UUID uuid = UUID.randomUUID();
 
@@ -111,5 +75,42 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     fileMetadataRepository.addFile(fileEntity);
 
     return fileEntity;
+  }
+
+  @Test
+  void fileExists_ShouldReturnTrue_WhenFileExists() {
+    assertTrue(
+        fileMetadataRepository.fileExists(
+            commonFileEntity.getUserId(), commonFileEntity.getPath()));
+  }
+
+  @Test
+  void fileExists_ShouldReturnFalse_WhenFileNotFound() {
+    assertFalse(
+        fileMetadataRepository.fileExists(commonFileEntity.getUserId(), "non-existent-file"));
+  }
+
+  @Test
+  void shouldReturnNull_WhenGetNonexistentFile() {
+    assertFalse(fileMetadataRepository.getFile(testUserUuid, "non-existent-path").isPresent());
+  }
+
+  @Test
+  void shouldThrowException_WhenAddExistentFile() {
+    assertThrows(
+        StorageFileAlreadyExistsException.class,
+        () -> fileMetadataRepository.addFile(commonFileEntity));
+  }
+
+  @Test
+  void shouldAddAndDeleteFile_WithSameId()
+      throws StorageEntityNotFoundException, StorageFileAlreadyExistsException {
+    StorageEntity testFileEntity = addTestFile();
+    assertTrue(
+        fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));
+
+    fileMetadataRepository.deleteFile(testFileEntity.getUserId(), testFileEntity.getPath());
+    assertFalse(
+        fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));
   }
 }

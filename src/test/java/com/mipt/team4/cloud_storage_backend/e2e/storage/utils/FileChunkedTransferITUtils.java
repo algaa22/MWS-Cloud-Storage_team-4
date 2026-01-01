@@ -19,29 +19,8 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.InputStreamEntity;
 
 public class FileChunkedTransferITUtils {
+
   private static final int MAX_CHUNK_SIZE = 8 * 1024;
-
-  public record UploadResult(int statusCode, String body) {
-    public static UploadResult from(ClassicHttpResponse response)
-        throws IOException, ParseException {
-      return new UploadResult(response.getCode(), EntityUtils.toString(response.getEntity()));
-    }
-  }
-
-  public record DownloadResult(int statusCode, Map<String, String> headers, List<byte[]> chunks) {
-    public static DownloadResult from(ClassicHttpResponse response) throws IOException {
-      Map<String, String> headers = new HashMap<>();
-
-      for (Header header : response.getHeaders()) {
-        headers.put(header.getName(), header.getValue());
-      }
-
-      return new DownloadResult(
-          response.getCode(),
-          headers,
-          readChunksFromInputStream(response.getEntity().getContent()));
-    }
-  }
 
   public static UploadResult sendUploadRequest(
       CloseableHttpClient client,
@@ -77,7 +56,9 @@ public class FileChunkedTransferITUtils {
 
   public static boolean chunkMatchesOriginal(byte[] originalData, byte[] chunk, int offset) {
     for (int i = 0; i < chunk.length; i++) {
-      if (originalData[offset + i] != chunk[i]) return false;
+      if (originalData[offset + i] != chunk[i]) {
+        return false;
+      }
     }
 
     return true;
@@ -97,5 +78,29 @@ public class FileChunkedTransferITUtils {
     }
 
     return chunks;
+  }
+
+  public record UploadResult(int statusCode, String body) {
+
+    public static UploadResult from(ClassicHttpResponse response)
+        throws IOException, ParseException {
+      return new UploadResult(response.getCode(), EntityUtils.toString(response.getEntity()));
+    }
+  }
+
+  public record DownloadResult(int statusCode, Map<String, String> headers, List<byte[]> chunks) {
+
+    public static DownloadResult from(ClassicHttpResponse response) throws IOException {
+      Map<String, String> headers = new HashMap<>();
+
+      for (Header header : response.getHeaders()) {
+        headers.put(header.getName(), header.getValue());
+      }
+
+      return new DownloadResult(
+          response.getCode(),
+          headers,
+          readChunksFromInputStream(response.getEntity().getContent()));
+    }
   }
 }

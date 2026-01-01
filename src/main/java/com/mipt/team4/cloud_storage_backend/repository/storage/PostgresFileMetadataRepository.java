@@ -8,11 +8,15 @@ import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnecti
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PostgresFileMetadataRepository implements FileMetadataRepository {
+
   private static final Logger logger =
       LoggerFactory.getLogger(PostgresFileMetadataRepository.class);
 
@@ -24,8 +28,9 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   @Override
   public void addFile(StorageEntity fileEntity) throws StorageFileAlreadyExistsException {
-    if (fileExists(fileEntity.getUserId(), fileEntity.getPath()))
+    if (fileExists(fileEntity.getUserId(), fileEntity.getPath())) {
       throw new StorageFileAlreadyExistsException(fileEntity.getPath());
+    }
 
     postgres.executeUpdate(
         "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, tags, is_directory)"
@@ -57,7 +62,9 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
       params.add(filter.searchDirectory() + "%/_%");
     }
 
-    if (!filter.includeDirectories()) query += " AND is_directory = FALSE";
+    if (!filter.includeDirectories()) {
+      query += " AND is_directory = FALSE";
+    }
 
     return postgres.executeQuery(
         query,
@@ -75,7 +82,9 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             List.of(userId, path),
             rs -> resultToStorageEntity(userId, rs));
 
-    if (result.isEmpty()) return Optional.empty();
+    if (result.isEmpty()) {
+      return Optional.empty();
+    }
 
     return Optional.of(result.getFirst());
   }

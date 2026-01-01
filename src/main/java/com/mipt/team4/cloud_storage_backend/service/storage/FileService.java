@@ -8,7 +8,6 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPa
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeFileMetadataDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
@@ -122,9 +121,7 @@ public class FileService {
               userId,
               uploadState.getPath(),
               MimeTypeDetector.detect(session.path()),
-              FileVisibility.PRIVATE.toString(),
               uploadState.getFileSize(),
-              false,
               session.tags(),
               false);
 
@@ -157,9 +154,7 @@ public class FileService {
             userId,
             fileUploadRequest.path(),
             mimeType,
-            FileVisibility.PRIVATE.toString(),
             data.length,
-            false,
             fileUploadRequest.tags(),
             false);
 
@@ -210,7 +205,7 @@ public class FileService {
       throw new StorageEntityNotFoundException(fileInfoRequest.path());
     }
 
-    return FileMapper.toDto(entityOpt.get());
+    return new StorageDto(entityOpt.get());
   }
 
   public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadata)

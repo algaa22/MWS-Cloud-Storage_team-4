@@ -10,6 +10,7 @@ public record UpdateUserInfoDto(
     Optional<String> oldPassword,
     Optional<String> newPassword,
     Optional<String> newName) {
+
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(

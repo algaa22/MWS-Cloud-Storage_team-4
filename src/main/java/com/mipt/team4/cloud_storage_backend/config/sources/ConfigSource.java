@@ -4,6 +4,7 @@ import com.mipt.team4.cloud_storage_backend.exception.config.ConfigConvertExcept
 import java.util.Optional;
 
 public abstract class ConfigSource {
+
   public abstract Optional<String> getString(String key);
 
   public String getString(String key, String defaultValue) {

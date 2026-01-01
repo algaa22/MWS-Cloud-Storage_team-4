@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
@@ -18,6 +17,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 
 public class UserController {
+
   private final ObjectMapper mapper = new ObjectMapper();
   private final UserService service;
 
@@ -43,7 +43,8 @@ public class UserController {
     service.logoutUser(request);
   }
 
-  public TokenPairDto refresh(RefreshTokenDto request) throws InvalidSessionException, ValidationFailedException {
+  public TokenPairDto refresh(RefreshTokenDto request)
+      throws InvalidSessionException, ValidationFailedException {
     request.validate();
     return service.refreshTokens(request);
   }
@@ -54,7 +55,8 @@ public class UserController {
     return service.getUserInfo(request);
   }
 
-  public void updateUserInfo(UpdateUserInfoDto request) throws ValidationFailedException, UserNotFoundException, WrongPasswordException {
+  public void updateUserInfo(UpdateUserInfoDto request)
+      throws ValidationFailedException, UserNotFoundException, WrongPasswordException {
     request.validate();
     service.updateUserInfo(request);
   }

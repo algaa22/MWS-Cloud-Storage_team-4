@@ -12,6 +12,7 @@ public record ChangeFileMetadataDto(
     Optional<String> newPath,
     Optional<String> visibility,
     Optional<List<String>> tags) {
+
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(

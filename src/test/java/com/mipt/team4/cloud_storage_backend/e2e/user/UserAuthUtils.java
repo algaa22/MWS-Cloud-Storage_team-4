@@ -8,6 +8,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 public class UserAuthUtils {
+
   static int usersCounter = 0;
 
   // TODO: перенести в usertestutils
@@ -18,8 +19,9 @@ public class UserAuthUtils {
     String responseBody = response.body();
 
     // TODO: RE?
-    if (response.statusCode() != HttpStatus.SC_CREATED)
+    if (response.statusCode() != HttpStatus.SC_CREATED) {
       throw new RuntimeException("Failed to register test user: " + responseBody);
+    }
 
     return UserITUtils.extractAccessToken(response);
   }

@@ -13,10 +13,17 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedInput;
 
 public class ChunkedDownloadHandler {
+
   private final FileController fileController;
 
   public ChunkedDownloadHandler(FileController fileController) {
@@ -26,10 +33,10 @@ public class ChunkedDownloadHandler {
   // TODO: refactor
   public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
-          ValidationFailedException,
-          QueryParameterNotFoundException,
-          HeaderNotFoundException {
+      StorageEntityNotFoundException,
+      ValidationFailedException,
+      QueryParameterNotFoundException,
+      HeaderNotFoundException {
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String filePath = RequestUtils.getRequiredQueryParam(request, "path");
 

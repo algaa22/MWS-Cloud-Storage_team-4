@@ -7,8 +7,8 @@ import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAcc
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -18,14 +18,17 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObject;
+import io.netty.handler.codec.http.HttpRequest;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
+
   private static final Logger logger = LoggerFactory.getLogger(AggregatedHttpHandler.class);
   private final DirectoriesRequestHandler directorysRequestHandler;
   private final FilesRequestHandler filesRequestHandler;
@@ -80,80 +83,89 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
 
   private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request)
       throws QueryParameterNotFoundException,
-          UserNotFoundException,
-          StorageEntityNotFoundException,
-          ValidationFailedException,
-          StorageIllegalAccessException,
-          IOException,
-          StorageFileAlreadyExistsException,
-          HeaderNotFoundException {
+      UserNotFoundException,
+      StorageEntityNotFoundException,
+      ValidationFailedException,
+      StorageIllegalAccessException,
+      IOException,
+      StorageFileAlreadyExistsException,
+      HeaderNotFoundException {
     String userToken = extractUserTokenFromRequest(request);
 
-    if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET))
+    if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
       filesRequestHandler.handleGetFilePathsListRequest(ctx, request, userToken);
-    else {
+    } else {
       String filePath = RequestUtils.getRequiredQueryParam(request, "path");
 
-      if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET))
+      if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET)) {
         filesRequestHandler.handleGetFileInfoRequest(ctx, filePath, userToken);
-      else {
-        if (method.equals(HttpMethod.DELETE))
+      } else {
+        if (method.equals(HttpMethod.DELETE)) {
           filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userToken);
-        else if (method.equals(HttpMethod.GET))
+        } else if (method.equals(HttpMethod.GET)) {
           filesRequestHandler.handleDownloadFileRequest(ctx, filePath, userToken);
-        else if (method.equals(HttpMethod.POST))
+        } else if (method.equals(HttpMethod.POST)) {
           filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
-        else if (method.equals(HttpMethod.PUT))
+        } else if (method.equals(HttpMethod.PUT)) {
           filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, filePath, userToken);
-        else ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+        } else {
+          ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+        }
       }
     }
   }
 
   private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws QueryParameterNotFoundException,
-          UserNotFoundException,
-          StorageEntityNotFoundException,
-          ValidationFailedException,
-          FileNotFoundException,
-          StorageFileAlreadyExistsException {
+      UserNotFoundException,
+      StorageEntityNotFoundException,
+      ValidationFailedException,
+      FileNotFoundException,
+      StorageFileAlreadyExistsException {
     String userToken = extractUserTokenFromRequest(request);
 
-    if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST))
+    if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST)) {
       directorysRequestHandler.handleChangeDirectoryPathRequest(ctx, request, userToken);
-    else {
+    } else {
       String directoryPath = RequestUtils.getRequiredQueryParam(request, "path");
 
-      if (uri.startsWith("/api/directories") && method.equals(HttpMethod.PUT))
+      if (uri.startsWith("/api/directories") && method.equals(HttpMethod.PUT)) {
         directorysRequestHandler.handleCreateDirectoryRequest(ctx, directoryPath, userToken);
-      else if (method.equals(HttpMethod.DELETE))
+      } else if (method.equals(HttpMethod.DELETE)) {
         directorysRequestHandler.handleDeleteDirectoryRequest(ctx, directoryPath, userToken);
-      else ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+      } else {
+        ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+      }
     }
   }
 
   private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws InvalidSessionException,
-          ValidationFailedException,
-          HeaderNotFoundException,
-          UserNotFoundException,
-          UserAlreadyExistsException,
-          InvalidEmailOrPassword,
-          WrongPasswordException {
+      ValidationFailedException,
+      HeaderNotFoundException,
+      UserNotFoundException,
+      UserAlreadyExistsException,
+      InvalidEmailOrPassword,
+      WrongPasswordException {
     // TODO: switch-case?
     if (method.equals(HttpMethod.POST)) {
-      if (uri.equals("/api/users/auth/login")) usersRequestHandler.handleLoginRequest(ctx, request);
-      else if (uri.equals("/api/users/auth/register"))
+      if (uri.equals("/api/users/auth/login")) {
+        usersRequestHandler.handleLoginRequest(ctx, request);
+      } else if (uri.equals("/api/users/auth/register")) {
         usersRequestHandler.handleRegisterRequest(ctx, request);
-      else if (uri.equals("/api/users/auth/logout"))
+      } else if (uri.equals("/api/users/auth/logout")) {
         usersRequestHandler.handleLogoutRequest(ctx, request);
-      else if (uri.equals("/api/users/update"))
+      } else if (uri.equals("/api/users/update")) {
         usersRequestHandler.handleUpdateUserRequest(ctx, request);
-      else if (uri.equals("/api/users/auth/refresh"))
+      } else if (uri.equals("/api/users/auth/refresh")) {
         usersRequestHandler.handleRefreshTokenRequest(ctx, request);
-      else ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+      } else {
+        ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+      }
     } else if (method.equals(HttpMethod.GET)) {
-      if (uri.equals("/api/users/info")) usersRequestHandler.handleGetUserRequest(ctx, request);
+      if (uri.equals("/api/users/info")) {
+        usersRequestHandler.handleGetUserRequest(ctx, request);
+      }
     } else {
       ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
     }

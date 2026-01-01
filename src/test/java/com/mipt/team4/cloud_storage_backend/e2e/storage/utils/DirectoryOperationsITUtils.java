@@ -7,6 +7,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 public class DirectoryOperationsITUtils {
+
   public static HttpResponse<String> sendCreateDirectoryRequest(
       HttpClient client, String userToken, String directoryPath)
       throws IOException, InterruptedException {

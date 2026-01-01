@@ -6,10 +6,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
 import java.nio.charset.StandardCharsets;
 
 public class ResponseUtils {
+
   public static ChannelFuture sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
     // TODO: нормальная обработка внутренних ошибок
     return ResponseUtils.sendErrorResponse(
@@ -21,7 +27,8 @@ public class ResponseUtils {
     sendErrorResponse(
         ctx,
         HttpResponseStatus.BAD_REQUEST,
-        "Request {uri: " + uri + ", method: " + method + "} not supported"); // TODO: заменить на String.format
+        "Request {uri: " + uri + ", method: " + method
+            + "} not supported"); // TODO: заменить на String.format
   }
 
   public static void sendBadRequestExceptionResponse(

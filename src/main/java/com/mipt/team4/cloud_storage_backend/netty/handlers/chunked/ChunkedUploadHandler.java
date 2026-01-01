@@ -27,13 +27,13 @@ import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
-
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ChunkedUploadHandler {
+
   private static final Logger logger = LoggerFactory.getLogger(ChunkedUploadHandler.class);
   private final FileController fileController;
 
@@ -52,13 +52,15 @@ public class ChunkedUploadHandler {
 
   public void startChunkedUpload(HttpRequest request)
       throws TransferAlreadyStartedException,
-          QueryParameterNotFoundException,
-          HeaderNotFoundException,
-          ValidationFailedException,
-          StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          StorageIllegalAccessException {
-    if (isInProgress) throw new TransferAlreadyStartedException();
+      QueryParameterNotFoundException,
+      HeaderNotFoundException,
+      ValidationFailedException,
+      StorageFileAlreadyExistsException,
+      UserNotFoundException,
+      StorageIllegalAccessException {
+    if (isInProgress) {
+      throw new TransferAlreadyStartedException();
+    }
 
     parseUploadRequestMetadata(request);
 
@@ -81,11 +83,13 @@ public class ChunkedUploadHandler {
 
   public void handleFileChunk(ChannelHandlerContext ctx, HttpContent content)
       throws TransferNotStartedYetException,
-          UserNotFoundException,
-          UploadSessionNotFoundException,
-          CombineChunksToPartException,
-          ValidationFailedException {
-    if (!isInProgress) throw new TransferNotStartedYetException();
+      UserNotFoundException,
+      UploadSessionNotFoundException,
+      CombineChunksToPartException,
+      ValidationFailedException {
+    if (!isInProgress) {
+      throw new TransferNotStartedYetException();
+    }
     // TODO: не слишком ли большой чанк?
     ByteBuf chunkData = content.content();
     int chunkSize = chunkData.readableBytes();
@@ -111,16 +115,20 @@ public class ChunkedUploadHandler {
 
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
       throws TransferNotStartedYetException,
-          UserNotFoundException,
-          UploadSessionNotFoundException,
-          CombineChunksToPartException,
-          ValidationFailedException,
-          StorageFileAlreadyExistsException,
-          TooSmallFilePartException,
-          MissingFilePartException {
-    if (!isInProgress) throw new TransferNotStartedYetException();
+      UserNotFoundException,
+      UploadSessionNotFoundException,
+      CombineChunksToPartException,
+      ValidationFailedException,
+      StorageFileAlreadyExistsException,
+      TooSmallFilePartException,
+      MissingFilePartException {
+    if (!isInProgress) {
+      throw new TransferNotStartedYetException();
+    }
 
-    if (content.content().readableBytes() > 0) handleFileChunk(ctx, content);
+    if (content.content().readableBytes() > 0) {
+      handleFileChunk(ctx, content);
+    }
 
     ChunkedUploadFileResultDto result;
 
@@ -131,13 +139,14 @@ public class ChunkedUploadHandler {
       throw e;
     }
 
-    if (logger.isDebugEnabled())
+    if (logger.isDebugEnabled()) {
       logger.debug(
           "Completed chunk upload. Session: {}, path: {}, chunks: {}, bytes: {}",
           currentSessionId,
           currentFilePath,
           receivedChunks,
           receivedBytes);
+    }
 
     sendSuccessResponse(ctx, result);
     cleanup();

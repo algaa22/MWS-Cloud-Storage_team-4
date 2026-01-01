@@ -5,8 +5,8 @@ import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAcc
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
@@ -17,11 +17,16 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObject;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.LastHttpContent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
+
   private static final Logger logger = LoggerFactory.getLogger(ChunkedHttpHandler.class);
   private final ChunkedUploadHandler chunkedUpload;
   private final ChunkedDownloadHandler chunkedDownload;
@@ -62,25 +67,25 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          StorageEntityNotFoundException,
-          ValidationFailedException,
-          StorageIllegalAccessException,
-          QueryParameterNotFoundException,
-          HeaderNotFoundException,
-          TransferAlreadyStartedException {
+      UserNotFoundException,
+      StorageEntityNotFoundException,
+      ValidationFailedException,
+      StorageIllegalAccessException,
+      QueryParameterNotFoundException,
+      HeaderNotFoundException,
+      TransferAlreadyStartedException {
     startChunkedTransfer(ctx, request);
   }
 
   private void startChunkedTransfer(ChannelHandlerContext ctx, HttpRequest request)
       throws StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          ValidationFailedException,
-          StorageIllegalAccessException,
-          QueryParameterNotFoundException,
-          HeaderNotFoundException,
-          TransferAlreadyStartedException,
-          StorageEntityNotFoundException {
+      UserNotFoundException,
+      ValidationFailedException,
+      StorageIllegalAccessException,
+      QueryParameterNotFoundException,
+      HeaderNotFoundException,
+      TransferAlreadyStartedException,
+      StorageEntityNotFoundException {
     String uri = request.uri();
     HttpMethod method = request.method();
 
@@ -95,13 +100,13 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   private void handleHttpContent(ChannelHandlerContext ctx, HttpContent content)
       throws UserNotFoundException,
-          StorageFileAlreadyExistsException,
-          TooSmallFilePartException,
-          UploadSessionNotFoundException,
-          CombineChunksToPartException,
-          ValidationFailedException,
-          MissingFilePartException,
-          TransferNotStartedYetException {
+      StorageFileAlreadyExistsException,
+      TooSmallFilePartException,
+      UploadSessionNotFoundException,
+      CombineChunksToPartException,
+      ValidationFailedException,
+      MissingFilePartException,
+      TransferNotStartedYetException {
     if (content instanceof LastHttpContent) {
       chunkedUpload.completeChunkedUpload(ctx, (LastHttpContent) content);
     } else {

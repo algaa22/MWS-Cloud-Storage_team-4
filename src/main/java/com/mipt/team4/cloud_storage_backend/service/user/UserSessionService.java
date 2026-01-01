@@ -15,6 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UserSessionService {
+
   // Сделать его синглтоном
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
   private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
@@ -35,7 +36,9 @@ public class UserSessionService {
 
   public boolean isSessionExpired(String token) {
     Optional<SessionDto> session = getSession(token);
-    if (session.isEmpty()) return true;
+    if (session.isEmpty()) {
+      return true;
+    }
     long sessionAge = System.currentTimeMillis() - session.get().createdAt();
     return sessionAge > accessTokenDuration.toMillis();
   }
@@ -73,7 +76,9 @@ public class UserSessionService {
 
   public boolean isBlacklisted(String token) {
     LocalDateTime expiry = blacklistedTokens.get(token);
-    if (expiry == null) return false;
+    if (expiry == null) {
+      return false;
+    }
     if (LocalDateTime.now().isAfter(expiry)) {
       blacklistedTokens.remove(token);
       return false;
@@ -84,7 +89,9 @@ public class UserSessionService {
   public Optional<SessionDto> findSessionByEmail(String email) {
     for (Map.Entry<String, SessionDto> entry : activeSessions.entrySet()) {
       SessionDto session = entry.getValue();
-      if (session.email().equals(email)) return Optional.of(session);
+      if (session.email().equals(email)) {
+        return Optional.of(session);
+      }
     }
     return Optional.empty();
   }
@@ -95,7 +102,9 @@ public class UserSessionService {
     }
 
     Optional<SessionDto> userSession = getSession(token);
-    if (userSession.isEmpty()) throw new UserNotFoundException(token);
+    if (userSession.isEmpty()) {
+      throw new UserNotFoundException(token);
+    }
 
     return userSession.get().userId();
   }

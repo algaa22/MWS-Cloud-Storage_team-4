@@ -13,6 +13,7 @@ import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 
 public class SimpleDownloadFileDetailedIT extends BaseDetailedFileIT {
+
   public SimpleDownloadFileDetailedIT() {
     super("/api/files?path=_", HttpMethod.GET.name(), PathParam.EXISTENT_FILE);
   }

@@ -15,7 +15,8 @@ public enum CorsConfig {
 
     this.maxAge = yamlSource.getInt("cors.access-control.max-age").orElseThrow();
     this.allowOrigin = yamlSource.getString("cors.access-control.allow-origin").orElseThrow();
-    this.allowCredentials = yamlSource.getBoolean("cors.allow-control.allow-credentials").orElseThrow();
+    this.allowCredentials = yamlSource.getBoolean("cors.allow-control.allow-credentials")
+        .orElseThrow();
   }
 
   public int getMaxAge() {

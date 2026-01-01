@@ -19,14 +19,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SslContextFactory {
+
   private static final Logger logger = LoggerFactory.getLogger(SslContextFactory.class);
 
   public static SslContext createFromResources()
       throws IOException,
-          NoSuchAlgorithmException,
-          UnrecoverableKeyException,
-          KeyStoreException,
-          CertificateException {
+      NoSuchAlgorithmException,
+      UnrecoverableKeyException,
+      KeyStoreException,
+      CertificateException {
     try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) {
       logger.info("Loading SSL from PKCS12 file");
 

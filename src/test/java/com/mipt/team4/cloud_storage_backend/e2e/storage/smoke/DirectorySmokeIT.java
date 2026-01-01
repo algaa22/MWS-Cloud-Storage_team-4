@@ -1,6 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.smoke;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
@@ -14,6 +16,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 public class DirectorySmokeIT extends BaseStorageIT {
+
   @Test
   public void shouldCreateDirectory() throws IOException, InterruptedException {
     HttpResponse<String> createDirectoryResponse =

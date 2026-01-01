@@ -18,6 +18,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class TestUtils {
+
   public static PostgreSQLContainer<?> createPostgresContainer() {
     return new PostgreSQLContainer<>("postgres:18.0")
         .withDatabaseName(DatabaseConfig.INSTANCE.getName())

@@ -1,10 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 public class StorageEntity {
+
   private final UUID entityId;
   private final UUID userId;
   private final String mimeType;
@@ -36,16 +39,39 @@ public class StorageEntity {
     this.isDirectory = isDirectory;
   }
 
+  public StorageEntity(
+      UUID entityId,
+      UUID userId,
+      String path,
+      String mimeType,
+      long size,
+      List<String> tags,
+      boolean isDirectory) {
+    this.entityId = entityId;
+    this.userId = userId;
+    this.size = size;
+    this.path = path;
+    this.visibility = FileVisibility.PRIVATE.toString();
+    this.isDeleted = false;
+    this.tags = tags;
+    this.mimeType = mimeType;
+    this.isDirectory = isDirectory;
+  }
+
   @Override
   public boolean equals(Object object) {
-    if (object == null || getClass() != object.getClass()) return false;
+    if (object == null || getClass() != object.getClass()) {
+      return false;
+    }
 
     StorageEntity that = (StorageEntity) object;
     return Objects.equals(entityId, that.entityId);
   }
 
   public boolean fullEquals(Object object) {
-    if (object == null || getClass() != object.getClass()) return false;
+    if (object == null || getClass() != object.getClass()) {
+      return false;
+    }
     StorageEntity that = (StorageEntity) object;
     return size == that.size
         && isDeleted == that.isDeleted

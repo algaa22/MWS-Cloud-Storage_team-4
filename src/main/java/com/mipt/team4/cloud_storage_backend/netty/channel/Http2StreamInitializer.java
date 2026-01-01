@@ -3,8 +3,6 @@ package com.mipt.team4.cloud_storage_backend.netty.channel;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpTrafficStrategySelector;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsSecurityHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineUtils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -29,6 +27,7 @@ public class Http2StreamInitializer extends ChannelInitializer<Channel> {
     ChannelPipeline pipeline = channel.pipeline();
 
     pipeline.addLast(new Http2StreamFrameToHttpObjectCodec(true));
-    PipelineUtils.finalizeHttpPipeline(pipeline, fileController, directoryController, userController);
+    PipelineUtils.finalizeHttpPipeline(pipeline, fileController, directoryController,
+        userController);
   }
 }

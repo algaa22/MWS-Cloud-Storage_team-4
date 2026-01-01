@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class UserEntity {
+
   private final UUID id;
   boolean isActive;
   private String name;

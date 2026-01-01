@@ -2,7 +2,10 @@ package com.mipt.team4.cloud_storage_backend.config.sources;
 
 import com.mipt.team4.cloud_storage_backend.exception.utils.InputStreamNotFoundException;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -10,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class EnvironmentConfigSource extends ConfigSource {
+
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentConfigSource.class);
   Map<String, String> envVars = new HashMap<>();
 
@@ -22,7 +26,9 @@ public class EnvironmentConfigSource extends ConfigSource {
     key = convertToEnvVarName(key);
 
     String systemValue = System.getenv(key);
-    if (systemValue != null) return Optional.of(systemValue);
+    if (systemValue != null) {
+      return Optional.of(systemValue);
+    }
 
     return Optional.ofNullable(envVars.get(key));
   }

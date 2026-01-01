@@ -3,17 +3,13 @@ package com.mipt.team4.cloud_storage_backend.netty.channel;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsSecurityHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpTrafficStrategySelector.PipelineType;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.ProtocolNegotiationHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpTrafficStrategySelector;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineUtils;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.http.HttpServerCodec;
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -46,7 +42,8 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
       pipeline.addLast(
           new ProtocolNegotiationHandler(fileController, directoryController, userController));
     } else {
-      PipelineUtils.buildHttp11Pipeline(pipeline, fileController, directoryController, userController);
+      PipelineUtils.buildHttp11Pipeline(pipeline, fileController, directoryController,
+          userController);
     }
   }
 }

@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.service.user.security;
 
 import com.mipt.team4.cloud_storage_backend.model.user.entity.RefreshTokenEntity;
 import com.mipt.team4.cloud_storage_backend.repository.user.RefreshTokenRepository;
-
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -38,14 +37,14 @@ public class RefreshTokenService {
 
   public RefreshTokenEntity validate(String token) {
     return repository.findByToken(token)
-        .filter(t -> !t.isRevoked())
-        .filter(t -> t.getExpiresAt().isAfter(LocalDateTime.now()))
+        .filter(t -> !t.revoked())
+        .filter(t -> t.expiresAt().isAfter(LocalDateTime.now()))
         .orElse(null);
   }
 
   public void revoke(String token) {
     repository.findByToken(token)
-        .ifPresent(t -> repository.revokeById(t.getId()));
+        .ifPresent(t -> repository.revokeById(t.id()));
   }
 
   public void revokeAllForUser(UUID userId) {

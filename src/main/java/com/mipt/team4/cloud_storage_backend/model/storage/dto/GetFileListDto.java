@@ -10,6 +10,7 @@ public record GetFileListDto(
     boolean includeDirectories,
     boolean recursive,
     Optional<String> searchDirectory) {
+
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(

@@ -36,10 +36,6 @@ public class NettyServerManager {
   private EventLoopGroup bossGroup;
   private EventLoopGroup workerGroup;
 
-  public enum ServerProtocol {
-    HTTP, HTTPS
-  }
-
   public NettyServerManager(FileController fileController, DirectoryController directoryController,
       UserController userController) {
     this.fileController = fileController;
@@ -165,5 +161,9 @@ public class NettyServerManager {
 
   private EventLoopGroup createEventLoopGroup(int numThreads) {
     return new MultiThreadIoEventLoopGroup(numThreads, NioIoHandler.newFactory());
+  }
+
+  public enum ServerProtocol {
+    HTTP, HTTPS
   }
 }

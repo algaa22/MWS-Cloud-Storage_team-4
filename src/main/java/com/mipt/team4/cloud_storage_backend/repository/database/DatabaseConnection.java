@@ -4,6 +4,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 public interface DatabaseConnection {
+
   void connect() throws SQLException;
 
   <T> List<T> executeQuery(

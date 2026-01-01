@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 // TODO: rename
 class CustomChunkedInput implements ChunkedInput<HttpContent> {
+
   final Logger logger = LoggerFactory.getLogger(CustomChunkedInput.class);
 
   private final InputStream stream;

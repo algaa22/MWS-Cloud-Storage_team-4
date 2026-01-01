@@ -1,29 +1,28 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.smoke;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import io.netty.handler.codec.http.HttpHeaderValues;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public class FileSmokeIT extends BaseStorageIT {
+
   @Test
   public void shouldUploadAndDownloadFile_Simple() throws IOException, InterruptedException {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);

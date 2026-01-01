@@ -9,19 +9,18 @@ import java.util.Map;
 import java.util.UUID;
 
 public class ChunkedUploadState {
+
+  public final List<byte[]> chunks = new ArrayList<>();
   // TODO: сессия не удаляется, если completeMultipartUpload не вызван
   private final UUID userId;
   private final UUID fileId;
   private final String path;
   private final FileChunkedUploadDto session;
-
+  private final Map<Integer, String> eTags = new HashMap<>();
   private long fileSize = 0;
   private int totalParts = 0;
   private int partSize = 0;
   private int partNum = 0;
-
-  private final Map<Integer, String> eTags = new HashMap<>();
-  public final List<byte[]> chunks = new ArrayList<>();
   private String uploadId;
 
   ChunkedUploadState(FileChunkedUploadDto session, UUID userId, UUID fileId, String path) {

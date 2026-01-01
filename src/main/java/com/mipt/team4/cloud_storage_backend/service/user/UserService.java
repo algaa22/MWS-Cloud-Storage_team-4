@@ -5,15 +5,24 @@ import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPasswor
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.*;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.SessionDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.SimpleUserRequestDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.RefreshTokenEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenService;
-import java.util.*;
+import java.util.Optional;
+import java.util.UUID;
 
 public class UserService {
+
   private final UserRepository userRepository;
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
@@ -51,8 +60,9 @@ public class UserService {
 
   public TokenPairDto registerUser(RegisterRequestDto registerRequest)
       throws UserAlreadyExistsException {
-    if (userRepository.getUserByEmail(registerRequest.email()).isPresent())
+    if (userRepository.getUserByEmail(registerRequest.email()).isPresent()) {
       throw new UserAlreadyExistsException(registerRequest.email());
+    }
 
     String hash = PasswordHasher.hash(registerRequest.password());
     UserEntity userEntity =
@@ -64,13 +74,15 @@ public class UserService {
     SessionDto session = userSessionService.createSession(userEntity);
     RefreshTokenEntity refreshToken = refreshTokenService.create(userEntity.getId());
 
-    return new TokenPairDto(session.token(), refreshToken.getToken());
+    return new TokenPairDto(session.token(), refreshToken.token());
   }
 
   public TokenPairDto loginUser(LoginRequestDto loginRequest)
       throws WrongPasswordException, InvalidEmailOrPassword {
     Optional<UserEntity> userOpt = userRepository.getUserByEmail(loginRequest.email());
-    if (userOpt.isEmpty()) throw new InvalidEmailOrPassword();
+    if (userOpt.isEmpty()) {
+      throw new InvalidEmailOrPassword();
+    }
 
     UserEntity user = userOpt.get();
     if (!PasswordHasher.verify(loginRequest.password(), user.getPasswordHash())) {
@@ -82,7 +94,7 @@ public class UserService {
     usedSession = session.orElseGet(() -> userSessionService.createSession(user));
     RefreshTokenEntity refreshToken = refreshTokenService.create(user.getId());
 
-    return new TokenPairDto(usedSession.token(), refreshToken.getToken());
+    return new TokenPairDto(usedSession.token(), refreshToken.token());
   }
 
   public void logoutUser(SimpleUserRequestDto logoutRequest)
@@ -108,7 +120,7 @@ public class UserService {
       throw new InvalidSessionException("Refresh token invalid or expired");
     }
 
-    UUID userId = stored.getUserId();
+    UUID userId = stored.userId();
     Optional<UserEntity> userOpt = userRepository.getUserById(userId);
 
     if (userOpt.isEmpty()) {
@@ -124,7 +136,7 @@ public class UserService {
     RefreshTokenEntity newRefreshToken = refreshTokenService.create(userId);
     refreshTokenService.revoke(refreshToken);
 
-    return new TokenPairDto(newSession.token(), newRefreshToken.getToken());
+    return new TokenPairDto(newSession.token(), newRefreshToken.token());
   }
 
   public void updateUserInfo(UpdateUserInfoDto updateUserInfoDto)

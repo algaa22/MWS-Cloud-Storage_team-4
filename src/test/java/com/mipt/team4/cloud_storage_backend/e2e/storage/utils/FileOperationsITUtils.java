@@ -13,6 +13,7 @@ import java.util.List;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public class FileOperationsITUtils {
+
   public static boolean filePathsListContainsFiles(
       HttpClient client,
       String userToken,

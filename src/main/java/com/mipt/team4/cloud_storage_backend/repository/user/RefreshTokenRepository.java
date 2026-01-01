@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.repository.user;
 
 import com.mipt.team4.cloud_storage_backend.model.user.entity.RefreshTokenEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,9 +24,10 @@ public class RefreshTokenRepository {
 
   public void save(RefreshTokenEntity token) {
     postgres.executeUpdate(
-        "INSERT INTO refresh_tokens (id, user_id, token, expires_at, revoked) VALUES (?, ?, ?, ?, ?) " +
+        "INSERT INTO refresh_tokens (id, user_id, token, expires_at, revoked) VALUES (?, ?, ?, ?, ?) "
+            +
             "ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token, expires_at = EXCLUDED.expires_at, revoked = EXCLUDED.revoked;",
-        List.of(token.getId(), token.getUserId(), token.getToken(), token.getExpiresAt(), token.isRevoked()));
+        List.of(token.id(), token.userId(), token.token(), token.expiresAt(), token.revoked()));
   }
 
   public Optional<RefreshTokenEntity> findByToken(String tokenStr) {
@@ -42,7 +42,9 @@ public class RefreshTokenRepository {
                 rs.getTimestamp("expires_at").toLocalDateTime(),
                 rs.getBoolean("revoked")
             ));
-    if (result.isEmpty()) return Optional.empty();
+    if (result.isEmpty()) {
+      return Optional.empty();
+    }
     return Optional.of(result.getFirst());
   }
 }

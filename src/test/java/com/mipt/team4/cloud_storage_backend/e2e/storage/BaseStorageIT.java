@@ -12,11 +12,11 @@ import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpResponse;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public abstract class BaseStorageIT extends BaseIT {
+
   protected static final String EMPTY_FILE_LOCAL_PATH = "files/empty_file";
   protected static final String DEFAULT_FILE_TARGET_PATH = "file";
   protected static final String DEFAULT_DIRECTORY_PATH = "dir1/dir2/";
@@ -40,17 +40,17 @@ public abstract class BaseStorageIT extends BaseIT {
   }
 
   protected void simpleUploadFile(String localFilePath, String targetFilePath, String fileTags)
-          throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     HttpResponse<String> uploadResponse =
-            FileSimpleTransferITUtils.sendUploadRequest(
-                    client, currentUserToken, localFilePath, targetFilePath, fileTags);
+        FileSimpleTransferITUtils.sendUploadRequest(
+            client, currentUserToken, localFilePath, targetFilePath, fileTags);
     assertEquals(HttpStatus.SC_OK, uploadResponse.statusCode());
   }
 
   protected void assertFileExistsIs(boolean exists, String targetFilePath)
-          throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     HttpResponse<String> response =
-            FileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, targetFilePath);
+        FileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, targetFilePath);
 
     if (exists) {
       assertEquals(HttpStatus.SC_OK, response.statusCode());
@@ -60,10 +60,10 @@ public abstract class BaseStorageIT extends BaseIT {
   }
 
   protected void assertFileInfoMatches(
-          String targetPath, String expectedVisibility, String expectedTags)
-          throws IOException, InterruptedException {
+      String targetPath, String expectedVisibility, String expectedTags)
+      throws IOException, InterruptedException {
     HttpResponse<String> fileInfoResponse =
-            FileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, targetPath);
+        FileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, targetPath);
     assertEquals(HttpStatus.SC_OK, fileInfoResponse.statusCode());
 
     JsonNode rootNode = TestUtils.getRootNodeFromResponse(fileInfoResponse);

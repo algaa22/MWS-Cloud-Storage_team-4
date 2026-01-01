@@ -25,6 +25,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Optional;
 
 public record UsersRequestHandler(UserController userController) {
+
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException, ValidationFailedException, UserAlreadyExistsException {
     TokenPairDto tokenPair =
@@ -39,9 +40,9 @@ public record UsersRequestHandler(UserController userController) {
 
   public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException,
-          ValidationFailedException,
-          InvalidEmailOrPassword,
-          WrongPasswordException {
+      ValidationFailedException,
+      InvalidEmailOrPassword,
+      WrongPasswordException {
     TokenPairDto tokenPair;
 
     tokenPair =
@@ -55,9 +56,9 @@ public record UsersRequestHandler(UserController userController) {
 
   public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException,
-          UserNotFoundException,
-          InvalidSessionException,
-          ValidationFailedException {
+      UserNotFoundException,
+      InvalidSessionException,
+      ValidationFailedException {
     userController.logoutUser(
         new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
@@ -100,7 +101,8 @@ public record UsersRequestHandler(UserController userController) {
         ctx, HttpResponseStatus.OK, "User info successfully changed");
   }
 
-  public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request) throws HeaderNotFoundException, InvalidSessionException, ValidationFailedException {
+  public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, InvalidSessionException, ValidationFailedException {
     TokenPairDto tokenPair =
         userController.refresh(
             new RefreshTokenDto(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));

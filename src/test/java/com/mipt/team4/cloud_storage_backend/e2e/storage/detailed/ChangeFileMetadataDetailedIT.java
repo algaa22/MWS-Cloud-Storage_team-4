@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
+
   private static final String NEW_PATH = "new_file";
   private static final String NEW_VISIBILITY = "public";
   private static final String NEW_TAGS = "1,2,3";

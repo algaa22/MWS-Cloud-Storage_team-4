@@ -5,10 +5,12 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record SimpleDirectoryOperationDto(String userToken, String directoryPath) {
+
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.mustBeDirectoryPath("Directory path", directoryPath), Validators.validToken(userToken));
+            Validators.mustBeDirectoryPath("Directory path", directoryPath),
+            Validators.validToken(userToken));
 
     Validators.throwExceptionIfNotValid(result);
   }

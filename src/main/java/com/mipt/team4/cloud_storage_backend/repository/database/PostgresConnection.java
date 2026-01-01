@@ -1,16 +1,28 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
 import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
-import com.mipt.team4.cloud_storage_backend.exception.database.*;
-import java.sql.*;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbCheckConnectionException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbCloseConnectionException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbConnectionException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbCreateTableException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbUnavailableException;
+import com.mipt.team4.cloud_storage_backend.exception.database.JdbcNotFoundException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PostgresConnection implements DatabaseConnection {
+
   private Connection connection;
-  private String databaseUrl;
-  private String databaseUsername;
-  private String databasePassword;
+  private final String databaseUrl;
+  private final String databaseUsername;
+  private final String databasePassword;
 
   public PostgresConnection(String databaseUrl, String databaseUsername, String databasePassword) {
     this.databaseUrl = databaseUrl;
@@ -32,7 +44,9 @@ public class PostgresConnection implements DatabaseConnection {
       throw new JdbcNotFoundException(e);
     }
 
-    if (isConnected()) return;
+    if (isConnected()) {
+      return;
+    }
 
     try {
       connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword);
@@ -85,7 +99,9 @@ public class PostgresConnection implements DatabaseConnection {
 
   private void handleSqlException(SQLException e) {
     // TODO: обработать больше ошибок
-    if (e.getSQLState().startsWith("08")) throw new DbUnavailableException(e);
+    if (e.getSQLState().startsWith("08")) {
+      throw new DbUnavailableException(e);
+    }
   }
 
   private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {
@@ -105,18 +121,18 @@ public class PostgresConnection implements DatabaseConnection {
   private void createFilesTable() {
     String createFilesSql =
         """
-            CREATE TABLE IF NOT EXISTS files (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                path VARCHAR(500) NOT NULL,
-                file_size BIGINT NOT NULL,
-                mime_type VARCHAR(100),
-                tags VARCHAR(500),
-                visibility VARCHAR(20) DEFAULT 'private',
-                is_deleted BOOLEAN DEFAULT false,
-                is_directory BOOLEAN DEFAULT false
-            )
-        """;
+                CREATE TABLE IF NOT EXISTS files (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    path VARCHAR(500) NOT NULL,
+                    file_size BIGINT NOT NULL,
+                    mime_type VARCHAR(100),
+                    tags VARCHAR(500),
+                    visibility VARCHAR(20) DEFAULT 'private',
+                    is_deleted BOOLEAN DEFAULT false,
+                    is_directory BOOLEAN DEFAULT false
+                )
+            """;
 
     try {
       executeUpdate(createFilesSql, List.of());
@@ -128,17 +144,17 @@ public class PostgresConnection implements DatabaseConnection {
   private void createUsersTable() {
     String createUsersSql =
         """
-            CREATE TABLE IF NOT EXISTS users (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                email VARCHAR(255) UNIQUE NOT NULL,
-                password_hash VARCHAR(255) NOT NULL,
-                username VARCHAR(100) NOT NULL,
-                storage_limit BIGINT DEFAULT 10737418240,
-                used_storage BIGINT DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_active BOOLEAN DEFAULT true
-            )
-        """;
+                CREATE TABLE IF NOT EXISTS users (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    username VARCHAR(100) NOT NULL,
+                    storage_limit BIGINT DEFAULT 10737418240,
+                    used_storage BIGINT DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_active BOOLEAN DEFAULT true
+                )
+            """;
 
     try {
       executeUpdate(createUsersSql, List.of());
@@ -178,6 +194,7 @@ public class PostgresConnection implements DatabaseConnection {
 
   @FunctionalInterface
   public interface ResultSetMapper<T> {
+
     T map(ResultSet resultSet) throws SQLException;
   }
 }

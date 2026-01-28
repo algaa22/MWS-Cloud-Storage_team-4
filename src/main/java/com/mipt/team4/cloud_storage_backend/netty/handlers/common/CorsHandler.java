@@ -16,7 +16,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 public class CorsHandler extends ChannelDuplexHandler {
 
   private static final String ALLOWED_METHODS = String.join(", ",
-      "GET", "POST", "DELETE", "OPTIONS");
+      "GET", "POST", "PUT", "DELETE", "OPTIONS");
 
   private static final String ALLOWED_HEADERS = String.join(", ",
       HttpHeaderNames.CONTENT_TYPE.toString(), HttpHeaderNames.TRANSFER_ENCODING.toString(),

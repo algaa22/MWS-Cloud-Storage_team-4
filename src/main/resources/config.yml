@@ -1,6 +1,6 @@
 netty:
   enable-logging: false
-  enable-https: false
+  enable-https: true
   http-port: 8080
   https-port: 8443
   boss-threads: 1
@@ -15,7 +15,7 @@ netty:
 
 cors:
   access-control:
-    allow-origin: "https://localhost:5173"
+    allow-origin: "http://localhost:5173"
     allow-credentials: true
     max-age: 3600
 

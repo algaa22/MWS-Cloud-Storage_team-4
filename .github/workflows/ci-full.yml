@@ -8,7 +8,7 @@ on:
       - "main"
 
 jobs:
-  heavy-tests:
+  all-tests-and-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,8 +19,8 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Compile
-        run: mvn clean compile
+      - name: Check Style
+        run: mvn fmt:check
 
       - name: Start Infrastructure
         env:

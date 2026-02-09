@@ -7,7 +7,7 @@ on:
       - 'main'
 
 jobs:
-  unit-tests:
+  fast-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

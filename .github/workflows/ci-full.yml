@@ -22,6 +22,9 @@ jobs:
       - name: Check Style
         run: mvn fmt:check
 
+      - name: Run Unit Tests
+        run: mvn test -Dgroups="!smoke & !heavy & !integration"
+
       - name: Start Infrastructure
         env:
           DB_NAME: cloud_storage_db

@@ -11,6 +11,4 @@ public class GetFileInfoDetailedIT extends BaseDetailedFileIT {
   public GetFileInfoDetailedIT() {
     super("/api/files/info?path=_", HttpMethod.GET.name(), PathParam.EXISTENT_FILE);
   }
-
-
 }

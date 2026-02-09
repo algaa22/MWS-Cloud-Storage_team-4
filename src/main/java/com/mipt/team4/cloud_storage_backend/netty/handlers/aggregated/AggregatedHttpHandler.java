@@ -63,17 +63,17 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
         }
       } catch (QueryParameterNotFoundException
-               | InvalidSessionException
-               | ValidationFailedException
-               | HeaderNotFoundException
-               | UserNotFoundException
-               | UserAlreadyExistsException
-               | InvalidEmailOrPassword
-               | WrongPasswordException
-               | StorageEntityNotFoundException
-               | StorageFileAlreadyExistsException
-               | StorageIllegalAccessException
-               | IOException e) {
+          | InvalidSessionException
+          | ValidationFailedException
+          | HeaderNotFoundException
+          | UserNotFoundException
+          | UserAlreadyExistsException
+          | InvalidEmailOrPassword
+          | WrongPasswordException
+          | StorageEntityNotFoundException
+          | StorageFileAlreadyExistsException
+          | StorageIllegalAccessException
+          | IOException e) {
         ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
       }
     } else {
@@ -83,13 +83,13 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
 
   private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request)
       throws QueryParameterNotFoundException,
-      UserNotFoundException,
-      StorageEntityNotFoundException,
-      ValidationFailedException,
-      StorageIllegalAccessException,
-      IOException,
-      StorageFileAlreadyExistsException,
-      HeaderNotFoundException {
+          UserNotFoundException,
+          StorageEntityNotFoundException,
+          ValidationFailedException,
+          StorageIllegalAccessException,
+          IOException,
+          StorageFileAlreadyExistsException,
+          HeaderNotFoundException {
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
@@ -102,9 +102,12 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       } else {
         switch (method.name()) {
           case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userToken);
-          case "POST"   -> filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
-          case "PUT"    -> filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, filePath, userToken);
-          default       -> ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+          case "POST" ->
+              filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
+          case "PUT" ->
+              filesRequestHandler.handleChangeFileMetadataRequest(
+                  ctx, request, filePath, userToken);
+          default -> ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
         }
       }
     }
@@ -112,11 +115,11 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
 
   private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws QueryParameterNotFoundException,
-      UserNotFoundException,
-      StorageEntityNotFoundException,
-      ValidationFailedException,
-      FileNotFoundException,
-      StorageFileAlreadyExistsException {
+          UserNotFoundException,
+          StorageEntityNotFoundException,
+          ValidationFailedException,
+          FileNotFoundException,
+          StorageFileAlreadyExistsException {
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST)) {
@@ -136,12 +139,12 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
 
   private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws InvalidSessionException,
-      ValidationFailedException,
-      HeaderNotFoundException,
-      UserNotFoundException,
-      UserAlreadyExistsException,
-      InvalidEmailOrPassword,
-      WrongPasswordException {
+          ValidationFailedException,
+          HeaderNotFoundException,
+          UserNotFoundException,
+          UserAlreadyExistsException,
+          InvalidEmailOrPassword,
+          WrongPasswordException {
     if (method.equals(HttpMethod.POST)) {
       switch (uri) {
         case "/api/users/auth/login" -> usersRequestHandler.handleLoginRequest(ctx, request);

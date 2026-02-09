@@ -123,7 +123,6 @@ public class UserRepository {
   private void changeUsedStorage(UUID id, long delta) {
     postgres.executeUpdate(
         "UPDATE users SET used_storage = GREATEST(0, used_storage + ?) WHERE id = ?;",
-        List.of(delta, id)
-    );
+        List.of(delta, id));
   }
 }

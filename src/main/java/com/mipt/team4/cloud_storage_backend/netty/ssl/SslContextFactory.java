@@ -24,10 +24,10 @@ public class SslContextFactory {
 
   public static SslContext createFromResources()
       throws IOException,
-      NoSuchAlgorithmException,
-      UnrecoverableKeyException,
-      KeyStoreException,
-      CertificateException {
+          NoSuchAlgorithmException,
+          UnrecoverableKeyException,
+          KeyStoreException,
+          CertificateException {
     try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) {
       logger.info("Loading SSL from PKCS12 file");
 

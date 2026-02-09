@@ -52,12 +52,12 @@ public class FileOperationsITUtils {
     String dirParam = "";
 
     if (searchDirectory != null) {
-        dirParam = "&directory=" + URLEncoder.encode(searchDirectory, StandardCharsets.UTF_8);
+      dirParam = "&directory=" + URLEncoder.encode(searchDirectory, StandardCharsets.UTF_8);
     }
 
     String endpoint =
-        "/api/files/list?includeDirectories=%b&recursive=%b%s".formatted(includeDirectories,
-            recursive, dirParam);
+        "/api/files/list?includeDirectories=%b&recursive=%b%s"
+            .formatted(includeDirectories, recursive, dirParam);
 
     HttpRequest request =
         TestUtils.createRequest(endpoint).header("X-Auth-Token", userToken).GET().build();
@@ -126,8 +126,9 @@ public class FileOperationsITUtils {
       throws IOException, InterruptedException {
     HttpRequest request =
         TestUtils.createRequest(
-                "/api/files?path=" + oldTargetPath + "&newPath=%s".formatted(oldTargetPath,
-                    newTargetPath))
+                "/api/files?path="
+                    + oldTargetPath
+                    + "&newPath=%s".formatted(oldTargetPath, newTargetPath))
             .header("X-Auth-Token", userToken)
             .header("X-File-New-Visibility", newVisibility)
             .header("X-File-New-Tags", newTags)

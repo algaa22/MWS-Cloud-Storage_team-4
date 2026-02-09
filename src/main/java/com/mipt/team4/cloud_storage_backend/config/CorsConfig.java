@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
-import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.factories.YamlConfigFactory;
 
 public enum CorsConfig {
@@ -16,8 +15,8 @@ public enum CorsConfig {
 
     this.maxAge = yamlSource.getInt("cors.access-control.max-age").orElseThrow();
     this.allowOrigin = yamlSource.getString("cors.access-control.allow-origin").orElseThrow();
-    this.allowCredentials = yamlSource.getBoolean("cors.access-control.allow-credentials")
-        .orElseThrow();
+    this.allowCredentials =
+        yamlSource.getBoolean("cors.access-control.allow-credentials").orElseThrow();
   }
 
   public int getMaxAge() {

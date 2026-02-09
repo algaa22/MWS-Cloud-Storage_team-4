@@ -10,10 +10,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(E2ETestSetupExtension.class)
 public class BaseIT {
 
-  protected static final CloseableHttpClient apacheClient = HttpClients.custom()
-      .setConnectionManager(new PoolingHttpClientConnectionManager())
-      .setConnectionManagerShared(false)
-      .build();
-  protected static final HttpClient client = HttpClient.newBuilder().version(Version.HTTP_1_1)
-      .build();
+  protected static final CloseableHttpClient apacheClient =
+      HttpClients.custom()
+          .setConnectionManager(new PoolingHttpClientConnectionManager())
+          .setConnectionManagerShared(false)
+          .build();
+  protected static final HttpClient client =
+      HttpClient.newBuilder().version(Version.HTTP_1_1).build();
 }

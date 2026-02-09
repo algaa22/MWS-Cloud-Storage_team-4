@@ -1,11 +1,14 @@
 name: Full Check
 on:
+  pull_request:
+    branches:
+      - "main"
   push:
     branches:
       - "main"
 
 jobs:
-  heavy-tests:
+  full-check:
     runs-on: ubuntu-latest
 
     steps:
@@ -15,6 +18,12 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Check Style
+        run: mvn fmt:check
+
+      - name: Run Unit Tests
+        run: mvn test -Dgroups="!smoke & !heavy & !integration"
 
       - name: Start Infrastructure
         env:

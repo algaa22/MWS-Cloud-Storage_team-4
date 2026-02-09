@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.config.sources.factories;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.smoke;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -136,7 +135,8 @@ public class FileSmokeIT extends BaseStorageIT {
     assertFileInfoMatches(DEFAULT_FILE_TARGET_PATH, null, "1,2,3");
   }
 
-  private void checkDownloadFile(CloseableHttpClient apacheClient, byte[] originalFileData) throws IOException {
+  private void checkDownloadFile(CloseableHttpClient apacheClient, byte[] originalFileData)
+      throws IOException {
     FileChunkedTransferITUtils.DownloadResult downloadResult =
         FileChunkedTransferITUtils.sendDownloadRequest(
             apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH);

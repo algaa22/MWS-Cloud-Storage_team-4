@@ -36,7 +36,9 @@ public class NettyServerManager {
   private EventLoopGroup bossGroup;
   private EventLoopGroup workerGroup;
 
-  public NettyServerManager(FileController fileController, DirectoryController directoryController,
+  public NettyServerManager(
+      FileController fileController,
+      DirectoryController directoryController,
       UserController userController) {
     this.fileController = fileController;
     this.directoryController = directoryController;
@@ -47,11 +49,9 @@ public class NettyServerManager {
   }
 
   public void start() {
-    bossGroup = createEventLoopGroup(
-        NettyConfig.INSTANCE.getBossThreads());
+    bossGroup = createEventLoopGroup(NettyConfig.INSTANCE.getBossThreads());
 
-    workerGroup = createEventLoopGroup(
-        NettyConfig.INSTANCE.getWorkerThreads());
+    workerGroup = createEventLoopGroup(NettyConfig.INSTANCE.getWorkerThreads());
 
     try {
       Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
@@ -91,16 +91,22 @@ public class NettyServerManager {
     Promise<Void> closePromise = bossGroup.next().newPromise();
 
     if (httpsServerChannel != null) {
-      httpsServerChannel.closeFuture().addListener(f -> {
-        logger.info("HTTPS server stopped");
-        closePromise.trySuccess(null);
-      });
+      httpsServerChannel
+          .closeFuture()
+          .addListener(
+              f -> {
+                logger.info("HTTPS server stopped");
+                closePromise.trySuccess(null);
+              });
     }
 
-    httpServerChannel.closeFuture().addListener(f -> {
-      logger.info("HTTP server stopped");
-      closePromise.trySuccess(null);
-    });
+    httpServerChannel
+        .closeFuture()
+        .addListener(
+            f -> {
+              logger.info("HTTP server stopped");
+              closePromise.trySuccess(null);
+            });
 
     logger.info("Servers are running. Waiting for any channel to close...");
     closePromise.sync();
@@ -119,13 +125,17 @@ public class NettyServerManager {
   }
 
   private void shutdownThreads() {
-    Future<?> bossShutdown = bossGroup.shutdownGracefully(
-        NettyConfig.INSTANCE.getShutdownQueryPeriodSec(),
-        NettyConfig.INSTANCE.getShutdownTimeoutSec(), TimeUnit.SECONDS);
+    Future<?> bossShutdown =
+        bossGroup.shutdownGracefully(
+            NettyConfig.INSTANCE.getShutdownQueryPeriodSec(),
+            NettyConfig.INSTANCE.getShutdownTimeoutSec(),
+            TimeUnit.SECONDS);
 
-    Future<?> workerShutdown = workerGroup.shutdownGracefully(
-        NettyConfig.INSTANCE.getShutdownQueryPeriodSec(),
-        NettyConfig.INSTANCE.getShutdownTimeoutSec(), TimeUnit.SECONDS);
+    Future<?> workerShutdown =
+        workerGroup.shutdownGracefully(
+            NettyConfig.INSTANCE.getShutdownQueryPeriodSec(),
+            NettyConfig.INSTANCE.getShutdownTimeoutSec(),
+            TimeUnit.SECONDS);
 
     try {
       workerShutdown.await(NettyConfig.INSTANCE.getShutdownTimeoutSec() + 1, TimeUnit.SECONDS);
@@ -139,17 +149,22 @@ public class NettyServerManager {
     }
   }
 
-  private Channel startServer(EventLoopGroup bossGroup, EventLoopGroup workerGroup,
-      ServerProtocol protocol) throws InterruptedException {
+  private Channel startServer(
+      EventLoopGroup bossGroup, EventLoopGroup workerGroup, ServerProtocol protocol)
+      throws InterruptedException {
     ServerBootstrap bootstrap = new ServerBootstrap();
-    bootstrap.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
+    bootstrap
+        .group(bossGroup, workerGroup)
+        .channel(NioServerSocketChannel.class)
         .option(ChannelOption.SO_REUSEADDR, true)
         .childHandler(
-            new MainChannelInitializer(fileController, directoryController, userController,
-                protocol));
+            new MainChannelInitializer(
+                fileController, directoryController, userController, protocol));
 
-    int port = protocol == ServerProtocol.HTTPS ? NettyConfig.INSTANCE.getHttpsPort()
-        : NettyConfig.INSTANCE.getHttpPort();
+    int port =
+        protocol == ServerProtocol.HTTPS
+            ? NettyConfig.INSTANCE.getHttpsPort()
+            : NettyConfig.INSTANCE.getHttpPort();
 
     Channel channel = bootstrap.bind(port).sync().channel();
 
@@ -164,6 +179,7 @@ public class NettyServerManager {
   }
 
   public enum ServerProtocol {
-    HTTP, HTTPS
+    HTTP,
+    HTTPS
   }
 }

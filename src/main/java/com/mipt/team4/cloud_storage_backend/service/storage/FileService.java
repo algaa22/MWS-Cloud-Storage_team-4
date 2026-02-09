@@ -20,7 +20,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
@@ -87,11 +86,11 @@ public class FileService {
 
   public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
       throws StorageFileAlreadyExistsException,
-      UserNotFoundException,
-      TooSmallFilePartException,
-      CombineChunksToPartException,
-      MissingFilePartException,
-      UploadSessionNotFoundException {
+          UserNotFoundException,
+          TooSmallFilePartException,
+          CombineChunksToPartException,
+          MissingFilePartException,
+          UploadSessionNotFoundException {
     ChunkedUploadState uploadState = activeUploads.get(sessionId);
     if (uploadState == null) {
       throw new UploadSessionNotFoundException(sessionId);
@@ -192,8 +191,11 @@ public class FileService {
       throws UserNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(filePathsRequest.userToken());
     return storageRepository.getFileList(
-        new FileListFilter(userUuid, filePathsRequest.includeDirectories(),
-            filePathsRequest.recursive(), filePathsRequest.searchDirectory().orElse("")));
+        new FileListFilter(
+            userUuid,
+            filePathsRequest.includeDirectories(),
+            filePathsRequest.recursive(),
+            filePathsRequest.searchDirectory().orElse("")));
   }
 
   public StorageDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
@@ -210,8 +212,8 @@ public class FileService {
 
   public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadata)
       throws UserNotFoundException,
-      StorageEntityNotFoundException,
-      StorageFileAlreadyExistsException {
+          StorageEntityNotFoundException,
+          StorageFileAlreadyExistsException {
 
     UUID userId = userSessionService.extractUserIdFromToken(changeFileMetadata.userToken());
 

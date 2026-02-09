@@ -25,18 +25,18 @@ public class DirectoryController {
 
   public void changeDirectoryPath(ChangeDirectoryPathDto request)
       throws ValidationFailedException,
-      UserNotFoundException,
-      StorageFileAlreadyExistsException,
-      StorageEntityNotFoundException {
+          UserNotFoundException,
+          StorageFileAlreadyExistsException,
+          StorageEntityNotFoundException {
     request.validate();
     service.changeDirectoryPath(request);
   }
 
   public void deleteDirectory(SimpleDirectoryOperationDto request)
       throws ValidationFailedException,
-      UserNotFoundException,
-      StorageEntityNotFoundException,
-      FileNotFoundException {
+          UserNotFoundException,
+          StorageEntityNotFoundException,
+          FileNotFoundException {
     request.validate();
     service.deleteDirectory(request);
   }

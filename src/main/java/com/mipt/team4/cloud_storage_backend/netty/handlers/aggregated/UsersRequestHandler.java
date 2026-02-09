@@ -40,9 +40,9 @@ public record UsersRequestHandler(UserController userController) {
 
   public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException,
-      ValidationFailedException,
-      InvalidEmailOrPassword,
-      WrongPasswordException {
+          ValidationFailedException,
+          InvalidEmailOrPassword,
+          WrongPasswordException {
     TokenPairDto tokenPair;
 
     tokenPair =
@@ -56,9 +56,9 @@ public record UsersRequestHandler(UserController userController) {
 
   public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException,
-      UserNotFoundException,
-      InvalidSessionException,
-      ValidationFailedException {
+          UserNotFoundException,
+          InvalidSessionException,
+          ValidationFailedException {
     userController.logoutUser(
         new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
@@ -85,7 +85,10 @@ public record UsersRequestHandler(UserController userController) {
   }
 
   public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request)
-      throws HeaderNotFoundException, UserNotFoundException, ValidationFailedException, WrongPasswordException {
+      throws HeaderNotFoundException,
+          UserNotFoundException,
+          ValidationFailedException,
+          WrongPasswordException {
     Optional<String> newUsername = RequestUtils.getHeader(request, "X-New-Username");
     Optional<String> oldUserPassword = RequestUtils.getHeader(request, "X-Old-Password");
     Optional<String> newUserPassword = RequestUtils.getHeader(request, "X-New-Password");
@@ -97,8 +100,7 @@ public record UsersRequestHandler(UserController userController) {
             newUserPassword,
             newUsername));
 
-    ResponseUtils.sendSuccessResponse(
-        ctx, HttpResponseStatus.OK, "User info successfully changed");
+    ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "User info successfully changed");
   }
 
   public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request)

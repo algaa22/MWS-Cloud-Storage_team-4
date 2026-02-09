@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -187,11 +186,11 @@ class ValidatorsTest {
 
   @Test
   public void shouldMergeSeveralValidators() {
-    ValidationResult result = Validators.all(
-        Validators.notNull("2", ""),
-        Validators.notNull("1", null),
-        Validators.notBlank("3", "")
-    );
+    ValidationResult result =
+        Validators.all(
+            Validators.notNull("2", ""),
+            Validators.notNull("1", null),
+            Validators.notBlank("3", ""));
 
     assertFalse(result.isValid());
     assertEquals(2, result.getErrors().size());

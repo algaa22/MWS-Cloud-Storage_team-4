@@ -14,8 +14,8 @@ public record UploadChunkDto(String sessionId, String path, int chunkIndex, byte
             Validators.mustBeFilePath("Path", path),
             Validators.notNull("Chunk data", chunkData),
             Validators.mustBePositive("Chunk data size", chunkData.length),
-            Validators.numberMax("Chunk size", chunkData.length,
-                StorageConfig.INSTANCE.getMaxFileChunkSize()),
+            Validators.numberMax(
+                "Chunk size", chunkData.length, StorageConfig.INSTANCE.getMaxFileChunkSize()),
             Validators.cannotBeNegative("Chunk index", chunkIndex));
 
     Validators.throwExceptionIfNotValid(result);

@@ -8,8 +8,8 @@ public enum FileVisibility {
   PRIVATE,
   LINK_ONLY;
 
-  public static final String NAMES = Arrays.stream(values()).map(FileVisibility::toString)
-      .collect(Collectors.joining(", "));
+  public static final String NAMES =
+      Arrays.stream(values()).map(FileVisibility::toString).collect(Collectors.joining(", "));
 
   @Override
   public String toString() {

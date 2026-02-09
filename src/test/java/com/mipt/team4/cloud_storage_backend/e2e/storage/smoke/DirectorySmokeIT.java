@@ -84,8 +84,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
     return testFiles;
   }
 
-  private boolean filePathsListContainsFiles(
-      List<String> filePaths, String searchDirectory)
+  private boolean filePathsListContainsFiles(List<String> filePaths, String searchDirectory)
       throws IOException, InterruptedException {
     return FileOperationsITUtils.filePathsListContainsFiles(
         client, currentUserToken, filePaths, true, true, searchDirectory);

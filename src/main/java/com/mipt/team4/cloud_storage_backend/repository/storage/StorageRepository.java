@@ -47,8 +47,8 @@ public class StorageRepository {
 
   public String uploadPart(UploadPartRequest request) {
     String s3Key = StoragePaths.getS3Key(request.userId(), request.fileId());
-    return contentRepository.uploadPart(request.uploadId(), s3Key, request.partIndex(),
-        request.bytes());
+    return contentRepository.uploadPart(
+        request.uploadId(), s3Key, request.partIndex(), request.bytes());
   }
 
   public List<StorageEntity> getFileList(FileListFilter filter) {

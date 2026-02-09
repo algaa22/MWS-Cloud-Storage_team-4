@@ -66,10 +66,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
       query += " AND is_directory = FALSE";
     }
 
-    return postgres.executeQuery(
-        query,
-        params,
-        rs -> resultToStorageEntity(filter.userId(), rs));
+    return postgres.executeQuery(query, params, rs -> resultToStorageEntity(filter.userId(), rs));
   }
 
   @Override

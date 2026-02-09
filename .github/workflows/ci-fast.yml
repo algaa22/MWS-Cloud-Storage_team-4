@@ -3,9 +3,11 @@ on:
   push:
     branches:
       - "**"
+    branches-ignore:
+      - 'main'
 
 jobs:
-  unit-tests:
+  fast-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,5 +16,9 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Check Style
+        run: mvn fmt:check
+
       - name: Run Unit Tests
         run: mvn test -Dgroups="!smoke & !heavy & !integration"

@@ -115,7 +115,5 @@ class MinioContentRepositoryTest {
     }
   }
 
-  private record TestFileDto(String s3Key, byte[] data) {
-
-  }
+  private record TestFileDto(String s3Key, byte[] data) {}
 }

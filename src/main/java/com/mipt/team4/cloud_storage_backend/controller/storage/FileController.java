@@ -34,29 +34,30 @@ public class FileController {
 
   public void startChunkedUpload(FileChunkedUploadDto request)
       throws ValidationFailedException,
-      StorageFileAlreadyExistsException,
-      StorageIllegalAccessException,
-      UserNotFoundException {
+          StorageFileAlreadyExistsException,
+          StorageIllegalAccessException,
+          UserNotFoundException {
     request.validate();
     service.startChunkedUploadSession(request);
   }
 
   public void processFileChunk(UploadChunkDto request)
       throws ValidationFailedException,
-      UserNotFoundException,
-      CombineChunksToPartException,
-      UploadSessionNotFoundException {
+          UserNotFoundException,
+          CombineChunksToPartException,
+          UploadSessionNotFoundException {
     request.validate();
     service.uploadChunk(request);
   }
 
   public ChunkedUploadFileResultDto completeChunkedUpload(String request)
       throws MissingFilePartException,
-      ValidationFailedException,
-      StorageFileAlreadyExistsException,
-      UserNotFoundException,
-      TooSmallFilePartException,
-      CombineChunksToPartException, UploadSessionNotFoundException {
+          ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          UserNotFoundException,
+          TooSmallFilePartException,
+          CombineChunksToPartException,
+          UploadSessionNotFoundException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", request));
 
     return service.completeChunkedUpload(request);
@@ -76,10 +77,10 @@ public class FileController {
 
   public void deleteFile(SimpleFileOperationDto request)
       throws ValidationFailedException,
-      StorageIllegalAccessException,
-      UserNotFoundException,
-      StorageEntityNotFoundException,
-      FileNotFoundException {
+          StorageIllegalAccessException,
+          UserNotFoundException,
+          StorageEntityNotFoundException,
+          FileNotFoundException {
     request.validate();
     service.deleteFile(request);
   }
@@ -92,17 +93,15 @@ public class FileController {
 
   public void changeFileMetadata(ChangeFileMetadataDto request)
       throws ValidationFailedException,
-      UserNotFoundException,
-      StorageEntityNotFoundException,
-      StorageFileAlreadyExistsException {
+          UserNotFoundException,
+          StorageEntityNotFoundException,
+          StorageFileAlreadyExistsException {
     request.validate();
     service.changeFileMetadata(request);
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationDto request)
-      throws ValidationFailedException,
-      UserNotFoundException,
-      StorageEntityNotFoundException {
+      throws ValidationFailedException, UserNotFoundException, StorageEntityNotFoundException {
     request.validate();
     return service.downloadFile(request);
   }

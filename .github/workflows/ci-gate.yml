@@ -23,7 +23,7 @@ jobs:
           --health-retries 5
 
       minio:
-        image: bitnami/minio:latest
+        image: minio/minio:latest
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: super_secret_password_123
@@ -34,6 +34,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          -c "minio server /data"
 
     steps:
       - uses: actions/checkout@v4

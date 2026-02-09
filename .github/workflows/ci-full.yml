@@ -16,6 +16,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Compile
+        run: mvn clean compile
+
       - name: Start Infrastructure
         env:
           DB_NAME: cloud_storage_db

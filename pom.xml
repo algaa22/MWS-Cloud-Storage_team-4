@@ -136,7 +136,6 @@
 
     <build>
         <plugins>
-            <!-- Maven compiler plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -201,6 +200,7 @@
                 <version>3.5.4</version>
                 <configuration>
                     <excludes>**/*IT.java</excludes>
+                    <argLine>--enable-preview</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -209,6 +209,7 @@
                 <version>3.0.0-M9</version>
                 <configuration>
                     <includes>**/*IT.java</includes>
+                    <argLine>--enable-preview</argLine>
                 </configuration>
             </plugin>
         </plugins>

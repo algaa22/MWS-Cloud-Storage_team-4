@@ -13,8 +13,10 @@ import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("smoke")
 public class DirectorySmokeIT extends BaseStorageIT {
 
   @Test

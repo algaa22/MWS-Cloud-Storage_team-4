@@ -18,8 +18,10 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("integration")
 public class PostgresRepositoryTest extends BasePostgresTest {
 
   private static PostgresFileMetadataRepository fileMetadataRepository;

@@ -10,8 +10,10 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransfer
 import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
 import java.net.http.HttpResponse;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("integration")
 public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
 
   public SimpleUploadFileDetailedIT() {

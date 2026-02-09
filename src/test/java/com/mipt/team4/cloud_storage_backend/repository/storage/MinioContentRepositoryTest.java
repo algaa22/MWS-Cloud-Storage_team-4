@@ -12,10 +12,14 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
+@Tag("integration")
 class MinioContentRepositoryTest {
 
   private static final MinIOContainer MINIO = TestUtils.createMinioContainer();
@@ -34,7 +38,12 @@ class MinioContentRepositoryTest {
 
   @Test
   public void shouldCreateUnexistentBucket() {
-    assertTrue(repository.bucketExists(createTestBucket()));
+    String bucketName = createTestBucket();
+
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .until(() -> repository.bucketExists(bucketName));
   }
 
   @Test

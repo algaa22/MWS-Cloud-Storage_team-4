@@ -23,7 +23,7 @@ jobs:
           DB_PASSWORD: super_secret_password_123
           MINIO_USERNAME: minioadmin
           MINIO_PASSWORD: super_secret_password_123
-        run: docker-compose up -d postgres minio
+        run: docker compose up -d postgres minio
 
       - name: Wait for Postgres
         run: |

@@ -52,12 +52,12 @@ public class ChunkedUploadHandler {
 
   public void startChunkedUpload(HttpRequest request)
       throws TransferAlreadyStartedException,
-      QueryParameterNotFoundException,
-      HeaderNotFoundException,
-      ValidationFailedException,
-      StorageFileAlreadyExistsException,
-      UserNotFoundException,
-      StorageIllegalAccessException {
+          QueryParameterNotFoundException,
+          HeaderNotFoundException,
+          ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          UserNotFoundException,
+          StorageIllegalAccessException {
     if (isInProgress) {
       throw new TransferAlreadyStartedException();
     }
@@ -83,10 +83,10 @@ public class ChunkedUploadHandler {
 
   public void handleFileChunk(ChannelHandlerContext ctx, HttpContent content)
       throws TransferNotStartedYetException,
-      UserNotFoundException,
-      UploadSessionNotFoundException,
-      CombineChunksToPartException,
-      ValidationFailedException {
+          UserNotFoundException,
+          UploadSessionNotFoundException,
+          CombineChunksToPartException,
+          ValidationFailedException {
     if (!isInProgress) {
       throw new TransferNotStartedYetException();
     }
@@ -115,13 +115,13 @@ public class ChunkedUploadHandler {
 
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
       throws TransferNotStartedYetException,
-      UserNotFoundException,
-      UploadSessionNotFoundException,
-      CombineChunksToPartException,
-      ValidationFailedException,
-      StorageFileAlreadyExistsException,
-      TooSmallFilePartException,
-      MissingFilePartException {
+          UserNotFoundException,
+          UploadSessionNotFoundException,
+          CombineChunksToPartException,
+          ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          TooSmallFilePartException,
+          MissingFilePartException {
     if (!isInProgress) {
       throw new TransferNotStartedYetException();
     }

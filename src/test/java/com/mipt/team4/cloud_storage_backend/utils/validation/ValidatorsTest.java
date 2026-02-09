@@ -186,11 +186,11 @@ class ValidatorsTest {
 
   @Test
   public void shouldMergeSeveralValidators() {
-    ValidationResult result = Validators.all(
-        Validators.notNull("2", ""),
-        Validators.notNull("1", null),
-        Validators.notBlank("3", "")
-    );
+    ValidationResult result =
+        Validators.all(
+            Validators.notNull("2", ""),
+            Validators.notNull("1", null),
+            Validators.notBlank("3", ""));
 
     assertFalse(result.isValid());
     assertEquals(2, result.getErrors().size());

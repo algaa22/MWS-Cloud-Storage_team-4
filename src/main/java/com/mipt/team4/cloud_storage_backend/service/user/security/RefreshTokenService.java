@@ -23,32 +23,27 @@ public class RefreshTokenService {
   }
 
   public RefreshTokenEntity create(UUID userId) {
-    RefreshTokenEntity token = new RefreshTokenEntity(
-        UUID.randomUUID(),
-        userId,
-        generateToken(),
-        LocalDateTime.now().plusDays(30),
-        false
-    );
+    RefreshTokenEntity token =
+        new RefreshTokenEntity(
+            UUID.randomUUID(), userId, generateToken(), LocalDateTime.now().plusDays(30), false);
 
     repository.save(token);
     return token;
   }
 
   public RefreshTokenEntity validate(String token) {
-    return repository.findByToken(token)
+    return repository
+        .findByToken(token)
         .filter(t -> !t.revoked())
         .filter(t -> t.expiresAt().isAfter(LocalDateTime.now()))
         .orElse(null);
   }
 
   public void revoke(String token) {
-    repository.findByToken(token)
-        .ifPresent(t -> repository.revokeById(t.id()));
+    repository.findByToken(token).ifPresent(t -> repository.revokeById(t.id()));
   }
 
   public void revokeAllForUser(UUID userId) {
     repository.deleteByUserId(userId);
   }
 }
-

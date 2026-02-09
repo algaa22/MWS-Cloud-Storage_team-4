@@ -29,10 +29,10 @@ public record DirectoriesRequestHandler(DirectoryController directoryController)
   public void handleChangeDirectoryPathRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken)
       throws QueryParameterNotFoundException,
-      UserNotFoundException,
-      StorageFileAlreadyExistsException,
-      StorageEntityNotFoundException,
-      ValidationFailedException {
+          UserNotFoundException,
+          StorageFileAlreadyExistsException,
+          StorageEntityNotFoundException,
+          ValidationFailedException {
     String oldDirectoryPath;
     String newDirectoryPath;
 
@@ -49,13 +49,12 @@ public record DirectoriesRequestHandler(DirectoryController directoryController)
   public void handleDeleteDirectoryRequest(
       ChannelHandlerContext ctx, String directoryPath, String userToken)
       throws UserNotFoundException,
-      StorageEntityNotFoundException,
-      ValidationFailedException,
-      FileNotFoundException {
+          StorageEntityNotFoundException,
+          ValidationFailedException,
+          FileNotFoundException {
 
     directoryController.deleteDirectory(new SimpleDirectoryOperationDto(userToken, directoryPath));
 
-    ResponseUtils.sendSuccessResponse(
-        ctx, HttpResponseStatus.OK, "Directory successfully deleted");
+    ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "Directory successfully deleted");
   }
 }

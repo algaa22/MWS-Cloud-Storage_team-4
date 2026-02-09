@@ -12,8 +12,7 @@ public enum DatabaseConfig {
   private final String password;
 
   DatabaseConfig() {
-    ConfigSource source =
-        EnvConfigFactory.INSTANCE.getDefault();
+    ConfigSource source = EnvConfigFactory.INSTANCE.getDefault();
 
     this.url = source.getString("db.url").orElseThrow();
     this.name = source.getString("db.name").orElseThrow();

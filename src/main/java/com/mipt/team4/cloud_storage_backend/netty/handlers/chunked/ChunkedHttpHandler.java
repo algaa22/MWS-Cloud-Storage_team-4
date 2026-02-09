@@ -45,16 +45,16 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
         handleHttpContent(ctx, content);
       }
     } catch (StorageFileAlreadyExistsException
-             | UserNotFoundException
-             | UploadSessionNotFoundException
-             | HeaderNotFoundException
-             | TransferAlreadyStartedException
-             | TransferNotStartedYetException
-             | StorageEntityNotFoundException
-             | TooSmallFilePartException
-             | ValidationFailedException
-             | StorageIllegalAccessException
-             | QueryParameterNotFoundException e) {
+        | UserNotFoundException
+        | UploadSessionNotFoundException
+        | HeaderNotFoundException
+        | TransferAlreadyStartedException
+        | TransferNotStartedYetException
+        | StorageEntityNotFoundException
+        | TooSmallFilePartException
+        | ValidationFailedException
+        | StorageIllegalAccessException
+        | QueryParameterNotFoundException e) {
       ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
     } catch (CombineChunksToPartException | MissingFilePartException e) {
       ResponseUtils.sendInternalServerErrorResponse(ctx);
@@ -64,25 +64,25 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws StorageFileAlreadyExistsException,
-      UserNotFoundException,
-      StorageEntityNotFoundException,
-      ValidationFailedException,
-      StorageIllegalAccessException,
-      QueryParameterNotFoundException,
-      HeaderNotFoundException,
-      TransferAlreadyStartedException {
+          UserNotFoundException,
+          StorageEntityNotFoundException,
+          ValidationFailedException,
+          StorageIllegalAccessException,
+          QueryParameterNotFoundException,
+          HeaderNotFoundException,
+          TransferAlreadyStartedException {
     startChunkedTransfer(ctx, request);
   }
 
   private void startChunkedTransfer(ChannelHandlerContext ctx, HttpRequest request)
       throws StorageFileAlreadyExistsException,
-      UserNotFoundException,
-      ValidationFailedException,
-      StorageIllegalAccessException,
-      QueryParameterNotFoundException,
-      HeaderNotFoundException,
-      TransferAlreadyStartedException,
-      StorageEntityNotFoundException {
+          UserNotFoundException,
+          ValidationFailedException,
+          StorageIllegalAccessException,
+          QueryParameterNotFoundException,
+          HeaderNotFoundException,
+          TransferAlreadyStartedException,
+          StorageEntityNotFoundException {
     String uri = request.uri();
     HttpMethod method = request.method();
 
@@ -97,13 +97,13 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   private void handleHttpContent(ChannelHandlerContext ctx, HttpContent content)
       throws UserNotFoundException,
-      StorageFileAlreadyExistsException,
-      TooSmallFilePartException,
-      UploadSessionNotFoundException,
-      CombineChunksToPartException,
-      ValidationFailedException,
-      MissingFilePartException,
-      TransferNotStartedYetException {
+          StorageFileAlreadyExistsException,
+          TooSmallFilePartException,
+          UploadSessionNotFoundException,
+          CombineChunksToPartException,
+          ValidationFailedException,
+          MissingFilePartException,
+          TransferNotStartedYetException {
     if (content instanceof LastHttpContent) {
       chunkedUpload.completeChunkedUpload(ctx, (LastHttpContent) content);
     } else {

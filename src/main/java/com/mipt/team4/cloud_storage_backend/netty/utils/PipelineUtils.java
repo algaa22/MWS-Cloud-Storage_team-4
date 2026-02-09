@@ -10,15 +10,20 @@ import io.netty.handler.codec.http.HttpServerCodec;
 
 public class PipelineUtils {
 
-  public static void buildHttp11Pipeline(ChannelPipeline pipeline, FileController fileController,
-      DirectoryController directoryController, UserController userController) {
+  public static void buildHttp11Pipeline(
+      ChannelPipeline pipeline,
+      FileController fileController,
+      DirectoryController directoryController,
+      UserController userController) {
     pipeline.addLast(new HttpServerCodec());
-    finalizeHttpPipeline(pipeline, fileController, directoryController,
-        userController);
+    finalizeHttpPipeline(pipeline, fileController, directoryController, userController);
   }
 
-  public static void finalizeHttpPipeline(ChannelPipeline pipeline, FileController fileController,
-      DirectoryController directoryController, UserController userController) {
+  public static void finalizeHttpPipeline(
+      ChannelPipeline pipeline,
+      FileController fileController,
+      DirectoryController directoryController,
+      UserController userController) {
     pipeline.addLast(new CorsHandler());
     pipeline.addLast(
         new HttpTrafficStrategySelector(fileController, directoryController, userController));

@@ -34,11 +34,12 @@ public class ProtocolNegotiationHandler extends ApplicationProtocolNegotiationHa
 
     if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
       pipeline.addLast(Http2FrameCodecBuilder.forServer().build());
-      pipeline.addLast(new Http2MultiplexHandler(
-          new Http2StreamInitializer(fileController, directoryController, userController)));
+      pipeline.addLast(
+          new Http2MultiplexHandler(
+              new Http2StreamInitializer(fileController, directoryController, userController)));
     } else if (ApplicationProtocolNames.HTTP_1_1.equals(protocol)) {
-      PipelineUtils.buildHttp11Pipeline(pipeline, fileController, directoryController,
-          userController);
+      PipelineUtils.buildHttp11Pipeline(
+          pipeline, fileController, directoryController, userController);
     } else {
       ctx.channel().close();
     }

@@ -15,8 +15,10 @@ public class Http2StreamInitializer extends ChannelInitializer<Channel> {
   private final DirectoryController directoryController;
   private final UserController userController;
 
-  public Http2StreamInitializer(FileController fileController,
-      DirectoryController directoryController, UserController userController) {
+  public Http2StreamInitializer(
+      FileController fileController,
+      DirectoryController directoryController,
+      UserController userController) {
     this.fileController = fileController;
     this.directoryController = directoryController;
     this.userController = userController;
@@ -27,7 +29,7 @@ public class Http2StreamInitializer extends ChannelInitializer<Channel> {
     ChannelPipeline pipeline = channel.pipeline();
 
     pipeline.addLast(new Http2StreamFrameToHttpObjectCodec(true));
-    PipelineUtils.finalizeHttpPipeline(pipeline, fileController, directoryController,
-        userController);
+    PipelineUtils.finalizeHttpPipeline(
+        pipeline, fileController, directoryController, userController);
   }
 }

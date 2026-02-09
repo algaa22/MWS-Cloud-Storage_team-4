@@ -190,8 +190,8 @@ public class Validators {
     return validate(
         visibility != null
             && (visibility.equals("public")
-            || visibility.equals("private")
-            || visibility.equals("link_only")),
+                || visibility.equals("private")
+                || visibility.equals("link_only")),
         "Visibility",
         "Visibility must be one of this values: {" + FileVisibility.NAMES + "}",
         "VISIBILITY");

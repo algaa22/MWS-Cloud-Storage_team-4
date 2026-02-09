@@ -14,11 +14,14 @@ public class GlobalErrorHandler extends ChannelDuplexHandler {
 
   @Override
   public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-    ctx.write(msg, promise.addListener(future -> {
-      if (!future.isSuccess()) {
-        exceptionCaught(ctx, future.cause());
-      }
-    }));
+    ctx.write(
+        msg,
+        promise.addListener(
+            future -> {
+              if (!future.isSuccess()) {
+                exceptionCaught(ctx, future.cause());
+              }
+            }));
   }
 
   @Override

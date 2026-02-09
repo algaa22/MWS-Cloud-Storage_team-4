@@ -27,8 +27,10 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   private final UserController userController;
   private final ServerProtocol protocol;
 
-  public MainChannelInitializer(FileController fileController,
-      DirectoryController directoryController, UserController userController,
+  public MainChannelInitializer(
+      FileController fileController,
+      DirectoryController directoryController,
+      UserController userController,
       ServerProtocol protocol) {
     this.fileController = fileController;
     this.directoryController = directoryController;
@@ -38,7 +40,11 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
 
   @Override
   protected void initChannel(SocketChannel socketChannel)
-      throws IOException, UnrecoverableKeyException, CertificateException, NoSuchAlgorithmException, KeyStoreException {
+      throws IOException,
+          UnrecoverableKeyException,
+          CertificateException,
+          NoSuchAlgorithmException,
+          KeyStoreException {
     ChannelPipeline pipeline = socketChannel.pipeline();
 
     if (NettyConfig.INSTANCE.isEnableLogging()) {
@@ -50,8 +56,8 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
       pipeline.addLast(
           new ProtocolNegotiationHandler(fileController, directoryController, userController));
     } else {
-      PipelineUtils.buildHttp11Pipeline(pipeline, fileController, directoryController,
-          userController);
+      PipelineUtils.buildHttp11Pipeline(
+          pipeline, fileController, directoryController, userController);
     }
 
     pipeline.addLast(new GlobalErrorHandler());

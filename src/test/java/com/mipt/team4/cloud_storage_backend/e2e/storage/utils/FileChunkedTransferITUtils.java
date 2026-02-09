@@ -50,8 +50,8 @@ public class FileChunkedTransferITUtils {
 
   public static DownloadResult sendDownloadRequest(
       CloseableHttpClient client, String userToken, String targetFilePath) throws IOException {
-    HttpGet request = new HttpGet(
-        TestUtils.createUriString("/api/files/download?path=" + targetFilePath));
+    HttpGet request =
+        new HttpGet(TestUtils.createUriString("/api/files/download?path=" + targetFilePath));
 
     request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
     request.setHeader("X-Auth-Token", userToken);

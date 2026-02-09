@@ -33,10 +33,8 @@ public class DirectoryOperationsITUtils {
   }
 
   public static HttpResponse<String> sendChangeDirectoryPathRequest(
-      HttpClient client,
-      String currentUserToken,
-      String oldDirectoryPath,
-      String newDirectoryPath) throws IOException, InterruptedException {
+      HttpClient client, String currentUserToken, String oldDirectoryPath, String newDirectoryPath)
+      throws IOException, InterruptedException {
     HttpRequest request =
         TestUtils.createRequest(
                 "/api/directories?from=%s&to=%s".formatted(oldDirectoryPath, newDirectoryPath))

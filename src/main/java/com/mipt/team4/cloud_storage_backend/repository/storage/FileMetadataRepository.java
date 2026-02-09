@@ -18,8 +18,7 @@ public interface FileMetadataRepository {
 
   boolean fileExists(UUID userId, String path);
 
-  void deleteFile(UUID userId, String path)
-      throws StorageEntityNotFoundException;
+  void deleteFile(UUID userId, String path) throws StorageEntityNotFoundException;
 
   void updateFile(StorageEntity fileEntity);
 }

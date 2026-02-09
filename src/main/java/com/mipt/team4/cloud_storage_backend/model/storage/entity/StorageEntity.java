@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;

@@ -19,10 +19,10 @@ import java.util.List;
 
 public class PostgresConnection implements DatabaseConnection {
 
-  private Connection connection;
   private final String databaseUrl;
   private final String databaseUsername;
   private final String databasePassword;
+  private Connection connection;
 
   public PostgresConnection(String databaseUrl, String databaseUsername, String databasePassword) {
     this.databaseUrl = databaseUrl;

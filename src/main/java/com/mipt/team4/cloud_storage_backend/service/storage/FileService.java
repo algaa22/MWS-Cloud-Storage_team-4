@@ -20,7 +20,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;

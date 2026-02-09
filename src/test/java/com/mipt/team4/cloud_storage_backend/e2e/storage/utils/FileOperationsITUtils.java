@@ -52,7 +52,7 @@ public class FileOperationsITUtils {
     String dirParam = "";
 
     if (searchDirectory != null) {
-        dirParam = "&directory=" + URLEncoder.encode(searchDirectory, StandardCharsets.UTF_8);
+      dirParam = "&directory=" + URLEncoder.encode(searchDirectory, StandardCharsets.UTF_8);
     }
 
     String endpoint =

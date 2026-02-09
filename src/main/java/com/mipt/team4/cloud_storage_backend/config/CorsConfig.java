@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
-import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.factories.YamlConfigFactory;
 
 public enum CorsConfig {

@@ -35,28 +35,6 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
 
   private PipelineType previousPipeline = null;
 
-  public enum PipelineType {
-    CHUNKED,
-    AGGREGATED;
-
-    public static PipelineType from(HttpRequest request) throws ParseException {
-      if (request.method() == HttpMethod.POST) {
-        int fileSize =
-            SafeParser.parseInt("File size", RequestUtils.getHeader(request, "X-File-Size", "0"));
-
-        if (fileSize > StorageConfig.INSTANCE.getMaxAggregatedContentLength()) {
-          return CHUNKED;
-        }
-      }
-
-      if (request.method() == HttpMethod.GET && request.uri().startsWith("/api/files/download")) {
-        return CHUNKED;
-      }
-
-      return AGGREGATED;
-    }
-  }
-
   public HttpTrafficStrategySelector(
       FileController fileController,
       DirectoryController directoryController,
@@ -140,5 +118,27 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
             HttpResponseStatus.BAD_REQUEST,
             msg.getClass().getSimpleName() + " before pipeline configuration with HttpRequest")
         .addListener(ChannelFutureListener.CLOSE);
+  }
+
+  public enum PipelineType {
+    CHUNKED,
+    AGGREGATED;
+
+    public static PipelineType from(HttpRequest request) throws ParseException {
+      if (request.method() == HttpMethod.POST) {
+        int fileSize =
+            SafeParser.parseInt("File size", RequestUtils.getHeader(request, "X-File-Size", "0"));
+
+        if (fileSize > StorageConfig.INSTANCE.getMaxAggregatedContentLength()) {
+          return CHUNKED;
+        }
+      }
+
+      if (request.method() == HttpMethod.GET && request.uri().startsWith("/api/files/download")) {
+        return CHUNKED;
+      }
+
+      return AGGREGATED;
+    }
   }
 }

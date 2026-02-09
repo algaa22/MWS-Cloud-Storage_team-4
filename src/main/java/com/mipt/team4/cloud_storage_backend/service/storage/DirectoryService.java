@@ -7,7 +7,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeDirectoryPat
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOperationDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;

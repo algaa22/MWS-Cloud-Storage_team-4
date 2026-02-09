@@ -9,9 +9,11 @@ import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
 import java.net.http.HttpResponse;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
+@Tag("integration")
 public class GetFilePathsDetailedIT extends BaseDetailedFileIT {
 
   public GetFilePathsDetailedIT() {

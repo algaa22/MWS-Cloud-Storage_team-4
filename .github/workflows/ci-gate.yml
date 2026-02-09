@@ -23,7 +23,7 @@ jobs:
           --health-retries 5
 
       minio:
-        image: minio/minio:latest
+        image: minio/minio:edge
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: super_secret_password_123

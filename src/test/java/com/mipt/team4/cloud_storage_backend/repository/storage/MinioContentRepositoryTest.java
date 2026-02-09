@@ -42,7 +42,7 @@ class MinioContentRepositoryTest {
 
     Awaitility.await()
         .atMost(5, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
         .until(() -> repository.bucketExists(bucketName));
   }
 

@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
+import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
@@ -37,14 +39,21 @@ public class FileService {
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
+  private final StorageConfig storageConfig;
+  private final MinioConfig minioConfig;
 
+  // todo: длинный конструктор?
   public FileService(
       StorageRepository storageRepository,
       UserRepository userRepository,
-      UserSessionService userSessionService) {
+      UserSessionService userSessionService,
+      StorageConfig storageConfig,
+      MinioConfig minioConfig) {
     this.storageRepository = storageRepository;
     this.userSessionService = userSessionService;
     this.userRepository = userRepository;
+    this.storageConfig = storageConfig;
+    this.minioConfig = minioConfig;
   }
 
   public void startChunkedUploadSession(FileChunkedUploadDto uploadSession)
@@ -78,7 +87,7 @@ public class FileService {
     uploadState.chunks.add(uploadRequest.chunkData());
     uploadState.addPartSize(uploadRequest.chunkData().length);
 
-    if (uploadState.getPartSize() >= StorageConfigTEMP.INSTANCE.getMinFilePartSize()) {
+    if (uploadState.getPartSize() >= minioConfig.minFilePartSize()) {
       uploadPart(uploadState);
     }
   }
@@ -97,7 +106,7 @@ public class FileService {
 
     try {
       if (uploadState.getTotalParts() == 0) {
-        throw new TooSmallFilePartException();
+        throw new TooSmallFilePartException(minioConfig.minFilePartSize());
       }
 
       if (uploadState.getPartSize() != 0) {

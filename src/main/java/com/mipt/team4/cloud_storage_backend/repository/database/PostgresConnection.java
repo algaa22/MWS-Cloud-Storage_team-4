@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
+import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCheckConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCloseConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbConnectionException;
@@ -15,24 +16,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.xml.crypto.Data;
 
 public class PostgresConnection implements DatabaseConnection {
 
-  private final String databaseUrl;
-  private final String databaseUsername;
-  private final String databasePassword;
   private Connection connection;
+  private DatabaseConfig databaseConfig;
 
-  public PostgresConnection(String databaseUrl, String databaseUsername, String databasePassword) {
-    this.databaseUrl = databaseUrl;
-    this.databaseUsername = databaseUsername;
-    this.databasePassword = databasePassword;
-  }
-
-  public PostgresConnection(String databaseUrl) {
-    this.databaseUrl = databaseUrl;
-    this.databaseUsername = DatabaseConfigTEMP.INSTANCE.getUsername();
-    this.databasePassword = DatabaseConfigTEMP.INSTANCE.getPassword();
+  public PostgresConnection(DatabaseConfig databaseConfig) {
+    this.databaseConfig = databaseConfig;
   }
 
   @Override
@@ -48,7 +40,8 @@ public class PostgresConnection implements DatabaseConnection {
     }
 
     try {
-      connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword);
+      connection =
+          DriverManager.getConnection(databaseConfig.url(), databaseConfig.username(), databaseConfig.password());
     } catch (SQLException e) {
       throw new DbConnectionException(e);
     }

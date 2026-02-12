@@ -31,9 +31,9 @@ public class Validators {
     return combined;
   }
 
-  public static ValidationResult validToken(String token) {
+  public static ValidationResult validToken(JwtService jwtService, String token) {
     return validate(
-        JwtService.isTokenValid(token),
+        jwtService.isTokenValid(token),
         "User token",
         "User token expired or not valid",
         "VALID_TOKEN");

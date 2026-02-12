@@ -3,8 +3,8 @@ package com.mipt.team4.cloud_storage_backend.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "storage")
-public record StorageConfig(Http http, Auth auth, Quotas quotas) {
-  public record Http(
+public record StorageConfig(Rest rest, Auth auth, Quotas quotas) {
+  public record Rest(
       int maxAggregatedContentLength,
       long maxFileSize,
       long maxFileChunkSize,

@@ -2,10 +2,10 @@ package com.mipt.team4.cloud_storage_backend.exception.transfer;
 
 public class TooSmallFilePartException extends Exception {
 
-  public TooSmallFilePartException() {
+  public TooSmallFilePartException(long minFilePartSize) {
     super(
         "File part must be at least "
-            + StorageConfigTEMP.INSTANCE.getMinFilePartSize()
+            + minFilePartSize
             + " bytes in size");
   }
 }

@@ -19,21 +19,22 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenService;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 public class UserService {
-  private final StorageConfig storageConfig;
-
   private final UserRepository userRepository;
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
+  private final StorageConfig storageConfig;
 
   public UserService(
       StorageConfig storageConfig,
       UserRepository userRepository,
       UserSessionService userSessionService,
       RefreshTokenService refreshTokenService) {
+    this.storageConfig = storageConfig;
     this.userRepository = userRepository;
     this.userSessionService = userSessionService;
     this.refreshTokenService = refreshTokenService;
@@ -70,7 +71,12 @@ public class UserService {
     String hash = PasswordHasher.hash(registerRequest.password());
     UserEntity userEntity =
         new UserEntity(
-            UUID.randomUUID(), registerRequest.userName(), registerRequest.email(), hash);
+            UUID.randomUUID(),
+            registerRequest.userName(),
+            registerRequest.email(),
+            hash,
+            storageConfig.quotas().defaultStorageLimit(),
+            LocalDateTime.now());
 
     userRepository.addUser(userEntity);
 

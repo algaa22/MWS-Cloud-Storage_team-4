@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.channel;
 
+import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
@@ -25,16 +26,19 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   private final DirectoryController directoryController;
   private final UserController userController;
   private final ServerProtocol protocol;
+  private final NettyConfig nettyConfig;
 
   public MainChannelInitializer(
       FileController fileController,
       DirectoryController directoryController,
       UserController userController,
-      ServerProtocol protocol) {
+      ServerProtocol protocol,
+      NettyConfig nettyConfig) {
     this.fileController = fileController;
     this.directoryController = directoryController;
     this.userController = userController;
     this.protocol = protocol;
+    this.nettyConfig = nettyConfig;
   }
 
   @Override
@@ -46,7 +50,7 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
           KeyStoreException {
     ChannelPipeline pipeline = socketChannel.pipeline();
 
-    if (NettyConfigTEMP.INSTANCE.isEnableLogging()) {
+    if (nettyConfig.enableLogging()) {
       pipeline.addFirst(new LoggingHandler(LogLevel.INFO));
     }
 

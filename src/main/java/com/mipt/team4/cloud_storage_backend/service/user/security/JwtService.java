@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user.security;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -13,15 +14,19 @@ import java.util.UUID;
 
 public class JwtService {
 
+  private final StorageConfig storageConfig;
+
   private final long accessTokenExpirationSec;
   private final long refreshTokenExpirationSec;
 
-  public JwtService(long accessTokenExpirationSec, long refreshTokenExpirationSec) {
+  public JwtService(
+      StorageConfig storageConfig, long accessTokenExpirationSec, long refreshTokenExpirationSec) {
+    this.storageConfig = storageConfig;
     this.accessTokenExpirationSec = accessTokenExpirationSec;
     this.refreshTokenExpirationSec = refreshTokenExpirationSec;
   }
 
-  public static boolean isTokenValid(String token) {
+  public boolean isTokenValid(String token) {
     try {
       Jwts.parserBuilder()
           .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
@@ -33,8 +38,8 @@ public class JwtService {
     }
   }
 
-  private static String getJwtSecretKey() {
-    return StorageConfigTEMP.INSTANCE.getJwtSecretKey();
+  private String getJwtSecretKey() {
+    return storageConfig.auth().jwtSecretKey();
   }
 
   public String generateAccessToken(UserEntity user) {

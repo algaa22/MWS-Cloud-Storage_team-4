@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
@@ -79,7 +78,7 @@ public class FileService {
     uploadState.chunks.add(uploadRequest.chunkData());
     uploadState.addPartSize(uploadRequest.chunkData().length);
 
-    if (uploadState.getPartSize() >= StorageConfig.INSTANCE.getMinFilePartSize()) {
+    if (uploadState.getPartSize() >= StorageConfigTEMP.INSTANCE.getMinFilePartSize()) {
       uploadPart(uploadState);
     }
   }

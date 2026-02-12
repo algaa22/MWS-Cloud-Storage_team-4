@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
@@ -54,7 +53,7 @@ public class ChunkedDownloadHandler {
     ChunkedInput<HttpContent> chunkedInput =
         new CustomChunkedInput(
             fileDownload.stream(),
-            StorageConfig.INSTANCE.getFileDownloadChunkSize(),
+            StorageConfigTEMP.INSTANCE.getFileDownloadChunkSize(),
             fileDownload.size());
 
     ChannelFuture future = ctx.writeAndFlush(chunkedInput);

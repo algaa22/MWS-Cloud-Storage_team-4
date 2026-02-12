@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
+import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
@@ -22,12 +23,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class UserService {
+  private final StorageConfig storageConfig;
 
   private final UserRepository userRepository;
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
 
   public UserService(
+      StorageConfig storageConfig,
       UserRepository userRepository,
       UserSessionService userSessionService,
       RefreshTokenService refreshTokenService) {

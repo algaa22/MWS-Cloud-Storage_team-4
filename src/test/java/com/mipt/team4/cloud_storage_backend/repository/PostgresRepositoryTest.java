@@ -14,6 +14,7 @@ import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnecti
 import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -56,7 +57,8 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   private static UUID addTestUser() throws UserAlreadyExistsException {
     UUID uuid = UUID.randomUUID();
 
-    userRepository.addUser(new UserEntity(uuid, "name", "email", "password"));
+    userRepository.addUser(
+        new UserEntity(uuid, "name", "email", "password", (long) 1e10, LocalDateTime.now()));
 
     return uuid;
   }

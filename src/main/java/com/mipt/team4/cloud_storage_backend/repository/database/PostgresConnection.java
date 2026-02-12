@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
-import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCheckConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCloseConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbConnectionException;
@@ -32,8 +31,8 @@ public class PostgresConnection implements DatabaseConnection {
 
   public PostgresConnection(String databaseUrl) {
     this.databaseUrl = databaseUrl;
-    this.databaseUsername = DatabaseConfig.INSTANCE.getUsername();
-    this.databasePassword = DatabaseConfig.INSTANCE.getPassword();
+    this.databaseUsername = DatabaseConfigTEMP.INSTANCE.getUsername();
+    this.databasePassword = DatabaseConfigTEMP.INSTANCE.getPassword();
   }
 
   @Override

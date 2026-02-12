@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.model.user.entity;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -15,14 +14,15 @@ public class UserEntity {
   private long usedStorage;
   private LocalDateTime createdAt;
 
-  public UserEntity(UUID id, String name, String email, String password) {
+  public UserEntity(UUID id, String name, String email, String password, long storageLimit, LocalDateTime createdAt) {
     this.id = id;
     this.name = name;
     this.email = email;
     this.passwordHash = password;
-    this.storageLimit = StorageConfig.INSTANCE.getDefaultStorageLimit();
+    this.storageLimit = storageLimit;
+    this.createdAt = createdAt;
+
     this.usedStorage = 0L;
-    this.createdAt = LocalDateTime.now();
     this.isActive = true;
   }
 

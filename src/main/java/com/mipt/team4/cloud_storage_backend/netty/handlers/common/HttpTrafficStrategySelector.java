@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
@@ -34,6 +33,28 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   private final UserController userController;
 
   private PipelineType previousPipeline = null;
+
+  public enum PipelineType {
+    CHUNKED,
+    AGGREGATED;
+
+    public static PipelineType from(HttpRequest request) throws ParseException {
+      if (request.method() == HttpMethod.POST) {
+        int fileSize =
+            SafeParser.parseInt("File size", RequestUtils.getHeader(request, "X-File-Size", "0"));
+
+        if (fileSize > StorageConfigTEMP.INSTANCE.getMaxAggregatedContentLength()) {
+          return CHUNKED;
+        }
+      }
+
+      if (request.method() == HttpMethod.GET && request.uri().startsWith("/api/files/download")) {
+        return CHUNKED;
+      }
+
+      return AGGREGATED;
+    }
+  }
 
   public HttpTrafficStrategySelector(
       FileController fileController,
@@ -95,7 +116,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       pipeline.addLast(new ChunkedHttpHandler(fileController));
     } else {
       pipeline.addLast(
-          new HttpObjectAggregator(StorageConfig.INSTANCE.getMaxAggregatedContentLength()));
+          new HttpObjectAggregator(StorageConfigTEMP.INSTANCE.getMaxAggregatedContentLength()));
       pipeline.addLast(
           new AggregatedHttpHandler(fileController, directoryController, userController));
     }
@@ -118,27 +139,5 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
             HttpResponseStatus.BAD_REQUEST,
             msg.getClass().getSimpleName() + " before pipeline configuration with HttpRequest")
         .addListener(ChannelFutureListener.CLOSE);
-  }
-
-  public enum PipelineType {
-    CHUNKED,
-    AGGREGATED;
-
-    public static PipelineType from(HttpRequest request) throws ParseException {
-      if (request.method() == HttpMethod.POST) {
-        int fileSize =
-            SafeParser.parseInt("File size", RequestUtils.getHeader(request, "X-File-Size", "0"));
-
-        if (fileSize > StorageConfig.INSTANCE.getMaxAggregatedContentLength()) {
-          return CHUNKED;
-        }
-      }
-
-      if (request.method() == HttpMethod.GET && request.uri().startsWith("/api/files/download")) {
-        return CHUNKED;
-      }
-
-      return AGGREGATED;
-    }
   }
 }

@@ -1,9 +1,5 @@
 package com.mipt.team4.cloud_storage_backend;
 
-import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
-import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
-import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
@@ -27,7 +23,7 @@ public class CloudStorageApplication {
   private static NettyServerManager server;
 
   static void main(String[] args) {
-    start(DatabaseConfig.INSTANCE.getUrl(), MinioConfig.INSTANCE.getUrl());
+    start(DatabaseConfigTEMP.INSTANCE.getUrl(), MinioConfigTEMP.INSTANCE.getUrl());
   }
 
   public static void start(String postgresUrl, String minioUrl) {
@@ -50,8 +46,8 @@ public class CloudStorageApplication {
 
     JwtService jwtService =
         new JwtService(
-            StorageConfig.INSTANCE.getAccessTokenExpirationSec(),
-            StorageConfig.INSTANCE.getRefreshTokenExpirationSec());
+            StorageConfigTEMP.INSTANCE.getAccessTokenExpirationSec(),
+            StorageConfigTEMP.INSTANCE.getRefreshTokenExpirationSec());
     UserSessionService userSessionService = new UserSessionService(jwtService);
 
     RefreshTokenRepository refreshTokenRepository = new RefreshTokenRepository(postgresConnection);
@@ -85,9 +81,9 @@ public class CloudStorageApplication {
     CountDownLatch startupLatch = server.getStartupLatch();
 
     try {
-      if (!startupLatch.await(NettyConfig.INSTANCE.getStartTimeoutSec(), TimeUnit.SECONDS)) {
+      if (!startupLatch.await(NettyConfigTEMP.INSTANCE.getStartTimeoutSec(), TimeUnit.SECONDS)) {
         throw new ServerStartException(
-            "Server start timeout after " + NettyConfig.INSTANCE.getStartTimeoutSec());
+            "Server start timeout after " + NettyConfigTEMP.INSTANCE.getStartTimeoutSec());
       }
     } catch (InterruptedException e) {
       throw new ServerStartException(e);

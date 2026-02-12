@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
-import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
 import io.minio.BucketExistsArgs;
 import io.minio.CreateMultipartUploadResponse;
 import io.minio.GetObjectArgs;
@@ -42,13 +41,13 @@ public class MinioContentRepository implements FileContentRepository {
       minioClient =
           MinioAsyncClient.builder()
               .endpoint(minioUrl)
-              .credentials(MinioConfig.INSTANCE.getUsername(), MinioConfig.INSTANCE.getPassword())
+              .credentials(MinioConfigTEMP.INSTANCE.getUsername(), MinioConfigTEMP.INSTANCE.getPassword())
               .build();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
 
-    createBucket(MinioConfig.INSTANCE.getUserDataBucketName());
+    createBucket(MinioConfigTEMP.INSTANCE.getUserDataBucketName());
   }
 
   @Override
@@ -56,11 +55,11 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
     } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException e) {
+             | InternalException
+             | InvalidKeyException
+             | IOException
+             | NoSuchAlgorithmException
+             | XmlParserException e) {
       throw new RuntimeException(e);
     }
   }
@@ -70,13 +69,13 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build()).get();
     } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException
-        | ExecutionException
-        | InterruptedException e) {
+             | InternalException
+             | InvalidKeyException
+             | IOException
+             | NoSuchAlgorithmException
+             | XmlParserException
+             | ExecutionException
+             | InterruptedException e) {
       throw new RuntimeException(e);
     }
   }
@@ -89,20 +88,20 @@ public class MinioContentRepository implements FileContentRepository {
       response =
           minioClient
               .createMultipartUploadAsync(
-                  MinioConfig.INSTANCE.getUserDataBucketName(),
+                  MinioConfigTEMP.INSTANCE.getUserDataBucketName(),
                   "eu-central-1",
                   s3Key,
                   EMPTY_MAP,
                   EMPTY_MAP)
               .get();
     } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException
-        | ExecutionException
-        | InterruptedException e) {
+             | InternalException
+             | InvalidKeyException
+             | IOException
+             | NoSuchAlgorithmException
+             | XmlParserException
+             | ExecutionException
+             | InterruptedException e) {
       throw new RuntimeException(e);
     }
 
@@ -118,7 +117,7 @@ public class MinioContentRepository implements FileContentRepository {
       response =
           minioClient
               .uploadPartAsync(
-                  MinioConfig.INSTANCE.getUserDataBucketName(),
+                  MinioConfigTEMP.INSTANCE.getUserDataBucketName(),
                   "eu-central-1",
                   s3Key,
                   inputStream,
@@ -129,13 +128,13 @@ public class MinioContentRepository implements FileContentRepository {
                   EMPTY_MAP)
               .get();
     } catch (InterruptedException
-        | XmlParserException
-        | NoSuchAlgorithmException
-        | IOException
-        | InvalidKeyException
-        | InternalException
-        | InsufficientDataException
-        | ExecutionException ex) {
+             | XmlParserException
+             | NoSuchAlgorithmException
+             | IOException
+             | InvalidKeyException
+             | InternalException
+             | InsufficientDataException
+             | ExecutionException ex) {
       throw new RuntimeException(ex);
     }
 
@@ -148,7 +147,7 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient
           .completeMultipartUploadAsync(
-              MinioConfig.INSTANCE.getUserDataBucketName(),
+              MinioConfigTEMP.INSTANCE.getUserDataBucketName(),
               "eu-central-1",
               s3Key,
               uploadId,
@@ -157,13 +156,13 @@ public class MinioContentRepository implements FileContentRepository {
               EMPTY_MAP)
           .get();
     } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException
-        | ExecutionException
-        | InterruptedException e) {
+             | InternalException
+             | InvalidKeyException
+             | IOException
+             | NoSuchAlgorithmException
+             | XmlParserException
+             | ExecutionException
+             | InterruptedException e) {
       throw new RuntimeException(e);
     }
   }
@@ -176,19 +175,19 @@ public class MinioContentRepository implements FileContentRepository {
       minioClient
           .putObject(
               PutObjectArgs.builder()
-                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .bucket(MinioConfigTEMP.INSTANCE.getUserDataBucketName())
                   .object(s3Key)
                   .stream(stream, data.length, -1)
                   .build())
           .get();
     } catch (InsufficientDataException
-        | XmlParserException
-        | NoSuchAlgorithmException
-        | IOException
-        | InvalidKeyException
-        | InternalException
-        | ExecutionException
-        | InterruptedException e) {
+             | XmlParserException
+             | NoSuchAlgorithmException
+             | IOException
+             | InvalidKeyException
+             | InternalException
+             | ExecutionException
+             | InterruptedException e) {
       throw new RuntimeException(e);
     }
   }
@@ -199,18 +198,12 @@ public class MinioContentRepository implements FileContentRepository {
       return minioClient
           .getObject(
               GetObjectArgs.builder()
-                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .bucket(MinioConfigTEMP.INSTANCE.getUserDataBucketName())
                   .object(s3Key)
-                  .build())
-          .get();
-    } catch (InsufficientDataException
-        | XmlParserException
-        | NoSuchAlgorithmException
-        | IOException
-        | InvalidKeyException
-        | InternalException
-        | InterruptedException
-        | ExecutionException e) {
+                  .build()).get();
+    } catch (InsufficientDataException | XmlParserException | NoSuchAlgorithmException |
+             IOException | InvalidKeyException | InternalException | InterruptedException |
+             ExecutionException e) {
       throw new RuntimeException(e);
     }
   }
@@ -218,13 +211,10 @@ public class MinioContentRepository implements FileContentRepository {
   @Override
   public boolean objectExists(String s3Key) {
     try {
-      minioClient
-          .statObject(
-              StatObjectArgs.builder()
-                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
-                  .object(s3Key)
-                  .build())
-          .get();
+      minioClient.statObject(StatObjectArgs.builder()
+          .bucket(MinioConfigTEMP.INSTANCE.getUserDataBucketName())
+          .object(s3Key)
+          .build()).get();
 
       return true;
     } catch (ExecutionException e) {
@@ -235,13 +225,8 @@ public class MinioContentRepository implements FileContentRepository {
       }
 
       throw new RuntimeException(e);
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException
-        | InterruptedException e) {
+    } catch (InsufficientDataException | InternalException | InvalidKeyException | IOException |
+             NoSuchAlgorithmException | XmlParserException | InterruptedException e) {
       throw new RuntimeException(e);
     }
   }
@@ -251,15 +236,15 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient.removeObject(
           RemoveObjectArgs.builder()
-              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+              .bucket(MinioConfigTEMP.INSTANCE.getUserDataBucketName())
               .object(s3Key)
               .build());
     } catch (InsufficientDataException
-        | XmlParserException
-        | NoSuchAlgorithmException
-        | IOException
-        | InvalidKeyException
-        | InternalException e) {
+             | XmlParserException
+             | NoSuchAlgorithmException
+             | IOException
+             | InvalidKeyException
+             | InternalException e) {
       throw new RuntimeException(e);
     }
   }

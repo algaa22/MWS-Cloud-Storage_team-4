@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.service.user.security;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -35,7 +34,7 @@ public class JwtService {
   }
 
   private static String getJwtSecretKey() {
-    return StorageConfig.INSTANCE.getJwtSecretKey();
+    return StorageConfigTEMP.INSTANCE.getJwtSecretKey();
   }
 
   public String generateAccessToken(UserEntity user) {

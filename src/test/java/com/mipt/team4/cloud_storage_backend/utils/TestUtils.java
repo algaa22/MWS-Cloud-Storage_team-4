@@ -1,8 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
-import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
-import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
-import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
+
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.io.IOException;
 import java.net.URI;
@@ -20,15 +18,15 @@ public class TestUtils {
 
   public static PostgreSQLContainer<?> createPostgresContainer() {
     return new PostgreSQLContainer<>("postgres:18.0")
-        .withDatabaseName(DatabaseConfig.INSTANCE.getName())
-        .withUsername(DatabaseConfig.INSTANCE.getUsername())
-        .withPassword(DatabaseConfig.INSTANCE.getPassword());
+        .withDatabaseName(DatabaseConfigTEMP.INSTANCE.getName())
+        .withUsername(DatabaseConfigTEMP.INSTANCE.getUsername())
+        .withPassword(DatabaseConfigTEMP.INSTANCE.getPassword());
   }
 
   public static MinIOContainer createMinioContainer() {
     return new MinIOContainer("minio/minio:latest")
-        .withUserName(MinioConfig.INSTANCE.getUsername())
-        .withPassword(MinioConfig.INSTANCE.getPassword());
+        .withUserName(MinioConfigTEMP.INSTANCE.getUsername())
+        .withPassword(MinioConfigTEMP.INSTANCE.getPassword());
   }
 
   public static PostgresConnection createConnection(PostgreSQLContainer<?> postgresContainer) {
@@ -47,7 +45,7 @@ public class TestUtils {
   }
 
   public static String createUriString(String endpoint) {
-    return "http://localhost:" + NettyConfig.INSTANCE.getHttpPort() + endpoint;
+    return "http://localhost:" + NettyConfigTEMP.INSTANCE.getHttpPort() + endpoint;
   }
 
   public static JsonNode getRootNodeFromResponse(HttpResponse<String> response) throws IOException {

@@ -34,9 +34,10 @@ public class MinioContentRepository implements FileContentRepository {
   private final MinioConfig minioConfig;
   private MinioAsyncClient minioClient;
 
-  public MinioContentRepository(String minioUrl, MinioConfig minioConfig) {
+  public MinioContentRepository(MinioConfig minioConfig) {
     this.minioConfig = minioConfig;
-    initialize(minioUrl);
+
+    initialize(minioConfig.url());
   }
 
   private void initialize(String minioUrl) {

@@ -23,8 +23,19 @@ cors:
     allow-credentials: true
     max-age: 3600
 
+database:
+  url: ${DB_URL}
+  name: ${DB_NAME}
+  username: ${DB_USERNAME}
+  password: ${DB_PASSWORD}
+
 minio:
+  url: ${MINIO_URL}
+  username: ${MINIO_USERNAME}
+  password: ${MINIO_PASSWORD}
+
   min-file-part-size: 5242880 # 5mb
+
   user-data-bucket:
     name: user-data
 

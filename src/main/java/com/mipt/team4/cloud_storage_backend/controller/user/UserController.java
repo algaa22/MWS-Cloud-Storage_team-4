@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
@@ -15,10 +14,11 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
+import org.springframework.stereotype.Controller;
 
+@Controller
 public class UserController {
 
-  private final ObjectMapper mapper = new ObjectMapper();
   private final UserService service;
 
   public UserController(UserService service) {

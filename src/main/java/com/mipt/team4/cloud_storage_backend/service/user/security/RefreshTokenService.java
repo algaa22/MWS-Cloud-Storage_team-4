@@ -6,14 +6,17 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
+@Service
 public class RefreshTokenService {
 
   private final RefreshTokenRepository repository;
-  private final SecureRandom random = new SecureRandom();
+  private final SecureRandom random;
 
-  public RefreshTokenService(RefreshTokenRepository repository) {
+  public RefreshTokenService(RefreshTokenRepository repository, SecureRandom random) {
     this.repository = repository;
+    this.random = random;
   }
 
   private String generateToken() {

@@ -8,7 +8,9 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeDirectoryPat
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOperationDto;
 import com.mipt.team4.cloud_storage_backend.service.storage.DirectoryService;
 import java.io.FileNotFoundException;
+import org.springframework.stereotype.Controller;
 
+@Controller
 public class DirectoryController {
 
   private final DirectoryService service;

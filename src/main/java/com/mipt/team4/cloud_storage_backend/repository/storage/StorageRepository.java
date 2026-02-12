@@ -5,7 +5,6 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -13,15 +12,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class StorageRepository {
 
-  FileMetadataRepository metadataRepository;
-  FileContentRepository contentRepository;
+  private final FileMetadataRepository metadataRepository;
+  private final FileContentRepository contentRepository;
 
-  public StorageRepository(PostgresConnection postgresConnection, String minioUrl) {
-    metadataRepository = new PostgresFileMetadataRepository(postgresConnection);
-    contentRepository = new MinioContentRepository(minioUrl);
+  public StorageRepository(FileMetadataRepository metadataRepository, FileContentRepository contentRepository) {
+    this.metadataRepository = metadataRepository;
+    this.contentRepository = contentRepository;
   }
 
   public void addFile(StorageEntity storageEntity, byte[] data)

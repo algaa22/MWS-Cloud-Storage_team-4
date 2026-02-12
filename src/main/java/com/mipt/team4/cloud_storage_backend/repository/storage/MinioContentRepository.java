@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
-import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import io.minio.BucketExistsArgs;
 import io.minio.CreateMultipartUploadResponse;
 import io.minio.GetObjectArgs;
@@ -26,12 +26,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class MinioContentRepository implements FileContentRepository {
 
   private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
 
   private final MinioConfig minioConfig;
+
   private MinioAsyncClient minioClient;
 
   public MinioContentRepository(MinioConfig minioConfig) {
@@ -45,8 +48,7 @@ public class MinioContentRepository implements FileContentRepository {
       minioClient =
           MinioAsyncClient.builder()
               .endpoint(minioUrl)
-              .credentials(
-                  minioConfig.username(), minioConfig.password())
+              .credentials(minioConfig.username(), minioConfig.password())
               .build();
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -93,11 +95,7 @@ public class MinioContentRepository implements FileContentRepository {
       response =
           minioClient
               .createMultipartUploadAsync(
-                  minioConfig.userDataBucket().name(),
-                  "eu-central-1",
-                  s3Key,
-                  EMPTY_MAP,
-                  EMPTY_MAP)
+                  minioConfig.userDataBucket().name(), "eu-central-1", s3Key, EMPTY_MAP, EMPTY_MAP)
               .get();
     } catch (InsufficientDataException
         | InternalException

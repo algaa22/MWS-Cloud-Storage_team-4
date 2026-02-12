@@ -1,9 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated.AggregatedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.chunked.ChunkedHttpHandler;
@@ -24,26 +21,28 @@ import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
 public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
 
   private static final Logger logger = LoggerFactory.getLogger(HttpTrafficStrategySelector.class);
 
-  private final FileController fileController;
-  private final DirectoryController directoryController;
-  private final UserController userController;
+  private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlerProvider;
+  private final ObjectProvider<AggregatedHttpHandler> aggregatedHttpHandlerProvider;
   private final StorageConfig storageConfig;
 
   private PipelineType previousPipeline = null;
 
   public HttpTrafficStrategySelector(
-      FileController fileController,
-      DirectoryController directoryController,
-      UserController userController,
+      ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlerProvider,
+      ObjectProvider<AggregatedHttpHandler> aggregatedHttpHandlerProvider,
       StorageConfig storageConfig) {
-    this.fileController = fileController;
-    this.directoryController = directoryController;
-    this.userController = userController;
+    this.chunkedHttpHandlerProvider = chunkedHttpHandlerProvider;
+    this.aggregatedHttpHandlerProvider = aggregatedHttpHandlerProvider;
     this.storageConfig = storageConfig;
   }
 
@@ -96,11 +95,10 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
 
     if (currentPipeline == PipelineType.CHUNKED) {
       pipeline.addLast(new ChunkedWriteHandler());
-      pipeline.addLast(new ChunkedHttpHandler(fileController));
+      pipeline.addLast(chunkedHttpHandlerProvider.getObject());
     } else {
       pipeline.addLast(new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
-      pipeline.addLast(
-          new AggregatedHttpHandler(fileController, directoryController, userController));
+      pipeline.addLast(aggregatedHttpHandlerProvider.getObject());
     }
   }
 

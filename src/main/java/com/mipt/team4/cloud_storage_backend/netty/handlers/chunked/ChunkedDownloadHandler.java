@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
@@ -21,9 +21,10 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedInput;
+import org.springframework.stereotype.Component;
 
+@Component
 public class ChunkedDownloadHandler {
-
   private final FileController fileController;
   private final StorageConfig storageConfig;
 

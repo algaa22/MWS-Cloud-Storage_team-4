@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
-import com.mipt.team4.cloud_storage_backend.config.CorsConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.CorsConfig;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -12,7 +12,9 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import org.springframework.stereotype.Component;
 
+@Component
 public class CorsHandler extends ChannelDuplexHandler {
 
   private static final String ALLOWED_METHODS =

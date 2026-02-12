@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
@@ -32,27 +31,26 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Service;
 
+@Service
 public class FileService {
 
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
+
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
-  private final StorageConfig storageConfig;
   private final MinioConfig minioConfig;
 
-  // todo: длинный конструктор?
   public FileService(
+      UserSessionService userSessionService,
       StorageRepository storageRepository,
       UserRepository userRepository,
-      UserSessionService userSessionService,
-      StorageConfig storageConfig,
       MinioConfig minioConfig) {
     this.storageRepository = storageRepository;
     this.userSessionService = userSessionService;
     this.userRepository = userRepository;
-    this.storageConfig = storageConfig;
     this.minioConfig = minioConfig;
   }
 

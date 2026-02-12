@@ -14,13 +14,11 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class PostgresFileMetadataRepository implements FileMetadataRepository {
-
-  private static final Logger logger =
-      LoggerFactory.getLogger(PostgresFileMetadataRepository.class);
-
-  PostgresConnection postgres;
+  private final PostgresConnection postgres;
 
   public PostgresFileMetadataRepository(PostgresConnection postgres) {
     this.postgres = postgres;

@@ -10,11 +10,15 @@ import io.netty.handler.stream.ChunkedInput;
 import java.io.InputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 // TODO: rename
+@Component
+@Scope("prototype")
 class CustomChunkedInput implements ChunkedInput<HttpContent> {
 
-  final Logger logger = LoggerFactory.getLogger(CustomChunkedInput.class);
+  private final Logger logger = LoggerFactory.getLogger(CustomChunkedInput.class);
 
   private final InputStream stream;
   private final int chunkSize;

@@ -5,7 +5,9 @@ import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnecti
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class RefreshTokenRepository {
 
   private final PostgresConnection postgres;

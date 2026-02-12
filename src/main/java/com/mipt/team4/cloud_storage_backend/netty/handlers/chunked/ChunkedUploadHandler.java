@@ -22,6 +22,7 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpRequest;
@@ -31,7 +32,11 @@ import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
 public class ChunkedUploadHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkedUploadHandler.class);
@@ -52,12 +57,11 @@ public class ChunkedUploadHandler {
 
   public void startChunkedUpload(HttpRequest request)
       throws TransferAlreadyStartedException,
-          QueryParameterNotFoundException,
-          HeaderNotFoundException,
-          ValidationFailedException,
-          StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          StorageIllegalAccessException {
+      QueryParameterNotFoundException,
+      HeaderNotFoundException,
+      ValidationFailedException,
+      StorageFileAlreadyExistsException,
+      UserNotFoundException {
     if (isInProgress) {
       throw new TransferAlreadyStartedException();
     }
@@ -81,12 +85,11 @@ public class ChunkedUploadHandler {
     }
   }
 
-  public void handleFileChunk(ChannelHandlerContext ctx, HttpContent content)
+  public void handleFileChunk(HttpContent content)
       throws TransferNotStartedYetException,
-          UserNotFoundException,
-          UploadSessionNotFoundException,
-          CombineChunksToPartException,
-          ValidationFailedException {
+      UploadSessionNotFoundException,
+      CombineChunksToPartException,
+      ValidationFailedException {
     if (!isInProgress) {
       throw new TransferNotStartedYetException();
     }
@@ -115,19 +118,19 @@ public class ChunkedUploadHandler {
 
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
       throws TransferNotStartedYetException,
-          UserNotFoundException,
-          UploadSessionNotFoundException,
-          CombineChunksToPartException,
-          ValidationFailedException,
-          StorageFileAlreadyExistsException,
-          TooSmallFilePartException,
-          MissingFilePartException {
+      UserNotFoundException,
+      UploadSessionNotFoundException,
+      CombineChunksToPartException,
+      ValidationFailedException,
+      StorageFileAlreadyExistsException,
+      TooSmallFilePartException,
+      MissingFilePartException {
     if (!isInProgress) {
       throw new TransferNotStartedYetException();
     }
 
     if (content.content().readableBytes() > 0) {
-      handleFileChunk(ctx, content);
+      handleFileChunk(content);
     }
 
     ChunkedUploadFileResultDto result;

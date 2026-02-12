@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
@@ -27,13 +27,16 @@ public class UserService {
   private final UserRepository userRepository;
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
+  private final PasswordHasher passwordHasher;
   private final StorageConfig storageConfig;
 
   public UserService(
-      StorageConfig storageConfig,
       UserRepository userRepository,
       UserSessionService userSessionService,
-      RefreshTokenService refreshTokenService) {
+      RefreshTokenService refreshTokenService,
+      PasswordHasher passwordHasher,
+      StorageConfig storageConfig) {
+    this.passwordHasher = passwordHasher;
     this.storageConfig = storageConfig;
     this.userRepository = userRepository;
     this.userSessionService = userSessionService;
@@ -68,7 +71,7 @@ public class UserService {
       throw new UserAlreadyExistsException(registerRequest.email());
     }
 
-    String hash = PasswordHasher.hash(registerRequest.password());
+    String hash = passwordHasher.hash(registerRequest.password());
     UserEntity userEntity =
         new UserEntity(
             UUID.randomUUID(),
@@ -94,7 +97,7 @@ public class UserService {
     }
 
     UserEntity user = userOpt.get();
-    if (!PasswordHasher.verify(loginRequest.password(), user.getPasswordHash())) {
+    if (!passwordHasher.verify(loginRequest.password(), user.getPasswordHash())) {
       throw new WrongPasswordException();
     }
 
@@ -160,13 +163,13 @@ public class UserService {
       String oldPassword = updateUserInfoDto.oldPassword().get();
       String currentPasswordHash = entity.getPasswordHash();
 
-      if (!PasswordHasher.verify(oldPassword, currentPasswordHash)) {
+      if (!passwordHasher.verify(oldPassword, currentPasswordHash)) {
         throw new WrongPasswordException();
       }
     }
 
     if (updateUserInfoDto.newPassword().isPresent()) {
-      String newPasswordHash = PasswordHasher.hash(updateUserInfoDto.newPassword().get());
+      String newPasswordHash = passwordHasher.hash(updateUserInfoDto.newPassword().get());
       entity.setPasswordHash(newPasswordHash);
     }
 
@@ -178,6 +181,6 @@ public class UserService {
     userRepository.updateInfo(
         id,
         updateUserInfoDto.newName().orElse(entity.getName()),
-        updateUserInfoDto.newPassword().map(PasswordHasher::hash).orElse(entity.getPasswordHash()));
+        updateUserInfoDto.newPassword().map(passwordHasher::hash).orElse(entity.getPasswordHash()));
   }
 }

@@ -23,8 +23,15 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 
-public record UsersRequestHandler(UserController userController) {
+@Component
+public class UsersRequestHandler {
+  private final UserController userController;
+
+  public UsersRequestHandler(UserController userController) {
+    this.userController = userController;
+  }
 
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException, ValidationFailedException, UserAlreadyExistsException {

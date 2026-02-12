@@ -23,11 +23,9 @@ public class E2ETestSetupExtension implements BeforeAllCallback {
             key -> {
               POSTGRES.start();
               MINIO.start();
-              CloudStorageApplication.start(POSTGRES.getJdbcUrl(), MINIO.getS3URL());
 
               return (AutoCloseable)
                   () -> {
-                    CloudStorageApplication.stop();
                     MINIO.stop();
                     POSTGRES.stop();
                   };

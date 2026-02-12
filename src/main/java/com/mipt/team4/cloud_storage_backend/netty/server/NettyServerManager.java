@@ -1,9 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.server;
 
-import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
 import com.mipt.team4.cloud_storage_backend.netty.channel.MainChannelInitializer;
 import io.netty.bootstrap.ServerBootstrap;
@@ -15,21 +12,22 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
+import jakarta.annotation.PreDestroy;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
+@Component
 public class NettyServerManager {
-
   private static final Logger logger = LoggerFactory.getLogger(NettyServerManager.class);
 
   private final AtomicBoolean stopping = new AtomicBoolean(false);
   private final CountDownLatch startupLatch;
-  private final FileController fileController;
-  private final DirectoryController directoryController;
-  private final UserController userController;
+
+  private final MainChannelInitializer mainChannelInitializer;
   private final NettyConfig nettyConfig;
 
   private Channel httpServerChannel;
@@ -38,13 +36,8 @@ public class NettyServerManager {
   private EventLoopGroup workerGroup;
 
   public NettyServerManager(
-      FileController fileController,
-      DirectoryController directoryController,
-      UserController userController,
-      NettyConfig nettyConfig) {
-    this.fileController = fileController;
-    this.directoryController = directoryController;
-    this.userController = userController;
+      MainChannelInitializer mainChannelInitializer, NettyConfig nettyConfig) {
+    this.mainChannelInitializer = mainChannelInitializer;
     this.nettyConfig = nettyConfig;
 
     int serversCount = nettyConfig.enableHttps() ? 2 : 1;
@@ -53,11 +46,9 @@ public class NettyServerManager {
 
   public void start() {
     bossGroup = createEventLoopGroup(nettyConfig.bossThreads());
-
     workerGroup = createEventLoopGroup(nettyConfig.workerThreads());
 
     try {
-      Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
       startServers();
       addCloseListeners();
     } catch (Exception e) {
@@ -67,6 +58,7 @@ public class NettyServerManager {
     }
   }
 
+  @PreDestroy
   public void stop() {
     if (!stopping.compareAndSet(false, true)) {
       return;
@@ -156,9 +148,7 @@ public class NettyServerManager {
         .group(bossGroup, workerGroup)
         .channel(NioServerSocketChannel.class)
         .option(ChannelOption.SO_REUSEADDR, true)
-        .childHandler(
-            new MainChannelInitializer(
-                fileController, directoryController, userController, protocol));
+        .childHandler(mainChannelInitializer);
 
     int port = protocol == ServerProtocol.HTTPS ? nettyConfig.httpsPort() : nettyConfig.httpPort();
 

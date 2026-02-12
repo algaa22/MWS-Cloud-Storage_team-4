@@ -14,8 +14,15 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.FileNotFoundException;
+import org.springframework.stereotype.Component;
 
-public record DirectoriesRequestHandler(DirectoryController directoryController) {
+@Component
+public class DirectoriesRequestHandler {
+  private final DirectoryController directoryController;
+
+  public DirectoriesRequestHandler(DirectoryController directoryController) {
+    this.directoryController = directoryController;
+  }
 
   public void handleCreateDirectoryRequest(
       ChannelHandlerContext ctx, String directoryPath, String userToken)

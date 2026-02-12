@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
@@ -13,10 +14,10 @@ public record ChangeFileMetadataDto(
     Optional<String> visibility,
     Optional<List<String>> tags) {
 
-  public void validate() throws ValidationFailedException {
+  public void validate(JwtService jwtService) throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.validToken(userToken),
+            Validators.validToken(jwtService, userToken),
             Validators.mustBeFilePath("Old file path", oldPath),
             Validators.any(
                 "New file path",

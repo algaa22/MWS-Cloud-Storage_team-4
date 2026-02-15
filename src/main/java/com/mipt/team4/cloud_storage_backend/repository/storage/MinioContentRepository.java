@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
-import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import io.minio.BucketExistsArgs;
 import io.minio.CreateMultipartUploadResponse;
 import io.minio.GetObjectArgs;
@@ -17,6 +17,7 @@ import io.minio.errors.InsufficientDataException;
 import io.minio.errors.InternalException;
 import io.minio.errors.XmlParserException;
 import io.minio.messages.Part;
+import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,29 +27,32 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
+@Repository
+@RequiredArgsConstructor
 public class MinioContentRepository implements FileContentRepository {
 
   private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
 
+  private final MinioConfig minioConfig;
+
   private MinioAsyncClient minioClient;
 
-  public MinioContentRepository(String minioUrl) {
-    initialize(minioUrl);
-  }
-
-  private void initialize(String minioUrl) {
+  @PostConstruct
+  private void initialize() {
     try {
       minioClient =
           MinioAsyncClient.builder()
-              .endpoint(minioUrl)
-              .credentials(MinioConfig.INSTANCE.getUsername(), MinioConfig.INSTANCE.getPassword())
+              .endpoint(minioConfig.url())
+              .credentials(minioConfig.username(), minioConfig.password())
               .build();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
 
-    createBucket(MinioConfig.INSTANCE.getUserDataBucketName());
+    createBucket(minioConfig.userDataBucket().name());
   }
 
   @Override
@@ -89,11 +93,7 @@ public class MinioContentRepository implements FileContentRepository {
       response =
           minioClient
               .createMultipartUploadAsync(
-                  MinioConfig.INSTANCE.getUserDataBucketName(),
-                  "eu-central-1",
-                  s3Key,
-                  EMPTY_MAP,
-                  EMPTY_MAP)
+                  minioConfig.userDataBucket().name(), "eu-central-1", s3Key, EMPTY_MAP, EMPTY_MAP)
               .get();
     } catch (InsufficientDataException
         | InternalException
@@ -118,7 +118,7 @@ public class MinioContentRepository implements FileContentRepository {
       response =
           minioClient
               .uploadPartAsync(
-                  MinioConfig.INSTANCE.getUserDataBucketName(),
+                  minioConfig.userDataBucket().name(),
                   "eu-central-1",
                   s3Key,
                   inputStream,
@@ -148,7 +148,7 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient
           .completeMultipartUploadAsync(
-              MinioConfig.INSTANCE.getUserDataBucketName(),
+              minioConfig.userDataBucket().name(),
               "eu-central-1",
               s3Key,
               uploadId,
@@ -176,7 +176,7 @@ public class MinioContentRepository implements FileContentRepository {
       minioClient
           .putObject(
               PutObjectArgs.builder()
-                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .bucket(minioConfig.userDataBucket().name())
                   .object(s3Key)
                   .stream(stream, data.length, -1)
                   .build())
@@ -199,7 +199,7 @@ public class MinioContentRepository implements FileContentRepository {
       return minioClient
           .getObject(
               GetObjectArgs.builder()
-                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .bucket(minioConfig.userDataBucket().name())
                   .object(s3Key)
                   .build())
           .get();
@@ -221,7 +221,7 @@ public class MinioContentRepository implements FileContentRepository {
       minioClient
           .statObject(
               StatObjectArgs.builder()
-                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .bucket(minioConfig.userDataBucket().name())
                   .object(s3Key)
                   .build())
           .get();
@@ -251,7 +251,7 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient.removeObject(
           RemoveObjectArgs.builder()
-              .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+              .bucket(minioConfig.userDataBucket().name())
               .object(s3Key)
               .build());
     } catch (InsufficientDataException

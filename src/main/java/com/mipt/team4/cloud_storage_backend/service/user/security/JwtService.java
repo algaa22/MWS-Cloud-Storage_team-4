@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user.security;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -11,31 +11,31 @@ import io.jsonwebtoken.security.Keys;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
+@Service
 public class JwtService {
 
   private final long accessTokenExpirationSec;
   private final long refreshTokenExpirationSec;
+  private final String jwtSecretKey;
 
-  public JwtService(long accessTokenExpirationSec, long refreshTokenExpirationSec) {
-    this.accessTokenExpirationSec = accessTokenExpirationSec;
-    this.refreshTokenExpirationSec = refreshTokenExpirationSec;
+  public JwtService(StorageConfig storageConfig) {
+    this.jwtSecretKey = storageConfig.auth().jwtSecretKey();
+    this.accessTokenExpirationSec = storageConfig.auth().accessTokenExpirationSec();
+    this.refreshTokenExpirationSec = storageConfig.auth().refreshTokenExpirationSec();
   }
 
-  public static boolean isTokenValid(String token) {
+  public boolean isTokenValid(String token) {
     try {
       Jwts.parserBuilder()
-          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
           .build()
           .parseClaimsJws(token);
       return true;
     } catch (JwtException | IllegalArgumentException e) {
       return false;
     }
-  }
-
-  private static String getJwtSecretKey() {
-    return StorageConfig.INSTANCE.getJwtSecretKey();
   }
 
   public String generateAccessToken(UserEntity user) {
@@ -59,7 +59,7 @@ public class JwtService {
         .setIssuedAt(now)
         .setExpiration(expiryDate)
         .signWith(
-            Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())), SignatureAlgorithm.HS256)
+            Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)), SignatureAlgorithm.HS256)
         .compact();
   }
 
@@ -74,7 +74,7 @@ public class JwtService {
   public String getUserIdFromToken(String token) {
     Claims claims =
         Jwts.parserBuilder()
-            .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+            .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
             .build()
             .parseClaimsJws(token)
             .getBody();
@@ -86,7 +86,7 @@ public class JwtService {
     try {
       Claims claims =
           Jwts.parserBuilder()
-              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
               .build()
               .parseClaimsJws(token)
               .getBody();
@@ -102,7 +102,7 @@ public class JwtService {
     try {
       Claims claims =
           Jwts.parserBuilder()
-              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(getJwtSecretKey())))
+              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
               .build()
               .parseClaimsJws(token)
               .getBody();

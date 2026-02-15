@@ -1,9 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.server;
 
-import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
 import com.mipt.team4.cloud_storage_backend.netty.channel.MainChannelInitializer;
 import io.netty.bootstrap.ServerBootstrap;
@@ -15,21 +12,22 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
+import jakarta.annotation.PreDestroy;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
+@Component
+@Slf4j
 public class NettyServerManager {
-
-  private static final Logger logger = LoggerFactory.getLogger(NettyServerManager.class);
-
   private final AtomicBoolean stopping = new AtomicBoolean(false);
   private final CountDownLatch startupLatch;
-  private final FileController fileController;
-  private final DirectoryController directoryController;
-  private final UserController userController;
+
+  private final MainChannelInitializer httpChannelInitializer;
+  private final MainChannelInitializer httpsChannelInitializer;
+  private final NettyConfig nettyConfig;
 
   private Channel httpServerChannel;
   private Channel httpsServerChannel;
@@ -37,24 +35,22 @@ public class NettyServerManager {
   private EventLoopGroup workerGroup;
 
   public NettyServerManager(
-      FileController fileController,
-      DirectoryController directoryController,
-      UserController userController) {
-    this.fileController = fileController;
-    this.directoryController = directoryController;
-    this.userController = userController;
+      MainChannelInitializer httpChannelInitializer,
+      MainChannelInitializer httpsChannelInitializer,
+      NettyConfig nettyConfig) {
+    this.httpChannelInitializer = httpChannelInitializer;
+    this.httpsChannelInitializer = httpsChannelInitializer;
+    this.nettyConfig = nettyConfig;
 
-    int serversCount = NettyConfig.INSTANCE.isEnableHttps() ? 2 : 1;
+    int serversCount = nettyConfig.enableHttps() ? 2 : 1;
     startupLatch = new CountDownLatch(serversCount);
   }
 
   public void start() {
-    bossGroup = createEventLoopGroup(NettyConfig.INSTANCE.getBossThreads());
-
-    workerGroup = createEventLoopGroup(NettyConfig.INSTANCE.getWorkerThreads());
+    bossGroup = createEventLoopGroup(nettyConfig.bossThreads());
+    workerGroup = createEventLoopGroup(nettyConfig.workerThreads());
 
     try {
-      Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
       startServers();
       addCloseListeners();
     } catch (Exception e) {
@@ -64,25 +60,22 @@ public class NettyServerManager {
     }
   }
 
+  @PreDestroy
   public void stop() {
     if (!stopping.compareAndSet(false, true)) {
       return;
     }
 
-    logger.info("Stopping servers...");
+    log.info("Stopping servers...");
 
     closeServers();
     shutdownThreads();
   }
 
-  public CountDownLatch getStartupLatch() {
-    return startupLatch;
-  }
-
   private void startServers() throws InterruptedException {
     httpServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTP);
 
-    if (NettyConfig.INSTANCE.isEnableHttps()) {
+    if (nettyConfig.enableHttps()) {
       httpsServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTPS);
     }
   }
@@ -95,7 +88,7 @@ public class NettyServerManager {
           .closeFuture()
           .addListener(
               f -> {
-                logger.info("HTTPS server stopped");
+                log.info("HTTPS server stopped");
                 closePromise.trySuccess(null);
               });
     }
@@ -104,14 +97,11 @@ public class NettyServerManager {
         .closeFuture()
         .addListener(
             f -> {
-              logger.info("HTTP server stopped");
+              log.info("HTTP server stopped");
               closePromise.trySuccess(null);
             });
 
-    logger.info("Servers are running. Waiting for any channel to close...");
-    closePromise.sync();
-
-    stop();
+    log.info("Servers are running. Waiting for any channel to close...");
   }
 
   private void closeServers() {
@@ -125,27 +115,23 @@ public class NettyServerManager {
   }
 
   private void shutdownThreads() {
-    Future<?> bossShutdown =
-        bossGroup.shutdownGracefully(
-            NettyConfig.INSTANCE.getShutdownQueryPeriodSec(),
-            NettyConfig.INSTANCE.getShutdownTimeoutSec(),
-            TimeUnit.SECONDS);
+    int queryPeriod = nettyConfig.shutdown().queryPeriodSec();
+    int timeout = nettyConfig.shutdown().timeoutSec();
+
+    Future<?> bossShutdown = bossGroup.shutdownGracefully(queryPeriod, timeout, TimeUnit.SECONDS);
 
     Future<?> workerShutdown =
-        workerGroup.shutdownGracefully(
-            NettyConfig.INSTANCE.getShutdownQueryPeriodSec(),
-            NettyConfig.INSTANCE.getShutdownTimeoutSec(),
-            TimeUnit.SECONDS);
+        workerGroup.shutdownGracefully(queryPeriod, timeout, TimeUnit.SECONDS);
 
     try {
-      workerShutdown.await(NettyConfig.INSTANCE.getShutdownTimeoutSec() + 1, TimeUnit.SECONDS);
-      bossShutdown.await(NettyConfig.INSTANCE.getShutdownTimeoutSec() + 1, TimeUnit.SECONDS);
+      workerShutdown.await(timeout + 1, TimeUnit.SECONDS);
+      bossShutdown.await(timeout + 1, TimeUnit.SECONDS);
 
-      logger.info("All threads finished shutdown");
+      log.info("All threads finished shutdown");
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
 
-      logger.error("Shutdown interrupted", e);
+      log.error("Shutdown interrupted", e);
     }
   }
 
@@ -158,17 +144,13 @@ public class NettyServerManager {
         .channel(NioServerSocketChannel.class)
         .option(ChannelOption.SO_REUSEADDR, true)
         .childHandler(
-            new MainChannelInitializer(
-                fileController, directoryController, userController, protocol));
+            protocol == ServerProtocol.HTTP ? httpChannelInitializer : httpsChannelInitializer);
 
-    int port =
-        protocol == ServerProtocol.HTTPS
-            ? NettyConfig.INSTANCE.getHttpsPort()
-            : NettyConfig.INSTANCE.getHttpPort();
+    int port = protocol == ServerProtocol.HTTPS ? nettyConfig.httpsPort() : nettyConfig.httpPort();
 
     Channel channel = bootstrap.bind(port).sync().channel();
 
-    logger.info("{} server starting on port {}...", protocol.name(), port);
+    log.info("{} server starting on port {}...", protocol.name(), port);
     startupLatch.countDown();
 
     return channel;

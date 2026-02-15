@@ -2,10 +2,9 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -13,16 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
+@Repository
+@RequiredArgsConstructor
 public class StorageRepository {
-
-  FileMetadataRepository metadataRepository;
-  FileContentRepository contentRepository;
-
-  public StorageRepository(PostgresConnection postgresConnection, String minioUrl) {
-    metadataRepository = new PostgresFileMetadataRepository(postgresConnection);
-    contentRepository = new MinioContentRepository(minioUrl);
-  }
+  private final FileMetadataRepository metadataRepository;
+  private final FileContentRepository contentRepository;
 
   public void addFile(StorageEntity storageEntity, byte[] data)
       throws StorageFileAlreadyExistsException {

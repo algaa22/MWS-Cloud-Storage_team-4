@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
-import com.mipt.team4.cloud_storage_backend.config.CorsConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.CorsConfig;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -12,7 +12,13 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
+@RequiredArgsConstructor
 public class CorsHandler extends ChannelDuplexHandler {
 
   private static final String ALLOWED_METHODS =
@@ -47,6 +53,8 @@ public class CorsHandler extends ChannelDuplexHandler {
       String.join(", ", "no-store", "no-cache", "must-revalidate");
 
   private static final String PRAGMA = "no-cache";
+
+  private final CorsConfig corsConfig;
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -86,10 +94,12 @@ public class CorsHandler extends ChannelDuplexHandler {
     headers.set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS, ALLOWED_HEADERS);
     headers.set(HttpHeaderNames.ACCESS_CONTROL_EXPOSE_HEADERS, EXPOSE_HEADERS);
 
-    headers.set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, CorsConfig.INSTANCE.getAllowOrigin());
     headers.set(
-        HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS, CorsConfig.INSTANCE.isAllowCredentials());
-    headers.set(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE, CorsConfig.INSTANCE.getMaxAge());
+        HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, corsConfig.accessControl().allowOrigin());
+    headers.set(
+        HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS,
+        corsConfig.accessControl().allowCredentials());
+    headers.set(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE, corsConfig.accessControl().maxAge());
 
     headers.set(HttpHeaderNames.CACHE_CONTROL, CACHE_CONTROL);
     headers.set(HttpHeaderNames.PRAGMA, PRAGMA);

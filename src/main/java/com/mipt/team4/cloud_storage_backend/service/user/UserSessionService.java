@@ -13,18 +13,19 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
+@RequiredArgsConstructor
 public class UserSessionService {
 
-  // Сделать его синглтоном
+  // TODO: Сделать его синглтоном (?)
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
   private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
-  private final JwtService jwtService;
   private final Duration accessTokenDuration = Duration.ofMinutes(15);
 
-  public UserSessionService(JwtService jwtService) {
-    this.jwtService = jwtService;
-  }
+  private final JwtService jwtService;
 
   public SessionDto createSession(UserEntity user) {
     String token = jwtService.generateAccessToken(user);

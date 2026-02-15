@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
@@ -8,17 +8,17 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPa
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeFileMetadataDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileUploadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileListDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
@@ -31,24 +31,20 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
+@RequiredArgsConstructor
 public class FileService {
-
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
+
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
+  private final MinioConfig minioConfig;
 
-  public FileService(
-      StorageRepository storageRepository,
-      UserRepository userRepository,
-      UserSessionService userSessionService) {
-    this.storageRepository = storageRepository;
-    this.userSessionService = userSessionService;
-    this.userRepository = userRepository;
-  }
-
-  public void startChunkedUploadSession(FileChunkedUploadDto uploadSession)
+  public void startChunkedUploadSession(FileChunkedUploadRequest uploadSession)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
     UUID userId = userSessionService.extractUserIdFromToken(uploadSession.userToken());
     String uploadSessionId = uploadSession.sessionId();
@@ -69,7 +65,7 @@ public class FileService {
         uploadSession.sessionId(), new ChunkedUploadState(uploadSession, userId, newFileId, path));
   }
 
-  public void uploadChunk(UploadChunkDto uploadRequest)
+  public void uploadChunk(UploadChunkRequest uploadRequest)
       throws CombineChunksToPartException, UploadSessionNotFoundException {
     ChunkedUploadState uploadState = activeUploads.get(uploadRequest.sessionId());
     if (uploadState == null) {
@@ -79,7 +75,7 @@ public class FileService {
     uploadState.chunks.add(uploadRequest.chunkData());
     uploadState.addPartSize(uploadRequest.chunkData().length);
 
-    if (uploadState.getPartSize() >= StorageConfig.INSTANCE.getMinFilePartSize()) {
+    if (uploadState.getPartSize() >= minioConfig.minFilePartSize()) {
       uploadPart(uploadState);
     }
   }
@@ -98,14 +94,14 @@ public class FileService {
 
     try {
       if (uploadState.getTotalParts() == 0) {
-        throw new TooSmallFilePartException();
+        throw new TooSmallFilePartException(minioConfig.minFilePartSize());
       }
 
       if (uploadState.getPartSize() != 0) {
         uploadPart(uploadState);
       }
 
-      FileChunkedUploadDto session = uploadState.getSession();
+      FileChunkedUploadRequest session = uploadState.getSession();
       for (int i = 1; i <= uploadState.getTotalParts(); i++) {
         if (!uploadState.getETags().containsKey(i)) {
           throw new MissingFilePartException(i);
@@ -115,14 +111,15 @@ public class FileService {
       UUID userId = userSessionService.extractUserIdFromToken(session.userToken());
 
       StorageEntity fileEntity =
-          new StorageEntity(
-              uploadState.getFileId(),
-              userId,
-              uploadState.getPath(),
-              MimeTypeDetector.detect(session.path()),
-              uploadState.getFileSize(),
-              session.tags(),
-              false);
+          StorageEntity.builder()
+              .entityId(uploadState.getFileId())
+              .userId(userId)
+              .mimeType(MimeTypeDetector.detect(session.path()))
+              .size(uploadState.getFileSize())
+              .path(uploadState.getPath())
+              .isDirectory(false)
+              .tags(session.tags())
+              .build();
 
       storageRepository.completeMultipartUpload(
           fileEntity, uploadState.getUploadId(), uploadState.getETags());
@@ -135,7 +132,7 @@ public class FileService {
     }
   }
 
-  public void uploadFile(FileUploadDto fileUploadRequest)
+  public void uploadFile(FileUploadRequest fileUploadRequest)
       throws StorageFileAlreadyExistsException, UserNotFoundException {
     UUID fileId = UUID.randomUUID();
     UUID userId = userSessionService.extractUserIdFromToken(fileUploadRequest.userToken());
@@ -148,20 +145,21 @@ public class FileService {
     byte[] data = fileUploadRequest.data();
 
     StorageEntity entity =
-        new StorageEntity(
-            fileId,
-            userId,
-            fileUploadRequest.path(),
-            mimeType,
-            data.length,
-            fileUploadRequest.tags(),
-            false);
+        StorageEntity.builder()
+            .entityId(fileId)
+            .userId(userId)
+            .mimeType(mimeType)
+            .size(data.length)
+            .path(fileUploadRequest.path())
+            .isDirectory(false)
+            .tags(fileUploadRequest.tags())
+            .build();
 
     storageRepository.addFile(entity, data);
     userRepository.increaseUsedStorage(userId, data.length);
   }
 
-  public FileDownloadDto downloadFile(SimpleFileOperationDto fileDownload)
+  public FileDownloadDto downloadFile(SimpleFileOperationRequest fileDownload)
       throws UserNotFoundException, StorageEntityNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(fileDownload.userToken());
 
@@ -176,7 +174,7 @@ public class FileService {
         entity.getSize());
   }
 
-  public void deleteFile(SimpleFileOperationDto deleteFileRequest)
+  public void deleteFile(SimpleFileOperationRequest deleteFileRequest)
       throws UserNotFoundException, StorageEntityNotFoundException, FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(deleteFileRequest.userToken());
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, deleteFileRequest.path());
@@ -187,7 +185,7 @@ public class FileService {
     userRepository.decreaseUsedStorage(userId, entity.getSize());
   }
 
-  public List<StorageEntity> getFileList(GetFileListDto filePathsRequest)
+  public List<StorageEntity> getFileList(GetFileListRequest filePathsRequest)
       throws UserNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(filePathsRequest.userToken());
     return storageRepository.getFileList(
@@ -198,7 +196,7 @@ public class FileService {
             filePathsRequest.searchDirectory().orElse("")));
   }
 
-  public StorageDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
+  public StorageDto getFileInfo(SimpleFileOperationRequest fileInfoRequest)
       throws UserNotFoundException, StorageEntityNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(fileInfoRequest.userToken());
 
@@ -210,7 +208,7 @@ public class FileService {
     return new StorageDto(entityOpt.get());
   }
 
-  public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadata)
+  public void changeFileMetadata(ChangeFileMetadataRequest changeFileMetadata)
       throws UserNotFoundException,
           StorageEntityNotFoundException,
           StorageFileAlreadyExistsException {

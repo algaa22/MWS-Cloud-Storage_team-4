@@ -64,7 +64,7 @@ public class MimeTypeDetector {
       if (contentType != null && !contentType.trim().isEmpty()) {
         return contentType;
       }
-    } catch (IOException _) {
+    } catch (IOException e) {
     }
 
     return detectByExtension(path);

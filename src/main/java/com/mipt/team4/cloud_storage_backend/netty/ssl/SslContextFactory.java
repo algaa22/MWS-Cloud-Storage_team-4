@@ -15,24 +15,24 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import javax.net.ssl.KeyManagerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
+@Component
+@Slf4j
 public class SslContextFactory {
 
-  private static final Logger logger = LoggerFactory.getLogger(SslContextFactory.class);
-
-  public static SslContext createFromResources()
+  public SslContext createFromResources()
       throws IOException,
           NoSuchAlgorithmException,
           UnrecoverableKeyException,
           KeyStoreException,
           CertificateException {
     try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) {
-      logger.info("Loading SSL from PKCS12 file");
+      log.info("Loading SSL from PKCS12 file");
 
       KeyStore keyStore = KeyStore.getInstance("PKCS12");
-      keyStore.load(p12Stream, "password".toCharArray());
+      keyStore.load(p12Stream, "password".toCharArray()); // TODO: "password"?
 
       KeyManagerFactory kmf =
           KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());

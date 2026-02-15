@@ -7,20 +7,21 @@ import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseDetailedFileIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.PathParam;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 @Tag("integration")
 public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
-
   private static final String NEW_PATH = "new_file";
   private static final String NEW_VISIBILITY = "public";
   private static final String NEW_TAGS = "1,2,3";
+
+  @Autowired private FileOperationsITUtils fileOperationsITUtils;
 
   public ChangeFileMetadataDetailedIT() {
     super("/api/files?path=_", HttpMethod.PUT.name(), PathParam.EXISTENT_FILE);
@@ -42,7 +43,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
   public void shouldNotDoX_WhenSpecifyDirectoryInNewPath()
       throws IOException, InterruptedException {
     HttpResponse<String> response =
-        FileOperationsITUtils.sendChangeFileMetadataRequest(
+        fileOperationsITUtils.sendChangeFileMetadataRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH, "dir/", NEW_VISIBILITY, NEW_TAGS);
 
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
@@ -55,11 +56,11 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
     simpleUploadFile(NEW_PATH);
 
     HttpResponse<String> response =
-        FileOperationsITUtils.sendChangeFilePathRequest(
+        fileOperationsITUtils.sendChangeFilePathRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH, NEW_PATH);
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
 
-    JsonNode rootNode = TestUtils.getRootNodeFromResponse(response);
+    JsonNode rootNode = itUtils.getRootNodeFromResponse(response);
     assertTrue(rootNode.get("message").asText().contains("already exists"));
   }
 
@@ -68,7 +69,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
     HttpResponse<String> response =
-        FileOperationsITUtils.sendChangeFileMetadataRequest(
+        fileOperationsITUtils.sendChangeFileMetadataRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH, NEW_PATH, NEW_VISIBILITY, NEW_TAGS);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
@@ -81,7 +82,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
     HttpResponse<String> response =
-        FileOperationsITUtils.sendChangeFileVisibilityRequest(
+        fileOperationsITUtils.sendChangeFileVisibilityRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH, "asdsad");
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
     containsValidationError(response, "Visibility");
@@ -92,17 +93,17 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
     HttpResponse<String> changeFileVisibilityResponse =
-        FileOperationsITUtils.sendChangeFileVisibilityRequest(
+        fileOperationsITUtils.sendChangeFileVisibilityRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH, NEW_VISIBILITY);
     assertEquals(HttpStatus.SC_OK, changeFileVisibilityResponse.statusCode());
 
     HttpResponse<String> changeFileTagsResponse =
-        FileOperationsITUtils.sendChangeFileTagsRequest(
+        fileOperationsITUtils.sendChangeFileTagsRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH, NEW_TAGS);
     assertEquals(HttpStatus.SC_OK, changeFileTagsResponse.statusCode());
 
     HttpResponse<String> changeFilePathResponse =
-        FileOperationsITUtils.sendChangeFilePathRequest(
+        fileOperationsITUtils.sendChangeFilePathRequest(
             client, currentUserToken, DEFAULT_FILE_TARGET_PATH, NEW_PATH);
     assertEquals(HttpStatus.SC_OK, changeFilePathResponse.statusCode());
 

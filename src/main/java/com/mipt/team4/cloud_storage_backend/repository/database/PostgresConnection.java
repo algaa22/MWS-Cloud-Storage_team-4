@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
-import com.mipt.team4.cloud_storage_backend.config.DatabaseConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCheckConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCloseConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbConnectionException;
@@ -9,6 +9,8 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryExc
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbUnavailableException;
 import com.mipt.team4.cloud_storage_backend.exception.database.JdbcNotFoundException;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -16,24 +18,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
+@Component
+@RequiredArgsConstructor
 public class PostgresConnection implements DatabaseConnection {
+  private final DatabaseConfig databaseConfig;
 
-  private final String databaseUrl;
-  private final String databaseUsername;
-  private final String databasePassword;
   private Connection connection;
 
-  public PostgresConnection(String databaseUrl, String databaseUsername, String databasePassword) {
-    this.databaseUrl = databaseUrl;
-    this.databaseUsername = databaseUsername;
-    this.databasePassword = databasePassword;
-  }
-
-  public PostgresConnection(String databaseUrl) {
-    this.databaseUrl = databaseUrl;
-    this.databaseUsername = DatabaseConfig.INSTANCE.getUsername();
-    this.databasePassword = DatabaseConfig.INSTANCE.getPassword();
+  @PostConstruct
+  public void init() {
+    connect();
   }
 
   @Override
@@ -49,7 +46,9 @@ public class PostgresConnection implements DatabaseConnection {
     }
 
     try {
-      connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword);
+      connection =
+          DriverManager.getConnection(
+              databaseConfig.url(), databaseConfig.username(), databaseConfig.password());
     } catch (SQLException e) {
       throw new DbConnectionException(e);
     }
@@ -183,6 +182,7 @@ public class PostgresConnection implements DatabaseConnection {
     }
   }
 
+  @PreDestroy
   @Override
   public void disconnect() {
     try {

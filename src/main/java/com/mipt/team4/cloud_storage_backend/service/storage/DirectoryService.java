@@ -3,9 +3,9 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeDirectoryPathDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOperationDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeDirectoryPathRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleDirectoryOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
@@ -14,23 +14,18 @@ import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
+@RequiredArgsConstructor
 public class DirectoryService {
 
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
 
-  public DirectoryService(
-      StorageRepository storageRepository,
-      UserRepository userRepository,
-      UserSessionService userSessionService) {
-    this.storageRepository = storageRepository;
-    this.userRepository = userRepository;
-    this.userSessionService = userSessionService;
-  }
-
-  public void createDirectory(SimpleDirectoryOperationDto createDirectory)
+  public void createDirectory(SimpleDirectoryOperationRequest createDirectory)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
     UUID userId = userSessionService.extractUserIdFromToken(createDirectory.userToken());
     String directoryPath = createDirectory.directoryPath();
@@ -40,19 +35,20 @@ public class DirectoryService {
     }
 
     StorageEntity directoryEntity =
-        new StorageEntity(
-            UUID.randomUUID(),
-            userId,
-            directoryPath,
-            "application/x-directory",
-            0,
-            List.of(),
-            true);
+        StorageEntity.builder()
+            .entityId(UUID.randomUUID())
+            .userId(userId)
+            .mimeType("application/x-directory")
+            .size(0)
+            .path(directoryPath)
+            .isDirectory(true)
+            .tags(List.of())
+            .build();
 
     storageRepository.addDirectory(directoryEntity);
   }
 
-  public void changeDirectoryPath(ChangeDirectoryPathDto changeDirectory)
+  public void changeDirectoryPath(ChangeDirectoryPathRequest changeDirectory)
       throws UserNotFoundException,
           StorageFileAlreadyExistsException,
           StorageEntityNotFoundException {
@@ -81,7 +77,7 @@ public class DirectoryService {
     }
   }
 
-  public void deleteDirectory(SimpleDirectoryOperationDto request)
+  public void deleteDirectory(SimpleDirectoryOperationRequest request)
       throws UserNotFoundException, StorageEntityNotFoundException, FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     String directoryPath = request.directoryPath();

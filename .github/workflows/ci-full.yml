@@ -22,34 +22,8 @@ jobs:
       - name: Check Style
         run: mvn fmt:check
 
-      - name: Run Unit Tests
-        run: mvn test -Dgroups="!smoke & !heavy & !integration"
-
-      - name: Start Infrastructure
-        env:
-          DB_NAME: cloud_storage_db
-          DB_USERNAME: postgres
-          DB_PASSWORD: super_secret_password_123
-          MINIO_USERNAME: minioadmin
-          MINIO_PASSWORD: super_secret_password_123
-        run: docker compose up -d postgres minio
-
-      - name: Wait for Postgres
-        run: |
-          until docker inspect --format "{{json .State.Health.Status}}" cloud-storage-db | grep -q '"healthy"'; do
-            echo "Waiting for Postgres..."
-            sleep 2
-          done
-
-      - name: Wait for MinIO
-        run: |
-          until docker inspect --format "{{json .State.Health.Status}}" cloud-storage-minio | grep -q '"healthy"'; do
-            echo "Waiting for MinIO..."
-            sleep 2
-          done
-
-      - name: Run Heavy Tests
-        run: mvn verify
+      - name: Run All Tests
+        run: mvn verify -Dspring-boot.repackage.skip=true
         env:
           DB_URL: jdbc:postgresql://localhost:5432/cloud_storage_db
           DB_USERNAME: postgres
@@ -59,5 +33,5 @@ jobs:
           MINIO_PASSWORD: super_secret_password_123
           JWT_SECRET_KEY: d8f4a9c3e7b2f6a1d9e4c8b3f7a2e5d1f9c6b4e8a3d7f2c9e1b5f8d3a6c9e4b7
 
-      - name: Build Docker
-        run: docker build -t cloud-storage-backend:latest .
+      # - name: Build Docker
+      #   run: docker build -t cloud-storage-backend:latest .

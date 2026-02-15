@@ -10,27 +10,34 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsExce
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.LoginRequestDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.RegisterRequestDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.SimpleUserRequestDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.LoginRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RefreshTokenRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RegisterRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateUserInfoRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
-public record UsersRequestHandler(UserController userController) {
+@Component
+@Scope("prototype")
+@RequiredArgsConstructor
+public class UsersRequestHandler {
+  private final UserController userController;
 
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException, ValidationFailedException, UserAlreadyExistsException {
     TokenPairDto tokenPair =
         userController.registerUser(
-            new RegisterRequestDto(
+            new RegisterRequest(
                 RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
                 RequestUtils.getRequiredHeader(request, "X-Auth-Password"),
                 RequestUtils.getRequiredHeader(request, "X-Auth-Username")));
@@ -47,7 +54,7 @@ public record UsersRequestHandler(UserController userController) {
 
     tokenPair =
         userController.loginUser(
-            new LoginRequestDto(
+            new LoginRequest(
                 RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
                 RequestUtils.getRequiredHeader(request, "X-Auth-Password")));
 
@@ -60,7 +67,7 @@ public record UsersRequestHandler(UserController userController) {
           InvalidSessionException,
           ValidationFailedException {
     userController.logoutUser(
-        new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
+        new SimpleUserRequest(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
     ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
@@ -70,7 +77,7 @@ public record UsersRequestHandler(UserController userController) {
       throws HeaderNotFoundException, UserNotFoundException, ValidationFailedException {
     UserDto userInfo =
         userController.getUserInfo(
-            new SimpleUserRequestDto(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
+            new SimpleUserRequest(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
@@ -94,7 +101,7 @@ public record UsersRequestHandler(UserController userController) {
     Optional<String> newUserPassword = RequestUtils.getHeader(request, "X-New-Password");
 
     userController.updateUserInfo(
-        new UpdateUserInfoDto(
+        new UpdateUserInfoRequest(
             RequestUtils.getRequiredHeader(request, "X-Auth-Token"),
             oldUserPassword,
             newUserPassword,
@@ -107,7 +114,7 @@ public record UsersRequestHandler(UserController userController) {
       throws HeaderNotFoundException, InvalidSessionException, ValidationFailedException {
     TokenPairDto tokenPair =
         userController.refresh(
-            new RefreshTokenDto(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
+            new RefreshTokenRequest(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
 
     sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
   }

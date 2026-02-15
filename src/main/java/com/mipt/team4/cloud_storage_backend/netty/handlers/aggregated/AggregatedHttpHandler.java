@@ -1,8 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
-import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
@@ -24,27 +21,21 @@ import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
+@RequiredArgsConstructor
 public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
 
-  private static final Logger logger = LoggerFactory.getLogger(AggregatedHttpHandler.class);
-  private final DirectoriesRequestHandler directorysRequestHandler;
+  private final DirectoriesRequestHandler directoriesRequestHandler;
   private final FilesRequestHandler filesRequestHandler;
   private final UsersRequestHandler usersRequestHandler;
 
   private HttpMethod method;
   private String uri;
-
-  public AggregatedHttpHandler(
-      FileController fileController,
-      DirectoryController directoryController,
-      UserController userController) {
-    this.directorysRequestHandler = new DirectoriesRequestHandler(directoryController);
-    this.filesRequestHandler = new FilesRequestHandler(fileController);
-    this.usersRequestHandler = new UsersRequestHandler(userController);
-  }
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
@@ -123,14 +114,14 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST)) {
-      directorysRequestHandler.handleChangeDirectoryPathRequest(ctx, request, userToken);
+      directoriesRequestHandler.handleChangeDirectoryPathRequest(ctx, request, userToken);
     } else {
       String directoryPath = RequestUtils.getRequiredQueryParam(request, "path");
 
       if (uri.startsWith("/api/directories") && method.equals(HttpMethod.PUT)) {
-        directorysRequestHandler.handleCreateDirectoryRequest(ctx, directoryPath, userToken);
+        directoriesRequestHandler.handleCreateDirectoryRequest(ctx, directoryPath, userToken);
       } else if (method.equals(HttpMethod.DELETE)) {
-        directorysRequestHandler.handleDeleteDirectoryRequest(ctx, directoryPath, userToken);
+        directoriesRequestHandler.handleDeleteDirectoryRequest(ctx, directoryPath, userToken);
       } else {
         ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
       }

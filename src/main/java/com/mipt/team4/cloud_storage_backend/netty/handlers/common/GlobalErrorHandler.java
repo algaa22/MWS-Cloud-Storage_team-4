@@ -5,12 +5,14 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
+@Slf4j
 public class GlobalErrorHandler extends ChannelDuplexHandler {
-
-  private static final Logger logger = LoggerFactory.getLogger(GlobalErrorHandler.class);
 
   @Override
   public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
@@ -26,7 +28,10 @@ public class GlobalErrorHandler extends ChannelDuplexHandler {
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    logger.error("Unhandled exception in channel: {}", ctx.channel().remoteAddress(), cause);
-    ResponseUtils.sendInternalServerErrorResponse(ctx).addListener(ChannelFutureListener.CLOSE);
+    log.error("Unhandled exception in channel: {}", ctx.channel().remoteAddress(), cause);
+
+    if (ctx.channel().isActive() && ctx.channel().isOpen()) {
+      ResponseUtils.sendInternalServerErrorResponse(ctx).addListener(ChannelFutureListener.CLOSE);
+    }
   }
 }

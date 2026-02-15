@@ -3,7 +3,6 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
@@ -16,8 +15,8 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotF
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
@@ -29,12 +28,16 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
+@Slf4j
+@RequiredArgsConstructor
 public class ChunkedUploadHandler {
-
-  private static final Logger logger = LoggerFactory.getLogger(ChunkedUploadHandler.class);
   private final FileController fileController;
 
   // TODO: ненужные поля (кроме isInProgress)
@@ -46,18 +49,13 @@ public class ChunkedUploadHandler {
   private long receivedBytes = 0;
   private int receivedChunks = 0;
 
-  public ChunkedUploadHandler(FileController fileController) {
-    this.fileController = fileController;
-  }
-
   public void startChunkedUpload(HttpRequest request)
       throws TransferAlreadyStartedException,
           QueryParameterNotFoundException,
           HeaderNotFoundException,
           ValidationFailedException,
           StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          StorageIllegalAccessException {
+          UserNotFoundException {
     if (isInProgress) {
       throw new TransferAlreadyStartedException();
     }
@@ -65,15 +63,15 @@ public class ChunkedUploadHandler {
     parseUploadRequestMetadata(request);
 
     fileController.startChunkedUpload(
-        new FileChunkedUploadDto(
+        new FileChunkedUploadRequest(
             currentSessionId, currentUserToken, currentFilePath, currentFileTags));
 
     isInProgress = true;
     receivedChunks = 0;
     receivedBytes = 0;
 
-    if (logger.isDebugEnabled()) {
-      logger.debug(
+    if (log.isDebugEnabled()) {
+      log.debug(
           "Started chunked upload. Session: {}, user: {}, file: {}",
           currentSessionId,
           currentUserToken,
@@ -81,9 +79,8 @@ public class ChunkedUploadHandler {
     }
   }
 
-  public void handleFileChunk(ChannelHandlerContext ctx, HttpContent content)
+  public void handleFileChunk(HttpContent content)
       throws TransferNotStartedYetException,
-          UserNotFoundException,
           UploadSessionNotFoundException,
           CombineChunksToPartException,
           ValidationFailedException {
@@ -98,13 +95,13 @@ public class ChunkedUploadHandler {
     chunkData.getBytes(chunkData.readerIndex(), chunkBytes);
 
     fileController.processFileChunk(
-        new UploadChunkDto(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
+        new UploadChunkRequest(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
 
     receivedChunks++;
     receivedBytes += chunkSize;
 
-    if (logger.isDebugEnabled()) {
-      logger.debug(
+    if (log.isDebugEnabled()) {
+      log.debug(
           "Processed chunk {} for session: {}. Size: {} bytes, total: {} bytes",
           receivedChunks,
           currentSessionId,
@@ -127,7 +124,7 @@ public class ChunkedUploadHandler {
     }
 
     if (content.content().readableBytes() > 0) {
-      handleFileChunk(ctx, content);
+      handleFileChunk(content);
     }
 
     ChunkedUploadFileResultDto result;
@@ -139,8 +136,8 @@ public class ChunkedUploadHandler {
       throw e;
     }
 
-    if (logger.isDebugEnabled()) {
-      logger.debug(
+    if (log.isDebugEnabled()) {
+      log.debug(
           "Completed chunk upload. Session: {}, path: {}, chunks: {}, bytes: {}",
           currentSessionId,
           currentFilePath,

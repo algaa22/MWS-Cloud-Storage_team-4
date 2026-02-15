@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
+import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -12,11 +12,16 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
+@Component
+@RequiredArgsConstructor
 public class FileOperationsITUtils {
+  public final ITUtils itUtils;
 
-  public static boolean filePathsListContainsFiles(
+  public boolean filePathsListContainsFiles(
       HttpClient client,
       String userToken,
       List<String> filePaths,
@@ -29,7 +34,7 @@ public class FileOperationsITUtils {
             client, userToken, includeDirectories, recursive, searchDirectory);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
-    JsonNode filesNode = TestUtils.getRootNodeFromResponse(response).get("files");
+    JsonNode filesNode = itUtils.getRootNodeFromResponse(response).get("files");
     List<String> responseFilePaths = new ArrayList<>();
 
     for (int i = 0; i < filesNode.size(); i++) {
@@ -42,7 +47,7 @@ public class FileOperationsITUtils {
     return responseFilePaths.containsAll(filePaths);
   }
 
-  public static HttpResponse<String> sendGetFilePathsListRequest(
+  public HttpResponse<String> sendGetFilePathsListRequest(
       HttpClient client,
       String userToken,
       boolean includeDirectories,
@@ -60,16 +65,17 @@ public class FileOperationsITUtils {
             .formatted(includeDirectories, recursive, dirParam);
 
     HttpRequest request =
-        TestUtils.createRequest(endpoint).header("X-Auth-Token", userToken).GET().build();
+        itUtils.createRequest(endpoint).header("X-Auth-Token", userToken).GET().build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  public static HttpResponse<String> sendGetFileInfoRequest(
+  public HttpResponse<String> sendGetFileInfoRequest(
       HttpClient client, String userToken, String targetFilePath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/files/info?path=" + targetFilePath)
+        itUtils
+            .createRequest("/api/files/info?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .GET()
             .build();
@@ -77,11 +83,12 @@ public class FileOperationsITUtils {
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  public static HttpResponse<String> sendDeleteFileRequest(
+  public HttpResponse<String> sendDeleteFileRequest(
       HttpClient client, String userToken, String targetFilePath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/files?path=" + targetFilePath)
+        itUtils
+            .createRequest("/api/files?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .DELETE()
             .build();
@@ -89,12 +96,12 @@ public class FileOperationsITUtils {
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  public static HttpResponse<String> sendChangeFilePathRequest(
+  public HttpResponse<String> sendChangeFilePathRequest(
       HttpClient client, String userToken, String oldTargetFilePath, String newTargetFilePath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest(
-                "/api/files?path=" + oldTargetFilePath + "&newPath=" + newTargetFilePath)
+        itUtils
+            .createRequest("/api/files?path=" + oldTargetFilePath + "&newPath=" + newTargetFilePath)
             .header("X-Auth-Token", userToken)
             .PUT(HttpRequest.BodyPublishers.noBody())
             .build();
@@ -102,21 +109,21 @@ public class FileOperationsITUtils {
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  public static HttpResponse<String> sendChangeFileVisibilityRequest(
+  public HttpResponse<String> sendChangeFileVisibilityRequest(
       HttpClient client, String userToken, String targetFilePath, String newVisibility)
       throws IOException, InterruptedException {
     return sendChangeFileMetadataRequest(
         client, userToken, targetFilePath, "X-File-New-Visibility", newVisibility);
   }
 
-  public static HttpResponse<String> sendChangeFileTagsRequest(
+  public HttpResponse<String> sendChangeFileTagsRequest(
       HttpClient client, String userToken, String targetFilePath, String newTags)
       throws IOException, InterruptedException {
     return sendChangeFileMetadataRequest(
         client, userToken, targetFilePath, "X-File-New-Tags", newTags);
   }
 
-  public static HttpResponse<String> sendChangeFileMetadataRequest(
+  public HttpResponse<String> sendChangeFileMetadataRequest(
       HttpClient client,
       String userToken,
       String oldTargetPath,
@@ -125,10 +132,8 @@ public class FileOperationsITUtils {
       String newTags)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest(
-                "/api/files?path="
-                    + oldTargetPath
-                    + "&newPath=%s".formatted(oldTargetPath, newTargetPath))
+        itUtils
+            .createRequest("/api/files?path=%s&newPath=%s".formatted(oldTargetPath, newTargetPath))
             .header("X-Auth-Token", userToken)
             .header("X-File-New-Visibility", newVisibility)
             .header("X-File-New-Tags", newTags)
@@ -138,11 +143,12 @@ public class FileOperationsITUtils {
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  private static HttpResponse<String> sendChangeFileMetadataRequest(
+  private HttpResponse<String> sendChangeFileMetadataRequest(
       HttpClient client, String userToken, String targetFilePath, String header, String value)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/files?path=" + targetFilePath)
+        itUtils
+            .createRequest("/api/files?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .header(header, value)
             .PUT(HttpRequest.BodyPublishers.noBody())

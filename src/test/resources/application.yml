@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: cloud-storage-backend
+
+netty:
+  enable-logging: false
+  enable-https: false
+  http-port: 8080
+  https-port: 8443
+  boss-threads: 1
+  worker-threads: 4
+
+  start:
+    timeout-sec: 5
+
+  shutdown:
+    quiet-period-sec: 2
+    timeout-sec: 15
+
+cors:
+  access-control:
+    allow-origin: "http://localhost:5173"
+    allow-credentials: true
+    max-age: 3600
+
+database:
+  url: ${DB_URL}
+  username: ${DB_USERNAME}
+  password: ${DB_PASSWORD}
+
+minio:
+  url: ${MINIO_URL}
+  username: ${MINIO_USERNAME}
+  password: ${MINIO_PASSWORD}
+
+  min-file-part-size: 5242880 # 5mb
+
+  user-data-bucket:
+    name: user-data
+
+storage:
+  rest:
+    max-aggregated-content-length: 5242900 # 5mb + 20b
+    max-file-size: 10737418240 # 10 gb
+    max-file-chunk-size: 10485760 # 10 mb
+    file-download-chunk-size: 65536 # 64 kb
+
+  auth:
+    access-token-expiration-sec: 900 # 15 min
+    refresh-token-expiration-sec: 2592000 # 30 days
+    jwt-secret-key: ${JWT_SECRET_KEY}
+
+  quotas:
+    default-storage-limit: 10737418240

@@ -1,9 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
-import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated.AggregatedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.chunked.ChunkedHttpHandler;
@@ -22,27 +19,23 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.util.ReferenceCountUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
+@Slf4j
+@RequiredArgsConstructor
 public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
 
-  private static final Logger logger = LoggerFactory.getLogger(HttpTrafficStrategySelector.class);
-
-  private final FileController fileController;
-  private final DirectoryController directoryController;
-  private final UserController userController;
+  private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlerProvider;
+  private final ObjectProvider<AggregatedHttpHandler> aggregatedHttpHandlerProvider;
+  private final StorageConfig storageConfig;
 
   private PipelineType previousPipeline = null;
-
-  public HttpTrafficStrategySelector(
-      FileController fileController,
-      DirectoryController directoryController,
-      UserController userController) {
-    this.fileController = fileController;
-    this.directoryController = directoryController;
-    this.userController = userController;
-  }
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -55,7 +48,8 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       PipelineType currentPipeline;
 
       try {
-        currentPipeline = PipelineType.from(request);
+        currentPipeline =
+            PipelineType.from(request, storageConfig.rest().maxAggregatedContentLength());
       } catch (ParseException e) {
         ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
         ReferenceCountUtil.release(msg);
@@ -92,12 +86,10 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
 
     if (currentPipeline == PipelineType.CHUNKED) {
       pipeline.addLast(new ChunkedWriteHandler());
-      pipeline.addLast(new ChunkedHttpHandler(fileController));
+      pipeline.addLast(chunkedHttpHandlerProvider.getObject());
     } else {
-      pipeline.addLast(
-          new HttpObjectAggregator(StorageConfig.INSTANCE.getMaxAggregatedContentLength()));
-      pipeline.addLast(
-          new AggregatedHttpHandler(fileController, directoryController, userController));
+      pipeline.addLast(new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
+      pipeline.addLast(aggregatedHttpHandlerProvider.getObject());
     }
   }
 
@@ -109,7 +101,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   }
 
   private void handleNotHttpRequest(ChannelHandlerContext ctx, Object msg) {
-    logger.error(
+    log.error(
         "Unexpected message mimeType before pipeline configuration: {}",
         msg.getClass().getSimpleName());
 
@@ -124,12 +116,13 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
     CHUNKED,
     AGGREGATED;
 
-    public static PipelineType from(HttpRequest request) throws ParseException {
+    public static PipelineType from(HttpRequest request, int maxAggregatedContentLength)
+        throws ParseException {
       if (request.method() == HttpMethod.POST) {
         int fileSize =
             SafeParser.parseInt("File size", RequestUtils.getHeader(request, "X-File-Size", "0"));
 
-        if (fileSize > StorageConfig.INSTANCE.getMaxAggregatedContentLength()) {
+        if (fileSize > maxAggregatedContentLength) {
           return CHUNKED;
         }
       }

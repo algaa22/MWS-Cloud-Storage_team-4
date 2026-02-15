@@ -1,14 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.netty.channel;
 
-import com.mipt.team4.cloud_storage_backend.config.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
+import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.ProtocolNegotiationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
-import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineUtils;
+import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
@@ -19,22 +16,30 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import org.springframework.beans.factory.ObjectProvider;
 
 public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
+  private final PipelineBuilder pipelineBuilder;
+  private final SslContextFactory sslContextFactory;
+  private final ObjectProvider<GlobalErrorHandler> globalErrorHandler;
+  private final ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler;
 
-  private final FileController fileController;
-  private final DirectoryController directoryController;
-  private final UserController userController;
+  private final NettyConfig nettyConfig;
+
   private final ServerProtocol protocol;
 
   public MainChannelInitializer(
-      FileController fileController,
-      DirectoryController directoryController,
-      UserController userController,
+      PipelineBuilder pipelineBuilder,
+      SslContextFactory sslContextFactory,
+      ObjectProvider<GlobalErrorHandler> globalErrorHandler,
+      ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
+      NettyConfig nettyConfig,
       ServerProtocol protocol) {
-    this.fileController = fileController;
-    this.directoryController = directoryController;
-    this.userController = userController;
+    this.pipelineBuilder = pipelineBuilder;
+    this.sslContextFactory = sslContextFactory;
+    this.globalErrorHandler = globalErrorHandler;
+    this.protocolNegotiationHandler = protocolNegotiationHandler;
+    this.nettyConfig = nettyConfig;
     this.protocol = protocol;
   }
 
@@ -47,19 +52,17 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
           KeyStoreException {
     ChannelPipeline pipeline = socketChannel.pipeline();
 
-    if (NettyConfig.INSTANCE.isEnableLogging()) {
+    if (nettyConfig.enableLogging()) {
       pipeline.addFirst(new LoggingHandler(LogLevel.INFO));
     }
 
     if (protocol == ServerProtocol.HTTPS) {
-      pipeline.addLast(SslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
-      pipeline.addLast(
-          new ProtocolNegotiationHandler(fileController, directoryController, userController));
+      pipeline.addLast(sslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
+      pipeline.addLast(protocolNegotiationHandler.getObject());
     } else {
-      PipelineUtils.buildHttp11Pipeline(
-          pipeline, fileController, directoryController, userController);
+      pipelineBuilder.buildHttp11Pipeline(pipeline);
     }
 
-    pipeline.addLast(new GlobalErrorHandler());
+    pipeline.addLast(globalErrorHandler.getObject());
   }
 }

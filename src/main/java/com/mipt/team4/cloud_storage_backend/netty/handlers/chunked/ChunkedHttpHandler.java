@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
-import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
@@ -22,19 +21,18 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.LastHttpContent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
+@Slf4j
+@RequiredArgsConstructor
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
-
-  private static final Logger logger = LoggerFactory.getLogger(ChunkedHttpHandler.class);
   private final ChunkedUploadHandler chunkedUpload;
   private final ChunkedDownloadHandler chunkedDownload;
-
-  public ChunkedHttpHandler(FileController fileController) {
-    this.chunkedUpload = new ChunkedUploadHandler(fileController);
-    this.chunkedDownload = new ChunkedDownloadHandler(fileController);
-  }
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
@@ -58,7 +56,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
       ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
     } catch (CombineChunksToPartException | MissingFilePartException e) {
       ResponseUtils.sendInternalServerErrorResponse(ctx);
-      logger.error("Internal server error: {}", e.getMessage());
+      log.error("Internal server error: {}", e.getMessage());
     }
   }
 
@@ -78,7 +76,6 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
       throws StorageFileAlreadyExistsException,
           UserNotFoundException,
           ValidationFailedException,
-          StorageIllegalAccessException,
           QueryParameterNotFoundException,
           HeaderNotFoundException,
           TransferAlreadyStartedException,
@@ -107,7 +104,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     if (content instanceof LastHttpContent) {
       chunkedUpload.completeChunkedUpload(ctx, (LastHttpContent) content);
     } else {
-      chunkedUpload.handleFileChunk(ctx, content);
+      chunkedUpload.handleFileChunk(content);
     }
   }
 

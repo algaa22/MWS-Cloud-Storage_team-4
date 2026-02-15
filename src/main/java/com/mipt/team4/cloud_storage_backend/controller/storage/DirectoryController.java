@@ -4,40 +4,42 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFo
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeDirectoryPathDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOperationDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeDirectoryPathRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleDirectoryOperationRequest;
 import com.mipt.team4.cloud_storage_backend.service.storage.DirectoryService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import java.io.FileNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Controller;
 
+@Controller
+@RequiredArgsConstructor
 public class DirectoryController {
 
   private final DirectoryService service;
+  private final JwtService jwtService;
 
-  public DirectoryController(DirectoryService service) {
-    this.service = service;
-  }
-
-  public void createDirectory(SimpleDirectoryOperationDto request)
+  public void createDirectory(SimpleDirectoryOperationRequest request)
       throws ValidationFailedException, UserNotFoundException, StorageFileAlreadyExistsException {
-    request.validate();
+    request.validate(jwtService);
     service.createDirectory(request);
   }
 
-  public void changeDirectoryPath(ChangeDirectoryPathDto request)
+  public void changeDirectoryPath(ChangeDirectoryPathRequest request)
       throws ValidationFailedException,
           UserNotFoundException,
           StorageFileAlreadyExistsException,
           StorageEntityNotFoundException {
-    request.validate();
+    request.validate(jwtService);
     service.changeDirectoryPath(request);
   }
 
-  public void deleteDirectory(SimpleDirectoryOperationDto request)
+  public void deleteDirectory(SimpleDirectoryOperationRequest request)
       throws ValidationFailedException,
           UserNotFoundException,
           StorageEntityNotFoundException,
           FileNotFoundException {
-    request.validate();
+    request.validate(jwtService);
     service.deleteDirectory(request);
   }
 }

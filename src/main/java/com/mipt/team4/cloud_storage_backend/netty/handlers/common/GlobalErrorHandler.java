@@ -29,6 +29,9 @@ public class GlobalErrorHandler extends ChannelDuplexHandler {
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     log.error("Unhandled exception in channel: {}", ctx.channel().remoteAddress(), cause);
-    ResponseUtils.sendInternalServerErrorResponse(ctx).addListener(ChannelFutureListener.CLOSE);
+
+    if (ctx.channel().isActive() && ctx.channel().isOpen()) {
+      ResponseUtils.sendInternalServerErrorResponse(ctx).addListener(ChannelFutureListener.CLOSE);
+    }
   }
 }

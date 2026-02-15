@@ -14,15 +14,18 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UpdateUserInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import org.springframework.stereotype.Controller;
 
 @Controller
 public class UserController {
 
   private final UserService service;
+  private final JwtService jwtService;
 
-  public UserController(UserService service) {
+  public UserController(UserService service, JwtService jwtService) {
     this.service = service;
+    this.jwtService = jwtService;
   }
 
   public TokenPairDto registerUser(RegisterRequestDto request)
@@ -39,7 +42,7 @@ public class UserController {
 
   public void logoutUser(SimpleUserRequestDto request)
       throws ValidationFailedException, UserNotFoundException, InvalidSessionException {
-    request.validate();
+    request.validate(jwtService);
     service.logoutUser(request);
   }
 
@@ -51,13 +54,13 @@ public class UserController {
 
   public UserDto getUserInfo(SimpleUserRequestDto request)
       throws ValidationFailedException, UserNotFoundException {
-    request.validate();
+    request.validate(jwtService);
     return service.getUserInfo(request);
   }
 
   public void updateUserInfo(UpdateUserInfoDto request)
       throws ValidationFailedException, UserNotFoundException, WrongPasswordException {
-    request.validate();
+    request.validate(jwtService);
     service.updateUserInfo(request);
   }
 }

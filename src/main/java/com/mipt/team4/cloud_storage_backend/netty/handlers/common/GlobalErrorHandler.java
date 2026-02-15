@@ -7,9 +7,11 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
+@Scope("prototype")
 public class GlobalErrorHandler extends ChannelDuplexHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(GlobalErrorHandler.class);

@@ -21,6 +21,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.io.FileNotFoundException;
 import java.util.List;
@@ -30,36 +31,37 @@ import org.springframework.stereotype.Controller;
 public class FileController {
   // TODO: постоянный validate()
   private final FileService service;
+  private final JwtService jwtService;
   private final StorageConfig storageConfig;
 
-  public FileController(FileService service, StorageConfig storageConfig) {
+  public FileController(FileService service, JwtService jwtService, StorageConfig storageConfig) {
     this.service = service;
+    this.jwtService = jwtService;
     this.storageConfig = storageConfig;
   }
 
   public void startChunkedUpload(FileChunkedUploadDto request)
-      throws ValidationFailedException,
-      StorageFileAlreadyExistsException,
-      UserNotFoundException {
-    request.validate();
+      throws ValidationFailedException, StorageFileAlreadyExistsException, UserNotFoundException {
+    request.validate(jwtService);
     service.startChunkedUploadSession(request);
   }
 
   public void processFileChunk(UploadChunkDto request)
       throws ValidationFailedException,
-      CombineChunksToPartException,
-      UploadSessionNotFoundException {
+          CombineChunksToPartException,
+          UploadSessionNotFoundException {
     request.validate(storageConfig.rest().maxFileChunkSize());
     service.uploadChunk(request);
   }
 
   public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
       throws MissingFilePartException,
-      ValidationFailedException,
-      StorageFileAlreadyExistsException,
-      UserNotFoundException,
-      TooSmallFilePartException,
-      CombineChunksToPartException, UploadSessionNotFoundException {
+          ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          UserNotFoundException,
+          TooSmallFilePartException,
+          CombineChunksToPartException,
+          UploadSessionNotFoundException {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));
 
     return service.completeChunkedUpload(sessionId);
@@ -67,46 +69,44 @@ public class FileController {
 
   public List<StorageEntity> getFileList(GetFileListDto request)
       throws ValidationFailedException, UserNotFoundException {
-    request.validate();
+    request.validate(jwtService);
     return service.getFileList(request);
   }
 
   public StorageDto getFileInfo(SimpleFileOperationDto request)
       throws ValidationFailedException, UserNotFoundException, StorageEntityNotFoundException {
-    request.validate();
+    request.validate(jwtService);
     return service.getFileInfo(request);
   }
 
   public void deleteFile(SimpleFileOperationDto request)
       throws ValidationFailedException,
-      StorageIllegalAccessException,
-      UserNotFoundException,
-      StorageEntityNotFoundException,
-      FileNotFoundException {
-    request.validate();
+          StorageIllegalAccessException,
+          UserNotFoundException,
+          StorageEntityNotFoundException,
+          FileNotFoundException {
+    request.validate(jwtService);
     service.deleteFile(request);
   }
 
   public void uploadFile(FileUploadDto request)
       throws StorageFileAlreadyExistsException, ValidationFailedException, UserNotFoundException {
-    request.validate();
+    request.validate(jwtService);
     service.uploadFile(request);
   }
 
   public void changeFileMetadata(ChangeFileMetadataDto request)
       throws ValidationFailedException,
-      UserNotFoundException,
-      StorageEntityNotFoundException,
-      StorageFileAlreadyExistsException {
-    request.validate();
+          UserNotFoundException,
+          StorageEntityNotFoundException,
+          StorageFileAlreadyExistsException {
+    request.validate(jwtService);
     service.changeFileMetadata(request);
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationDto request)
-      throws ValidationFailedException,
-      UserNotFoundException,
-      StorageEntityNotFoundException {
-    request.validate();
+      throws ValidationFailedException, UserNotFoundException, StorageEntityNotFoundException {
+    request.validate(jwtService);
     return service.downloadFile(request);
   }
 }

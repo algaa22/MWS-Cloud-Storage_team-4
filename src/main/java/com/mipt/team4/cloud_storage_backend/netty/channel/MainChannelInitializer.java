@@ -16,14 +16,13 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
-import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.ObjectProvider;
 
-@Component
 public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   private final PipelineBuilder pipelineBuilder;
   private final SslContextFactory sslContextFactory;
-  private final GlobalErrorHandler globalErrorHandler;
-  private final ProtocolNegotiationHandler protocolNegotiationHandler;
+  private final ObjectProvider<GlobalErrorHandler> globalErrorHandler;
+  private final ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler;
 
   private final NettyConfig nettyConfig;
 
@@ -32,9 +31,9 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   public MainChannelInitializer(
       PipelineBuilder pipelineBuilder,
       SslContextFactory sslContextFactory,
-      GlobalErrorHandler globalErrorHandler,
+      ObjectProvider<GlobalErrorHandler> globalErrorHandler,
+      ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
       NettyConfig nettyConfig,
-      ProtocolNegotiationHandler protocolNegotiationHandler,
       ServerProtocol protocol) {
     this.pipelineBuilder = pipelineBuilder;
     this.sslContextFactory = sslContextFactory;
@@ -59,11 +58,11 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
 
     if (protocol == ServerProtocol.HTTPS) {
       pipeline.addLast(sslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
-      pipeline.addLast(protocolNegotiationHandler);
+      pipeline.addLast(protocolNegotiationHandler.getObject());
     } else {
       pipelineBuilder.buildHttp11Pipeline(pipeline);
     }
 
-    pipeline.addLast(globalErrorHandler);
+    pipeline.addLast(globalErrorHandler.getObject());
   }
 }

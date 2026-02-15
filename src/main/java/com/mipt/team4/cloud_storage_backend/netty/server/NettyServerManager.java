@@ -27,7 +27,8 @@ public class NettyServerManager {
   private final AtomicBoolean stopping = new AtomicBoolean(false);
   private final CountDownLatch startupLatch;
 
-  private final MainChannelInitializer mainChannelInitializer;
+  private final MainChannelInitializer httpChannelInitializer;
+  private final MainChannelInitializer httpsChannelInitializer;
   private final NettyConfig nettyConfig;
 
   private Channel httpServerChannel;
@@ -36,8 +37,11 @@ public class NettyServerManager {
   private EventLoopGroup workerGroup;
 
   public NettyServerManager(
-      MainChannelInitializer mainChannelInitializer, NettyConfig nettyConfig) {
-    this.mainChannelInitializer = mainChannelInitializer;
+      MainChannelInitializer httpChannelInitializer,
+      MainChannelInitializer httpsChannelInitializer,
+      NettyConfig nettyConfig) {
+    this.httpChannelInitializer = httpChannelInitializer;
+    this.httpsChannelInitializer = httpsChannelInitializer;
     this.nettyConfig = nettyConfig;
 
     int serversCount = nettyConfig.enableHttps() ? 2 : 1;
@@ -70,10 +74,6 @@ public class NettyServerManager {
     shutdownThreads();
   }
 
-  public CountDownLatch getStartupLatch() {
-    return startupLatch;
-  }
-
   private void startServers() throws InterruptedException {
     httpServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTP);
 
@@ -104,9 +104,6 @@ public class NettyServerManager {
             });
 
     logger.info("Servers are running. Waiting for any channel to close...");
-    closePromise.sync();
-
-    stop();
   }
 
   private void closeServers() {
@@ -148,7 +145,8 @@ public class NettyServerManager {
         .group(bossGroup, workerGroup)
         .channel(NioServerSocketChannel.class)
         .option(ChannelOption.SO_REUSEADDR, true)
-        .childHandler(mainChannelInitializer);
+        .childHandler(
+            protocol == ServerProtocol.HTTP ? httpChannelInitializer : httpsChannelInitializer);
 
     int port = protocol == ServerProtocol.HTTPS ? nettyConfig.httpsPort() : nettyConfig.httpPort();
 

@@ -10,10 +10,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class PipelineBuilder {
   private final ObjectProvider<HttpTrafficStrategySelector> selectorProvider;
-  private final CorsHandler corsHandler;
+  private final ObjectProvider<CorsHandler> corsHandler;
 
   public PipelineBuilder(
-      ObjectProvider<HttpTrafficStrategySelector> selectorProvider, CorsHandler corsHandler) {
+      ObjectProvider<HttpTrafficStrategySelector> selectorProvider, ObjectProvider<CorsHandler> corsHandler) {
     this.selectorProvider = selectorProvider;
     this.corsHandler = corsHandler;
   }
@@ -24,7 +24,7 @@ public class PipelineBuilder {
   }
 
   public void finalizeHttpPipeline(ChannelPipeline pipeline) {
-    pipeline.addLast(corsHandler);
+    pipeline.addLast(corsHandler.getObject());
     pipeline.addLast(selectorProvider.getObject());
   }
 }

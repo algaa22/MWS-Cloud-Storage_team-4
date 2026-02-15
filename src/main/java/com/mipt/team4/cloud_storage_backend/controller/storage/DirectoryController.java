@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeDirectoryPathDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOperationDto;
 import com.mipt.team4.cloud_storage_backend.service.storage.DirectoryService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import java.io.FileNotFoundException;
 import org.springframework.stereotype.Controller;
 
@@ -14,14 +15,16 @@ import org.springframework.stereotype.Controller;
 public class DirectoryController {
 
   private final DirectoryService service;
+  private final JwtService jwtService;
 
-  public DirectoryController(DirectoryService service) {
+  public DirectoryController(DirectoryService service, JwtService jwtService) {
     this.service = service;
+    this.jwtService = jwtService;
   }
 
   public void createDirectory(SimpleDirectoryOperationDto request)
       throws ValidationFailedException, UserNotFoundException, StorageFileAlreadyExistsException {
-    request.validate();
+    request.validate(jwtService);
     service.createDirectory(request);
   }
 
@@ -30,7 +33,7 @@ public class DirectoryController {
           UserNotFoundException,
           StorageFileAlreadyExistsException,
           StorageEntityNotFoundException {
-    request.validate();
+    request.validate(jwtService);
     service.changeDirectoryPath(request);
   }
 
@@ -39,7 +42,7 @@ public class DirectoryController {
           UserNotFoundException,
           StorageEntityNotFoundException,
           FileNotFoundException {
-    request.validate();
+    request.validate(jwtService);
     service.deleteDirectory(request);
   }
 }

@@ -16,7 +16,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class StorageRepository {
-
   private final FileMetadataRepository metadataRepository;
   private final FileContentRepository contentRepository;
 

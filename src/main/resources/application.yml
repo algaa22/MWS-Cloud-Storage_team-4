@@ -25,7 +25,6 @@ cors:
 
 database:
   url: ${DB_URL}
-  name: ${DB_NAME}
   username: ${DB_USERNAME}
   password: ${DB_PASSWORD}
 

@@ -1,9 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.model.user.dto;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.Optional;
+import javax.swing.JWindow;
 
 public record UpdateUserInfoDto(
     String userToken,
@@ -11,10 +13,10 @@ public record UpdateUserInfoDto(
     Optional<String> newPassword,
     Optional<String> newName) {
 
-  public void validate() throws ValidationFailedException {
+  public void validate(JwtService jwtService) throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.validToken(userToken),
+            Validators.validToken(jwtService, userToken),
             Validators.any(
                 "New user info",
                 "One of the fields {NewUsername, newPassword} must be specified",

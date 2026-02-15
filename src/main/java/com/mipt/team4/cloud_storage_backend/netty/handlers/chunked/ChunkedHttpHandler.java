@@ -24,7 +24,11 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.LastHttpContent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
+@Component
+@Scope("prototype")
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkedHttpHandler.class);

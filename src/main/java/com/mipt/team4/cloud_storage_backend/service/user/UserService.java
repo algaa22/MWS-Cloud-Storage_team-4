@@ -22,7 +22,9 @@ import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenSe
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
+@Service
 public class UserService {
   private final UserRepository userRepository;
   private final UserSessionService userSessionService;

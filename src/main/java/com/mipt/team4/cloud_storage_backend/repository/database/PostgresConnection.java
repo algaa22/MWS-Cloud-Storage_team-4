@@ -22,8 +22,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PostgresConnection implements DatabaseConnection {
+  private final DatabaseConfig databaseConfig;
+
   private Connection connection;
-  private DatabaseConfig databaseConfig;
 
   public PostgresConnection(DatabaseConfig databaseConfig) {
     this.databaseConfig = databaseConfig;

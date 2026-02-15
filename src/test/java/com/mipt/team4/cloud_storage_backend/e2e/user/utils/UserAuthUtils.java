@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.e2e.user.utils;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,10 +12,9 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class UserAuthUtils {
+  private static int usersCounter = 0;
   private final UserITUtils userITUtils;
   private final ITUtils itUtils;
-
-  private static int usersCounter = 0;
 
   // TODO: перенести в usertestutils
 

@@ -9,7 +9,6 @@ import com.mipt.team4.cloud_storage_backend.e2e.user.BaseUserIT;
 import com.mipt.team4.cloud_storage_backend.e2e.user.utils.UserAuthUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.user.utils.UserITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Tag;

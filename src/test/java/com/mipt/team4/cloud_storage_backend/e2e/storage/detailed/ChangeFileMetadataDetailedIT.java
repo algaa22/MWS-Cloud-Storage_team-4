@@ -21,8 +21,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
   private static final String NEW_VISIBILITY = "public";
   private static final String NEW_TAGS = "1,2,3";
 
-  @Autowired
-  private FileOperationsITUtils fileOperationsITUtils;
+  @Autowired private FileOperationsITUtils fileOperationsITUtils;
 
   public ChangeFileMetadataDetailedIT() {
     super("/api/files?path=_", HttpMethod.PUT.name(), PathParam.EXISTENT_FILE);

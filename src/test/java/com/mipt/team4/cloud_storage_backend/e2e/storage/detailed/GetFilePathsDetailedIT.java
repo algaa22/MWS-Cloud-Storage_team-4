@@ -6,7 +6,6 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseDetailedFileIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.PathParam;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
 import java.net.http.HttpResponse;

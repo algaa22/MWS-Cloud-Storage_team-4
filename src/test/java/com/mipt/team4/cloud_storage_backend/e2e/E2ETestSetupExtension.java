@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.e2e;
 
-import com.mipt.team4.cloud_storage_backend.CloudStorageApplication;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;

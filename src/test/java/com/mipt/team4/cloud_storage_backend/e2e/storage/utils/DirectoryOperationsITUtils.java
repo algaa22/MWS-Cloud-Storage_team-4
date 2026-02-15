@@ -18,7 +18,8 @@ public class DirectoryOperationsITUtils {
       HttpClient client, String userToken, String directoryPath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest("/api/directories?path=" + directoryPath)
+        itUtils
+            .createRequest("/api/directories?path=" + directoryPath)
             .header("X-Auth-Token", userToken)
             .PUT(HttpRequest.BodyPublishers.noBody())
             .build();
@@ -30,7 +31,8 @@ public class DirectoryOperationsITUtils {
       HttpClient client, String userToken, String directoryPath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest("/api/directories?path=" + directoryPath)
+        itUtils
+            .createRequest("/api/directories?path=" + directoryPath)
             .header("X-Auth-Token", userToken)
             .DELETE()
             .build();
@@ -39,12 +41,11 @@ public class DirectoryOperationsITUtils {
   }
 
   public HttpResponse<String> sendChangeDirectoryPathRequest(
-      HttpClient client,
-      String currentUserToken,
-      String oldDirectoryPath,
-      String newDirectoryPath) throws IOException, InterruptedException {
+      HttpClient client, String currentUserToken, String oldDirectoryPath, String newDirectoryPath)
+      throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest(
+        itUtils
+            .createRequest(
                 "/api/directories?from=%s&to=%s".formatted(oldDirectoryPath, newDirectoryPath))
             .header("X-Auth-Token", currentUserToken)
             .POST(HttpRequest.BodyPublishers.noBody())

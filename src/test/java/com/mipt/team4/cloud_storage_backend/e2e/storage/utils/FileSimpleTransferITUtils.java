@@ -25,7 +25,8 @@ public class FileSimpleTransferITUtils {
     byte[] testFile = FileLoader.getInputStream(localFilePath).readAllBytes();
 
     HttpRequest request =
-        itUtils.createRequest("/api/files/upload?path=" + targetFilePath)
+        itUtils
+            .createRequest("/api/files/upload?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .header("X-File-Tags", fileTags)
             .POST(HttpRequest.BodyPublishers.ofByteArray(testFile))

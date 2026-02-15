@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import java.io.IOException;
@@ -29,6 +28,22 @@ public class FileChunkedTransferITUtils {
   private static final int MAX_CHUNK_SIZE = 8 * 1024;
   
   private final ITUtils itUtils;
+
+  private static List<byte[]> readChunksFromInputStream(InputStream inputStream)
+      throws IOException {
+    List<byte[]> chunks = new ArrayList<>();
+    byte[] buffer = new byte[MAX_CHUNK_SIZE];
+    int bytesRead;
+
+    while ((bytesRead = inputStream.read(buffer)) != -1) {
+      byte[] chunk = new byte[bytesRead];
+      System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+
+      chunks.add(chunk);
+    }
+
+    return chunks;
+  }
 
   public UploadResult sendUploadRequest(
       CloseableHttpClient client,
@@ -72,22 +87,6 @@ public class FileChunkedTransferITUtils {
     }
 
     return true;
-  }
-
-  private static List<byte[]> readChunksFromInputStream(InputStream inputStream)
-      throws IOException {
-    List<byte[]> chunks = new ArrayList<>();
-    byte[] buffer = new byte[MAX_CHUNK_SIZE];
-    int bytesRead;
-
-    while ((bytesRead = inputStream.read(buffer)) != -1) {
-      byte[] chunk = new byte[bytesRead];
-      System.arraycopy(buffer, 0, chunk, 0, bytesRead);
-
-      chunks.add(chunk);
-    }
-
-    return chunks;
   }
 
   public record UploadResult(int statusCode, String body) {

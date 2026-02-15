@@ -1,13 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.e2e.user.utils;
 
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 

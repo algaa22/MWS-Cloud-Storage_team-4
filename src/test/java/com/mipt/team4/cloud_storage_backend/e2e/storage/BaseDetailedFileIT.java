@@ -6,10 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
-import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.e2e.user.utils.UserAuthUtils;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -21,12 +19,11 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
-  @Autowired protected UserAuthUtils userAuthUtils;
-  @Autowired protected ITUtils itUtils;
-
   private final PathParam pathParam;
   private final String rawEndpoint;
   private final String method;
+  @Autowired protected UserAuthUtils userAuthUtils;
+  @Autowired protected ITUtils itUtils;
 
   public BaseDetailedFileIT(String rawEndpoint, String method, PathParam pathParam) {
     this.rawEndpoint = rawEndpoint;

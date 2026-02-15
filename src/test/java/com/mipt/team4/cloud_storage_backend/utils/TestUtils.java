@@ -1,20 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
 import com.mipt.team4.cloud_storage_backend.config.props.DatabaseConfig;
-import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.springframework.stereotype.Component;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class TestUtils {
   public static PostgreSQLContainer<?> createPostgresContainer() {

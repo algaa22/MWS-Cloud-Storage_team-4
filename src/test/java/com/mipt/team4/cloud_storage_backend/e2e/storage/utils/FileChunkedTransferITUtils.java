@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class FileChunkedTransferITUtils {
   private static final int MAX_CHUNK_SIZE = 8 * 1024;
-  
+
   private final ITUtils itUtils;
 
   private static List<byte[]> readChunksFromInputStream(InputStream inputStream)
@@ -71,7 +71,8 @@ public class FileChunkedTransferITUtils {
 
   public DownloadResult sendDownloadRequest(
       CloseableHttpClient client, String userToken, String targetFilePath) throws IOException {
-    HttpGet request = new HttpGet(itUtils.createUriString("/api/files/download?path=" + targetFilePath));
+    HttpGet request =
+        new HttpGet(itUtils.createUriString("/api/files/download?path=" + targetFilePath));
 
     request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
     request.setHeader("X-Auth-Token", userToken);

@@ -57,12 +57,12 @@ public class FileOperationsITUtils {
     String dirParam = "";
 
     if (searchDirectory != null) {
-        dirParam = "&directory=" + URLEncoder.encode(searchDirectory, StandardCharsets.UTF_8);
+      dirParam = "&directory=" + URLEncoder.encode(searchDirectory, StandardCharsets.UTF_8);
     }
 
     String endpoint =
-        "/api/files/list?includeDirectories=%b&recursive=%b%s".formatted(includeDirectories,
-            recursive, dirParam);
+        "/api/files/list?includeDirectories=%b&recursive=%b%s"
+            .formatted(includeDirectories, recursive, dirParam);
 
     HttpRequest request =
         itUtils.createRequest(endpoint).header("X-Auth-Token", userToken).GET().build();
@@ -74,7 +74,8 @@ public class FileOperationsITUtils {
       HttpClient client, String userToken, String targetFilePath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest("/api/files/info?path=" + targetFilePath)
+        itUtils
+            .createRequest("/api/files/info?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .GET()
             .build();
@@ -86,7 +87,8 @@ public class FileOperationsITUtils {
       HttpClient client, String userToken, String targetFilePath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest("/api/files?path=" + targetFilePath)
+        itUtils
+            .createRequest("/api/files?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .DELETE()
             .build();
@@ -98,8 +100,8 @@ public class FileOperationsITUtils {
       HttpClient client, String userToken, String oldTargetFilePath, String newTargetFilePath)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest(
-                "/api/files?path=" + oldTargetFilePath + "&newPath=" + newTargetFilePath)
+        itUtils
+            .createRequest("/api/files?path=" + oldTargetFilePath + "&newPath=" + newTargetFilePath)
             .header("X-Auth-Token", userToken)
             .PUT(HttpRequest.BodyPublishers.noBody())
             .build();
@@ -130,9 +132,8 @@ public class FileOperationsITUtils {
       String newTags)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest(
-                "/api/files?path=%s&newPath=%s".formatted(oldTargetPath,
-                    newTargetPath))
+        itUtils
+            .createRequest("/api/files?path=%s&newPath=%s".formatted(oldTargetPath, newTargetPath))
             .header("X-Auth-Token", userToken)
             .header("X-File-New-Visibility", newVisibility)
             .header("X-File-New-Tags", newTags)
@@ -146,7 +147,8 @@ public class FileOperationsITUtils {
       HttpClient client, String userToken, String targetFilePath, String header, String value)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest("/api/files?path=" + targetFilePath)
+        itUtils
+            .createRequest("/api/files?path=" + targetFilePath)
             .header("X-Auth-Token", userToken)
             .header(header, value)
             .PUT(HttpRequest.BodyPublishers.noBody())

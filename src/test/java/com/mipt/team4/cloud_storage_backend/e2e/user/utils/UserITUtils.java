@@ -14,11 +14,12 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 public class UserITUtils {
   private final ITUtils itUtils;
 
-  public HttpResponse<String> sendLoginRequest(
-      HttpClient client, String email, String password) throws IOException, InterruptedException {
+  public HttpResponse<String> sendLoginRequest(HttpClient client, String email, String password)
+      throws IOException, InterruptedException {
 
     HttpRequest request =
-        itUtils.createRequest("/api/users/auth/login")
+        itUtils
+            .createRequest("/api/users/auth/login")
             .header("X-Auth-Email", email)
             .header("X-Auth-Password", password)
             .POST(HttpRequest.BodyPublishers.noBody())
@@ -30,7 +31,8 @@ public class UserITUtils {
   public HttpResponse<String> sendRefreshTokenRequest(HttpClient client, String refreshToken)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest("/api/users/auth/refresh")
+        itUtils
+            .createRequest("/api/users/auth/refresh")
             .header("Content-Type", "application/json")
             .header("X-Refresh-Token", refreshToken)
             .POST(HttpRequest.BodyPublishers.noBody())
@@ -43,10 +45,7 @@ public class UserITUtils {
       throws IOException, InterruptedException {
 
     HttpRequest request =
-        itUtils.createRequest("/api/users/info")
-            .header("X-Auth-Token", accessToken)
-            .GET()
-            .build();
+        itUtils.createRequest("/api/users/info").header("X-Auth-Token", accessToken).GET().build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
@@ -56,7 +55,8 @@ public class UserITUtils {
       throws IOException, InterruptedException {
 
     HttpRequest request =
-        itUtils.createRequest("/api/users/update")
+        itUtils
+            .createRequest("/api/users/update")
             .header("X-Auth-Token", accessToken)
             .PUT(HttpRequest.BodyPublishers.noBody())
             .build();
@@ -67,7 +67,8 @@ public class UserITUtils {
   public HttpResponse<String> sendLogoutRequest(HttpClient client, String accessToken)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest("/api/users/auth/logout")
+        itUtils
+            .createRequest("/api/users/auth/logout")
             .header("X-Auth-Token", accessToken)
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();

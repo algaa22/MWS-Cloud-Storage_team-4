@@ -39,8 +39,8 @@ public class UserAuthUtils {
   }
 
   // TODO: нужен ли TestUserDto?
-  public HttpResponse<String> sendRegisterTestUserRequest(
-      HttpClient client, TestUserDto user) throws IOException, InterruptedException {
+  public HttpResponse<String> sendRegisterTestUserRequest(HttpClient client, TestUserDto user)
+      throws IOException, InterruptedException {
     return sendRegisterTestUserRequest(client, user.email(), user.password(), user.userName());
   }
 
@@ -48,7 +48,8 @@ public class UserAuthUtils {
       HttpClient client, String email, String password, String userName)
       throws IOException, InterruptedException {
     HttpRequest request =
-        itUtils.createRequest("/api/users/auth/register")
+        itUtils
+            .createRequest("/api/users/auth/register")
             .header("X-Auth-Email", email)
             .header("X-Auth-Username", userName)
             .header("X-Auth-Password", password)

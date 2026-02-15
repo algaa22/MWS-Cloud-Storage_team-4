@@ -41,11 +41,11 @@ public class MinioContentRepository implements FileContentRepository {
   private MinioAsyncClient minioClient;
 
   @PostConstruct
-  private void initialize(String minioUrl) {
+  private void initialize() {
     try {
       minioClient =
           MinioAsyncClient.builder()
-              .endpoint(minioUrl)
+              .endpoint(minioConfig.url())
               .credentials(minioConfig.username(), minioConfig.password())
               .build();
     } catch (Exception e) {

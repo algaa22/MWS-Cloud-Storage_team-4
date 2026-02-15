@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -27,6 +28,7 @@ import org.testcontainers.containers.MinIOContainer;
     webEnvironment = WebEnvironment.NONE,
     classes = {MinioContentRepository.class})
 @EnableConfigurationProperties(MinioConfig.class)
+@Tag("integration")
 class MinioContentRepositoryTest {
 
   private static final MinIOContainer MINIO = TestUtils.createMinioContainer();

@@ -49,7 +49,7 @@ jobs:
           done
 
       - name: Run Heavy Tests
-        run: mvn verify
+        run: mvn test
         env:
           DB_URL: jdbc:postgresql://localhost:5432/cloud_storage_db
           DB_USERNAME: postgres

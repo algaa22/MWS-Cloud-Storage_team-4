@@ -6,13 +6,13 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsExce
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.LoginRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RefreshTokenRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RegisterRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateUserInfoRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import lombok.RequiredArgsConstructor;

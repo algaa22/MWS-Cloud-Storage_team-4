@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
@@ -53,11 +51,11 @@ public class ChunkedUploadHandler {
 
   public void startChunkedUpload(HttpRequest request)
       throws TransferAlreadyStartedException,
-      QueryParameterNotFoundException,
-      HeaderNotFoundException,
-      ValidationFailedException,
-      StorageFileAlreadyExistsException,
-      UserNotFoundException {
+          QueryParameterNotFoundException,
+          HeaderNotFoundException,
+          ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          UserNotFoundException {
     if (isInProgress) {
       throw new TransferAlreadyStartedException();
     }
@@ -83,9 +81,9 @@ public class ChunkedUploadHandler {
 
   public void handleFileChunk(HttpContent content)
       throws TransferNotStartedYetException,
-      UploadSessionNotFoundException,
-      CombineChunksToPartException,
-      ValidationFailedException {
+          UploadSessionNotFoundException,
+          CombineChunksToPartException,
+          ValidationFailedException {
     if (!isInProgress) {
       throw new TransferNotStartedYetException();
     }
@@ -114,13 +112,13 @@ public class ChunkedUploadHandler {
 
   public void completeChunkedUpload(ChannelHandlerContext ctx, LastHttpContent content)
       throws TransferNotStartedYetException,
-      UserNotFoundException,
-      UploadSessionNotFoundException,
-      CombineChunksToPartException,
-      ValidationFailedException,
-      StorageFileAlreadyExistsException,
-      TooSmallFilePartException,
-      MissingFilePartException {
+          UserNotFoundException,
+          UploadSessionNotFoundException,
+          CombineChunksToPartException,
+          ValidationFailedException,
+          StorageFileAlreadyExistsException,
+          TooSmallFilePartException,
+          MissingFilePartException {
     if (!isInProgress) {
       throw new TransferNotStartedYetException();
     }

@@ -10,11 +10,11 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFo
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
@@ -47,8 +47,7 @@ public class FilesRequestHandler {
             RequestUtils.getQueryParam(request, "includeDirectories", "false"));
     boolean recursive =
         SafeParser.parseBoolean(
-            "Recursive",
-            RequestUtils.getQueryParam(request, "recursive", "false"));
+            "Recursive", RequestUtils.getQueryParam(request, "recursive", "false"));
     Optional<String> searchDirectory = RequestUtils.getQueryParam(request, "directory");
 
     List<StorageEntity> files =
@@ -92,10 +91,10 @@ public class FilesRequestHandler {
 
   public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException,
-      StorageEntityNotFoundException,
-      ValidationFailedException,
-      StorageIllegalAccessException,
-      FileNotFoundException {
+          StorageEntityNotFoundException,
+          ValidationFailedException,
+          StorageIllegalAccessException,
+          FileNotFoundException {
     fileController.deleteFile(new SimpleFileOperationRequest(filePath, userToken));
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
@@ -104,9 +103,9 @@ public class FilesRequestHandler {
   public void handleChangeFileMetadataRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken)
       throws UserNotFoundException,
-      StorageEntityNotFoundException,
-      StorageFileAlreadyExistsException,
-      ValidationFailedException {
+          StorageEntityNotFoundException,
+          StorageFileAlreadyExistsException,
+          ValidationFailedException {
     Optional<String> newFilePath = RequestUtils.getQueryParam(request, "newPath");
 
     Optional<String> fileVisibility =
@@ -126,9 +125,9 @@ public class FilesRequestHandler {
   public void handleUploadFileRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken)
       throws HeaderNotFoundException,
-      StorageFileAlreadyExistsException,
-      UserNotFoundException,
-      ValidationFailedException {
+          StorageFileAlreadyExistsException,
+          UserNotFoundException,
+          ValidationFailedException {
     List<String> fileTags =
         FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
 

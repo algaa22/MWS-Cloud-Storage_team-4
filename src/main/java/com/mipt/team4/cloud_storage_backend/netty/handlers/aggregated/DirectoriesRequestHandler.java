@@ -27,7 +27,8 @@ public class DirectoriesRequestHandler {
   public void handleCreateDirectoryRequest(
       ChannelHandlerContext ctx, String directoryPath, String userToken)
       throws UserNotFoundException, StorageFileAlreadyExistsException, ValidationFailedException {
-    directoryController.createDirectory(new SimpleDirectoryOperationRequest(userToken, directoryPath));
+    directoryController.createDirectory(
+        new SimpleDirectoryOperationRequest(userToken, directoryPath));
 
     ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.CREATED, "Directory successfully created");
@@ -60,7 +61,8 @@ public class DirectoriesRequestHandler {
           ValidationFailedException,
           FileNotFoundException {
 
-    directoryController.deleteDirectory(new SimpleDirectoryOperationRequest(userToken, directoryPath));
+    directoryController.deleteDirectory(
+        new SimpleDirectoryOperationRequest(userToken, directoryPath));
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "Directory successfully deleted");
   }

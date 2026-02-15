@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -19,12 +20,19 @@ import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.InputStreamEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class FileChunkedTransferITUtils {
-
   private static final int MAX_CHUNK_SIZE = 8 * 1024;
+  
+  private final ITUtils itUtils;
 
-  public static UploadResult sendUploadRequest(
+  public FileChunkedTransferITUtils(ITUtils itUtils) {
+    this.itUtils = itUtils;
+  }
+
+  public UploadResult sendUploadRequest(
       CloseableHttpClient client,
       String userToken,
       String targetFilePath,
@@ -33,7 +41,7 @@ public class FileChunkedTransferITUtils {
       long fileSize)
       throws IOException {
     HttpPost request =
-        new HttpPost(TestUtils.createUriString("/api/files/upload?path=" + targetFilePath));
+        new HttpPost(itUtils.createUriString("/api/files/upload?path=" + targetFilePath));
 
     InputStream fileStream = FileLoader.getInputStream(filePath);
     InputStreamEntity entity =
@@ -48,10 +56,9 @@ public class FileChunkedTransferITUtils {
     return client.execute(request, UploadResult::from);
   }
 
-  public static DownloadResult sendDownloadRequest(
+  public DownloadResult sendDownloadRequest(
       CloseableHttpClient client, String userToken, String targetFilePath) throws IOException {
-    HttpGet request =
-        new HttpGet(TestUtils.createUriString("/api/files/download?path=" + targetFilePath));
+    HttpGet request = new HttpGet(itUtils.createUriString("/api/files/download?path=" + targetFilePath));
 
     request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
     request.setHeader("X-Auth-Token", userToken);
@@ -59,7 +66,7 @@ public class FileChunkedTransferITUtils {
     return client.execute(request, DownloadResult::from);
   }
 
-  public static boolean chunkMatchesOriginal(byte[] originalData, byte[] chunk, int offset) {
+  public boolean chunkMatchesOriginal(byte[] originalData, byte[] chunk, int offset) {
     for (int i = 0; i < chunk.length; i++) {
       if (originalData[offset + i] != chunk[i]) {
         return false;

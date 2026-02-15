@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
@@ -12,23 +13,37 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MinIOContainer;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 
-@Tag("integration")
+@SpringBootTest(
+    webEnvironment = WebEnvironment.NONE,
+    classes = {MinioContentRepository.class})
+@EnableConfigurationProperties(MinioConfig.class)
 class MinioContentRepositoryTest {
 
   private static final MinIOContainer MINIO = TestUtils.createMinioContainer();
-  private static MinioContentRepository repository;
+
+  @Autowired private MinioContentRepository repository;
+
+  @DynamicPropertySource
+  static void configureProperties(DynamicPropertyRegistry registry) {
+    registry.add("minio.url", MINIO::getS3URL);
+    registry.add("minio.username", MINIO::getUserName);
+    registry.add("minio.password", MINIO::getPassword);
+  }
 
   @BeforeAll
   public static void beforeAll() {
     MINIO.start();
-    repository = new MinioContentRepository(MINIO.getS3URL());
   }
 
   @Test
@@ -38,12 +53,7 @@ class MinioContentRepositoryTest {
 
   @Test
   public void shouldCreateUnexistentBucket() {
-    String bucketName = createTestBucket();
-
-    Awaitility.await()
-        .atMost(5, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(() -> repository.bucketExists(bucketName));
+    assertTrue(repository.bucketExists(createTestBucket()));
   }
 
   @Test

@@ -6,17 +6,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
+import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.e2e.user.utils.UserAuthUtils;
+import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Iterator;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public abstract class BaseDetailedFileIT extends BaseStorageIT {
+
+  @Autowired protected UserAuthUtils userAuthUtils;
+  @Autowired protected ITUtils itUtils;
 
   private final PathParam pathParam;
   private final String rawEndpoint;
@@ -39,7 +45,7 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
-    String otherUserToken = UserAuthUtils.sendRegisterRandomUserRequest(client);
+    String otherUserToken = userAuthUtils.sendRegisterRandomUserRequest(client);
     HttpResponse<String> otherUserResponse =
         client.send(
             createRawRequestWithToken(otherUserToken), HttpResponse.BodyHandlers.ofString());
@@ -106,7 +112,7 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
   protected boolean containsValidationError(HttpResponse<String> response, String validationField)
       throws IOException {
-    JsonNode messageJsonStrNode = TestUtils.getRootNodeFromResponse(response).get("message");
+    JsonNode messageJsonStrNode = itUtils.getRootNodeFromResponse(response).get("message");
     assertNotNull(messageJsonStrNode);
 
     ObjectMapper mapper = new ObjectMapper();
@@ -132,7 +138,8 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
   }
 
   protected HttpRequest createRawRequestWithToken(String userToken, String endpoint) {
-    return TestUtils.createRequest(endpoint)
+    return itUtils
+        .createRequest(endpoint)
         .header("X-Auth-Token", userToken)
         .header("X-File-Tags", "")
         .header("X-File-New-Tags", "")

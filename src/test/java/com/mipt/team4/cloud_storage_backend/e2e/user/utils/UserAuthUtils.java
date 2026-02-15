@@ -1,19 +1,29 @@
 package com.mipt.team4.cloud_storage_backend.e2e.user.utils;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
+import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.springframework.stereotype.Component;
 
+@Component
 public class UserAuthUtils {
+  private final UserITUtils userITUtils;
+  private final ITUtils itUtils;
 
-  static int usersCounter = 0;
+  private static int usersCounter = 0;
+
+  public UserAuthUtils(UserITUtils userITUtils, ITUtils itUtils) {
+    this.userITUtils = userITUtils;
+    this.itUtils = itUtils;
+  }
 
   // TODO: перенести в usertestutils
 
-  public static String sendRegisterRandomUserRequest(HttpClient client)
+  public String sendRegisterRandomUserRequest(HttpClient client)
       throws IOException, InterruptedException {
     HttpResponse<String> response = sendRegisterTestUserRequest(client, createRandomUser());
     String responseBody = response.body();
@@ -23,10 +33,10 @@ public class UserAuthUtils {
       throw new RuntimeException("Failed to register test user: " + responseBody);
     }
 
-    return UserITUtils.extractAccessToken(response);
+    return userITUtils.extractAccessToken(response);
   }
 
-  public static TestUserDto createRandomUser() {
+  public TestUserDto createRandomUser() {
     return new TestUserDto(
         "deadlyparkourkillerdarkbrawlstarsassassinstalkersniper1998rus",
         usersCounter++ + "@email.com",
@@ -34,16 +44,16 @@ public class UserAuthUtils {
   }
 
   // TODO: нужен ли TestUserDto?
-  public static HttpResponse<String> sendRegisterTestUserRequest(
+  public HttpResponse<String> sendRegisterTestUserRequest(
       HttpClient client, TestUserDto user) throws IOException, InterruptedException {
     return sendRegisterTestUserRequest(client, user.email(), user.password(), user.userName());
   }
 
-  public static HttpResponse<String> sendRegisterTestUserRequest(
+  public HttpResponse<String> sendRegisterTestUserRequest(
       HttpClient client, String email, String password, String userName)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/users/auth/register")
+        itUtils.createRequest("/api/users/auth/register")
             .header("X-Auth-Email", email)
             .header("X-Auth-Username", userName)
             .header("X-Auth-Password", password)

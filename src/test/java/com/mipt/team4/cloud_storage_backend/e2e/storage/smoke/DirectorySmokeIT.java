@@ -15,14 +15,17 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Tag("smoke")
 public class DirectorySmokeIT extends BaseStorageIT {
+  @Autowired private DirectoryOperationsITUtils directoryOperationsITUtils;
+  @Autowired private FileOperationsITUtils fileOperationsITUtils;
 
   @Test
   public void shouldCreateDirectory() throws IOException, InterruptedException {
     HttpResponse<String> createDirectoryResponse =
-        DirectoryOperationsITUtils.sendCreateDirectoryRequest(
+        directoryOperationsITUtils.sendCreateDirectoryRequest(
             client, currentUserToken, DEFAULT_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_CREATED, createDirectoryResponse.statusCode());
 
@@ -32,7 +35,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
   @Test
   public void shouldChangeDirectoryPath() throws IOException, InterruptedException {
     HttpResponse<String> createDirectoryResponse =
-        DirectoryOperationsITUtils.sendCreateDirectoryRequest(
+        directoryOperationsITUtils.sendCreateDirectoryRequest(
             client, currentUserToken, DEFAULT_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_CREATED, createDirectoryResponse.statusCode());
 
@@ -40,7 +43,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
     final String NEW_DIRECTORY_PATH = "dir3/";
 
     HttpResponse<String> changePathResponse =
-        DirectoryOperationsITUtils.sendChangeDirectoryPathRequest(
+        directoryOperationsITUtils.sendChangeDirectoryPathRequest(
             client, currentUserToken, DEFAULT_DIRECTORY_PATH, NEW_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_OK, changePathResponse.statusCode());
 
@@ -56,14 +59,14 @@ public class DirectorySmokeIT extends BaseStorageIT {
   @Test
   public void shouldDeleteDirectory() throws IOException, InterruptedException {
     HttpResponse<String> createDirectoryResponse =
-        DirectoryOperationsITUtils.sendCreateDirectoryRequest(
+        directoryOperationsITUtils.sendCreateDirectoryRequest(
             client, currentUserToken, DEFAULT_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_CREATED, createDirectoryResponse.statusCode());
 
     List<String> testFiles = addTestFilesToDirectory(DEFAULT_DIRECTORY_PATH);
 
     HttpResponse<String> deleteDirectoryResponse =
-        DirectoryOperationsITUtils.sendDeleteDirectoryRequest(
+        directoryOperationsITUtils.sendDeleteDirectoryRequest(
             client, currentUserToken, DEFAULT_DIRECTORY_PATH);
     assertEquals(HttpStatus.SC_OK, deleteDirectoryResponse.statusCode());
 
@@ -86,7 +89,7 @@ public class DirectorySmokeIT extends BaseStorageIT {
 
   private boolean filePathsListContainsFiles(List<String> filePaths, String searchDirectory)
       throws IOException, InterruptedException {
-    return FileOperationsITUtils.filePathsListContainsFiles(
+    return fileOperationsITUtils.filePathsListContainsFiles(
         client, currentUserToken, filePaths, true, true, searchDirectory);
   }
 }

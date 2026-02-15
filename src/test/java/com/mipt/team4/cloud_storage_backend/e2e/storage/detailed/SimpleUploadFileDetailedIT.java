@@ -12,9 +12,13 @@ import java.io.IOException;
 import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Tag("integration")
 public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
+
+  @Autowired private FileOperationsITUtils operationsITUtils;
+  @Autowired private FileSimpleTransferITUtils transferITUtils;
 
   public SimpleUploadFileDetailedIT() {
     super("/api/files/upload?path=_", HttpMethod.POST.name(), PathParam.NEW_FILE);
@@ -25,8 +29,7 @@ public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
 
     HttpResponse<String> response =
-        FileOperationsITUtils.sendDeleteFileRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
+        operationsITUtils.sendDeleteFileRequest(client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
     simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
@@ -35,7 +38,7 @@ public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
   @Test
   public void shouldNotUploadEmptyFile() throws IOException, InterruptedException {
     HttpResponse<String> uploadResponse =
-        FileSimpleTransferITUtils.sendUploadRequest(
+        transferITUtils.sendUploadRequest(
             client, currentUserToken, EMPTY_FILE_LOCAL_PATH, DEFAULT_FILE_TARGET_PATH, "");
     assertEquals(HttpStatus.SC_BAD_REQUEST, uploadResponse.statusCode());
   }

@@ -21,11 +21,13 @@ import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
+@RequiredArgsConstructor
 public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
 
   private final DirectoriesRequestHandler directoriesRequestHandler;
@@ -34,15 +36,6 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
 
   private HttpMethod method;
   private String uri;
-
-  public AggregatedHttpHandler(
-      DirectoriesRequestHandler directoriesRequestHandler,
-      FilesRequestHandler filesRequestHandler,
-      UsersRequestHandler usersRequestHandler) {
-    this.directoriesRequestHandler = directoriesRequestHandler;
-    this.filesRequestHandler = filesRequestHandler;
-    this.usersRequestHandler = usersRequestHandler;
-  }
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {

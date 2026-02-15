@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import lombok.RequiredArgsConstructor;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
@@ -13,12 +14,9 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
+@RequiredArgsConstructor
 public class ITUtils {
   private final NettyConfig nettyConfig;
-
-  public ITUtils(NettyConfig nettyConfig) {
-    this.nettyConfig = nettyConfig;
-  }
 
   public HttpRequest.Builder createRequest(String endpoint) {
     return HttpRequest.newBuilder().uri(URI.create(createUriString(endpoint)));

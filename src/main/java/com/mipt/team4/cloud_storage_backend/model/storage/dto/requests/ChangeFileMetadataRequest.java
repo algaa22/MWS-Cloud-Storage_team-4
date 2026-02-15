@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.model.storage.dto;
+package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
@@ -7,7 +7,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
 import java.util.Optional;
 
-public record ChangeFileMetadataDto(
+public record ChangeFileMetadataRequest(
     String userToken,
     String oldPath,
     Optional<String> newPath,

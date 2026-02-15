@@ -7,19 +7,16 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class UserAuthUtils {
   private final UserITUtils userITUtils;
   private final ITUtils itUtils;
 
   private static int usersCounter = 0;
-
-  public UserAuthUtils(UserITUtils userITUtils, ITUtils itUtils) {
-    this.userITUtils = userITUtils;
-    this.itUtils = itUtils;
-  }
 
   // TODO: перенести в usertestutils
 

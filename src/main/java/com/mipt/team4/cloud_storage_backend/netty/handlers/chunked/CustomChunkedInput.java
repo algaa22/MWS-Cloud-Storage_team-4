@@ -8,6 +8,7 @@ import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.stream.ChunkedInput;
 import java.io.InputStream;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 // TODO: rename
 @Component
 @Scope("prototype")
+@RequiredArgsConstructor
 class CustomChunkedInput implements ChunkedInput<HttpContent> {
 
   private final Logger logger = LoggerFactory.getLogger(CustomChunkedInput.class);
@@ -25,12 +27,6 @@ class CustomChunkedInput implements ChunkedInput<HttpContent> {
   private final long totalSize;
   private boolean ended = false;
   private long bytesSent = 0;
-
-  public CustomChunkedInput(InputStream stream, int chunkSize, long totalSize) {
-    this.stream = stream;
-    this.chunkSize = chunkSize;
-    this.totalSize = totalSize;
-  }
 
   @Override
   public boolean isEndOfInput() {

@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.model.user.dto;
+package com.mipt.team4.cloud_storage_backend.model.user.dto.requests;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
@@ -6,7 +6,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.Optional;
 
-public record UpdateUserInfoDto(
+public record UpdateUserInfoRequest(
     String userToken,
     Optional<String> oldPassword,
     Optional<String> newPassword,

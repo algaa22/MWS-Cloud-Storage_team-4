@@ -15,15 +15,12 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class JwtService {
-  private final StorageConfig storageConfig;
 
   private final long accessTokenExpirationSec;
   private final long refreshTokenExpirationSec;
   private final String jwtSecretKey;
 
   public JwtService(StorageConfig storageConfig) {
-    this.storageConfig = storageConfig;
-
     this.jwtSecretKey = storageConfig.auth().jwtSecretKey();
     this.accessTokenExpirationSec = storageConfig.auth().accessTokenExpirationSec();
     this.refreshTokenExpirationSec = storageConfig.auth().refreshTokenExpirationSec();

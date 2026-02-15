@@ -10,10 +10,10 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFo
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeFileMetadataDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileUploadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileListDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
@@ -28,17 +28,15 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
+@RequiredArgsConstructor
 public class FilesRequestHandler {
   private final FileController fileController;
-
-  public FilesRequestHandler(FileController fileController) {
-    this.fileController = fileController;
-  }
 
   public void handleGetFilePathsListRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken)
@@ -55,7 +53,7 @@ public class FilesRequestHandler {
 
     List<StorageEntity> files =
         fileController.getFileList(
-            new GetFileListDto(userToken, includeDirectories, recursive, searchDirectory));
+            new GetFileListRequest(userToken, includeDirectories, recursive, searchDirectory));
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
@@ -77,7 +75,7 @@ public class FilesRequestHandler {
   public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException, StorageEntityNotFoundException, ValidationFailedException {
     StorageDto storageDto =
-        fileController.getFileInfo(new SimpleFileOperationDto(filePath, userToken));
+        fileController.getFileInfo(new SimpleFileOperationRequest(filePath, userToken));
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
@@ -98,7 +96,7 @@ public class FilesRequestHandler {
       ValidationFailedException,
       StorageIllegalAccessException,
       FileNotFoundException {
-    fileController.deleteFile(new SimpleFileOperationDto(filePath, userToken));
+    fileController.deleteFile(new SimpleFileOperationRequest(filePath, userToken));
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
   }
@@ -119,7 +117,7 @@ public class FilesRequestHandler {
             FileTagsMapper.toList(RequestUtils.getHeader(request, "X-File-New-Tags", null)));
 
     fileController.changeFileMetadata(
-        new ChangeFileMetadataDto(userToken, filePath, newFilePath, fileVisibility, fileTags));
+        new ChangeFileMetadataRequest(userToken, filePath, newFilePath, fileVisibility, fileTags));
 
     ResponseUtils.sendSuccessResponse(
         ctx, HttpResponseStatus.OK, "File metadata successfully changed");
@@ -140,7 +138,7 @@ public class FilesRequestHandler {
     byte[] fileData = new byte[fileByteBuf.readableBytes()];
     fileByteBuf.readBytes(fileData);
 
-    fileController.uploadFile(new FileUploadDto(filePath, userToken, fileTags, fileData));
+    fileController.uploadFile(new FileUploadRequest(filePath, userToken, fileTags, fileData));
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
   }

@@ -17,6 +17,7 @@ import io.minio.errors.InsufficientDataException;
 import io.minio.errors.InternalException;
 import io.minio.errors.XmlParserException;
 import io.minio.messages.Part;
+import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,9 +27,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@RequiredArgsConstructor
 public class MinioContentRepository implements FileContentRepository {
 
   private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
@@ -37,12 +40,7 @@ public class MinioContentRepository implements FileContentRepository {
 
   private MinioAsyncClient minioClient;
 
-  public MinioContentRepository(MinioConfig minioConfig) {
-    this.minioConfig = minioConfig;
-
-    initialize(minioConfig.url());
-  }
-
+  @PostConstruct
   private void initialize(String minioUrl) {
     try {
       minioClient =

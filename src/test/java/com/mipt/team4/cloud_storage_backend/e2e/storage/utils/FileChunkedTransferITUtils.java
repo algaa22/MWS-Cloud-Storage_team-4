@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -23,14 +24,11 @@ import org.apache.hc.core5.http.io.entity.InputStreamEntity;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class FileChunkedTransferITUtils {
   private static final int MAX_CHUNK_SIZE = 8 * 1024;
   
   private final ITUtils itUtils;
-
-  public FileChunkedTransferITUtils(ITUtils itUtils) {
-    this.itUtils = itUtils;
-  }
 
   public UploadResult sendUploadRequest(
       CloseableHttpClient client,

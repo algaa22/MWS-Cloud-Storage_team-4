@@ -12,11 +12,13 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
+@RequiredArgsConstructor
 public class CorsHandler extends ChannelDuplexHandler {
 
   private static final String ALLOWED_METHODS =
@@ -53,10 +55,6 @@ public class CorsHandler extends ChannelDuplexHandler {
   private static final String PRAGMA = "no-cache";
 
   private final CorsConfig corsConfig;
-
-  public CorsHandler(CorsConfig corsConfig) {
-    this.corsConfig = corsConfig;
-  }
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {

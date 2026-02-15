@@ -16,14 +16,14 @@ import jakarta.annotation.PreDestroy;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 public class NettyServerManager {
-  private static final Logger logger = LoggerFactory.getLogger(NettyServerManager.class);
-
   private final AtomicBoolean stopping = new AtomicBoolean(false);
   private final CountDownLatch startupLatch;
 
@@ -68,7 +68,7 @@ public class NettyServerManager {
       return;
     }
 
-    logger.info("Stopping servers...");
+    log.info("Stopping servers...");
 
     closeServers();
     shutdownThreads();
@@ -90,7 +90,7 @@ public class NettyServerManager {
           .closeFuture()
           .addListener(
               f -> {
-                logger.info("HTTPS server stopped");
+                log.info("HTTPS server stopped");
                 closePromise.trySuccess(null);
               });
     }
@@ -99,11 +99,11 @@ public class NettyServerManager {
         .closeFuture()
         .addListener(
             f -> {
-              logger.info("HTTP server stopped");
+              log.info("HTTP server stopped");
               closePromise.trySuccess(null);
             });
 
-    logger.info("Servers are running. Waiting for any channel to close...");
+    log.info("Servers are running. Waiting for any channel to close...");
   }
 
   private void closeServers() {
@@ -129,11 +129,11 @@ public class NettyServerManager {
       workerShutdown.await(timeout + 1, TimeUnit.SECONDS);
       bossShutdown.await(timeout + 1, TimeUnit.SECONDS);
 
-      logger.info("All threads finished shutdown");
+      log.info("All threads finished shutdown");
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
 
-      logger.error("Shutdown interrupted", e);
+      log.error("Shutdown interrupted", e);
     }
   }
 
@@ -152,7 +152,7 @@ public class NettyServerManager {
 
     Channel channel = bootstrap.bind(port).sync().channel();
 
-    logger.info("{} server starting on port {}...", protocol.name(), port);
+    log.info("{} server starting on port {}...", protocol.name(), port);
     startupLatch.countDown();
 
     return channel;

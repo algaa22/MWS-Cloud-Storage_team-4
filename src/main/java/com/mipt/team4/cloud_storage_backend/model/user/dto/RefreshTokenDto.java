@@ -1,14 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.user.dto;
 
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
-public record RefreshTokenDto(String refreshToken) {
-
-  public void validate() throws ValidationFailedException {
-    ValidationResult result = Validators.all(Validators.notBlank("Refresh token", refreshToken));
-
-    Validators.throwExceptionIfNotValid(result);
-  }
-}
+public record RefreshTokenDto(
+    UUID id, UUID userId, String token, LocalDateTime expiresAt, boolean revoked) {}

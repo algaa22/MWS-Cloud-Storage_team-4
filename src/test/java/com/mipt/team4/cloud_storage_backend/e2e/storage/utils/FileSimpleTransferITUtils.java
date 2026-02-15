@@ -7,15 +7,13 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class FileSimpleTransferITUtils {
   private final ITUtils itUtils;
-
-  public FileSimpleTransferITUtils(ITUtils itUtils) {
-    this.itUtils = itUtils;
-  }
 
   public HttpResponse<String> sendUploadRequest(
       HttpClient client,

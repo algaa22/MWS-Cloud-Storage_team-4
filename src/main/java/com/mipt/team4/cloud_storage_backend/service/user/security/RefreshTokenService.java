@@ -1,23 +1,20 @@
 package com.mipt.team4.cloud_storage_backend.service.user.security;
 
-import com.mipt.team4.cloud_storage_backend.model.user.entity.RefreshTokenEntity;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
 import com.mipt.team4.cloud_storage_backend.repository.user.RefreshTokenRepository;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class RefreshTokenService {
 
   private final RefreshTokenRepository repository;
   private final SecureRandom random;
-
-  public RefreshTokenService(RefreshTokenRepository repository, SecureRandom random) {
-    this.repository = repository;
-    this.random = random;
-  }
 
   private String generateToken() {
     byte[] bytes = new byte[64];
@@ -25,16 +22,16 @@ public class RefreshTokenService {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
-  public RefreshTokenEntity create(UUID userId) {
-    RefreshTokenEntity token =
-        new RefreshTokenEntity(
+  public RefreshTokenDto create(UUID userId) {
+    RefreshTokenDto token =
+        new RefreshTokenDto(
             UUID.randomUUID(), userId, generateToken(), LocalDateTime.now().plusDays(30), false);
 
     repository.save(token);
     return token;
   }
 
-  public RefreshTokenEntity validate(String token) {
+  public RefreshTokenDto validate(String token) {
     return repository
         .findByToken(token)
         .filter(t -> !t.revoked())

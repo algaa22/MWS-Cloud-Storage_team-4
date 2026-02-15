@@ -8,7 +8,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFo
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -21,19 +21,16 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedInput;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
+@RequiredArgsConstructor
 public class ChunkedDownloadHandler {
   private final FileController fileController;
   private final StorageConfig storageConfig;
-
-  public ChunkedDownloadHandler(FileController fileController, StorageConfig storageConfig) {
-    this.fileController = fileController;
-    this.storageConfig = storageConfig;
-  }
 
   // TODO: refactor
   public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
@@ -46,7 +43,7 @@ public class ChunkedDownloadHandler {
     String filePath = RequestUtils.getRequiredQueryParam(request, "path");
 
     FileDownloadDto fileDownload =
-        fileController.downloadFile(new SimpleFileOperationDto(filePath, userToken));
+        fileController.downloadFile(new SimpleFileOperationRequest(filePath, userToken));
 
     HttpResponse response =
         new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);

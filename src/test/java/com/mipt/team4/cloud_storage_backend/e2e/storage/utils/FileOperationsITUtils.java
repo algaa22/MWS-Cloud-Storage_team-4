@@ -13,16 +13,14 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 @Component
+@RequiredArgsConstructor
 public class FileOperationsITUtils {
   public final ITUtils itUtils;
-
-  public FileOperationsITUtils(ITUtils itUtils) {
-    this.itUtils = itUtils;
-  }
 
   public boolean filePathsListContainsFiles(
       HttpClient client,

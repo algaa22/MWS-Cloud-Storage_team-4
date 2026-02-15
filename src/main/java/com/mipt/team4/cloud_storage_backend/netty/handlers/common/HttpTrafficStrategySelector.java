@@ -19,6 +19,8 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.util.ReferenceCountUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -27,24 +29,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
+@Slf4j
+@RequiredArgsConstructor
 public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
-
-  private static final Logger logger = LoggerFactory.getLogger(HttpTrafficStrategySelector.class);
 
   private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlerProvider;
   private final ObjectProvider<AggregatedHttpHandler> aggregatedHttpHandlerProvider;
   private final StorageConfig storageConfig;
 
   private PipelineType previousPipeline = null;
-
-  public HttpTrafficStrategySelector(
-      ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlerProvider,
-      ObjectProvider<AggregatedHttpHandler> aggregatedHttpHandlerProvider,
-      StorageConfig storageConfig) {
-    this.chunkedHttpHandlerProvider = chunkedHttpHandlerProvider;
-    this.aggregatedHttpHandlerProvider = aggregatedHttpHandlerProvider;
-    this.storageConfig = storageConfig;
-  }
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -110,7 +103,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   }
 
   private void handleNotHttpRequest(ChannelHandlerContext ctx, Object msg) {
-    logger.error(
+    log.error(
         "Unexpected message mimeType before pipeline configuration: {}",
         msg.getClass().getSimpleName());
 

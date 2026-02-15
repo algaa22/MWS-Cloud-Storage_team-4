@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,7 +15,7 @@ public class ChunkedUploadState {
   private final UUID userId;
   private final UUID fileId;
   private final String path;
-  private final FileChunkedUploadDto session;
+  private final FileChunkedUploadRequest session;
   private final Map<Integer, String> eTags = new HashMap<>();
   private long fileSize = 0;
   private int totalParts = 0;
@@ -23,7 +23,7 @@ public class ChunkedUploadState {
   private int partNum = 0;
   private String uploadId;
 
-  ChunkedUploadState(FileChunkedUploadDto session, UUID userId, UUID fileId, String path) {
+  ChunkedUploadState(FileChunkedUploadRequest session, UUID userId, UUID fileId, String path) {
     this.session = session;
     this.userId = userId;
     this.fileId = fileId;
@@ -70,7 +70,7 @@ public class ChunkedUploadState {
     eTags.put(partIndex, eTag);
   }
 
-  public FileChunkedUploadDto getSession() {
+  public FileChunkedUploadRequest getSession() {
     return session;
   }
 

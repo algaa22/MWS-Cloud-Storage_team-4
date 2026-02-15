@@ -18,17 +18,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class PostgresConnection implements DatabaseConnection {
   private final DatabaseConfig databaseConfig;
 
   private Connection connection;
-
-  public PostgresConnection(DatabaseConfig databaseConfig) {
-    this.databaseConfig = databaseConfig;
-  }
 
   @PostConstruct
   public void init() {

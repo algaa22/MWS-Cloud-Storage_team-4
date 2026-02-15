@@ -6,17 +6,15 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 @Component
+@RequiredArgsConstructor
 public class UserITUtils {
   private final ITUtils itUtils;
-
-  public UserITUtils(ITUtils itUtils) {
-    this.itUtils = itUtils;
-  }
 
   public HttpResponse<String> sendLoginRequest(
       HttpClient client, String email, String password) throws IOException, InterruptedException {

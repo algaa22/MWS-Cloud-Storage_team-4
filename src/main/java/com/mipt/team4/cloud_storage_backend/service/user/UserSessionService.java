@@ -13,9 +13,11 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class UserSessionService {
 
   // TODO: Сделать его синглтоном (?)
@@ -24,10 +26,6 @@ public class UserSessionService {
   private final Duration accessTokenDuration = Duration.ofMinutes(15);
 
   private final JwtService jwtService;
-
-  public UserSessionService(JwtService jwtService) {
-    this.jwtService = jwtService;
-  }
 
   public SessionDto createSession(UserEntity user) {
     String token = jwtService.generateAccessToken(user);

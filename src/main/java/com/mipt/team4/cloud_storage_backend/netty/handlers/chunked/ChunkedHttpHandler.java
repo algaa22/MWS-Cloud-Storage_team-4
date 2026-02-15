@@ -21,6 +21,8 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.LastHttpContent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
@@ -28,17 +30,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
+@Slf4j
+@RequiredArgsConstructor
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
-
-  private static final Logger logger = LoggerFactory.getLogger(ChunkedHttpHandler.class);
   private final ChunkedUploadHandler chunkedUpload;
   private final ChunkedDownloadHandler chunkedDownload;
-
-  public ChunkedHttpHandler(ChunkedUploadHandler chunkedUpload,
-      ChunkedDownloadHandler chunkedDownload) {
-    this.chunkedUpload = chunkedUpload;
-    this.chunkedDownload = chunkedDownload;
-  }
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
@@ -62,7 +58,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
       ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
     } catch (CombineChunksToPartException | MissingFilePartException e) {
       ResponseUtils.sendInternalServerErrorResponse(ctx);
-      logger.error("Internal server error: {}", e.getMessage());
+      log.error("Internal server error: {}", e.getMessage());
     }
   }
 

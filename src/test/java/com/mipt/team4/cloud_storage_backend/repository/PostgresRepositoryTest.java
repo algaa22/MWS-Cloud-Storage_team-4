@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
@@ -59,23 +58,29 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     UUID uuid = UUID.randomUUID();
 
     userRepository.addUser(
-        new UserEntity(uuid, "name", "email", "password", (long) 1e10, LocalDateTime.now()));
+        UserEntity.builder()
+            .id(uuid)
+            .name("name")
+            .email("email")
+            .passwordHash("password")
+            .storageLimit((long) 1e10)
+            .createdAt(LocalDateTime.now())
+            .build());
 
     return uuid;
   }
 
   private static StorageEntity addTestFile() throws StorageFileAlreadyExistsException {
     StorageEntity fileEntity =
-        new StorageEntity(
-            UUID.randomUUID(),
-            testUserUuid,
-            "file" + UUID.randomUUID(),
-            "application/xml",
-            "public",
-            42L,
-            false,
-            List.of("some xml"),
-            false);
+        StorageEntity.builder()
+            .entityId(UUID.randomUUID())
+            .userId(testUserUuid)
+            .mimeType("application/xml")
+            .size(42L)
+            .path("file" + UUID.randomUUID())
+            .isDirectory(false)
+            .tags(List.of("some xml"))
+            .build();
 
     fileMetadataRepository.addFile(fileEntity);
 

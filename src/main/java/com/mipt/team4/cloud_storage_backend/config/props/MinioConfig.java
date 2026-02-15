@@ -8,9 +8,6 @@ public record MinioConfig(
     String url,
     String username,
     String password,
-    UserDataBucket userDataBucket
-) {
-  public record UserDataBucket(String name) {
-
-  }
+    UserDataBucket userDataBucket) {
+  public record UserDataBucket(String name) {}
 }

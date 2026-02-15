@@ -21,10 +21,9 @@ public class JwtService {
   private final long refreshTokenExpirationSec;
   private final String jwtSecretKey;
 
-  public JwtService(
-      StorageConfig storageConfig) {
+  public JwtService(StorageConfig storageConfig) {
     this.storageConfig = storageConfig;
-    
+
     this.jwtSecretKey = storageConfig.auth().jwtSecretKey();
     this.accessTokenExpirationSec = storageConfig.auth().accessTokenExpirationSec();
     this.refreshTokenExpirationSec = storageConfig.auth().refreshTokenExpirationSec();

@@ -10,7 +10,8 @@ public record SimpleFileOperationDto(String path, String userToken) {
   public void validate(JwtService jwtService) throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.mustBeFilePath("File path", path), Validators.validToken(jwtService, userToken));
+            Validators.mustBeFilePath("File path", path),
+            Validators.validToken(jwtService, userToken));
 
     Validators.throwExceptionIfNotValid(result);
   }

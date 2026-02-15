@@ -13,7 +13,8 @@ public class PipelineBuilder {
   private final ObjectProvider<CorsHandler> corsHandler;
 
   public PipelineBuilder(
-      ObjectProvider<HttpTrafficStrategySelector> selectorProvider, ObjectProvider<CorsHandler> corsHandler) {
+      ObjectProvider<HttpTrafficStrategySelector> selectorProvider,
+      ObjectProvider<CorsHandler> corsHandler) {
     this.selectorProvider = selectorProvider;
     this.corsHandler = corsHandler;
   }

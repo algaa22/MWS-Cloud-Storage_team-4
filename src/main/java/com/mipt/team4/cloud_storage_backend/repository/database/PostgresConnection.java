@@ -32,7 +32,7 @@ public class PostgresConnection implements DatabaseConnection {
 
   @PostConstruct
   public void init() {
-      connect();
+    connect();
   }
 
   @Override

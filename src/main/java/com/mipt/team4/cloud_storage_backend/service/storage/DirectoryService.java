@@ -7,7 +7,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeDirectoryPat
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleDirectoryOperationDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
@@ -57,8 +56,8 @@ public class DirectoryService {
 
   public void changeDirectoryPath(ChangeDirectoryPathDto changeDirectory)
       throws UserNotFoundException,
-      StorageFileAlreadyExistsException,
-      StorageEntityNotFoundException {
+          StorageFileAlreadyExistsException,
+          StorageEntityNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(changeDirectory.userToken());
     String oldDirectoryPath = changeDirectory.oldDirectoryPath();
     String newDirectoryPath = changeDirectory.newDirectoryPath();
@@ -96,8 +95,8 @@ public class DirectoryService {
 
     storageRepository.deleteFile(directoryEntity.orElse(null));
 
-    List<StorageEntity> directoryFiles = storageRepository.getFileList(
-        new FileListFilter(userId, true, true, directoryPath));
+    List<StorageEntity> directoryFiles =
+        storageRepository.getFileList(new FileListFilter(userId, true, true, directoryPath));
 
     for (StorageEntity file : directoryFiles) {
       userRepository.decreaseUsedStorage(userId, file.getSize());

@@ -19,7 +19,8 @@ public class StorageRepository {
   private final FileMetadataRepository metadataRepository;
   private final FileContentRepository contentRepository;
 
-  public StorageRepository(FileMetadataRepository metadataRepository, FileContentRepository contentRepository) {
+  public StorageRepository(
+      FileMetadataRepository metadataRepository, FileContentRepository contentRepository) {
     this.metadataRepository = metadataRepository;
     this.contentRepository = contentRepository;
   }

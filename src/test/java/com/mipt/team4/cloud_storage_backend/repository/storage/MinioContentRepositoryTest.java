@@ -1,24 +1,29 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
+@Tag("integration")
 class MinioContentRepositoryTest {
+
   private static final MinIOContainer MINIO = TestUtils.createMinioContainer();
   private static MinioContentRepository repository;
-
-  // TODO: тесты некорректные
 
   @BeforeAll
   public static void beforeAll() {
@@ -27,76 +32,88 @@ class MinioContentRepositoryTest {
   }
 
   @Test
-  public void shouldCreateBucket() throws BucketAlreadyExistsException {
-    repository.createBucket("test");
-
-    assertTrue(repository.bucketExists("test"));
+  public void bucketExists_shouldReturnFalse_WhenBucketNotExists() {
+    assertFalse(repository.bucketExists("non-existent-bucket"));
   }
 
   @Test
-  public void shouldThrowBucketAlreadyExistsException() throws BucketAlreadyExistsException {
-    repository.createBucket("test2");
+  public void shouldCreateUnexistentBucket() {
+    String bucketName = createTestBucket();
 
-    assertThrows(
-            BucketAlreadyExistsException.class,
-            () -> repository.createBucket("test2"));
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .until(() -> repository.bucketExists(bucketName));
   }
 
   @Test
-  public void shouldPutObject() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream("files/small_file.txt").readAllBytes();
-
-    repository.putObject("OwnerID/FileID", fileBytes);
+  public void shouldPutAndDownloadObject() throws IOException {
+    assertFileEqualsMinioObject(createTestFile());
   }
 
   @Test
-  public void shouldDownloadFile() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream("files/small_file.txt").readAllBytes();
+  public void shouldHardDeleteFile() throws InterruptedException {
+    TestFileDto file = createTestFile();
 
-    repository.putObject("key", fileBytes);
+    repository.hardDeleteFile(file.s3Key);
 
-    try (InputStream result = repository.downloadFile("key")) {
-      assertArrayEquals(fileBytes, result.readAllBytes());
+    boolean deleted = false;
+    for (int i = 0; i < 10; i++) {
+      if (!repository.objectExists(file.s3Key)) {
+        deleted = true;
+        break;
+      }
+
+      Thread.sleep(50);
     }
-  }
 
-  @Test
-  public void shouldHardDeleteFile() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream("files/small_file.txt").readAllBytes();
-
-    repository.putObject("OwnerID/FileID2", fileBytes);
-
-    repository.hardDeleteFile("OwnerID/FileID2");
-
-    assertThrows(
-            RuntimeException.class,
-            () -> repository.downloadFile("OwnerID/FileID2"));
+    assertTrue(deleted);
   }
 
   @Test
   public void shouldDoMultipartUpload() throws IOException {
-    byte[] fileBytes = FileLoader.getInputStream("files/big_file.txt").readAllBytes();
+    TestFileDto file = createTestFile();
+    String uploadID = repository.startMultipartUpload(file.s3Key);
 
-    String S3Key = "OwnerID/FileID3";
-    multipartUpload(fileBytes, S3Key);
-  }
-
-  private void multipartUpload(byte[] fileBytes, String S3Key) {
-    String uploadID = repository.startMultipartUpload(S3Key);
-
-    int partSize = 1024 * 1024 * 5;
-    int partCount = Math.ceilDiv(fileBytes.length, partSize);
-
+    final int PART_SIZE = 1024 * 1024 * 5;
+    int partCount = Math.ceilDiv(file.data.length, PART_SIZE);
     int offset = 0;
-    Map<Integer, String> etags = new LinkedHashMap<>(partCount);
+
+    Map<Integer, String> eTags = new LinkedHashMap<>(partCount);
 
     for (int i = 0; i < partCount; i++) {
-      int end = Math.min(offset + partSize, fileBytes.length);
-      byte[] part = Arrays.copyOfRange(fileBytes, offset, end);
-      etags.put(i+1, repository.uploadPart(uploadID, S3Key, i+1, part));
-      offset += partSize;
+      int end = Math.min(offset + PART_SIZE, file.data.length);
+      byte[] part = Arrays.copyOfRange(file.data, offset, end);
+      eTags.put(i + 1, repository.uploadPart(uploadID, file.s3Key, i + 1, part));
+      offset += PART_SIZE;
     }
 
-    repository.completeMultipartUpload(S3Key, uploadID, etags);
+    repository.completeMultipartUpload(file.s3Key, uploadID, eTags);
+
+    assertFileEqualsMinioObject(file);
   }
+
+  private String createTestBucket() {
+    String bucketName = "bucket-" + UUID.randomUUID();
+
+    repository.createBucket(bucketName);
+
+    return bucketName;
+  }
+
+  private TestFileDto createTestFile() {
+    TestFileDto file = new TestFileDto("file" + UUID.randomUUID(), TestFiles.SMALL_FILE.getData());
+    repository.putObject(file.s3Key, file.data);
+
+    return file;
+  }
+
+  private void assertFileEqualsMinioObject(TestFileDto file) throws IOException {
+    try (InputStream downloadStream = repository.downloadObject(file.s3Key)) {
+      assertTrue(repository.objectExists(file.s3Key));
+      assertArrayEquals(file.data, downloadStream.readAllBytes());
+    }
+  }
+
+  private record TestFileDto(String s3Key, byte[] data) {}
 }

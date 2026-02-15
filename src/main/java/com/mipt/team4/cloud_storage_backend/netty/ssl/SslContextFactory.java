@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SslContextFactory {
+
   private static final Logger logger = LoggerFactory.getLogger(SslContextFactory.class);
 
   public static SslContext createFromResources()

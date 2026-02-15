@@ -5,14 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public class FileOperationsITUtils {
+
   public static boolean filePathsListContainsFiles(
       HttpClient client,
       String userToken,
@@ -46,12 +49,15 @@ public class FileOperationsITUtils {
       boolean recursive,
       String searchDirectory)
       throws IOException, InterruptedException {
-    String endpoint =
-        "/api/files/list?includeDirectories=" + includeDirectories + "&recursive=" + recursive;
+    String dirParam = "";
 
     if (searchDirectory != null) {
-      endpoint += "&directory=" + searchDirectory;
+      dirParam = "&directory=" + URLEncoder.encode(searchDirectory, StandardCharsets.UTF_8);
     }
+
+    String endpoint =
+        "/api/files/list?includeDirectories=%b&recursive=%b%s"
+            .formatted(includeDirectories, recursive, dirParam);
 
     HttpRequest request =
         TestUtils.createRequest(endpoint).header("X-Auth-Token", userToken).GET().build();
@@ -86,7 +92,6 @@ public class FileOperationsITUtils {
   public static HttpResponse<String> sendChangeFilePathRequest(
       HttpClient client, String userToken, String oldTargetFilePath, String newTargetFilePath)
       throws IOException, InterruptedException {
-    // TODO: dublicate
     HttpRequest request =
         TestUtils.createRequest(
                 "/api/files?path=" + oldTargetFilePath + "&newPath=" + newTargetFilePath)
@@ -120,7 +125,10 @@ public class FileOperationsITUtils {
       String newTags)
       throws IOException, InterruptedException {
     HttpRequest request =
-        TestUtils.createRequest("/api/files?path=" + oldTargetPath + "&newPath=" + newTargetPath)
+        TestUtils.createRequest(
+                "/api/files?path="
+                    + oldTargetPath
+                    + "&newPath=%s".formatted(oldTargetPath, newTargetPath))
             .header("X-Auth-Token", userToken)
             .header("X-File-New-Visibility", newVisibility)
             .header("X-File-New-Tags", newTags)

@@ -1,11 +1,21 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.MultimapBuilder;
 import com.mipt.team4.cloud_storage_backend.config.MinioConfig;
-import com.mipt.team4.cloud_storage_backend.exception.storage.BucketAlreadyExistsException;
-import io.minio.*;
-import io.minio.errors.*;
+import io.minio.BucketExistsArgs;
+import io.minio.CreateMultipartUploadResponse;
+import io.minio.GetObjectArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioAsyncClient;
+import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import io.minio.StatObjectArgs;
+import io.minio.UploadPartResponse;
+import io.minio.errors.ErrorResponseException;
+import io.minio.errors.InsufficientDataException;
+import io.minio.errors.InternalException;
+import io.minio.errors.XmlParserException;
 import io.minio.messages.Part;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -18,6 +28,9 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class MinioContentRepository implements FileContentRepository {
+
+  private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
+
   private MinioAsyncClient minioClient;
 
   public MinioContentRepository(String minioUrl) {
@@ -35,15 +48,11 @@ public class MinioContentRepository implements FileContentRepository {
       throw new RuntimeException(e);
     }
 
-    try {
-      createBucket(MinioConfig.INSTANCE.getUserDataBucketName());
-    } catch (BucketAlreadyExistsException _) {
-    }
+    createBucket(MinioConfig.INSTANCE.getUserDataBucketName());
   }
 
-  public void createBucket(String bucketName) throws BucketAlreadyExistsException {
-    if (bucketExists(bucketName)) throw new BucketAlreadyExistsException(bucketName);
-
+  @Override
+  public void createBucket(String bucketName) {
     try {
       minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
     } catch (InsufficientDataException
@@ -52,11 +61,11 @@ public class MinioContentRepository implements FileContentRepository {
         | IOException
         | NoSuchAlgorithmException
         | XmlParserException e) {
-      // TODO: exceptions, retry
       throw new RuntimeException(e);
     }
   }
 
+  @Override
   public boolean bucketExists(String bucketName) {
     try {
       return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build()).get();
@@ -74,10 +83,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public String startMultipartUpload(String s3Key) {
-    // TODO: Think about headers...
-    Multimap<String, String> headers = createEmptyHeader();
-    Multimap<String, String> extraQueryParams = createEmptyHeader();
-
     CreateMultipartUploadResponse response;
 
     try {
@@ -87,8 +92,8 @@ public class MinioContentRepository implements FileContentRepository {
                   MinioConfig.INSTANCE.getUserDataBucketName(),
                   "eu-central-1",
                   s3Key,
-                  headers,
-                  extraQueryParams)
+                  EMPTY_MAP,
+                  EMPTY_MAP)
               .get();
     } catch (InsufficientDataException
         | InternalException
@@ -106,8 +111,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes) {
-    Multimap<String, String> extraHeaders = createEmptyHeader();
-    Multimap<String, String> extraQueryParams = createEmptyHeader();
     InputStream inputStream = new ByteArrayInputStream(bytes);
     UploadPartResponse response;
 
@@ -122,8 +125,8 @@ public class MinioContentRepository implements FileContentRepository {
                   bytes.length,
                   uploadId,
                   partNum,
-                  extraHeaders,
-                  extraQueryParams)
+                  EMPTY_MAP,
+                  EMPTY_MAP)
               .get();
     } catch (InterruptedException
         | XmlParserException
@@ -141,8 +144,6 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
-    Multimap<String, String> extraHeaders = createEmptyHeader();
-    Multimap<String, String> extraQueryParams = createEmptyHeader();
 
     try {
       minioClient
@@ -152,8 +153,8 @@ public class MinioContentRepository implements FileContentRepository {
               s3Key,
               uploadId,
               createPartArray(eTags),
-              extraHeaders,
-              extraQueryParams)
+              EMPTY_MAP,
+              EMPTY_MAP)
           .get();
     } catch (InsufficientDataException
         | InternalException
@@ -193,7 +194,7 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public InputStream downloadFile(String s3Key) {
+  public InputStream downloadObject(String s3Key) {
     try {
       return minioClient
           .getObject(
@@ -208,7 +209,38 @@ public class MinioContentRepository implements FileContentRepository {
         | IOException
         | InvalidKeyException
         | InternalException
-        | ExecutionException
+        | InterruptedException
+        | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public boolean objectExists(String s3Key) {
+    try {
+      minioClient
+          .statObject(
+              StatObjectArgs.builder()
+                  .bucket(MinioConfig.INSTANCE.getUserDataBucketName())
+                  .object(s3Key)
+                  .build())
+          .get();
+
+      return true;
+    } catch (ExecutionException e) {
+      if (e.getCause().getCause() instanceof ErrorResponseException errorResponseException) {
+        if (errorResponseException.errorResponse().code().equals("NoSuchKey")) {
+          return false;
+        }
+      }
+
+      throw new RuntimeException(e);
+    } catch (InsufficientDataException
+        | InternalException
+        | InvalidKeyException
+        | IOException
+        | NoSuchAlgorithmException
+        | XmlParserException
         | InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -230,10 +262,6 @@ public class MinioContentRepository implements FileContentRepository {
         | InternalException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  private Multimap<String, String> createEmptyHeader() {
-    return MultimapBuilder.hashKeys().arrayListValues().build();
   }
 
   private Part[] createPartArray(Map<Integer, String> eTags)

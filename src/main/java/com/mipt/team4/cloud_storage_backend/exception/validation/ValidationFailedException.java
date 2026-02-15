@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import java.util.List;
 
 public class ValidationFailedException extends Exception {
+
   private final List<ValidationError> errors;
 
   public ValidationFailedException(ValidationResult result) {

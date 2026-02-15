@@ -1,12 +1,15 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+@Tag("integration")
 final class PostgresConnectionTest extends BasePostgresTest {
+
   @Test
   public void isConnected_WhenConnected_ReturnsTrue() {
     PostgresConnection postgresConnection = TestUtils.createConnection(postgresContainer);

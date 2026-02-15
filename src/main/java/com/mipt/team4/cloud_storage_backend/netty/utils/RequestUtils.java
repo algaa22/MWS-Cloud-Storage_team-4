@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public class RequestUtils {
+
   public static String getRequiredQueryParam(HttpRequest request, String paramName)
       throws QueryParameterNotFoundException {
     return getQueryParam(request, paramName)

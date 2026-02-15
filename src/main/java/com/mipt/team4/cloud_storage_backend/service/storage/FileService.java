@@ -8,20 +8,32 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPa
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.FileMapper;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.*;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChangeFileMetadataDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileChunkedUploadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileUploadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.GetFileListDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.SimpleFileOperationDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
 import java.io.FileNotFoundException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FileService {
+
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
@@ -36,8 +48,6 @@ public class FileService {
     this.userRepository = userRepository;
   }
 
-  // TODO: soft delete?
-
   public void startChunkedUploadSession(FileChunkedUploadDto uploadSession)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
     UUID userId = userSessionService.extractUserIdFromToken(uploadSession.userToken());
@@ -49,7 +59,9 @@ public class FileService {
     }
 
     Optional<StorageEntity> fileEntity = storageRepository.getFile(userId, path);
-    if (fileEntity.isPresent()) throw new StorageFileAlreadyExistsException(path);
+    if (fileEntity.isPresent()) {
+      throw new StorageFileAlreadyExistsException(path);
+    }
 
     UUID newFileId = UUID.randomUUID();
 
@@ -80,7 +92,9 @@ public class FileService {
           MissingFilePartException,
           UploadSessionNotFoundException {
     ChunkedUploadState uploadState = activeUploads.get(sessionId);
-    if (uploadState == null) throw new UploadSessionNotFoundException(sessionId);
+    if (uploadState == null) {
+      throw new UploadSessionNotFoundException(sessionId);
+    }
 
     try {
       if (uploadState.getTotalParts() == 0) {
@@ -93,7 +107,9 @@ public class FileService {
 
       FileChunkedUploadDto session = uploadState.getSession();
       for (int i = 1; i <= uploadState.getTotalParts(); i++) {
-        if (!uploadState.getETags().containsKey(i)) throw new MissingFilePartException(i);
+        if (!uploadState.getETags().containsKey(i)) {
+          throw new MissingFilePartException(i);
+        }
       }
 
       UUID userId = userSessionService.extractUserIdFromToken(session.userToken());
@@ -104,9 +120,7 @@ public class FileService {
               userId,
               uploadState.getPath(),
               MimeTypeDetector.detect(session.path()),
-              FileVisibility.PRIVATE.toString(),
               uploadState.getFileSize(),
-              false,
               session.tags(),
               false);
 
@@ -126,8 +140,9 @@ public class FileService {
     UUID fileId = UUID.randomUUID();
     UUID userId = userSessionService.extractUserIdFromToken(fileUploadRequest.userToken());
 
-    if (storageRepository.fileExists(userId, fileUploadRequest.path()))
+    if (storageRepository.fileExists(userId, fileUploadRequest.path())) {
       throw new StorageFileAlreadyExistsException(fileUploadRequest.path());
+    }
 
     String mimeType = MimeTypeDetector.detect(fileUploadRequest.path());
     byte[] data = fileUploadRequest.data();
@@ -138,9 +153,7 @@ public class FileService {
             userId,
             fileUploadRequest.path(),
             mimeType,
-            FileVisibility.PRIVATE.toString(),
             data.length,
-            false,
             fileUploadRequest.tags(),
             false);
 
@@ -178,7 +191,11 @@ public class FileService {
       throws UserNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(filePathsRequest.userToken());
     return storageRepository.getFileList(
-        userUuid, filePathsRequest.includeDirectories(), filePathsRequest.recursive(), filePathsRequest.searchDirectory().orElse(""));
+        new FileListFilter(
+            userUuid,
+            filePathsRequest.includeDirectories(),
+            filePathsRequest.recursive(),
+            filePathsRequest.searchDirectory().orElse("")));
   }
 
   public StorageDto getFileInfo(SimpleFileOperationDto fileInfoRequest)
@@ -186,9 +203,11 @@ public class FileService {
     UUID userUuid = userSessionService.extractUserIdFromToken(fileInfoRequest.userToken());
 
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userUuid, fileInfoRequest.path());
-    if (entityOpt.isEmpty()) throw new StorageEntityNotFoundException(fileInfoRequest.path());
+    if (entityOpt.isEmpty()) {
+      throw new StorageEntityNotFoundException(fileInfoRequest.path());
+    }
 
-    return FileMapper.toDto(entityOpt.get());
+    return new StorageDto(entityOpt.get());
   }
 
   public void changeFileMetadata(ChangeFileMetadataDto changeFileMetadata)
@@ -202,7 +221,8 @@ public class FileService {
         storageRepository.getFile(userId, changeFileMetadata.oldPath());
 
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(changeFileMetadata.oldPath()));
+        entityOpt.orElseThrow(
+            () -> new StorageEntityNotFoundException(changeFileMetadata.oldPath()));
 
     if (changeFileMetadata.newPath().isPresent()) {
       Optional<StorageEntity> existingFile =
@@ -231,14 +251,15 @@ public class FileService {
 
     String eTag =
         storageRepository.uploadPart(
-            uploadId,
-            uploadState.getUserId(),
-            uploadState.getFileId(),
-            uploadState.getPartNum(),
-            part);
-    uploadState.addCompletedPart(uploadState.getPartNum(), eTag);
+            new UploadPartRequest(
+                uploadId,
+                uploadState.getUserId(),
+                uploadState.getFileId(),
+                uploadState.getPartNum(),
+                part));
 
-    uploadState.increaseTotalParts();
+    uploadState.addCompletedPart(uploadState.getPartNum(), eTag);
     uploadState.addFileSize(part.length);
+    uploadState.increaseTotalParts();
   }
 }

@@ -1,18 +1,24 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.smoke;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.DirectoryOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
+import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("smoke")
 public class DirectorySmokeIT extends BaseStorageIT {
+
   @Test
   public void shouldCreateDirectory() throws IOException, InterruptedException {
     HttpResponse<String> createDirectoryResponse =
@@ -72,14 +78,13 @@ public class DirectorySmokeIT extends BaseStorageIT {
       String filePath = directoryPath + "file" + i;
 
       testFiles.add(filePath);
-      simpleUploadFile(SMALL_FILE_LOCAL_PATH, filePath, "");
+      simpleUploadFile(TestConstants.SMALL_FILE_LOCAL_PATH, filePath, "");
     }
 
     return testFiles;
   }
 
-  private boolean filePathsListContainsFiles(
-      List<String> filePaths, String searchDirectory)
+  private boolean filePathsListContainsFiles(List<String> filePaths, String searchDirectory)
       throws IOException, InterruptedException {
     return FileOperationsITUtils.filePathsListContainsFiles(
         client, currentUserToken, filePaths, true, true, searchDirectory);

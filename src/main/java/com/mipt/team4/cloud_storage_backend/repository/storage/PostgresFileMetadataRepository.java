@@ -2,16 +2,21 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PostgresFileMetadataRepository implements FileMetadataRepository {
+
   private static final Logger logger =
       LoggerFactory.getLogger(PostgresFileMetadataRepository.class);
 
@@ -23,8 +28,9 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   @Override
   public void addFile(StorageEntity fileEntity) throws StorageFileAlreadyExistsException {
-    if (fileExists(fileEntity.getUserId(), fileEntity.getPath()))
+    if (fileExists(fileEntity.getUserId(), fileEntity.getPath())) {
       throw new StorageFileAlreadyExistsException(fileEntity.getPath());
+    }
 
     postgres.executeUpdate(
         "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, tags, is_directory)"
@@ -42,28 +48,25 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   }
 
   @Override
-  public List<StorageEntity> getFilesList(
-      UUID userId, boolean includeDirectories, boolean recursive, String searchDirectory) {
-    // TODO: параметр recursive
+  public List<StorageEntity> getFilesList(FileListFilter filter) {
     String query =
         "SELECT * FROM files WHERE owner_id = ? AND path LIKE ? AND path != ? AND is_deleted = FALSE";
     List<Object> params = new ArrayList<>();
 
-    params.add(userId);
-    params.add(searchDirectory + "%");
-    params.add(searchDirectory);
+    params.add(filter.userId());
+    params.add(filter.searchDirectory() + "%");
+    params.add(filter.searchDirectory());
 
-    if (!recursive) {
+    if (!filter.recursive()) {
       query += " AND PATH NOT LIKE ?";
-      params.add(searchDirectory + "%/_%");
+      params.add(filter.searchDirectory() + "%/_%");
     }
 
-    if (!includeDirectories) query += " AND is_directory = FALSE";
+    if (!filter.includeDirectories()) {
+      query += " AND is_directory = FALSE";
+    }
 
-    return postgres.executeQuery(
-        query,
-        params,
-        rs -> resultToStorageEntity(userId, rs));
+    return postgres.executeQuery(query, params, rs -> resultToStorageEntity(filter.userId(), rs));
   }
 
   @Override
@@ -76,7 +79,9 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             List.of(userId, path),
             rs -> resultToStorageEntity(userId, rs));
 
-    if (result.isEmpty()) return Optional.empty();
+    if (result.isEmpty()) {
+      return Optional.empty();
+    }
 
     return Optional.of(result.getFirst());
   }

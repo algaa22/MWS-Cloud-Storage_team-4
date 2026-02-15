@@ -1,16 +1,18 @@
 package com.mipt.team4.cloud_storage_backend.utils.validation;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ValidatorsTest {
+
   @Test
   public void notNull_ShouldInvalid_WhenStringIsNull() {
     assertInvalid(Validators.notNull("String", null));
@@ -48,7 +50,7 @@ class ValidatorsTest {
 
   @Test
   public void notBlank_ShouldValid_WhenListIsNotBlank() {
-    assertValid(Validators.notBlank("List", Arrays.asList("some string")));
+    assertValid(Validators.notBlank("List", List.of("some string")));
   }
 
   @Test
@@ -184,11 +186,11 @@ class ValidatorsTest {
 
   @Test
   public void shouldMergeSeveralValidators() {
-    ValidationResult result = Validators.all(
+    ValidationResult result =
+        Validators.all(
             Validators.notNull("2", ""),
             Validators.notNull("1", null),
-            Validators.notBlank("3", "")
-    );
+            Validators.notBlank("3", ""));
 
     assertFalse(result.isValid());
     assertEquals(2, result.getErrors().size());

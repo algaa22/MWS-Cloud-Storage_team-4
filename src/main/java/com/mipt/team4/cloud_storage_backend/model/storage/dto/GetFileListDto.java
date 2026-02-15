@@ -10,13 +10,14 @@ public record GetFileListDto(
     boolean includeDirectories,
     boolean recursive,
     Optional<String> searchDirectory) {
+
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
             Validators.validToken(userToken),
             Validators.notNull("Include directories", includeDirectories),
             Validators.notNull("Recursive", recursive),
-            Validators.any( // TODO: 'specified' validation вынести в отдельную функцию
+            Validators.any(
                 "Search directory",
                 "If search directory specified, it must be directory",
                 Validators.validate(searchDirectory.isEmpty(), null, null),

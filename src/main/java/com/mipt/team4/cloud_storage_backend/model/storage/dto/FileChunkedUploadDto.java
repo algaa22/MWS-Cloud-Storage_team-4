@@ -6,10 +6,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
 
 public record FileChunkedUploadDto(
-    String sessionId,
-    String userToken,
-    String path,
-    List<String> tags) {
+    String sessionId, String userToken, String path, List<String> tags) {
 
   public void validate() throws ValidationFailedException {
     ValidationResult result =

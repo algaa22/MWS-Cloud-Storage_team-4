@@ -2,7 +2,10 @@ package com.mipt.team4.cloud_storage_backend.service.user.security;
 
 import com.mipt.team4.cloud_storage_backend.config.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.time.LocalDateTime;
@@ -10,6 +13,7 @@ import java.util.Date;
 import java.util.UUID;
 
 public class JwtService {
+
   private final long accessTokenExpirationSec;
   private final long refreshTokenExpirationSec;
 

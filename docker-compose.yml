@@ -25,16 +25,15 @@ services:
   postgres:
     image: postgres:18.0
     container_name: cloud-storage-db
-    env_file:
-      - .env
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USERNAME}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     ports:
-      - "5433:5432"
+      - "5432:5432"
     #    volumes:
-    #      - postgres-fileStream:/var/lib/postgresql/fileStream
+    # TODO: stream?
+    #      - postgres-stream:/var/lib/postgresql/stream
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 5s

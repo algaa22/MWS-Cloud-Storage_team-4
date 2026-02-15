@@ -7,17 +7,16 @@ import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.BaseIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
-import com.mipt.team4.cloud_storage_backend.e2e.user.UserAuthUtils;
+import com.mipt.team4.cloud_storage_backend.e2e.user.utils.UserAuthUtils;
+import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
 import java.net.http.HttpResponse;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public abstract class BaseStorageIT extends BaseIT {
-  protected static final String SMALL_FILE_LOCAL_PATH = "files/small_file.txt";
-  protected static final String BIG_FILE_LOCAL_PATH = "files/big_file.txt";
+
   protected static final String EMPTY_FILE_LOCAL_PATH = "files/empty_file";
   protected static final String DEFAULT_FILE_TARGET_PATH = "file";
   protected static final String DEFAULT_DIRECTORY_PATH = "dir1/dir2/";
@@ -37,21 +36,21 @@ public abstract class BaseStorageIT extends BaseIT {
   }
 
   protected void simpleUploadFile(String targetFilePath) throws IOException, InterruptedException {
-    simpleUploadFile(SMALL_FILE_LOCAL_PATH, targetFilePath, "");
+    simpleUploadFile(TestConstants.SMALL_FILE_LOCAL_PATH, targetFilePath, "");
   }
 
   protected void simpleUploadFile(String localFilePath, String targetFilePath, String fileTags)
-          throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     HttpResponse<String> uploadResponse =
-            FileSimpleTransferITUtils.sendUploadRequest(
-                    client, currentUserToken, localFilePath, targetFilePath, fileTags);
+        FileSimpleTransferITUtils.sendUploadRequest(
+            client, currentUserToken, localFilePath, targetFilePath, fileTags);
     assertEquals(HttpStatus.SC_OK, uploadResponse.statusCode());
   }
 
   protected void assertFileExistsIs(boolean exists, String targetFilePath)
-          throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     HttpResponse<String> response =
-            FileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, targetFilePath);
+        FileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, targetFilePath);
 
     if (exists) {
       assertEquals(HttpStatus.SC_OK, response.statusCode());
@@ -61,10 +60,10 @@ public abstract class BaseStorageIT extends BaseIT {
   }
 
   protected void assertFileInfoMatches(
-          String targetPath, String expectedVisibility, String expectedTags)
-          throws IOException, InterruptedException {
+      String targetPath, String expectedVisibility, String expectedTags)
+      throws IOException, InterruptedException {
     HttpResponse<String> fileInfoResponse =
-            FileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, targetPath);
+        FileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, targetPath);
     assertEquals(HttpStatus.SC_OK, fileInfoResponse.statusCode());
 
     JsonNode rootNode = TestUtils.getRootNodeFromResponse(fileInfoResponse);

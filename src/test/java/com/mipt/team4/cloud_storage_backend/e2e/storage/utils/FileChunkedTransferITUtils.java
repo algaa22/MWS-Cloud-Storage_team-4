@@ -2,6 +2,8 @@ package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -19,29 +21,8 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.InputStreamEntity;
 
 public class FileChunkedTransferITUtils {
+
   private static final int MAX_CHUNK_SIZE = 8 * 1024;
-
-  public record UploadResult(int statusCode, String body) {
-    public static UploadResult from(ClassicHttpResponse response)
-        throws IOException, ParseException {
-      return new UploadResult(response.getCode(), EntityUtils.toString(response.getEntity()));
-    }
-  }
-
-  public record DownloadResult(int statusCode, Map<String, String> headers, List<byte[]> chunks) {
-    public static DownloadResult from(ClassicHttpResponse response) throws IOException {
-      Map<String, String> headers = new HashMap<>();
-
-      for (Header header : response.getHeaders()) {
-        headers.put(header.getName(), header.getValue());
-      }
-
-      return new DownloadResult(
-          response.getCode(),
-          headers,
-          readChunksFromInputStream(response.getEntity().getContent()));
-    }
-  }
 
   public static UploadResult sendUploadRequest(
       CloseableHttpClient client,
@@ -59,17 +40,20 @@ public class FileChunkedTransferITUtils {
         new InputStreamEntity(fileStream, -1, ContentType.APPLICATION_OCTET_STREAM);
 
     request.setEntity(entity);
+    request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
     request.setHeader("X-Auth-Token", userToken);
     request.setHeader("X-File-Tags", fileTags);
-    request.setHeader("X-File-Size", fileSize); // TODO: file size?
+    request.setHeader("X-File-Size", fileSize);
 
     return client.execute(request, UploadResult::from);
   }
 
   public static DownloadResult sendDownloadRequest(
       CloseableHttpClient client, String userToken, String targetFilePath) throws IOException {
-    HttpGet request = new HttpGet(TestUtils.createUriString("/api/files?path=" + targetFilePath));
-    request.setHeader("X-Download-Mode", "chunked");
+    HttpGet request =
+        new HttpGet(TestUtils.createUriString("/api/files/download?path=" + targetFilePath));
+
+    request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
     request.setHeader("X-Auth-Token", userToken);
 
     return client.execute(request, DownloadResult::from);
@@ -77,7 +61,9 @@ public class FileChunkedTransferITUtils {
 
   public static boolean chunkMatchesOriginal(byte[] originalData, byte[] chunk, int offset) {
     for (int i = 0; i < chunk.length; i++) {
-      if (originalData[offset + i] != chunk[i]) return false;
+      if (originalData[offset + i] != chunk[i]) {
+        return false;
+      }
     }
 
     return true;
@@ -97,5 +83,29 @@ public class FileChunkedTransferITUtils {
     }
 
     return chunks;
+  }
+
+  public record UploadResult(int statusCode, String body) {
+
+    public static UploadResult from(ClassicHttpResponse response)
+        throws IOException, ParseException {
+      return new UploadResult(response.getCode(), EntityUtils.toString(response.getEntity()));
+    }
+  }
+
+  public record DownloadResult(int statusCode, Map<String, String> headers, List<byte[]> chunks) {
+
+    public static DownloadResult from(ClassicHttpResponse response) throws IOException {
+      Map<String, String> headers = new HashMap<>();
+
+      for (Header header : response.getHeaders()) {
+        headers.put(header.getName(), header.getValue());
+      }
+
+      return new DownloadResult(
+          response.getCode(),
+          headers,
+          readChunksFromInputStream(response.getEntity().getContent()));
+    }
   }
 }

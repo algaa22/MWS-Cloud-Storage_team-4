@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class UserEntity {
+
   private final UUID id;
   boolean isActive;
   private String name;
@@ -33,8 +34,7 @@ public class UserEntity {
       long storageLimit,
       long usedStorage,
       LocalDateTime createdAt,
-      boolean isActive
-  ) {
+      boolean isActive) {
     this.id = id;
     this.name = name;
     this.email = email;
@@ -104,5 +104,4 @@ public class UserEntity {
   public void setActive(boolean active) {
     isActive = active;
   }
-
 }

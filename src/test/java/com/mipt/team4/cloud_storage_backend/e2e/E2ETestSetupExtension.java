@@ -8,6 +8,7 @@ import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 public class E2ETestSetupExtension implements BeforeAllCallback {
+
   private static final String INITIALIZED_KEY = "testcontainers.initialized";
   private static final PostgreSQLContainer<?> POSTGRES = TestUtils.createPostgresContainer();
   private static final MinIOContainer MINIO = TestUtils.createMinioContainer();

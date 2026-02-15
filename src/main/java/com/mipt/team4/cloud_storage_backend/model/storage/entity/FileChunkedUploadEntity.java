@@ -6,13 +6,14 @@ import java.util.Map;
 import java.util.UUID;
 
 public class FileChunkedUploadEntity {
+
+  private final Map<Integer, String> eTags;
   private UUID sessionId;
   private UUID userId;
   private String s3UploadId;
   private String path;
   private List<String> tags;
   private List<UploadChunkDto> chunks;
-  private Map<Integer, String> eTags;
 
   public FileChunkedUploadEntity(
       UUID sessionId,

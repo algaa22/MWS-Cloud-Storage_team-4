@@ -9,10 +9,13 @@ import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
 import java.net.http.HttpResponse;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
+@Tag("integration")
 public class GetFilePathsDetailedIT extends BaseDetailedFileIT {
+
   public GetFilePathsDetailedIT() {
     super("/api/files/list", HttpMethod.GET.name(), PathParam.EXISTENT_FOLDER);
   }
@@ -20,7 +23,8 @@ public class GetFilePathsDetailedIT extends BaseDetailedFileIT {
   @Test
   public void shouldReturnEmptyList_ForNewUser() throws IOException, InterruptedException {
     HttpResponse<String> response =
-        FileOperationsITUtils.sendGetFilePathsListRequest(client, currentUserToken, false,  true,null);
+        FileOperationsITUtils.sendGetFilePathsListRequest(
+            client, currentUserToken, false, true, null);
 
     JsonNode rootNode = TestUtils.getRootNodeFromResponse(response);
     assertFalse(rootNode.get("files").elements().hasNext());

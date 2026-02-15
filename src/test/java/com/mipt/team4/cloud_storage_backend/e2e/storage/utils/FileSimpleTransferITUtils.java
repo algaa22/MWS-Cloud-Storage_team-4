@@ -8,6 +8,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 public class FileSimpleTransferITUtils {
+
   public static HttpResponse<String> sendUploadRequest(
       HttpClient client,
       String userToken,
@@ -25,17 +26,5 @@ public class FileSimpleTransferITUtils {
             .build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());
-  }
-
-  public static HttpResponse<byte[]> sendDownloadRequest(
-      HttpClient client, String userToken, String targetFilePath)
-      throws IOException, InterruptedException {
-    HttpRequest request =
-        TestUtils.createRequest("/api/files?path=" + targetFilePath)
-            .header("X-Auth-Token", userToken)
-            .GET()
-            .build();
-
-    return client.send(request, HttpResponse.BodyHandlers.ofByteArray());
   }
 }

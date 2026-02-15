@@ -6,6 +6,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record ChangeDirectoryPathDto(
     String userToken, String oldDirectoryPath, String newDirectoryPath) {
+
   public void validate() throws ValidationFailedException {
     ValidationResult result =
         Validators.all(

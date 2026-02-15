@@ -1,8 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
-import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
-import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.factories.EnvConfigFactory;
+import com.mipt.team4.cloud_storage_backend.config.sources.factories.YamlConfigFactory;
 
 public enum StorageConfig {
   INSTANCE;
@@ -17,8 +17,8 @@ public enum StorageConfig {
   private final long minFilePartSize;
 
   StorageConfig() {
-    ConfigSource yamlSource = new YamlConfigSource("config.yml");
-    ConfigSource envSource = new EnvironmentConfigSource(".env");
+    ConfigSource yamlSource = YamlConfigFactory.INSTANCE.getDefault();
+    ConfigSource envSource = EnvConfigFactory.INSTANCE.getDefault();
 
     this.maxAggregatedContentLength =
         yamlSource.getInt("storage.http.max-aggregated-content-length").orElseThrow();
@@ -35,10 +35,6 @@ public enum StorageConfig {
         yamlSource.getInt("storage.auth.refresh-token-expiration-sec").orElseThrow();
 
     this.jwtSecretKey = envSource.getString("jwt.secret.key").orElseThrow();
-  }
-
-  public long getDefaultStorageLimit() {
-    return defaultStorageLimit;
   }
 
   public String getJwtSecretKey() {
@@ -59,6 +55,10 @@ public enum StorageConfig {
 
   public long getRefreshTokenExpirationSec() {
     return refreshTokenExpirationSec;
+  }
+
+  public long getDefaultStorageLimit() {
+    return defaultStorageLimit;
   }
 
   public long getMaxFileChunkSize() {

@@ -1,8 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.sources.ConfigSource;
-import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
 import com.mipt.team4.cloud_storage_backend.config.sources.YamlConfigSource;
+import com.mipt.team4.cloud_storage_backend.config.sources.factories.EnvConfigFactory;
+import com.mipt.team4.cloud_storage_backend.config.sources.factories.YamlConfigFactory;
 
 public enum MinioConfig {
   INSTANCE;
@@ -13,8 +14,8 @@ public enum MinioConfig {
   private final String userDataBucketName;
 
   MinioConfig() {
-    ConfigSource envSource = new EnvironmentConfigSource(".env");
-    YamlConfigSource yamlSource = new YamlConfigSource("config.yml");
+    ConfigSource envSource = EnvConfigFactory.INSTANCE.getDefault();
+    YamlConfigSource yamlSource = YamlConfigFactory.INSTANCE.getDefault();
 
     this.url = envSource.getString("minio.url").orElseThrow();
     this.username = envSource.getString("minio.username").orElseThrow();

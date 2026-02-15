@@ -7,6 +7,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 public class DirectoryOperationsITUtils {
+
   public static HttpResponse<String> sendCreateDirectoryRequest(
       HttpClient client, String userToken, String directoryPath)
       throws IOException, InterruptedException {
@@ -32,13 +33,11 @@ public class DirectoryOperationsITUtils {
   }
 
   public static HttpResponse<String> sendChangeDirectoryPathRequest(
-      HttpClient client,
-      String currentUserToken,
-      String oldDirectoryPath,
-      String newDirectoryPath) throws IOException, InterruptedException {
+      HttpClient client, String currentUserToken, String oldDirectoryPath, String newDirectoryPath)
+      throws IOException, InterruptedException {
     HttpRequest request =
         TestUtils.createRequest(
-                "/api/directories?from=" + oldDirectoryPath + "&to=" + newDirectoryPath)
+                "/api/directories?from=%s&to=%s".formatted(oldDirectoryPath, newDirectoryPath))
             .header("X-Auth-Token", currentUserToken)
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();

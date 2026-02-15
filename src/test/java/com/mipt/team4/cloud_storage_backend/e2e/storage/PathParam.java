@@ -6,6 +6,6 @@ public enum PathParam {
   EXISTENT_FOLDER;
 
   public boolean isExistent() {
-      return this == EXISTENT_FILE || this == EXISTENT_FOLDER;
-    }
+    return this == EXISTENT_FILE || this == EXISTENT_FOLDER;
+  }
 }

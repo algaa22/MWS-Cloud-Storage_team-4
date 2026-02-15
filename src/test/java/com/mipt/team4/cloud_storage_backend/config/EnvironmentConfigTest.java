@@ -1,27 +1,29 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
-import com.mipt.team4.cloud_storage_backend.config.sources.EnvironmentConfigSource;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.mipt.team4.cloud_storage_backend.config.sources.EnvConfigSource;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 public final class EnvironmentConfigTest {
-  private static EnvironmentConfigSource source;
+
+  private static EnvConfigSource source;
 
   @BeforeAll
   static void beforeAll() {
-    source = new EnvironmentConfigSource("config/test.env");
+    source = new EnvConfigSource("config/test.env");
   }
 
   @Test
   void shouldGetEnvVar() {
-    Optional<String> value = source.getString("USER");
+    Optional<String> value = source.getString("PATH");
 
     assertTrue(value.isPresent());
-    assertEquals(System.getenv("USER"), value.get());
+    assertEquals(System.getenv("PATH"), value.get());
   }
 
   @Test

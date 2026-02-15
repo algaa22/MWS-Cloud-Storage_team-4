@@ -1066,8 +1066,9 @@ export default function FileBrowser() {
                   <input
                       type="text"
                       placeholder="работа, проект, важное"
-                      value={uploadTags.join(', ')}
-                      onChange={(e) => {
+                      // Используем локальное состояние для текста или просто выводим массив через join
+                      defaultValue={uploadTags.join(', ')}
+                      onBlur={(e) => {
                         const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
                         setUploadTags(tags);
                       }}
@@ -1122,7 +1123,7 @@ export default function FileBrowser() {
                       className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors"
                       disabled={uploading || storageLoading}
                   >
-                    Выбрать файл
+                    Загрузить
                   </button>
                 </div>
               </div>

@@ -4,7 +4,8 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record SimpleUserRequestDto (String token) {
+public record SimpleUserRequestDto(String token) {
+
   public void validate() throws ValidationFailedException {
     ValidationResult result = Validators.all(Validators.validToken(token));
 

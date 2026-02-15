@@ -362,53 +362,67 @@ export const getFiles = async (token, currentPath = "") => {
 };
 
 export const downloadFile = async (token, path, filename, fileSize) => {
-  console.log("downloadFile request:", { path, filename, fileSize });
+  console.log("downloadFile request (Streaming mode):", { path, filename, fileSize });
 
-  const url = `${BASE}/files?path=${encodeURIComponent(path)}`;
-
-  // TODO: вынести уже в переменную
-  const CHUNKED_DOWNLOAD_THRESHOLD = 5 * 1024 * 1024;
-  const useChunkedMode = fileSize > CHUNKED_DOWNLOAD_THRESHOLD;
+  const url = `${BASE}/files/download?path=${encodeURIComponent(path)}`;
 
   const headers = {
     "X-Auth-Token": token
+    // Хедер X-Download-Mode удален
   };
 
-  if (useChunkedMode) {
-    headers["X-Download-Mode"] = "chunked";
-    console.log("Using chunked download mode");
-  } else {
-    console.log("Using default (aggregated) download mode");
-  }
-
   try {
-    const res = await fetch(url, {
-      headers: headers
-    });
+    const res = await fetch(url, { headers });
 
-    console.log("downloadFile status:", res.status, res.statusText);
+    console.log("downloadFile status:", res.status);
 
     if (!res.ok) {
       const txt = await res.text().catch(() => "(no body)");
-      console.error("Download failed:", res.status, txt);
       throw new Error(`Download failed: ${res.status} ${txt}`);
     }
 
-    const blob = await res.blob();
+    // РАБОТА С ПОТОКОМ (ЧАНКАМИ)
+    const reader = res.body.getReader();
+    const chunks = [];
+    let receivedLength = 0;
+
+    // Читаем поток чанк за чанком
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      chunks.push(value);
+      receivedLength += value.length;
+
+      // Здесь можно добавить лог прогресса, если нужно:
+      // console.log(`Received ${receivedLength} of ${fileSize}`);
+    }
+
+    // Собираем все чанки в один Blob
+    const blob = new Blob(chunks);
+
+    // Обычное сохранение файла
     const urlBlob = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
+    a.style.display = "none";
     a.href = urlBlob;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    window.URL.revokeObjectURL(urlBlob);
-    document.body.removeChild(a);
+
+    // Очистка
+    setTimeout(() => {
+      window.URL.revokeObjectURL(urlBlob);
+      document.body.removeChild(a);
+    }, 100);
 
   } catch (error) {
-    console.error("🔥 Fetch error:", error);
+    console.error("🔥 Stream download error:", error);
     throw error;
   }
 };
+
 
 export const deleteFile = async (token, path) => {
   console.log("deleteFile request:", { path });

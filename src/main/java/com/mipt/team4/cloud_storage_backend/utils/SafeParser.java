@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.utils;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 
 public class SafeParser {
+
   public static Boolean parseBoolean(String field, String value) throws ParseException {
     try {
       return Boolean.parseBoolean(value);

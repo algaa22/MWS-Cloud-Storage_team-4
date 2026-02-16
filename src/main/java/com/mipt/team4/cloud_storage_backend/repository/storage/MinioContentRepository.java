@@ -4,25 +4,17 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import io.minio.BucketExistsArgs;
-import io.minio.CreateMultipartUploadResponse;
 import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
-import io.minio.UploadPartResponse;
 import io.minio.errors.ErrorResponseException;
-import io.minio.errors.InsufficientDataException;
-import io.minio.errors.InternalException;
-import io.minio.errors.XmlParserException;
 import io.minio.messages.Part;
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +27,9 @@ import org.springframework.stereotype.Repository;
 public class MinioContentRepository implements FileContentRepository {
 
   private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
+  private final MinioWrapper wrapper = new MinioWrapper();
+  private final String bucketName = MinioConfig.INSTANCE.getUserDataBucketName();
+  private final String region = "eu-central-1";
 
   private final MinioConfig minioConfig;
 
@@ -49,223 +44,134 @@ public class MinioContentRepository implements FileContentRepository {
               .credentials(minioConfig.username(), minioConfig.password())
               .build();
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Failed to initialize MinIO", e);
     }
 
-    createBucket(minioConfig.userDataBucket().name());
+    if (!bucketExists(bucketName)) {
+      createBucket(bucketName);
+    }
   }
 
   @Override
   public void createBucket(String bucketName) {
-    try {
-      minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException e) {
-      throw new RuntimeException(e);
-    }
+    wrapper.execute(
+        () -> {
+          minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build()).get();
+          return null;
+        });
   }
 
   @Override
   public boolean bucketExists(String bucketName) {
-    try {
-      return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build()).get();
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException
-        | ExecutionException
-        | InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+    return wrapper.execute(
+        () ->
+            minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build()).get());
   }
 
   @Override
   public String startMultipartUpload(String s3Key) {
-    CreateMultipartUploadResponse response;
-
-    try {
-      response =
-          minioClient
-              .createMultipartUploadAsync(
-                  minioConfig.userDataBucket().name(), "eu-central-1", s3Key, EMPTY_MAP, EMPTY_MAP)
-              .get();
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException
-        | ExecutionException
-        | InterruptedException e) {
-      throw new RuntimeException(e);
-    }
-
-    return response.result().uploadId();
+    return wrapper.execute(
+        () ->
+            minioClient
+                .createMultipartUploadAsync(bucketName, region, s3Key, EMPTY_MAP, EMPTY_MAP)
+                .get()
+                .result()
+                .uploadId());
   }
 
   @Override
   public String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes) {
     InputStream inputStream = new ByteArrayInputStream(bytes);
-    UploadPartResponse response;
-
-    try {
-      response =
-          minioClient
-              .uploadPartAsync(
-                  minioConfig.userDataBucket().name(),
-                  "eu-central-1",
-                  s3Key,
-                  inputStream,
-                  bytes.length,
-                  uploadId,
-                  partNum,
-                  EMPTY_MAP,
-                  EMPTY_MAP)
-              .get();
-    } catch (InterruptedException
-        | XmlParserException
-        | NoSuchAlgorithmException
-        | IOException
-        | InvalidKeyException
-        | InternalException
-        | InsufficientDataException
-        | ExecutionException ex) {
-      throw new RuntimeException(ex);
-    }
-
-    return response.etag();
+    return wrapper
+        .execute(
+            () ->
+                minioClient
+                    .uploadPartAsync(
+                        bucketName,
+                        region,
+                        s3Key,
+                        inputStream,
+                        bytes.length,
+                        uploadId,
+                        partNum,
+                        EMPTY_MAP,
+                        EMPTY_MAP)
+                    .get())
+        .etag();
   }
 
   @Override
   public void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
 
-    try {
-      minioClient
-          .completeMultipartUploadAsync(
-              minioConfig.userDataBucket().name(),
-              "eu-central-1",
-              s3Key,
-              uploadId,
-              createPartArray(eTags),
-              EMPTY_MAP,
-              EMPTY_MAP)
-          .get();
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException
-        | ExecutionException
-        | InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+    wrapper.execute(
+        () -> {
+          minioClient
+              .completeMultipartUploadAsync(
+                  bucketName, region, s3Key, uploadId, createPartArray(eTags), EMPTY_MAP, EMPTY_MAP)
+              .get();
+          return null;
+        });
   }
 
   @Override
   public void putObject(String s3Key, byte[] data) {
     InputStream stream = new ByteArrayInputStream(data);
 
-    try {
-      minioClient
-          .putObject(
-              PutObjectArgs.builder()
-                  .bucket(minioConfig.userDataBucket().name())
-                  .object(s3Key)
-                  .stream(stream, data.length, -1)
-                  .build())
-          .get();
-    } catch (InsufficientDataException
-        | XmlParserException
-        | NoSuchAlgorithmException
-        | IOException
-        | InvalidKeyException
-        | InternalException
-        | ExecutionException
-        | InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+    wrapper.execute(
+        () -> {
+          minioClient
+              .putObject(
+                  PutObjectArgs.builder().bucket(bucketName).object(s3Key).stream(
+                          stream, data.length, -1)
+                      .build())
+              .get();
+          return null;
+        });
   }
 
   @Override
   public InputStream downloadObject(String s3Key) {
-    try {
-      return minioClient
-          .getObject(
-              GetObjectArgs.builder()
-                  .bucket(minioConfig.userDataBucket().name())
-                  .object(s3Key)
-                  .build())
-          .get();
-    } catch (InsufficientDataException
-        | XmlParserException
-        | NoSuchAlgorithmException
-        | IOException
-        | InvalidKeyException
-        | InternalException
-        | InterruptedException
-        | ExecutionException e) {
-      throw new RuntimeException(e);
-    }
+    return wrapper.execute(
+        () ->
+            minioClient
+                .getObject(GetObjectArgs.builder().bucket(bucketName).object(s3Key).build())
+                .get());
   }
 
   @Override
   public boolean objectExists(String s3Key) {
-    try {
-      minioClient
-          .statObject(
-              StatObjectArgs.builder()
-                  .bucket(minioConfig.userDataBucket().name())
-                  .object(s3Key)
-                  .build())
-          .get();
+    return wrapper.execute(
+        () -> {
+          try {
+            minioClient
+                .statObject(StatObjectArgs.builder().bucket(bucketName).object(s3Key).build())
+                .get();
+            return true;
+          } catch (Exception e) {
+            Throwable cause = e instanceof ExecutionException ? e.getCause() : e;
 
-      return true;
-    } catch (ExecutionException e) {
-      if (e.getCause().getCause() instanceof ErrorResponseException errorResponseException) {
-        if (errorResponseException.errorResponse().code().equals("NoSuchKey")) {
-          return false;
-        }
-      }
-
-      throw new RuntimeException(e);
-    } catch (InsufficientDataException
-        | InternalException
-        | InvalidKeyException
-        | IOException
-        | NoSuchAlgorithmException
-        | XmlParserException
-        | InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+            if (cause instanceof ErrorResponseException ex) {
+              if ("NoSuchKey".equals(ex.errorResponse().code()) || ex.response().code() == 404) {
+                return false;
+              }
+            }
+            throw e;
+          }
+        });
   }
 
   @Override
   public void hardDeleteFile(String s3Key) {
-    try {
-      minioClient.removeObject(
-          RemoveObjectArgs.builder()
-              .bucket(minioConfig.userDataBucket().name())
-              .object(s3Key)
-              .build());
-    } catch (InsufficientDataException
-        | XmlParserException
-        | NoSuchAlgorithmException
-        | IOException
-        | InvalidKeyException
-        | InternalException e) {
-      throw new RuntimeException(e);
-    }
+    wrapper.execute(
+        () -> {
+          minioClient
+              .removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(s3Key).build())
+              .get();
+          return null;
+        });
   }
 
-  private Part[] createPartArray(Map<Integer, String> eTags)
-      throws ExecutionException, InterruptedException {
+  private Part[] createPartArray(Map<Integer, String> eTags) {
     List<Part> partsList = new ArrayList<>(eTags.size());
 
     for (Map.Entry<Integer, String> entry : eTags.entrySet()) {

@@ -14,6 +14,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SearchFilesByTagsRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
@@ -141,4 +142,52 @@ public class FilesRequestHandler {
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
   }
-}
+
+  public void handleSearchFilesByTags(
+      ChannelHandlerContext ctx, FullHttpRequest request, String userToken)
+      throws UserNotFoundException, ValidationFailedException {
+
+    List<String> tags;
+    ObjectMapper mapper = new ObjectMapper();
+
+    try {
+      var jsonNode = mapper.readTree(request.content().array());
+
+      if (!jsonNode.isObject()) {
+        ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST,
+            mapper.createObjectNode().put("error", "Expected JSON object in request body"));
+        return;
+      }
+
+      ObjectNode body = (ObjectNode) jsonNode;
+
+      if (body.has("tags") && body.get("tags").isArray()) {
+        ArrayNode tagsNode = body.withArray("tags");
+        tags = Optional.ofNullable(FileTagsMapper.toList(String.valueOf(tagsNode))).orElse(List.of());
+      } else {
+        tags = List.of();
+      }
+    } catch (Exception e) {
+      ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST,
+          mapper.createObjectNode().put("error", "Invalid JSON body: " + e.getMessage()));
+      return;
+    }
+
+    List<StorageEntity> files = fileController.searchFilesByTags(new SearchFilesByTagsRequest(userToken, tags));
+
+    ObjectNode rootNode = mapper.createObjectNode();
+    ArrayNode filesArray = mapper.createArrayNode();
+
+    if (files != null) {
+      for (StorageEntity file : files) {
+        ObjectNode fileNode = mapper.createObjectNode();
+        fileNode.put("path", file.getPath());
+        filesArray.add(fileNode);
+      }
+    }
+
+    rootNode.set("files", filesArray);
+
+    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+  }
+  }

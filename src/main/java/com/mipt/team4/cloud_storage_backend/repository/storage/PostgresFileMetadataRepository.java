@@ -39,6 +39,13 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             fileEntity.isDeleted(),
             FileTagsMapper.toString(fileEntity.getTags()),
             fileEntity.isDirectory()));
+    for (String tag : fileEntity.getTags()) {
+      postgres.executeUpdate(
+          "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
+          List.of(fileEntity.getEntityId(), tag)
+      );
+    }
+
   }
 
   @Override
@@ -83,13 +90,18 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   @Override
   public void deleteFile(UUID userId, String path) throws StorageEntityNotFoundException {
-    if (!fileExists(userId, path)) {
-      throw new StorageEntityNotFoundException(path);
-    }
-
+    Optional<StorageEntity> entityOpt = getFile(userId, path);
+    StorageEntity entity = entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(path));
     postgres.executeUpdate(
-        "DELETE FROM files WHERE owner_id = ? AND path = ?;", List.of(userId, path));
+        "DELETE FROM file_tags WHERE file_id = ?",
+        List.of(entity.getEntityId())
+    );
+    postgres.executeUpdate(
+        "DELETE FROM files WHERE owner_id = ? AND path = ?;",
+        List.of(userId, path)
+    );
   }
+
 
   @Override
   public void updateFile(StorageEntity fileEntity) {
@@ -101,6 +113,13 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             FileTagsMapper.toString(fileEntity.getTags()),
             fileEntity.getUserId(),
             fileEntity.getEntityId()));
+    for (String tag : fileEntity.getTags()) {
+      postgres.executeUpdate(
+          "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
+          List.of(fileEntity.getEntityId(), tag)
+      );
+    }
+
   }
 
   @Override
@@ -112,6 +131,31 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             rs -> (rs.getBoolean(1)));
     return result.getFirst();
   }
+
+  @Override
+  public List<StorageEntity> getFilesByTags(UUID userId, List<String> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    String sql = """
+        SELECT f.*
+        FROM files f
+        JOIN file_tags ft ON f.id = ft.file_id
+        WHERE f.owner_id = ?
+          AND f.is_deleted = FALSE
+          AND ft.tag = ANY (?)
+        GROUP BY f.id
+        HAVING COUNT(DISTINCT ft.tag) = ?
+    """;
+
+    return postgres.executeQuery(
+        sql,
+        List.of(userId, tags.toArray(new String[0]), tags.size()),
+        rs -> createStorageEntityByResultSet(userId, rs)
+    );
+  }
+
 
   private StorageEntity createStorageEntityByResultSet(UUID userId, ResultSet rs)
       throws SQLException {

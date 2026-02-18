@@ -17,6 +17,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFil
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SearchFilesByTagsRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -25,6 +26,7 @@ import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.io.FileNotFoundException;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
@@ -105,4 +107,10 @@ public class FileController {
     request.validate(jwtService);
     return service.downloadFile(request);
   }
-}
+
+  public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request)
+      throws ValidationFailedException, UserNotFoundException {
+    request.validate(jwtService);
+    return service.searchFilesByTags(request);
+  }
+  }

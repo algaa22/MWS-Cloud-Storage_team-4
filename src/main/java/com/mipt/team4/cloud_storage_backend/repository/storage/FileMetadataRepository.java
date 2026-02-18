@@ -21,4 +21,6 @@ public interface FileMetadataRepository {
   void deleteFile(UUID userId, String path) throws StorageEntityNotFoundException;
 
   void updateFile(StorageEntity fileEntity);
+
+  List<StorageEntity> getFilesByTags(UUID userId, List<String> tags);
 }

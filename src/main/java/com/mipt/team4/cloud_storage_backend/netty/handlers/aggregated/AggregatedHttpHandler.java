@@ -83,6 +83,10 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           HeaderNotFoundException {
     String userToken = extractUserTokenFromRequest(request);
 
+    if (uri.startsWith("/api/files/search/byTags") && method.equals(HttpMethod.POST)) {
+      filesRequestHandler.handleSearchFilesByTags(ctx, request, userToken);
+      return;
+    }
     if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
       filesRequestHandler.handleGetFilePathsListRequest(ctx, request, userToken);
     } else {

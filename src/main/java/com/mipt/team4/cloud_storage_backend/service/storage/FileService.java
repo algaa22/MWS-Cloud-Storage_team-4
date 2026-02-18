@@ -16,6 +16,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunk
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SearchFilesByTagsRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
@@ -194,6 +195,12 @@ public class FileService {
             filePathsRequest.includeDirectories(),
             filePathsRequest.recursive(),
             filePathsRequest.searchDirectory().orElse("")));
+  }
+
+  public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request)
+      throws UserNotFoundException {
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+    return storageRepository.getFilesByTags(userId, request.tags());
   }
 
   public StorageDto getFileInfo(SimpleFileOperationRequest fileInfoRequest)

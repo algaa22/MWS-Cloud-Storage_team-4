@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
@@ -10,7 +11,6 @@ import io.minio.MinioAsyncClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
-import io.minio.errors.ErrorResponseException;
 import io.minio.messages.Part;
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
@@ -151,15 +151,8 @@ public class MinioContentRepository implements FileContentRepository {
                 .statObject(StatObjectArgs.builder().bucket(bucketName).object(s3Key).build())
                 .get();
             return true;
-          } catch (Exception e) {
-            Throwable cause = e instanceof ExecutionException ? e.getCause() : e;
-
-            if (cause instanceof ErrorResponseException ex) {
-              if ("NoSuchKey".equals(ex.errorResponse().code()) || ex.response().code() == 404) {
-                return false;
-              }
-            }
-            throw e;
+          } catch (StorageObjectNotFoundException e) {
+            return false;
           }
         });
   }

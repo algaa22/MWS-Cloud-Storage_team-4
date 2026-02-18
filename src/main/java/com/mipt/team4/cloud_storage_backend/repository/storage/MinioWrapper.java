@@ -2,9 +2,11 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.RecoverableStorageException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
 import io.minio.errors.ErrorResponseException;
 import io.minio.errors.InsufficientDataException;
 import io.minio.errors.InternalException;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
@@ -21,6 +23,13 @@ public class MinioWrapper {
   private RuntimeException classifyException(Exception e) {
     if (e instanceof ExecutionException || e instanceof java.util.concurrent.CompletionException) {
       Throwable cause = e.getCause();
+
+      if (cause instanceof ErrorResponseException ex) {
+        if ("NoSuchKey".equals(ex.errorResponse().code()) || ex.response().code() == 404) {
+          return new StorageObjectNotFoundException("", e);
+        }
+      }
+
       if (cause instanceof Exception) {
         return classifyException((Exception) cause);
       }
@@ -39,15 +48,9 @@ public class MinioWrapper {
   }
 
   private boolean isRecoverable(Exception e) {
-    if (e instanceof IOException) {
-      return true;
-    }
-
-    if (e instanceof InternalException) {
-      return true;
-    }
-
-    if (e instanceof InsufficientDataException) {
+    if (e instanceof IOException
+        || e instanceof InternalException
+        || e instanceof InsufficientDataException) {
       return true;
     }
 
@@ -55,7 +58,8 @@ public class MinioWrapper {
 
       int httpStatus = minioEx.response().code();
 
-      return httpStatus >= 500 || httpStatus == 429;
+      return httpStatus >= HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
+          || httpStatus == HttpResponseStatus.TOO_MANY_REQUESTS.code();
     }
 
     return false;

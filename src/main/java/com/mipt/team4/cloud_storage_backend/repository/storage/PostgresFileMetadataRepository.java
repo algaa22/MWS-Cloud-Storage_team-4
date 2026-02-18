@@ -22,9 +22,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   @Override
   public void addFile(StorageEntity fileEntity) throws StorageFileAlreadyExistsException {
-    if (fileExists(fileEntity.getUserId(), fileEntity.getPath())) {
-      throw new StorageFileAlreadyExistsException(fileEntity.getPath());
-    }
+    if (fileExists(fileEntity.getUserId(), fileEntity.getPath())) {}
 
     postgres.executeUpdate(
         "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, tags, is_directory)"

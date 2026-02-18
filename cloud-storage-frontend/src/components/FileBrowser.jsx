@@ -13,7 +13,8 @@ import {
   getFileTags,
   getAllUserTags,
   uploadFileWithTags,
-    updateFileMetadata
+  updateFileMetadata,
+  searchFilesByTags
 } from "../api.js";
 
 export default function FileBrowser() {
@@ -44,7 +45,6 @@ export default function FileBrowser() {
   const [newFileName, setNewFileName] = useState("");
   const [fileVisibility, setFileVisibility] = useState('private');
   const [isSavingChanges, setIsSavingChanges] = useState(false);
-
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
     total: 10 * 1024 * 1024 * 1024, // 10GB по умолчанию
@@ -53,6 +53,11 @@ export default function FileBrowser() {
     formattedTotal: '10 GB'
   });
   const [storageLoading, setStorageLoading] = useState(true);
+  const [tagQuery, setTagQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [tagSearch, setTagSearch] = useState("");
+  const [filteredFiles, setFilteredFiles] = useState(files);
+
 
   const normalizeCurrentPath = (p) => {
     if (!p || p === "" || p === "/") return "";
@@ -435,6 +440,34 @@ export default function FileBrowser() {
     }
   };
 
+  const handleSearchByTags = async () => {
+    if (!token || !tagSearch.trim()) return;
+
+    setSearching(true);
+    setError("");
+
+    try {
+      const tags = tagSearch.split(',').map(t => t.trim()).filter(Boolean);
+      console.log("Searching for tags:", tags);
+
+      const results = await searchFilesByTags(token, tags);
+      console.log("Search results:", results);
+
+      // Разделяем на папки и файлы
+      const foldersList = results.filter(it => it.type === "folder");
+      const filesList = results.filter(it => it.type !== "folder");
+
+      setFiles(filesList);
+      setFolders(foldersList);
+
+    } catch (err) {
+      console.error("Search by tags error:", err);
+      setError(`Ошибка поиска: ${err.message}`);
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const loadAvailableTags = async () => {
     try {
       const tags = await getAllUserTags(token);
@@ -600,9 +633,11 @@ export default function FileBrowser() {
   };
 
   const renderModernNavigation = () => {
+
     const parts = currentPath ? currentPath.split('/').filter(p => p !== '') : [];
 
     return (
+
         <div className="mb-8">
           {/* Основная навигационная панель */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -940,6 +975,53 @@ export default function FileBrowser() {
           {/* ★★★ НАВИГАЦИОННАЯ ПАНЕЛЬ ★★★ */}
           {renderModernNavigation()}
 
+          {/* ★★★ Поиск по тегам ★★★ */}
+          <div className="mb-4 flex gap-2">
+            <input
+                type="text"
+                placeholder="Поиск по тегам (через запятую)..."
+                value={tagSearch}
+                onChange={(e) => setTagSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearchByTags(); // ВЫЗЫВАЕМ ФУНКЦИЮ
+                  }
+                }}
+                className="flex-1 p-3 rounded-xl bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all"
+            />
+            <button
+                onClick={handleSearchByTags} // ВЫЗЫВАЕМ ФУНКЦИЮ
+                disabled={searching || !tagSearch.trim()}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800/50 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+            >
+              {searching ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                    <span>Поиск...</span>
+                  </>
+              ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span>Найти</span>
+                  </>
+              )}
+            </button>
+            {tagSearch && (
+                <button
+                    onClick={() => {
+                      setTagSearch("");
+                      fetchFiles(); // Возвращаем все файлы
+                    }}
+                    className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors"
+                    title="Сбросить поиск"
+                >
+                  ✕
+                </button>
+            )}
+          </div>
+
           {error && (
               <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center">
                 {error}
@@ -1066,7 +1148,6 @@ export default function FileBrowser() {
                   <input
                       type="text"
                       placeholder="работа, проект, важное"
-                      // Используем локальное состояние для текста или просто выводим массив через join
                       defaultValue={uploadTags.join(', ')}
                       onBlur={(e) => {
                         const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);

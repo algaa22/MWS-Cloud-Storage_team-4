@@ -361,6 +361,122 @@ export const getFiles = async (token, currentPath = "") => {
   }
 };
 
+export const searchFilesByTags = async (token, tags) => {
+  console.log("=== SEARCH FILES BY TAGS ===");
+  console.log("Searching for tags:", tags);
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
+  const url = `${BASE}/files/search`;
+
+  // Преобразуем теги в массив, если пришла строка
+  const tagsArray = Array.isArray(tags) ? tags :
+      (typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(t => t) : []);
+
+  const requestBody = {
+    tags: tagsArray
+  };
+
+  console.log("Request URL:", url);
+  console.log("Request body:", requestBody);
+
+  try {
+    const response = await fetchWithTokenRefresh(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    }, token);
+
+    console.log("Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Search failed: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("Search results:", data);
+
+    // Форматируем результаты как в getFiles
+    const files = data?.files || data || [];
+
+    const formattedResults = files.map((item, index) => {
+      const path = item.path || "";
+      let name = "Без имени";
+
+      if (item.name && item.name.trim() !== "") {
+        name = item.name;
+      } else if (path) {
+        const pathParts = path.split('/').filter(p => p && p !== '');
+        if (pathParts.length > 0) {
+          name = pathParts[pathParts.length - 1];
+        }
+      }
+
+      return {
+        name: name,
+        path: path,
+        type: item.type || "file",
+        size: item.size || 0,
+        id: item.id || path || Math.random().toString(),
+        fullPath: path,
+        tags: item.tags || [],
+        _raw: item
+      };
+    });
+
+    console.log("Formatted results:", formattedResults);
+    return formattedResults;
+
+  } catch (error) {
+    console.error("Error searching files by tags:", error);
+    throw error;
+  }
+};
+
+export const filterFilesByTags = async (token, tags) => {
+  console.log("=== FILTER FILES BY TAGS (CLIENT-SIDE) ===");
+
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
+  try {
+    const allFiles = await getFiles(token, "");
+    const matchedFiles = [];
+
+    for (const file of allFiles) {
+      if (file.type === "file") {
+        const fileTags = await getFileTags(token, file.fullPath);
+
+        const hasAllTags = tags.every(tag =>
+            fileTags.tags && fileTags.tags.includes(tag)
+        );
+
+        if (hasAllTags) {
+          matchedFiles.push(file);
+        }
+      }
+    }
+
+    console.log(`Found ${matchedFiles.length} files matching tags:`, tags);
+    return matchedFiles;
+
+  } catch (error) {
+    console.error("Error filtering files by tags:", error);
+    throw error;
+  }
+};
+
 export const downloadFile = async (token, path, filename, fileSize) => {
   console.log("downloadFile request (Streaming mode):", { path, filename, fileSize });
 

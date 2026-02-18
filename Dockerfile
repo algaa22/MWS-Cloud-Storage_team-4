@@ -14,7 +14,7 @@ RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 RUN chown -R appuser:appgroup /app
 USER appuser
 
-COPY --from=builder /app/target/cloud-storage-backend-1.0-SNAPSHOT-jar-with-dependencies.jar app.jar
+COPY --from=builder /app/target/cloud-storage-backend-1.0-SNAPSHOT.jar app.jar
 COPY --from=builder /app/target/native-libs /app/native-libs
 
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-jar", "--enable-preview", "/app/app.jar"]
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "--enable-preview", "-jar", "app.jar"]

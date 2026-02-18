@@ -94,5 +94,4 @@ public class StorageRepository {
     }
     return metadataRepository.getFilesByTags(userId, tags);
   }
-
 }

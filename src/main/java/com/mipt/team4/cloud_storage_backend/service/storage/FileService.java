@@ -26,6 +26,7 @@ import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
+import com.mipt.team4.cloud_storage_backend.notification.service.NotificationService;
 import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class FileService {
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
   private final MinioConfig minioConfig;
+  private final NotificationService notificationService;
 
   public void startChunkedUploadSession(FileChunkedUploadRequest uploadSession)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
@@ -184,6 +186,15 @@ public class FileService {
 
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
+
+    String userEmail = getUserEmail(userId);
+    notificationService.notifyFileDeleted(userEmail, deleteFileRequest.path())
+        .thenAccept(sent -> {
+          if (sent) {
+            log.info("Уведомление об удалении отправлено для файла: {}", deleteFileRequest.path());
+          }
+        });
+
   }
 
   public List<StorageEntity> getFileList(GetFileListRequest filePathsRequest)

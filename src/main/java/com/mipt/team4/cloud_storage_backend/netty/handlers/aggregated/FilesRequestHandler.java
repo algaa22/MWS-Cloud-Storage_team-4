@@ -154,7 +154,9 @@ public class FilesRequestHandler {
       var jsonNode = mapper.readTree(request.content().array());
 
       if (!jsonNode.isObject()) {
-        ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST,
+        ResponseUtils.sendJsonResponse(
+            ctx,
+            HttpResponseStatus.BAD_REQUEST,
             mapper.createObjectNode().put("error", "Expected JSON object in request body"));
         return;
       }
@@ -163,17 +165,21 @@ public class FilesRequestHandler {
 
       if (body.has("tags") && body.get("tags").isArray()) {
         ArrayNode tagsNode = body.withArray("tags");
-        tags = Optional.ofNullable(FileTagsMapper.toList(String.valueOf(tagsNode))).orElse(List.of());
+        tags =
+            Optional.ofNullable(FileTagsMapper.toList(String.valueOf(tagsNode))).orElse(List.of());
       } else {
         tags = List.of();
       }
     } catch (Exception e) {
-      ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.BAD_REQUEST,
+      ResponseUtils.sendJsonResponse(
+          ctx,
+          HttpResponseStatus.BAD_REQUEST,
           mapper.createObjectNode().put("error", "Invalid JSON body: " + e.getMessage()));
       return;
     }
 
-    List<StorageEntity> files = fileController.searchFilesByTags(new SearchFilesByTagsRequest(userToken, tags));
+    List<StorageEntity> files =
+        fileController.searchFilesByTags(new SearchFilesByTagsRequest(userToken, tags));
 
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();
@@ -190,4 +196,4 @@ public class FilesRequestHandler {
 
     ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
-  }
+}

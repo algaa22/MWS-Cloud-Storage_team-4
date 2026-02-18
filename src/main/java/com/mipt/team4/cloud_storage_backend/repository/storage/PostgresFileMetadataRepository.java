@@ -42,10 +42,8 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     for (String tag : fileEntity.getTags()) {
       postgres.executeUpdate(
           "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
-          List.of(fileEntity.getEntityId(), tag)
-      );
+          List.of(fileEntity.getEntityId(), tag));
     }
-
   }
 
   @Override
@@ -93,15 +91,10 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     Optional<StorageEntity> entityOpt = getFile(userId, path);
     StorageEntity entity = entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(path));
     postgres.executeUpdate(
-        "DELETE FROM file_tags WHERE file_id = ?",
-        List.of(entity.getEntityId())
-    );
+        "DELETE FROM file_tags WHERE file_id = ?", List.of(entity.getEntityId()));
     postgres.executeUpdate(
-        "DELETE FROM files WHERE owner_id = ? AND path = ?;",
-        List.of(userId, path)
-    );
+        "DELETE FROM files WHERE owner_id = ? AND path = ?;", List.of(userId, path));
   }
-
 
   @Override
   public void updateFile(StorageEntity fileEntity) {
@@ -116,10 +109,8 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     for (String tag : fileEntity.getTags()) {
       postgres.executeUpdate(
           "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
-          List.of(fileEntity.getEntityId(), tag)
-      );
+          List.of(fileEntity.getEntityId(), tag));
     }
-
   }
 
   @Override
@@ -138,7 +129,8 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
       return new ArrayList<>();
     }
 
-    String sql = """
+    String sql =
+        """
         SELECT f.*
         FROM files f
         JOIN file_tags ft ON f.id = ft.file_id
@@ -152,10 +144,8 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     return postgres.executeQuery(
         sql,
         List.of(userId, tags.toArray(new String[0]), tags.size()),
-        rs -> createStorageEntityByResultSet(userId, rs)
-    );
+        rs -> createStorageEntityByResultSet(userId, rs));
   }
-
 
   private StorageEntity createStorageEntityByResultSet(UUID userId, ResultSet rs)
       throws SQLException {

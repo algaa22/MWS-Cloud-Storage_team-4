@@ -205,10 +205,8 @@ public class PostgresConnection implements DatabaseConnection {
   private void createFileTagsIndexes() {
 
     executeUpdate(
-        "CREATE INDEX IF NOT EXISTS idx_file_tags_tag_file ON file_tags(tag, file_id);",
-        List.of());
+        "CREATE INDEX IF NOT EXISTS idx_file_tags_tag_file ON file_tags(tag, file_id);", List.of());
   }
-
 
   @PreDestroy
   @Override

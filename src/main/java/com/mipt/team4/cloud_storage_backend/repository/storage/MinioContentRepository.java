@@ -11,6 +11,7 @@ import io.minio.MinioAsyncClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
+import io.minio.errors.ErrorResponseException;
 import io.minio.messages.Part;
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutionException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -144,17 +146,17 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public boolean objectExists(String s3Key) {
-    return wrapper.execute(
-        () -> {
-          try {
+    try {
+      return wrapper.execute(
+          () -> {
             minioClient
                 .statObject(StatObjectArgs.builder().bucket(bucketName).object(s3Key).build())
                 .get();
             return true;
-          } catch (StorageObjectNotFoundException e) {
-            return false;
-          }
-        });
+          });
+    } catch (StorageObjectNotFoundException e) {
+      return false;
+    }
   }
 
   @Override
@@ -168,8 +170,7 @@ public class MinioContentRepository implements FileContentRepository {
         });
   }
 
-  private Part[] createPartArray(Map<Integer, String> eTags)
-      throws ExecutionException, InterruptedException {
+  private Part[] createPartArray(Map<Integer, String> eTags) {
     List<Part> partsList = new ArrayList<>(eTags.size());
 
     for (Map.Entry<Integer, String> entry : eTags.entrySet()) {

@@ -29,7 +29,7 @@ public record StorageDto(
   public StorageDto(StorageEntity entity) {
     this(
         entity.getId(),
-        entity.getuserId(),
+        entity.getUserId(),
         entity.getPath(),
         entity.getMimeType(),
         entity.getVisibility(),

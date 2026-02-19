@@ -3,39 +3,35 @@ services:
     image: cloud-storage-app:latest
     container_name: cloud-storage-app
     ports:
-      - "8080:8080" # HTTP
-      - "8443:8443" # HTTPS
+      - "8080:8080"
+      - "8443:8443"
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
     environment:
-      - DB_URL=${DB_URL}
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - MINIO_URL=${MINIO_URL}
-      - MINIO_USERNAME=${MINIO_USERNAME}
-      - MINIO_PASSWORD=${MINIO_PASSWORD}
-  #    volumes:
-  #      - file-storage:/app/storage
+      DB_URL: jdbc:postgresql://postgres:5432/cloud_storage_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: super_secret_password_123
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      MINIO_URL: ${MINIO_URL}
+      MINIO_USERNAME: ${MINIO_USERNAME}
+      MINIO_PASSWORD: ${MINIO_PASSWORD}
 
   postgres:
-    image: postgres:18.0
+    image: postgres:15
     container_name: cloud-storage-db
     environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USERNAME}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
-    #    volumes:
-    # TODO: stream?
-    #      - postgres-stream:/var/lib/postgresql/stream
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -43,13 +39,15 @@ services:
   minio:
     image: minio/minio:latest
     container_name: cloud-storage-minio
-    command: server /fileStream --console-address ":9001"
+    command: server /data --console-address ":9001"
     environment:
-      - MINIO_ROOT_USER=${MINIO_USERNAME}
-      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_USERNAME}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
     ports:
-      - "9000:9000"  # S3 API
-      - "9001:9001"  # Admin Console
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -58,5 +56,4 @@ services:
 
 volumes:
   postgres-data:
-  file-storage:
   minio-data:

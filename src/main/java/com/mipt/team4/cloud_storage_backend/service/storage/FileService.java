@@ -21,12 +21,13 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFil
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import com.mipt.team4.cloud_storage_backend.notification.service.NotificationService;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
-import com.mipt.team4.cloud_storage_backend.notification.service.NotificationService;
 import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +35,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileService {
@@ -85,11 +88,11 @@ public class FileService {
 
   public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
       throws StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          TooSmallFilePartException,
-          CombineChunksToPartException,
-          MissingFilePartException,
-          UploadSessionNotFoundException {
+      UserNotFoundException,
+      TooSmallFilePartException,
+      CombineChunksToPartException,
+      MissingFilePartException,
+      UploadSessionNotFoundException {
     ChunkedUploadState uploadState = activeUploads.get(sessionId);
     if (uploadState == null) {
       throw new UploadSessionNotFoundException(sessionId);
@@ -128,6 +131,9 @@ public class FileService {
           fileEntity, uploadState.getUploadId(), uploadState.getETags());
       userRepository.increaseUsedStorage(userId, uploadState.getFileSize());
 
+      // Проверка и уведомление о заполнении хранилища
+      checkStorageAndNotify(userId);
+
       return new ChunkedUploadFileResultDto(
           session.path(), uploadState.getFileSize(), uploadState.getTotalParts());
     } finally {
@@ -160,6 +166,9 @@ public class FileService {
 
     storageRepository.addFile(entity, data);
     userRepository.increaseUsedStorage(userId, data.length);
+
+    // Проверка и уведомление о заполнении хранилища
+    checkStorageAndNotify(userId);
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationRequest fileDownload)
@@ -180,21 +189,27 @@ public class FileService {
   public void deleteFile(SimpleFileOperationRequest deleteFileRequest)
       throws UserNotFoundException, StorageEntityNotFoundException, FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(deleteFileRequest.userToken());
+
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, deleteFileRequest.path());
+
     StorageEntity entity =
         entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(deleteFileRequest.path()));
 
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
 
-    String userEmail = getUserEmail(userId);
-    notificationService.notifyFileDeleted(userEmail, deleteFileRequest.path())
-        .thenAccept(sent -> {
-          if (sent) {
-            log.info("Уведомление об удалении отправлено для файла: {}", deleteFileRequest.path());
-          }
-        });
+    // Получаем полную информацию о пользователе для уведомления
+    UserEntity user = userRepository
+        .getUserById(userId)
+        .orElseThrow(() -> new UserNotFoundException(deleteFileRequest.userToken()));
 
+    // Отправляем уведомление с именем пользователя
+    notificationService.notifyFileDeleted(
+        user.getEmail(),
+        user.getName(),  // ← передаем имя пользователя
+        deleteFileRequest.path(),
+        userId
+    );
   }
 
   public List<StorageEntity> getFileList(GetFileListRequest filePathsRequest)
@@ -228,8 +243,8 @@ public class FileService {
 
   public void changeFileMetadata(ChangeFileMetadataRequest changeFileMetadata)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
-          StorageFileAlreadyExistsException {
+      StorageEntityNotFoundException,
+      StorageFileAlreadyExistsException {
 
     UUID userId = userSessionService.extractUserIdFromToken(changeFileMetadata.userToken());
 
@@ -277,5 +292,39 @@ public class FileService {
     uploadState.addCompletedPart(uploadState.getPartNum(), eTag);
     uploadState.addFileSize(part.length);
     uploadState.increaseTotalParts();
+  }
+
+  /**
+   * Проверяет заполненность хранилища и отправляет уведомления с именем пользователя
+   */
+  private void checkStorageAndNotify(UUID userId) {
+    try {
+      UserEntity user = userRepository
+          .getUserById(userId)
+          .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+      if (userRepository.isStorageFull(userId)) {
+        notificationService.notifyStorageFull(
+            user.getEmail(),
+            user.getName(),  // ← передаем имя пользователя
+            userId
+        );
+        log.warn("Storage FULL notification sent to user: {}", userId);
+
+      } else if (userRepository.isStorageAlmostFull(userId)) {
+        notificationService.notifyStorageAlmostFull(
+            user.getEmail(),
+            user.getName(),  // ← передаем имя пользователя
+            user.getUsedStorage(),
+            user.getStorageLimit(),
+            userId
+        );
+        log.info("Storage ALMOST FULL notification sent to user: {}", userId);
+      }
+    } catch (UserNotFoundException e) {
+      log.error("Failed to send storage notification: user not found - {}", userId, e);
+    } catch (Exception e) {
+      log.error("Failed to check storage and notify user: {}", userId, e);
+    }
   }
 }

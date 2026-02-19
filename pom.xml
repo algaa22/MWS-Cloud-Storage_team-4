@@ -140,6 +140,12 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-webflux</artifactId>
       </dependency>
+
+      <dependency>
+        <groupId>jakarta.mail</groupId>
+        <artifactId>jakarta.mail-api</artifactId>
+      </dependency>
+
     </dependencies>
 
     <build>
@@ -177,6 +183,15 @@
                     <compilerArgs>--enable-preview</compilerArgs>
                 </configuration>
             </plugin>
+
+          <plugin>
+            <groupId>io.fabric8</groupId>
+            <artifactId>docker-maven-plugin</artifactId>
+            <version>0.44.0</version>
+            <configuration>
+              <apiVersion>1.53</apiVersion>
+            </configuration>
+          </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -11,7 +11,7 @@
   <logger level="WARN" name="org.apache.hc.client5.http.wire"/>
   <logger level="WARN" name="org.apache.hc.client5.http.headers"/>
   <logger level="WARN" name="org.apache.hc.client5.http.context"/>
-  <root level="INFO">
+  <root level="DEBUG">
     <appender-ref ref="CONSOLE"/>
   </root>
 </configuration>

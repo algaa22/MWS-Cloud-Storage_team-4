@@ -149,10 +149,12 @@ public class StorageRepositoryWrapper {
 
   private void handleException(
       Exception exception, StorageEntity entity, FileOperationType operationType) {
+    entity.setErrorMessage(exception.getMessage());
+
     if (exception instanceof RecoverableStorageException) {
       finalizeEntityUpdate(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
     } else if (exception instanceof FatalStorageException) {
-      log.error("FATAL: Failed to perform operation {}", operationType);
+      log.error("FATAL: Failed to perform operation {}", operationType, exception);
       finalizeEntityUpdate(entity, FileStatus.FATAL);
     } else {
       finalizeEntityUpdate(entity, FileStatus.READY);
@@ -174,7 +176,7 @@ public class StorageRepositoryWrapper {
     try {
       metadataRepository.updateEntity(entity);
     } catch (Exception e) {
-      log.error("FATAL: Failed to update file entity {}", entity.getId());
+      log.error("FATAL: Failed to update file entity {}", entity.getId(), e);
     }
   }
 

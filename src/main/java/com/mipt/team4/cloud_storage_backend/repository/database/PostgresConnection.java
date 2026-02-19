@@ -124,7 +124,7 @@ public class PostgresConnection implements DatabaseConnection {
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     path VARCHAR(500) NOT NULL,
-                    file_size BIGINT NOT NULL,
+                    size BIGINT NOT NULL,
                     mime_type VARCHAR(100),
                     tags VARCHAR(500),
                     visibility VARCHAR(20) DEFAULT 'private',

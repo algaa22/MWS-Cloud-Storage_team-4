@@ -18,7 +18,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class StorageRepository {
-  private final FileMetadataRepository metadataRepository;
+  private final StorageMetadataRepository metadataRepository;
   private final FileContentRepository contentRepository;
 
   public void addFile(StorageEntity storageEntity, byte[] data)
@@ -73,11 +73,11 @@ public class StorageRepository {
   }
 
   public void updateFile(StorageEntity entity) {
-    metadataRepository.updateFile(entity);
+    metadataRepository.updateEntity(entity);
   }
 
   public void deleteFile(StorageEntity storageEntity)
-      throws StorageEntityNotFoundException, FileNotFoundException {
+      throws StorageEntityNotFoundException {
     String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
 
     metadataRepository.deleteFile(storageEntity.getUserId(), storageEntity.getPath());

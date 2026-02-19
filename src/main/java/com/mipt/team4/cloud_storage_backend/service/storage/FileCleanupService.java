@@ -55,7 +55,8 @@ public class FileCleanupService {
       }
       case CHANGE_METADATA -> {
         storageRepositoryWrapper.forceRollbackOperation(entity);
-        log.info("Cleanup: Forced rollback to stuck metadata operation for file {}", entity.getId());
+        log.info(
+            "Cleanup: Forced rollback to stuck metadata operation for file {}", entity.getId());
       }
       default ->
           throw new IllegalStateException(

@@ -43,16 +43,16 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
         handleHttpContent(ctx, content);
       }
     } catch (StorageFileAlreadyExistsException
-             | UserNotFoundException
-             | UploadSessionNotFoundException
-             | HeaderNotFoundException
-             | TransferAlreadyStartedException
-             | TransferNotStartedYetException
-             | StorageFileNotFoundException
-             | TooSmallFilePartException
-             | ValidationFailedException
-             | StorageIllegalAccessException
-             | QueryParameterNotFoundException e) {
+        | UserNotFoundException
+        | UploadSessionNotFoundException
+        | HeaderNotFoundException
+        | TransferAlreadyStartedException
+        | TransferNotStartedYetException
+        | StorageFileNotFoundException
+        | TooSmallFilePartException
+        | ValidationFailedException
+        | StorageIllegalAccessException
+        | QueryParameterNotFoundException e) {
       ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
     } catch (CombineChunksToPartException | MissingFilePartException e) {
       ResponseUtils.sendInternalServerErrorResponse(ctx);
@@ -63,7 +63,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
   private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws StorageFileAlreadyExistsException,
           UserNotFoundException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           ValidationFailedException,
           StorageIllegalAccessException,
           QueryParameterNotFoundException,
@@ -79,7 +79,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
           QueryParameterNotFoundException,
           HeaderNotFoundException,
           TransferAlreadyStartedException,
-      StorageFileNotFoundException {
+          StorageFileNotFoundException {
     String uri = request.uri();
     HttpMethod method = request.method();
 

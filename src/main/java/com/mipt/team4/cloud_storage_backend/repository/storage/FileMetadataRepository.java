@@ -31,9 +31,9 @@ public class FileMetadataRepository {
     }
 
     postgres.executeUpdate(
-        "INSERT INTO files (id, user_id, path, size, mime_type, visibility, is_deleted, tags, is_directory, " +
-            "status, operation_type, started_at, updated_at, retry_count, error_message) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO files (id, user_id, path, size, mime_type, visibility, is_deleted, tags, is_directory, "
+            + "status, operation_type, started_at, updated_at, retry_count, error_message) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
         Arrays.asList(
             fileEntity.getId(),
             fileEntity.getUserId(),
@@ -49,8 +49,7 @@ public class FileMetadataRepository {
             fileEntity.getStartedAt(),
             fileEntity.getUpdatedAt(),
             fileEntity.getRetryCount(),
-            fileEntity.getErrorMessage()
-        ));
+            fileEntity.getErrorMessage()));
   }
 
   public List<StorageEntity> getStaleFiles(LocalDateTime threshold) {
@@ -144,10 +143,7 @@ public class FileMetadataRepository {
     query += ");";
 
     List<Boolean> result =
-        postgres.executeQuery(
-            query,
-            List.of(userId, path),
-            rs -> (rs.getBoolean(1)));
+        postgres.executeQuery(query, List.of(userId, path), rs -> (rs.getBoolean(1)));
     return result.getFirst();
   }
 
@@ -181,7 +177,8 @@ public class FileMetadataRepository {
     return ts != null ? ts.toLocalDateTime() : null;
   }
 
-  private <E extends Enum<E>> E getEnum(ResultSet rs, String column, Class<E> clazz) throws SQLException {
+  private <E extends Enum<E>> E getEnum(ResultSet rs, String column, Class<E> clazz)
+      throws SQLException {
     String val = rs.getString(column);
     return val != null ? Enum.valueOf(clazz, val) : null;
   }

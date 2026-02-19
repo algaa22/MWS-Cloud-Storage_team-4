@@ -35,7 +35,7 @@ public class ChunkedDownloadHandler {
   // TODO: refactor
   public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
       throws UserNotFoundException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           ValidationFailedException,
           QueryParameterNotFoundException,
           HeaderNotFoundException {

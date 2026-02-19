@@ -51,7 +51,7 @@ public class DirectoryService {
   public void changeDirectoryPath(ChangeDirectoryPathRequest changeDirectory)
       throws UserNotFoundException,
           StorageFileAlreadyExistsException,
-      StorageFileNotFoundException {
+          StorageFileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(changeDirectory.userToken());
     String oldDirectoryPath = changeDirectory.oldDirectoryPath();
     String newDirectoryPath = changeDirectory.newDirectoryPath();

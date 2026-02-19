@@ -73,8 +73,7 @@ public class StorageRepositoryWrapper {
     T result = executeOperation(entity, operationType, operation);
 
     if (shouldThrottledUpdate(entity)) {
-      finalizeEntityUpdate(
-          entity, FileStatus.PENDING);
+      finalizeEntityUpdate(entity, FileStatus.PENDING);
     }
 
     return result;
@@ -144,7 +143,9 @@ public class StorageRepositoryWrapper {
     int throttledUpdateInterval = storageConfig.stateMachine().fileThrottledUpdateIntervalSec();
 
     return entity.getUpdatedAt() == null
-        || entity.getUpdatedAt().isBefore(LocalDateTime.now().minusSeconds(throttledUpdateInterval));
+        || entity
+            .getUpdatedAt()
+            .isBefore(LocalDateTime.now().minusSeconds(throttledUpdateInterval));
   }
 
   private void handleException(

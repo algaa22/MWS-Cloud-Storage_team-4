@@ -29,7 +29,7 @@ public class DirectoryController {
       throws ValidationFailedException,
           UserNotFoundException,
           StorageFileAlreadyExistsException,
-      StorageFileNotFoundException {
+          StorageFileNotFoundException {
     request.validate(jwtService);
     service.changeDirectoryPath(request);
   }
@@ -37,7 +37,7 @@ public class DirectoryController {
   public void deleteDirectory(SimpleDirectoryOperationRequest request)
       throws ValidationFailedException,
           UserNotFoundException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           FileNotFoundException {
     request.validate(jwtService);
     service.deleteDirectory(request);

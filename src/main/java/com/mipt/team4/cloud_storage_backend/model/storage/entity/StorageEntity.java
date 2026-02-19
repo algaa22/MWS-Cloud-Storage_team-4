@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
+import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +22,7 @@ import lombok.Setter;
 @NoArgsConstructor(force = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class StorageEntity {
-  @EqualsAndHashCode.Include private final UUID entityId;
+  @EqualsAndHashCode.Include private final UUID id;
   private final UUID userId;
 
   private final String mimeType;
@@ -39,4 +40,8 @@ public class StorageEntity {
   private LocalDateTime startedAt;
   private LocalDateTime updatedAt;
   private String errorMessage;
+
+  public String getS3Key() {
+    return StoragePaths.getS3Key(userId, id);
+  }
 }

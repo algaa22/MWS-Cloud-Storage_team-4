@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
@@ -70,7 +70,7 @@ public class FileController {
   }
 
   public StorageDto getFileInfo(SimpleFileOperationRequest request)
-      throws ValidationFailedException, UserNotFoundException, StorageEntityNotFoundException {
+      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
     request.validate(jwtService);
     return service.getFileInfo(request);
   }
@@ -79,7 +79,7 @@ public class FileController {
       throws ValidationFailedException,
           StorageIllegalAccessException,
           UserNotFoundException,
-          StorageEntityNotFoundException,
+      StorageFileNotFoundException,
           FileNotFoundException {
     request.validate(jwtService);
     service.deleteFile(request);
@@ -94,14 +94,14 @@ public class FileController {
   public void changeFileMetadata(ChangeFileMetadataRequest request)
       throws ValidationFailedException,
           UserNotFoundException,
-          StorageEntityNotFoundException,
+      StorageFileNotFoundException,
           StorageFileAlreadyExistsException {
     request.validate(jwtService);
     service.changeFileMetadata(request);
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationRequest request)
-      throws ValidationFailedException, UserNotFoundException, StorageEntityNotFoundException {
+      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
     request.validate(jwtService);
     return service.downloadFile(request);
   }

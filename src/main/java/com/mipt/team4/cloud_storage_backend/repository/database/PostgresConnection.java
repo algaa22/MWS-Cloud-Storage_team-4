@@ -122,7 +122,7 @@ public class PostgresConnection implements DatabaseConnection {
         """
                 CREATE TABLE IF NOT EXISTS files (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     path VARCHAR(500) NOT NULL,
                     file_size BIGINT NOT NULL,
                     mime_type VARCHAR(100),

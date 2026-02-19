@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -73,7 +73,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   private static StorageEntity addTestFile() throws StorageFileAlreadyExistsException {
     StorageEntity fileEntity =
         StorageEntity.builder()
-            .entityId(UUID.randomUUID())
+            .id(UUID.randomUUID())
             .userId(testUserUuid)
             .mimeType("application/xml")
             .size(42L)
@@ -114,7 +114,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
   @Test
   void shouldAddAndDeleteFile_WithSameId()
-      throws StorageEntityNotFoundException, StorageFileAlreadyExistsException {
+      throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
     StorageEntity testFileEntity = addTestFile();
     assertTrue(
         fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));

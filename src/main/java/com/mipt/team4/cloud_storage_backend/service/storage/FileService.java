@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
@@ -112,7 +112,7 @@ public class FileService {
 
       StorageEntity fileEntity =
           StorageEntity.builder()
-              .entityId(uploadState.getFileId())
+              .id(uploadState.getFileId())
               .userId(userId)
               .mimeType(MimeTypeDetector.detect(session.path()))
               .size(uploadState.getFileSize())
@@ -146,7 +146,7 @@ public class FileService {
 
     StorageEntity entity =
         StorageEntity.builder()
-            .entityId(fileId)
+            .id(fileId)
             .userId(userId)
             .mimeType(mimeType)
             .size(data.length)
@@ -160,12 +160,12 @@ public class FileService {
   }
 
   public FileDownloadDto downloadFile(SimpleFileOperationRequest fileDownload)
-      throws UserNotFoundException, StorageEntityNotFoundException {
+      throws UserNotFoundException, StorageFileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(fileDownload.userToken());
 
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileDownload.path());
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(fileDownload.path()));
+        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileDownload.path()));
 
     return new FileDownloadDto(
         fileDownload.path(),
@@ -175,11 +175,11 @@ public class FileService {
   }
 
   public void deleteFile(SimpleFileOperationRequest deleteFileRequest)
-      throws UserNotFoundException, StorageEntityNotFoundException, FileNotFoundException {
+      throws UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(deleteFileRequest.userToken());
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, deleteFileRequest.path());
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageEntityNotFoundException(deleteFileRequest.path()));
+        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(deleteFileRequest.path()));
 
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
@@ -197,12 +197,12 @@ public class FileService {
   }
 
   public StorageDto getFileInfo(SimpleFileOperationRequest fileInfoRequest)
-      throws UserNotFoundException, StorageEntityNotFoundException {
+      throws UserNotFoundException, StorageFileNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(fileInfoRequest.userToken());
 
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userUuid, fileInfoRequest.path());
     if (entityOpt.isEmpty()) {
-      throw new StorageEntityNotFoundException(fileInfoRequest.path());
+      throw new StorageFileNotFoundException(fileInfoRequest.path());
     }
 
     return new StorageDto(entityOpt.get());
@@ -210,7 +210,7 @@ public class FileService {
 
   public void changeFileMetadata(ChangeFileMetadataRequest changeFileMetadata)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
+      StorageFileNotFoundException,
           StorageFileAlreadyExistsException {
 
     UUID userId = userSessionService.extractUserIdFromToken(changeFileMetadata.userToken());
@@ -220,7 +220,7 @@ public class FileService {
 
     StorageEntity entity =
         entityOpt.orElseThrow(
-            () -> new StorageEntityNotFoundException(changeFileMetadata.oldPath()));
+            () -> new StorageFileNotFoundException(changeFileMetadata.oldPath()));
 
     if (changeFileMetadata.newPath().isPresent()) {
       Optional<StorageEntity> existingFile =

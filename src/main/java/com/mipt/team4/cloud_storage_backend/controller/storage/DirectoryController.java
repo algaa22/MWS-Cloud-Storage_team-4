@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
@@ -29,7 +29,7 @@ public class DirectoryController {
       throws ValidationFailedException,
           UserNotFoundException,
           StorageFileAlreadyExistsException,
-          StorageEntityNotFoundException {
+      StorageFileNotFoundException {
     request.validate(jwtService);
     service.changeDirectoryPath(request);
   }
@@ -37,7 +37,7 @@ public class DirectoryController {
   public void deleteDirectory(SimpleDirectoryOperationRequest request)
       throws ValidationFailedException,
           UserNotFoundException,
-          StorageEntityNotFoundException,
+      StorageFileNotFoundException,
           FileNotFoundException {
     request.validate(jwtService);
     service.deleteDirectory(request);

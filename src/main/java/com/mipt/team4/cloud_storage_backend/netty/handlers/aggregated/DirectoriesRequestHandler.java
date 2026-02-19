@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
@@ -39,7 +39,7 @@ public class DirectoriesRequestHandler {
       throws QueryParameterNotFoundException,
           UserNotFoundException,
           StorageFileAlreadyExistsException,
-          StorageEntityNotFoundException,
+      StorageFileNotFoundException,
           ValidationFailedException {
     String oldDirectoryPath;
     String newDirectoryPath;
@@ -57,7 +57,7 @@ public class DirectoriesRequestHandler {
   public void handleDeleteDirectoryRequest(
       ChannelHandlerContext ctx, String directoryPath, String userToken)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
+      StorageFileNotFoundException,
           ValidationFailedException,
           FileNotFoundException {
 

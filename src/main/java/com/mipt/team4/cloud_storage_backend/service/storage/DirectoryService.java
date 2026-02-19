@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeDirectoryPathRequest;
@@ -36,7 +36,7 @@ public class DirectoryService {
 
     StorageEntity directoryEntity =
         StorageEntity.builder()
-            .entityId(UUID.randomUUID())
+            .id(UUID.randomUUID())
             .userId(userId)
             .mimeType("application/x-directory")
             .size(0)
@@ -51,7 +51,7 @@ public class DirectoryService {
   public void changeDirectoryPath(ChangeDirectoryPathRequest changeDirectory)
       throws UserNotFoundException,
           StorageFileAlreadyExistsException,
-          StorageEntityNotFoundException {
+      StorageFileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(changeDirectory.userToken());
     String oldDirectoryPath = changeDirectory.oldDirectoryPath();
     String newDirectoryPath = changeDirectory.newDirectoryPath();
@@ -63,7 +63,7 @@ public class DirectoryService {
       String oldFilePath = oldFile.getPath();
       Optional<StorageEntity> fileOpt = storageRepository.getFile(userId, oldFilePath);
       if (fileOpt.isEmpty()) {
-        throw new StorageEntityNotFoundException(oldFilePath);
+        throw new StorageFileNotFoundException(oldFilePath);
       }
 
       String newFilePath = oldFilePath.replaceFirst(oldDirectoryPath, newDirectoryPath);
@@ -78,13 +78,13 @@ public class DirectoryService {
   }
 
   public void deleteDirectory(SimpleDirectoryOperationRequest request)
-      throws UserNotFoundException, StorageEntityNotFoundException, FileNotFoundException {
+      throws UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     String directoryPath = request.directoryPath();
 
     Optional<StorageEntity> directoryEntity = storageRepository.getFile(userId, directoryPath);
     if (directoryEntity.isEmpty()) {
-      throw new StorageEntityNotFoundException(directoryPath);
+      throw new StorageFileNotFoundException(directoryPath);
     }
 
     storageRepository.deleteFile(directoryEntity.orElse(null));
@@ -94,7 +94,7 @@ public class DirectoryService {
 
     for (StorageEntity file : directoryFiles) {
       userRepository.decreaseUsedStorage(userId, file.getSize());
-      storageRepository.deleteFile(userId, file.getPath());
+      storageRepository.deleteFile(file);
     }
   }
 }

@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -26,10 +26,10 @@ public class FileMetadataRepository {
     }
 
     postgres.executeUpdate(
-        "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, tags, is_directory)"
+        "INSERT INTO files (id, user_id, path, file_size, mime_type, visibility, is_deleted, tags, is_directory)"
             + " values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
-            fileEntity.getEntityId(),
+            fileEntity.getId(),
             fileEntity.getUserId(),
             fileEntity.getPath(),
             fileEntity.getSize(),
@@ -42,7 +42,7 @@ public class FileMetadataRepository {
 
   public List<StorageEntity> getFilesList(FileListFilter filter) {
     String query =
-        "SELECT * FROM files WHERE owner_id = ? AND path LIKE ? AND path != ? AND is_deleted = FALSE";
+        "SELECT * FROM files WHERE user_id = ? AND path LIKE ? AND path != ? AND is_deleted = FALSE";
     List<Object> params = new ArrayList<>();
 
     params.add(filter.userId());
@@ -58,18 +58,20 @@ public class FileMetadataRepository {
       query += " AND is_directory = FALSE";
     }
 
-    return postgres.executeQuery(
-        query, params, rs -> createStorageEntityByResultSet(filter.userId(), rs));
+    return postgres.executeQuery(query, params, this::createStorageEntityByResultSet);
+  }
+
+  public Optional<StorageEntity> getFile(UUID fileId) {
+    return getFile("SELECT * FROM files WHERE fileId = ?;", fileId);
   }
 
   public Optional<StorageEntity> getFile(UUID userId, String path) {
-    List<StorageEntity> result;
+    return getFile("SELECT * FROM files WHERE user_id = ? AND path = ?;", userId, path);
+  }
 
-    result =
-        postgres.executeQuery(
-            "SELECT * FROM files WHERE owner_id = ? AND path = ?;",
-            List.of(userId, path),
-            rs -> createStorageEntityByResultSet(userId, rs));
+  private Optional<StorageEntity> getFile(String sql, Object... params) {
+    List<StorageEntity> result =
+        postgres.executeQuery(sql, List.of(params), this::createStorageEntityByResultSet);
 
     if (result.isEmpty()) {
       return Optional.empty();
@@ -78,40 +80,39 @@ public class FileMetadataRepository {
     return Optional.of(result.getFirst());
   }
 
-  public void deleteFile(UUID userId, String path) throws StorageEntityNotFoundException {
+  public void deleteFile(UUID userId, String path) throws StorageFileNotFoundException {
     if (!fileExists(userId, path)) {
-      throw new StorageEntityNotFoundException(path);
+      throw new StorageFileNotFoundException(path);
     }
 
     postgres.executeUpdate(
-        "DELETE FROM files WHERE owner_id = ? AND path = ?;", List.of(userId, path));
+        "DELETE FROM files WHERE user_id = ? AND path = ?;", List.of(userId, path));
   }
 
   public void updateEntity(StorageEntity fileEntity) {
     postgres.executeUpdate(
-        "UPDATE files SET path = ?, visibility = ?, tags = ? WHERE owner_id = ? AND id = ?",
+        "UPDATE files SET path = ?, visibility = ?, tags = ? WHERE user_id = ? AND id = ?",
         List.of(
             fileEntity.getPath(),
             fileEntity.getVisibility(),
             FileTagsMapper.toString(fileEntity.getTags()),
-            fileEntity.getUserId(),
-            fileEntity.getEntityId()));
+            fileEntity.getuserId(),
+            fileEntity.getId()));
   }
 
   public boolean fileExists(UUID userId, String path) {
     List<Boolean> result =
         postgres.executeQuery(
-            "SELECT EXISTS (SELECT 1 FROM files WHERE owner_id = ? AND path = ?);",
+            "SELECT EXISTS (SELECT 1 FROM files WHERE user_id = ? AND path = ?);",
             List.of(userId, path),
             rs -> (rs.getBoolean(1)));
     return result.getFirst();
   }
 
-  private StorageEntity createStorageEntityByResultSet(UUID userId, ResultSet rs)
-      throws SQLException {
+  private StorageEntity createStorageEntityByResultSet(ResultSet rs) throws SQLException {
     return StorageEntity.builder()
-        .entityId(UUID.fromString(rs.getString("id")))
-        .userId(userId)
+        .id(UUID.fromString(rs.getString("id")))
+        .userId(UUID.fromString(rs.getString("user_id")))
         .mimeType(rs.getString("path"))
         .size(rs.getLong("file_size"))
         .path(rs.getString("path"))

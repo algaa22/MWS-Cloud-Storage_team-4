@@ -37,7 +37,7 @@ public class ChunkedUploadState {
 
     return uploadId;
   }
-
+  // TODO: LOMBOK
   public int getTotalParts() {
     return totalParts;
   }

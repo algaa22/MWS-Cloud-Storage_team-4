@@ -6,8 +6,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 
 @Builder
@@ -30,8 +28,8 @@ public record StorageDto(
 
   public StorageDto(StorageEntity entity) {
     this(
-        entity.getEntityId(),
-        entity.getUserId(),
+        entity.getId(),
+        entity.getuserId(),
         entity.getPath(),
         entity.getMimeType(),
         entity.getVisibility(),

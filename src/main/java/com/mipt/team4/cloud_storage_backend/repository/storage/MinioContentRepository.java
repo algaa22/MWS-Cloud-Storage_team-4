@@ -23,17 +23,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@RequiredArgsConstructor
 public class MinioContentRepository implements FileContentRepository {
 
   private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
   private final MinioWrapper wrapper = new MinioWrapper();
-  private final String bucketName = MinioConfig.INSTANCE.getUserDataBucketName();
-  private final String region = "eu-central-1";
-
   private final MinioConfig minioConfig;
+  private final String bucketName;
+  private final String region;
 
   private MinioAsyncClient minioClient;
+
+  public MinioContentRepository(MinioConfig minioConfig) {
+    this.minioConfig = minioConfig;
+    this.bucketName = minioConfig.userDataBucket().name();
+    this.region = minioConfig.region();
+  }
 
   @PostConstruct
   private void initialize() {
@@ -171,7 +175,8 @@ public class MinioContentRepository implements FileContentRepository {
         });
   }
 
-  private Part[] createPartArray(Map<Integer, String> eTags) {
+  private Part[] createPartArray(Map<Integer, String> eTags)
+      throws ExecutionException, InterruptedException {
     List<Part> partsList = new ArrayList<>(eTags.size());
 
     for (Map.Entry<Integer, String> entry : eTags.entrySet()) {

@@ -34,6 +34,7 @@ minio:
   password: ${MINIO_PASSWORD}
 
   min-file-part-size: 5242880 # 5mb
+  region: "eu-central-1"
 
   user-data-bucket:
     name: user-data

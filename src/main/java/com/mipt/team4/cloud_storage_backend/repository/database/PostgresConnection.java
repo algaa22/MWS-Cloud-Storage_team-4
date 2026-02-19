@@ -129,7 +129,14 @@ public class PostgresConnection implements DatabaseConnection {
                     tags VARCHAR(500),
                     visibility VARCHAR(20) DEFAULT 'private',
                     is_deleted BOOLEAN DEFAULT false,
-                    is_directory BOOLEAN DEFAULT false
+                    is_directory BOOLEAN DEFAULT false,
+
+                    status VARCHAR(20) NOT NULL DEFAULT 'READY',
+                    operation_type VARCHAR(30)
+                    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    retry_count INT DEFAULT 0,
+                    error_message TEXT
                 )
             """;
 

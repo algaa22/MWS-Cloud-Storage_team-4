@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedException;
@@ -7,7 +8,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -17,11 +17,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
   private final FileMetadataRepository metadataRepository;
+  private final StorageConfig storageConfig;
+
+  // TODO: @Transactional
 
   /**
    * Выполняет обновление существующего файла.
-   * <p>
-   * Для вызова требуется статус READY. <br>
+   *
+   * <p>Для вызова требуется статус READY. <br>
    * Сначала переводит файл в статус {@code PENDING} в базе, затем выполняет операцию. <br>
    * После успеха автоматически ставит {@code READY} и сохраняет все изменения в БД.
    */
@@ -34,19 +37,18 @@ public class StorageRepositoryWrapper {
 
   /**
    * Выполняет создание нового файла.
-   * <p>
-   * После выполнения операции переводит статус в {@code READY} и сохраняет все изменения в БД
+   *
+   * <p>После выполнения операции переводит статус в {@code READY} и сохраняет все изменения в БД
    */
   public <T> void executeCreateOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
-    // TODO: проверка на уже существующий файл не нужна (есть в сервисе)?
     finalizeOperation(entity, operationType, operation);
   }
 
   /**
    * Начинает сложную операцию.
-   * <p>
-   * Для вызова требуется статус READY. <br>
+   *
+   * <p>Для вызова требуется статус READY. <br>
    * После выполнения операции переводит статус в {@code PENDING}
    */
   public <T> T executeStartComplexOperation(
@@ -59,41 +61,48 @@ public class StorageRepositoryWrapper {
 
   /**
    * Работает с файлом, который уже находится в обработке ({@code PENDING}).
-   * <p>
-   * Для вызова требуется статус PENDING. <br>
+   *
+   * <p>Для вызова требуется статус PENDING. <br>
    * Блокирует строку в БД через {@code SELECT FOR UPDATE}.<br>
    * Статус файла в конце НЕ меняет. Подходит для промежуточных этапов вроде загрузки чанков.
    */
   public <T> T executeInProgressOperation(
-      UUID fileId, FileOperationType operationType, FileOperation<T> operation) {
-    StorageEntity entity = getEntityByFileId(fileId);
+      StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsPending(entity);
 
     T result = executeOperation(entity, operationType, operation);
-    finalizeEntityUpdate(entity, FileStatus.PENDING);
+
+    if (shouldThrottledUpdate(entity)) {
+      finalizeEntityUpdate(
+          entity, FileStatus.PENDING);
+    }
 
     return result;
   }
 
   /**
    * Завершает сложную операцию.
-   * <p>
-   * Для вызова требуется статус PENDING. <br>
+   *
+   * <p>Для вызова требуется статус PENDING. <br>
    * Блокирует строку в БД, выполняет операцию и переводит файл в {@code READY}.<br>
    * Автоматически сохраняет любые изменения {@code entity}, сделанные в лямбде.
    */
   public <T> void executeFinalComplexOperation(
-      UUID fileId, FileOperationType operationType, FileOperation<T> operation) {
-    StorageEntity entity = getEntityByFileId(fileId);
+      StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsPending(entity);
 
     finalizeOperation(entity, operationType, operation);
   }
 
+  /** Принудительно помечает операцию как {@code READY} и устанавливает {@code retry_count = 0}. */
+  public void forceRollbackOperation(StorageEntity entity) {
+    finalizeEntityUpdate(entity, FileStatus.READY, 0);
+  }
+
   private <T> T executeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     try {
-      return operation.apply(entity);
+      return operation.apply();
     } catch (Exception exception) {
       handleException(exception, entity, operationType);
       throw new RuntimeException(exception);
@@ -104,18 +113,6 @@ public class StorageRepositoryWrapper {
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     executeOperation(entity, operationType, operation);
     finalizeEntityUpdate(entity, FileStatus.READY);
-  }
-
-  // TODO: @Transactional
-  private StorageEntity getEntityByFileId(UUID fileId) {
-    return metadataRepository
-        .getFileForUpdate(fileId)
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "FATAL: StorageEntity not found for id "
-                        + fileId
-                        + ". This implies a race condition or other critical error"));
   }
 
   private void checkIfStatusIsReady(StorageEntity entity) {
@@ -143,6 +140,13 @@ public class StorageRepositoryWrapper {
     finalizeEntityUpdate(entity, newStatus, entity.getRetryCount());
   }
 
+  private boolean shouldThrottledUpdate(StorageEntity entity) {
+    int throttledUpdateInterval = storageConfig.stateMachine().fileThrottledUpdateIntervalSec();
+
+    return entity.getUpdatedAt() == null
+        || entity.getUpdatedAt().isBefore(LocalDateTime.now().minusSeconds(throttledUpdateInterval));
+  }
+
   private void handleException(
       Exception exception, StorageEntity entity, FileOperationType operationType) {
     if (exception instanceof RecoverableStorageException) {
@@ -163,6 +167,10 @@ public class StorageRepositoryWrapper {
       entity.setUpdatedAt(LocalDateTime.now());
     }
 
+    if (newStatus == FileStatus.READY) {
+      entity.setOperationType(null);
+    }
+
     try {
       metadataRepository.updateEntity(entity);
     } catch (Exception e) {
@@ -172,6 +180,6 @@ public class StorageRepositoryWrapper {
 
   @FunctionalInterface
   public interface FileOperation<T> {
-    T apply(StorageEntity entity) throws Exception;
+    T apply() throws Exception;
   }
 }

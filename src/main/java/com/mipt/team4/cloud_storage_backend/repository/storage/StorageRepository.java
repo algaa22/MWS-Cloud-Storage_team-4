@@ -25,7 +25,7 @@ public class StorageRepository {
     wrapper.executeCreateOperation(
         entity,
         FileOperationType.UPLOAD,
-        (_) -> {
+        () -> {
           metadataRepository.addFile(entity);
           contentRepository.putObject(entity.getS3Key(), data);
 
@@ -37,27 +37,27 @@ public class StorageRepository {
     return wrapper.executeStartComplexOperation(
         entity,
         FileOperationType.UPLOAD,
-        (_) -> {
+        () -> {
           metadataRepository.addFile(entity);
           return contentRepository.startMultipartUpload(entity.getS3Key());
         });
   }
 
-  public String uploadPart(UUID fileId, UploadPartRequest request) {
+  public String uploadPart(StorageEntity entity, UploadPartRequest request) {
     return wrapper.executeInProgressOperation(
-        fileId,
+        entity,
         FileOperationType.UPLOAD,
-        (entity) ->
+        () ->
             contentRepository.uploadPart(
                 request.uploadId(), entity.getS3Key(), request.partIndex(), request.bytes()));
   }
 
   public void completeMultipartUpload(
-      UUID fileId, long fileSize, String uploadId, Map<Integer, String> eTags) {
+      StorageEntity entity, long fileSize, String uploadId, Map<Integer, String> eTags) {
     wrapper.executeFinalComplexOperation(
-        fileId,
+        entity,
         FileOperationType.UPLOAD,
-        (entity) -> {
+        () -> {
           entity.setSize(fileSize);
           contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
           return null;
@@ -65,14 +65,14 @@ public class StorageRepository {
   }
 
   public void updateFile(StorageEntity entity) {
-    wrapper.executeUpdateOperation(entity, FileOperationType.CHANGE_METADATA, (_) -> null);
+    wrapper.executeUpdateOperation(entity, FileOperationType.CHANGE_METADATA, () -> null);
   }
 
   public void deleteFile(StorageEntity entity) {
     wrapper.executeUpdateOperation(
         entity,
         FileOperationType.DELETE,
-        (_) -> {
+        () -> {
           metadataRepository.deleteFile(entity.getUserId(), entity.getPath());
           contentRepository.hardDeleteFile(entity.getS3Key());
           return null;
@@ -96,7 +96,7 @@ public class StorageRepository {
     return metadataRepository.fileExists(userId, path);
   }
 
-  public List<StorageEntity> getFileList(FileListFilter filter) {
+  public List<StorageEntity> getFilesList(FileListFilter filter) {
     return metadataRepository.getFilesList(filter);
   }
 

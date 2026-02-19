@@ -117,7 +117,7 @@ public class FileService {
       StorageEntity fileEntity = uploadState.getEntity();
 
       storageRepository.completeMultipartUpload(
-          fileEntity.getId(), uploadState.getFileSize(), uploadState.getUploadId(), uploadState.getETags());
+          fileEntity, uploadState.getFileSize(), uploadState.getUploadId(), uploadState.getETags());
       userRepository.increaseUsedStorage(fileEntity.getUserId(), uploadState.getFileSize());
 
       return new ChunkedUploadFileResultDto(
@@ -183,7 +183,7 @@ public class FileService {
   public List<StorageEntity> getFileList(GetFileListRequest filePathsRequest)
       throws UserNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(filePathsRequest.userToken());
-    return storageRepository.getFileList(
+    return storageRepository.getFilesList(
         new FileListFilter(
             userUuid,
             filePathsRequest.includeDirectories(),
@@ -246,7 +246,7 @@ public class FileService {
 
     String eTag =
         storageRepository.uploadPart(
-            entity.getId(),
+            entity,
             new UploadPartRequest(
                 uploadId, entity.getUserId(), entity.getId(), uploadState.getPartNum(), part));
 

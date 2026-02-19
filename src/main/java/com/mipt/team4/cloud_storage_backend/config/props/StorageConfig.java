@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.config.props;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "storage")
-public record StorageConfig(Rest rest, Auth auth, Quotas quotas) {
+public record StorageConfig(Rest rest, Auth auth, Quotas quotas, StateMachine stateMachine) {
   public record Rest(
       int maxAggregatedContentLength,
       long maxFileSize,
@@ -14,4 +14,6 @@ public record StorageConfig(Rest rest, Auth auth, Quotas quotas) {
       String jwtSecretKey, long accessTokenExpirationSec, long refreshTokenExpirationSec) {}
 
   public record Quotas(long defaultStorageLimit) {}
+
+  public record StateMachine(int fileStaleTimeMin, int fileThrottledUpdateIntervalSec) {}
 }

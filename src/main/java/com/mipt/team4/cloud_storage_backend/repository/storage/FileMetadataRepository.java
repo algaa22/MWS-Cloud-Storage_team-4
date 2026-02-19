@@ -8,6 +8,8 @@ import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnecti
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +42,13 @@ public class FileMetadataRepository {
             fileEntity.isDirectory()));
   }
 
+  public List<StorageEntity> getStaleFiles(LocalDateTime threshold) {
+    return postgres.executeQuery(
+        "SELECT * FROM files WHERE status in ('PENDING', 'ERROR') AND updated_at < ?",
+        List.of(Timestamp.valueOf(threshold)),
+        this::createStorageEntityByResultSet);
+  }
+
   public List<StorageEntity> getFilesList(FileListFilter filter) {
     String query =
         "SELECT * FROM files WHERE user_id = ? AND path LIKE ? AND path != ? AND is_deleted = FALSE AND status = 'READY'";
@@ -70,7 +79,8 @@ public class FileMetadataRepository {
   }
 
   public Optional<StorageEntity> getFile(UUID userId, String path) {
-    return getFile("SELECT * FROM files WHERE user_id = ? AND path = ? AND status = 'READY';", userId, path);
+    return getFile(
+        "SELECT * FROM files WHERE user_id = ? AND path = ? AND status = 'READY';", userId, path);
   }
 
   private Optional<StorageEntity> getFile(String sql, Object... params) {

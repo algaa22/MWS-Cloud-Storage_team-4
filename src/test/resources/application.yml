@@ -52,3 +52,7 @@ storage:
 
   quotas:
     default-storage-limit: 10737418240
+
+  state-machine:
+    file-stale-time-min: 60
+    file-throttled-update-interval-sec: 15

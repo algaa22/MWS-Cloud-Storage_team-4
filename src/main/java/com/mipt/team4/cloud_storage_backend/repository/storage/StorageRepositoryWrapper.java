@@ -28,7 +28,7 @@ public class StorageRepositoryWrapper {
   public <T> void executeUpdateOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsReady(entity);
-    prepareEntityForUpdate(entity, operationType);
+    prepareEntity(entity, operationType);
     finalizeOperation(entity, operationType, operation);
   }
 
@@ -52,7 +52,7 @@ public class StorageRepositoryWrapper {
   public <T> T executeStartComplexOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsReady(entity);
-    prepareEntityForUpdate(entity, operationType);
+    prepareEntity(entity, operationType);
 
     return executeOperation(entity, operationType, operation);
   }
@@ -69,7 +69,10 @@ public class StorageRepositoryWrapper {
     StorageEntity entity = getEntityByFileId(fileId);
     checkIfStatusIsPending(entity);
 
-    return executeOperation(entity, operationType, operation);
+    T result = executeOperation(entity, operationType, operation);
+    finalizeEntityUpdate(entity, FileStatus.PENDING);
+
+    return result;
   }
 
   /**
@@ -129,7 +132,7 @@ public class StorageRepositoryWrapper {
     }
   }
 
-  private void prepareEntityForUpdate(StorageEntity entity, FileOperationType operationType) {
+  private void prepareEntity(StorageEntity entity, FileOperationType operationType) {
     entity.setOperationType(operationType);
     entity.setStartedAt(LocalDateTime.now());
 
@@ -156,7 +159,7 @@ public class StorageRepositoryWrapper {
     entity.setStatus(newStatus);
     entity.setRetryCount(newRetryCount);
 
-    if (newStatus == FileStatus.READY) {
+    if (newStatus == FileStatus.PENDING || newStatus == FileStatus.READY) {
       entity.setUpdatedAt(LocalDateTime.now());
     }
 

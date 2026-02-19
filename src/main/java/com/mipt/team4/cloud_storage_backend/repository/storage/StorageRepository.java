@@ -53,7 +53,8 @@ public class StorageRepository {
                 request.uploadId(), entity.getS3Key(), request.partIndex(), request.bytes()));
   }
 
-  public void completeMultipartUpload(UUID fileId, long fileSize, String uploadId, Map<Integer, String> eTags) {
+  public void completeMultipartUpload(
+      UUID fileId, long fileSize, String uploadId, Map<Integer, String> eTags) {
     wrapper.executeFinalOperation(
         fileId,
         FileOperationType.UPLOAD,
@@ -65,13 +66,7 @@ public class StorageRepository {
   }
 
   public void updateFile(StorageEntity entity) {
-    wrapper.executeUpdateOperation(
-        entity,
-        FileOperationType.CHANGE_METADATA,
-        (_) -> {
-          metadataRepository.updateEntity(entity);
-          return null;
-        });
+    wrapper.executeUpdateOperation(entity, FileOperationType.CHANGE_METADATA, (_) -> null);
   }
 
   public void deleteFile(StorageEntity entity) {

@@ -39,7 +39,7 @@ public class DirectoriesRequestHandler {
       throws QueryParameterNotFoundException,
           UserNotFoundException,
           StorageFileAlreadyExistsException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           ValidationFailedException {
     String oldDirectoryPath;
     String newDirectoryPath;
@@ -57,7 +57,7 @@ public class DirectoriesRequestHandler {
   public void handleDeleteDirectoryRequest(
       ChannelHandlerContext ctx, String directoryPath, String userToken)
       throws UserNotFoundException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           ValidationFailedException,
           FileNotFoundException {
 

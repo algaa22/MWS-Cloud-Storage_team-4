@@ -91,7 +91,7 @@ public class FilesRequestHandler {
 
   public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           ValidationFailedException,
           StorageIllegalAccessException,
           FileNotFoundException {
@@ -103,7 +103,7 @@ public class FilesRequestHandler {
   public void handleChangeFileMetadataRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken)
       throws UserNotFoundException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           StorageFileAlreadyExistsException,
           ValidationFailedException {
     Optional<String> newFilePath = RequestUtils.getQueryParam(request, "newPath");

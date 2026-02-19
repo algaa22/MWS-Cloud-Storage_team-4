@@ -56,17 +56,17 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
         }
       } catch (QueryParameterNotFoundException
-               | InvalidSessionException
-               | ValidationFailedException
-               | HeaderNotFoundException
-               | UserNotFoundException
-               | UserAlreadyExistsException
-               | InvalidEmailOrPassword
-               | WrongPasswordException
-               | StorageFileNotFoundException
-               | StorageFileAlreadyExistsException
-               | StorageIllegalAccessException
-               | IOException e) {
+          | InvalidSessionException
+          | ValidationFailedException
+          | HeaderNotFoundException
+          | UserNotFoundException
+          | UserAlreadyExistsException
+          | InvalidEmailOrPassword
+          | WrongPasswordException
+          | StorageFileNotFoundException
+          | StorageFileAlreadyExistsException
+          | StorageIllegalAccessException
+          | IOException e) {
         ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
       } catch (StorageFileLockedException e) {
         ResponseUtils.sendErrorResponse(ctx, HttpResponseStatus.CONFLICT, e.getMessage());
@@ -79,7 +79,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request)
       throws QueryParameterNotFoundException,
           UserNotFoundException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           ValidationFailedException,
           StorageIllegalAccessException,
           IOException,
@@ -111,7 +111,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws QueryParameterNotFoundException,
           UserNotFoundException,
-      StorageFileNotFoundException,
+          StorageFileNotFoundException,
           ValidationFailedException,
           FileNotFoundException,
           StorageFileAlreadyExistsException {

@@ -6,7 +6,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPar
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
-import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +34,7 @@ public class StorageRepository {
   }
 
   public String startMultipartUpload(StorageEntity entity) {
-    return wrapper.executeOperation(
+    return wrapper.executeStartComplexOperation(
         entity,
         FileOperationType.UPLOAD,
         (_) -> {
@@ -55,7 +54,7 @@ public class StorageRepository {
 
   public void completeMultipartUpload(
       UUID fileId, long fileSize, String uploadId, Map<Integer, String> eTags) {
-    wrapper.executeFinalOperation(
+    wrapper.executeFinalComplexOperation(
         fileId,
         FileOperationType.UPLOAD,
         (entity) -> {

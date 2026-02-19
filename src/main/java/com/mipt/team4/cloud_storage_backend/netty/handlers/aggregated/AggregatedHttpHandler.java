@@ -4,6 +4,7 @@ import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAcc
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
@@ -19,6 +20,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +68,8 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
                | StorageIllegalAccessException
                | IOException e) {
         ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
+      } catch (StorageFileLockedException e) {
+        ResponseUtils.sendErrorResponse(ctx, HttpResponseStatus.CONFLICT, e.getMessage());
       }
     } else {
       ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);

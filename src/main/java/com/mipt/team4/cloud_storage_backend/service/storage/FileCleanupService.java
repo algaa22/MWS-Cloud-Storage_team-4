@@ -47,7 +47,7 @@ public class FileCleanupService {
     switch (entity.getOperationType()) {
       case UPLOAD -> {
         storageRepository.deleteFile(entity);
-        log.info("Cleanup: Deleted scale upload for file {}", entity.getId());
+        log.info("Cleanup: Deleted stale upload for file {}", entity.getId());
       }
       case DELETE -> {
         storageRepository.deleteFile(entity);

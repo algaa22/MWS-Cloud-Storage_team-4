@@ -26,13 +26,13 @@ public class StorageEntity {
   private final UUID userId;
 
   private final String mimeType;
-  private final long size;
   private final boolean isDirectory;
 
   @Builder.Default private String visibility = FileVisibility.PRIVATE.toString();
   @Builder.Default private boolean isDeleted = false;
   private List<String> tags;
   private String path;
+  private long size;
 
   @Builder.Default private FileStatus status = FileStatus.READY;
   @Builder.Default private int retryCount = 0;

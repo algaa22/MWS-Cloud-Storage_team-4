@@ -23,39 +23,43 @@ public class StorageRepository {
   private final StorageRepositoryWrapper wrapper;
 
   public void addFile(StorageEntity entity, byte[] data) {
-    wrapper.executeUpdateOperation(
+    wrapper.executeCreateOperation(
         entity,
         FileOperationType.UPLOAD,
-        (s3Key) -> {
+        (_) -> {
           metadataRepository.addFile(entity);
-          contentRepository.putObject(s3Key, data);
+          contentRepository.putObject(entity.getS3Key(), data);
 
           return null;
         });
   }
 
-  public String startMultipartUpload(UUID fileId) {
-    return wrapper.executeUpdateOperation(
-        fileId, FileOperationType.UPLOAD, contentRepository::startMultipartUpload);
-  }
-
-  public String uploadPart(UploadPartRequest request) {
-    return wrapper.executeUpdateOperation(
-        request.fileId(),
-        FileOperationType.UPLOAD,
-        (s3Key) ->
-            contentRepository.uploadPart(
-                request.uploadId(), s3Key, request.partIndex(), request.bytes()));
-  }
-
-  public void completeMultipartUpload(
-      StorageEntity entity, String uploadId, Map<Integer, String> eTags) {
-    wrapper.executeUpdateOperation(
+  public String startMultipartUpload(StorageEntity entity) {
+    return wrapper.executeOperation(
         entity,
         FileOperationType.UPLOAD,
-        (s3Key) -> {
+        (_) -> {
           metadataRepository.addFile(entity);
-          contentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
+          return contentRepository.startMultipartUpload(entity.getS3Key());
+        });
+  }
+
+  public String uploadPart(UUID fileId, UploadPartRequest request) {
+    return wrapper.executeInProgressOperation(
+        fileId,
+        FileOperationType.UPLOAD,
+        (entity) ->
+            contentRepository.uploadPart(
+                request.uploadId(), entity.getS3Key(), request.partIndex(), request.bytes()));
+  }
+
+  public void completeMultipartUpload(UUID fileId, long fileSize, String uploadId, Map<Integer, String> eTags) {
+    wrapper.executeFinalOperation(
+        fileId,
+        FileOperationType.UPLOAD,
+        (entity) -> {
+          entity.setSize(fileSize);
+          contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
           return null;
         });
   }
@@ -74,16 +78,17 @@ public class StorageRepository {
     wrapper.executeUpdateOperation(
         entity,
         FileOperationType.DELETE,
-        (s3Key) -> {
+        (_) -> {
           metadataRepository.deleteFile(entity.getUserId(), entity.getPath());
-          contentRepository.hardDeleteFile(s3Key);
+          contentRepository.hardDeleteFile(entity.getS3Key());
           return null;
         });
   }
 
   public InputStream downloadFile(StorageEntity entity) {
     if (entity.getStatus() != FileStatus.READY) {
-      throw new IllegalStateException("FATAL: Attempt to download non-ready file: " + entity.getId());
+      throw new IllegalStateException(
+          "FATAL: Attempt to download non-ready file: " + entity.getId());
     }
 
     return contentRepository.downloadObject(entity.getS3Key());

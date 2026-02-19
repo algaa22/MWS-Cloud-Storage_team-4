@@ -62,7 +62,11 @@ public class FileMetadataRepository {
   }
 
   public Optional<StorageEntity> getFile(UUID fileId) {
-    return getFile("SELECT * FROM files WHERE fileId = ? AND status = 'READY';", fileId); // TODO: FOR UPDATE?
+    return getFile("SELECT * FROM files WHERE id = ? AND status = 'READY';", fileId);
+  }
+
+  public Optional<StorageEntity> getFileForUpdate(UUID fileId) {
+    return getFile("SELECT * FROM files WHERE id = ? FOR UPDATE;", fileId);
   }
 
   public Optional<StorageEntity> getFile(UUID userId, String path) {

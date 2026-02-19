@@ -373,27 +373,22 @@ export const searchFilesByTags = async (token, tags) => {
     return [];
   }
 
-  const url = `${BASE}/files/search`;
+  // Преобразуем теги в строку через запятую
+  const tagsString = Array.isArray(tags) ? tags.join(',') : tags;  // 👈 Обратите внимание: tagsString (c большой S)
 
-  // Преобразуем теги в массив, если пришла строка
-  const tagsArray = Array.isArray(tags) ? tags :
-      (typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(t => t) : []);
-
-  const requestBody = {
-    tags: tagsArray
-  };
+  const url = `${BASE}/files/list/byTags?path=`;
 
   console.log("Request URL:", url);
-  console.log("Request body:", requestBody);
+  console.log("Tags header:", tagsString);
 
   try {
     const response = await fetchWithTokenRefresh(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify(requestBody)
+        "Accept": "application/json",
+        "X-File-Tags": tagsString  // 👈 Здесь тоже tagsString (c большой S)
+      }
     }, token);
 
     console.log("Response status:", response.status);
@@ -406,7 +401,6 @@ export const searchFilesByTags = async (token, tags) => {
     const data = await response.json();
     console.log("Search results:", data);
 
-    // Форматируем результаты как в getFiles
     const files = data?.files || data || [];
 
     const formattedResults = files.map((item, index) => {

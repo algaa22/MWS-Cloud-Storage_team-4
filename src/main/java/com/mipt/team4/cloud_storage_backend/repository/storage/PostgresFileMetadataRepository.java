@@ -27,8 +27,8 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
     }
 
     postgres.executeUpdate(
-        "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, tags, is_directory)"
-            + " values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO files (id, owner_id, path, file_size, mime_type, visibility, is_deleted, is_directory)"
+            + " values (?, ?, ?, ?, ?, ?, ?, ?);",
         List.of(
             fileEntity.getEntityId(),
             fileEntity.getUserId(),
@@ -37,7 +37,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             fileEntity.getMimeType(),
             fileEntity.getVisibility(),
             fileEntity.isDeleted(),
-            FileTagsMapper.toString(fileEntity.getTags()),
+            //FileTagsMapper.toString(fileEntity.getTags()),
             fileEntity.isDirectory()));
     for (String tag : fileEntity.getTags()) {
       postgres.executeUpdate(
@@ -99,11 +99,11 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   @Override
   public void updateFile(StorageEntity fileEntity) {
     postgres.executeUpdate(
-        "UPDATE files SET path = ?, visibility = ?, tags = ? WHERE owner_id = ? AND id = ?",
+        "UPDATE files SET path = ?, visibility = ?, WHERE owner_id = ? AND id = ?",
         List.of(
             fileEntity.getPath(),
             fileEntity.getVisibility(),
-            FileTagsMapper.toString(fileEntity.getTags()),
+            //FileTagsMapper.toString(fileEntity.getTags()),
             fileEntity.getUserId(),
             fileEntity.getEntityId()));
     for (String tag : fileEntity.getTags()) {
@@ -149,6 +149,8 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
 
   private StorageEntity createStorageEntityByResultSet(UUID userId, ResultSet rs)
       throws SQLException {
+    UUID fileId = UUID.fromString(rs.getString("id"));
+    List<String> tags = getFileTags(fileId);
     return StorageEntity.builder()
         .entityId(UUID.fromString(rs.getString("id")))
         .userId(userId)
@@ -158,7 +160,16 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
         .visibility(rs.getString("visibility"))
         .isDeleted(rs.getBoolean("is_deleted"))
         .isDirectory(rs.getBoolean("is_directory"))
-        .tags(FileTagsMapper.toList(rs.getString("tags")))
+        .tags(tags)
         .build();
   }
+
+  private List<String> getFileTags(UUID fileId) {
+    return postgres.executeQuery(
+        "SELECT tag FROM file_tags WHERE file_id = ?",
+        List.of(fileId),
+        rs -> rs.getString("tag")
+    );
+  }
+
 }

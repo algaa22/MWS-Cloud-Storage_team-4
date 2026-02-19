@@ -32,6 +32,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Component
 @Scope("prototype")
@@ -144,56 +145,46 @@ public class FilesRequestHandler {
   }
 
   public void handleSearchFilesByTags(
-      ChannelHandlerContext ctx, FullHttpRequest request, String userToken)
-      throws UserNotFoundException, ValidationFailedException {
+      ChannelHandlerContext ctx,
+      FullHttpRequest request,
+      String userToken)
+      throws UserNotFoundException, ValidationFailedException, HeaderNotFoundException {
 
-    List<String> tags;
+    // Получаем теги из заголовка
+    String tagsHeader = RequestUtils.getRequiredHeader(request, "X-File-Tags");
+    List<String> tags = FileTagsMapper.toList(tagsHeader);
+
+    // Вызываем контроллер с правильной DTO
+    List<StorageEntity> files = fileController.searchFilesByTags(
+        new SearchFilesByTagsRequest(userToken, tags));
+
+    // Формируем ответ
     ObjectMapper mapper = new ObjectMapper();
-
-    try {
-      var jsonNode = mapper.readTree(request.content().array());
-
-      if (!jsonNode.isObject()) {
-        ResponseUtils.sendJsonResponse(
-            ctx,
-            HttpResponseStatus.BAD_REQUEST,
-            mapper.createObjectNode().put("error", "Expected JSON object in request body"));
-        return;
-      }
-
-      ObjectNode body = (ObjectNode) jsonNode;
-
-      if (body.has("tags") && body.get("tags").isArray()) {
-        ArrayNode tagsNode = body.withArray("tags");
-        tags =
-            Optional.ofNullable(FileTagsMapper.toList(String.valueOf(tagsNode))).orElse(List.of());
-      } else {
-        tags = List.of();
-      }
-    } catch (Exception e) {
-      ResponseUtils.sendJsonResponse(
-          ctx,
-          HttpResponseStatus.BAD_REQUEST,
-          mapper.createObjectNode().put("error", "Invalid JSON body: " + e.getMessage()));
-      return;
-    }
-
-    List<StorageEntity> files =
-        fileController.searchFilesByTags(new SearchFilesByTagsRequest(userToken, tags));
-
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();
 
     if (files != null) {
       for (StorageEntity file : files) {
         ObjectNode fileNode = mapper.createObjectNode();
-        fileNode.put("path", file.getPath());
+
+        // Извлекаем имя из пути
+        String path = file.getPath();
+        String name = path;
+        if (path != null && path.contains("/")) {
+          name = path.substring(path.lastIndexOf("/") + 1);
+        }
+
+        fileNode.put("path", path);
+        fileNode.put("name", name);
+        fileNode.put("size", file.getSize());  // 👈 РАЗМЕР
+        fileNode.put("type", file.isDirectory() ? "folder" : "file");
+        fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
+
         filesArray.add(fileNode);
       }
     }
 
     rootNode.set("files", filesArray);
-
     ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 }

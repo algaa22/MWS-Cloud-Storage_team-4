@@ -18,7 +18,6 @@ public class NotificationController {
   private final NotificationRepository notificationRepository;
   private final UserSessionService userSessionService;
 
-  // Получить все мои уведомления (для сайта)
   @GetMapping
   public List<Notification> getMyNotifications(@RequestHeader("Authorization") String token)
       throws UserNotFoundException {
@@ -26,7 +25,6 @@ public class NotificationController {
     return notificationRepository.findByUserId(userId);
   }
 
-  // Получить количество непрочитанных
   @GetMapping("/unread/count")
   public int getUnreadCount(@RequestHeader("Authorization") String token)
       throws UserNotFoundException {
@@ -34,13 +32,11 @@ public class NotificationController {
     return notificationRepository.getUnreadCount(userId);
   }
 
-  // Отметить как прочитанное
   @PostMapping("/{id}/read")
   public void markAsRead(@PathVariable UUID id) {
     notificationRepository.markAsRead(id);
   }
 
-  // Отметить все как прочитанные
   @PostMapping("/read-all")
   public void markAllAsRead(@RequestHeader("Authorization") String token)
       throws UserNotFoundException {

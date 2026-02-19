@@ -19,10 +19,10 @@ public class NotificationRepository {
   public void save(Notification notification) {
     postgres.executeUpdate(
         "INSERT INTO notifications (id, user_id, user_email, type, subject, content, created_at, is_read) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",  // ← добавили user_id
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         List.of(
             notification.getId(),
-            notification.getUserId(),      // ← новое поле
+            notification.getUserId(),
             notification.getUserEmail(),
             notification.getType().name(),
             notification.getSubject(),

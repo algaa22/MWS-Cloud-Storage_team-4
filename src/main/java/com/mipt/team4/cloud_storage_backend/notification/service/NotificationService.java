@@ -16,7 +16,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class NotificationService {
 
-  private final EmailService emailService;
+  //private final EmailService emailService;
   private final NotificationRepository notificationRepository;
 
   private static final String WEBSITE_URL = "http://localhost:3000"; // URL вашего React-приложения
@@ -151,7 +151,7 @@ public class NotificationService {
                     
                     <div class="footer">
                         <p>С уважением, команда Cloud Storage</p>
-                        <p>© 2024 Cloud Storage. Все права защищены.</p>
+                        <p>© 2026 Cloud Storage. Все права защищены.</p>
                     </div>
                 </div>
             </div>
@@ -231,7 +231,7 @@ public class NotificationService {
       String htmlContent, NotificationType type,
       UUID userId, String userName) {
     // Отправляем HTML email
-    emailService.sendHtmlEmail(userEmail, subject, htmlContent);
+    //emailService.sendHtmlEmail(userEmail, subject, htmlContent);
 
     // Для БД сохраняем чистый текст (без HTML)
     String plainText = htmlContent.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").trim();

@@ -633,11 +633,9 @@ export default function FileBrowser() {
   };
 
   const renderModernNavigation = () => {
-
     const parts = currentPath ? currentPath.split('/').filter(p => p !== '') : [];
 
     return (
-
         <div className="mb-8">
           {/* Основная навигационная панель */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -645,7 +643,11 @@ export default function FileBrowser() {
               <div className="flex items-center flex-wrap gap-2">
                 {/* Кнопка "Главная" */}
                 <button
-                    onClick={() => setCurrentPath("")}
+                    onClick={() => {
+                      setCurrentPath("");
+                      setTagSearch("");  // 👈 ОЧИЩАЕМ ПОИСК
+                      fetchFiles();      // 👈 ЗАГРУЖАЕМ ВСЕ ФАЙЛЫ
+                    }}
                     className="flex items-center bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl transition-all duration-200 group"
                 >
                   <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -694,6 +696,53 @@ export default function FileBrowser() {
                       })}
                     </div>
                 )}
+
+                {/* 👇 ПОИСК ПО ТЕГАМ ПЕРЕМЕЩЁН СЮДА 👇 */}
+                <div className="flex-1 flex gap-2 ml-4">
+                  <input
+                      type="text"
+                      placeholder="Поиск по тегам (через запятую)..."
+                      value={tagSearch}
+                      onChange={(e) => setTagSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSearchByTags();
+                        }
+                      }}
+                      className="flex-1 p-2.5 rounded-xl bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all"
+                  />
+                  <button
+                      onClick={handleSearchByTags}
+                      disabled={searching || !tagSearch.trim()}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800/50 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                  >
+                    {searching ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                          <span>Поиск...</span>
+                        </>
+                    ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <span>Найти</span>
+                        </>
+                    )}
+                  </button>
+                  {tagSearch && (
+                      <button
+                          onClick={() => {
+                            setTagSearch("");
+                            fetchFiles(); // Возвращаем все файлы
+                          }}
+                          className="px-3 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors"
+                          title="Сбросить поиск"
+                      >
+                        ✕
+                      </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -717,7 +766,6 @@ export default function FileBrowser() {
                     <span className="font-medium">Назад</span>
                   </button>
               )}
-
             </div>
           </div>
         </div>
@@ -974,53 +1022,6 @@ export default function FileBrowser() {
 
           {/* ★★★ НАВИГАЦИОННАЯ ПАНЕЛЬ ★★★ */}
           {renderModernNavigation()}
-
-          {/* ★★★ Поиск по тегам ★★★ */}
-          <div className="mb-4 flex gap-2">
-            <input
-                type="text"
-                placeholder="Поиск по тегам (через запятую)..."
-                value={tagSearch}
-                onChange={(e) => setTagSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearchByTags(); // ВЫЗЫВАЕМ ФУНКЦИЮ
-                  }
-                }}
-                className="flex-1 p-3 rounded-xl bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all"
-            />
-            <button
-                onClick={handleSearchByTags} // ВЫЗЫВАЕМ ФУНКЦИЮ
-                disabled={searching || !tagSearch.trim()}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800/50 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center gap-2"
-            >
-              {searching ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                    <span>Поиск...</span>
-                  </>
-              ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <span>Найти</span>
-                  </>
-              )}
-            </button>
-            {tagSearch && (
-                <button
-                    onClick={() => {
-                      setTagSearch("");
-                      fetchFiles(); // Возвращаем все файлы
-                    }}
-                    className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors"
-                    title="Сбросить поиск"
-                >
-                  ✕
-                </button>
-            )}
-          </div>
 
           {error && (
               <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center">

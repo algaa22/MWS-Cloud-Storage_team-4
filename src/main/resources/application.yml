@@ -4,7 +4,7 @@ spring:
     mail:
       host: smtp.gmail.com
       port: 587
-      username: your-email@gmail.com
+      username: alg@gmail.com
       password: your-app-password
       protocol: smtp
       properties:
@@ -21,7 +21,7 @@ spring:
 netty:
   enable-logging: false
   enable-https: true
-  http-port: 8080
+  http-port: 8081
   https-port: 8443
   boss-threads: 1
   worker-threads: 4

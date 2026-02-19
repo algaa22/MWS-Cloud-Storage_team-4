@@ -5,6 +5,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListF
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import java.io.InputStream;
 import java.util.List;
@@ -33,9 +34,9 @@ public class StorageRepository {
         });
   }
 
-  public String startMultipartUpload(StorageEntity entity) {
+  public String startMultipartUpload(UUID fileId) {
     return wrapper.executeUpdateOperation(
-        entity, FileOperationType.UPLOAD, contentRepository::startMultipartUpload);
+        fileId, FileOperationType.UPLOAD, contentRepository::startMultipartUpload);
   }
 
   public String uploadPart(UploadPartRequest request) {
@@ -81,6 +82,10 @@ public class StorageRepository {
   }
 
   public InputStream downloadFile(StorageEntity entity) {
+    if (entity.getStatus() != FileStatus.READY) {
+      throw new IllegalStateException("FATAL: Attempt to download non-ready file: " + entity.getId());
+    }
+
     return contentRepository.downloadObject(entity.getS3Key());
   }
 

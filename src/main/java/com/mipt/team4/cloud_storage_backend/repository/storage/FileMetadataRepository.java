@@ -42,7 +42,7 @@ public class FileMetadataRepository {
 
   public List<StorageEntity> getFilesList(FileListFilter filter) {
     String query =
-        "SELECT * FROM files WHERE user_id = ? AND path LIKE ? AND path != ? AND is_deleted = FALSE";
+        "SELECT * FROM files WHERE user_id = ? AND path LIKE ? AND path != ? AND is_deleted = FALSE AND status = 'READY'";
     List<Object> params = new ArrayList<>();
 
     params.add(filter.userId());
@@ -62,11 +62,11 @@ public class FileMetadataRepository {
   }
 
   public Optional<StorageEntity> getFile(UUID fileId) {
-    return getFile("SELECT * FROM files WHERE fileId = ?;", fileId);
+    return getFile("SELECT * FROM files WHERE fileId = ? AND status = 'READY';", fileId); // TODO: FOR UPDATE?
   }
 
   public Optional<StorageEntity> getFile(UUID userId, String path) {
-    return getFile("SELECT * FROM files WHERE user_id = ? AND path = ?;", userId, path);
+    return getFile("SELECT * FROM files WHERE user_id = ? AND path = ? AND status = 'READY';", userId, path);
   }
 
   private Optional<StorageEntity> getFile(String sql, Object... params) {
@@ -96,14 +96,14 @@ public class FileMetadataRepository {
             fileEntity.getPath(),
             fileEntity.getVisibility(),
             FileTagsMapper.toString(fileEntity.getTags()),
-            fileEntity.getuserId(),
+            fileEntity.getUserId(),
             fileEntity.getId()));
   }
 
   public boolean fileExists(UUID userId, String path) {
     List<Boolean> result =
         postgres.executeQuery(
-            "SELECT EXISTS (SELECT 1 FROM files WHERE user_id = ? AND path = ?);",
+            "SELECT EXISTS (SELECT 1 FROM files WHERE user_id = ? AND path = ? AND status = 'READY');",
             List.of(userId, path),
             rs -> (rs.getBoolean(1)));
     return result.getFirst();

@@ -32,7 +32,7 @@ public class ChunkedUploadState {
 
   String getOrCreateUploadId(StorageRepository repo) {
     if (uploadId == null) {
-      uploadId = repo.startMultipartUpload(userId, fileId);
+      uploadId = repo.startMultipartUpload(fileId);
     }
 
     return uploadId;

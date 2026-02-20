@@ -7,10 +7,9 @@ import io.minio.errors.ErrorResponseException;
 import io.minio.errors.InsufficientDataException;
 import io.minio.errors.InternalException;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+import org.springframework.stereotype.Component;
 
 @Component
 public class MinioWrapper {

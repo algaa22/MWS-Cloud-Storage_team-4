@@ -98,7 +98,7 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
   @Override
   public void updateFile(StorageEntity fileEntity) {
     postgres.executeUpdate(
-        "UPDATE files SET path = ?, visibility = ?, WHERE owner_id = ? AND id = ?",
+        "UPDATE files SET path = ?, visibility = ? WHERE owner_id = ? AND id = ?",
         List.of(
             fileEntity.getPath(),
             fileEntity.getVisibility(),

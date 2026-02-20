@@ -304,14 +304,12 @@ public class FileService {
           userId, used, limit, String.format("%.2f", percent));
 
       if (userRepository.isStorageFull(userId)) {
-        log.info("🔥 Storage 95-100% FULL detected for user: {}", userId);
         notificationService.notifyStorageFull(
             user.getEmail(),
             user.getName(),
             userId
         );
       } else if (userRepository.isStorageAlmostFull(userId)) {
-        log.info("⚠️ Storage 75-95% FULL detected for user: {}", userId);
         notificationService.notifyStorageAlmostFull(
             user.getEmail(),
             user.getName(),
@@ -320,10 +318,8 @@ public class FileService {
             userId
         );
       } else {
-        log.debug("Storage usage normal for user: {}", userId);
       }
     } catch (Exception e) {
-      log.error("Failed to check storage for user: {}", userId, e);
     }
   }
 }

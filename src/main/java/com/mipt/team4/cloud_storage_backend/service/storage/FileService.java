@@ -131,7 +131,6 @@ public class FileService {
           fileEntity, uploadState.getUploadId(), uploadState.getETags());
       userRepository.increaseUsedStorage(userId, uploadState.getFileSize());
 
-      // Проверка и уведомление о заполнении хранилища
       checkStorageAndNotify(userId);
 
       return new ChunkedUploadFileResultDto(
@@ -167,7 +166,6 @@ public class FileService {
     storageRepository.addFile(entity, data);
     userRepository.increaseUsedStorage(userId, data.length);
 
-    // Проверка и уведомление о заполнении хранилища
     checkStorageAndNotify(userId);
   }
 
@@ -294,37 +292,40 @@ public class FileService {
     uploadState.increaseTotalParts();
   }
 
-  /**
-   * Проверяет заполненность хранилища и отправляет уведомления с именем пользователя
-   */
   private void checkStorageAndNotify(UUID userId) {
     try {
       UserEntity user = userRepository
           .getUserById(userId)
           .orElseThrow(() -> new UserNotFoundException("User not found"));
 
+      long used = user.getUsedStorage();
+      long limit = user.getStorageLimit();
+      double percent = (used * 100.0) / limit;
+
+      log.info("Storage check for user {}: used={}, limit={}, {}%",
+          userId, used, limit, String.format("%.2f", percent));
+
       if (userRepository.isStorageFull(userId)) {
+        log.info("🔥 Storage 95-100% FULL detected for user: {}", userId);
         notificationService.notifyStorageFull(
             user.getEmail(),
-            user.getName(),  // ← передаем имя пользователя
+            user.getName(),
             userId
         );
-        log.warn("Storage FULL notification sent to user: {}", userId);
-
       } else if (userRepository.isStorageAlmostFull(userId)) {
+        log.info("⚠️ Storage 75-95% FULL detected for user: {}", userId);
         notificationService.notifyStorageAlmostFull(
             user.getEmail(),
-            user.getName(),  // ← передаем имя пользователя
-            user.getUsedStorage(),
-            user.getStorageLimit(),
+            user.getName(),
+            used,
+            limit,
             userId
         );
-        log.info("Storage ALMOST FULL notification sent to user: {}", userId);
+      } else {
+        log.debug("Storage usage normal for user: {}", userId);
       }
-    } catch (UserNotFoundException e) {
-      log.error("Failed to send storage notification: user not found - {}", userId, e);
     } catch (Exception e) {
-      log.error("Failed to check storage and notify user: {}", userId, e);
+      log.error("Failed to check storage for user: {}", userId, e);
     }
   }
 }

@@ -117,13 +117,13 @@ public class UserRepository {
   }
 
   public boolean isStorageAlmostFull(UUID userId) {
-    String sql = "SELECT (used_storage * 1.0 / storage_limit) >= 0.8 FROM users WHERE id = ?";
+    String sql = "SELECT (used_storage * 1.0 / storage_limit) >= 0.75 AND (used_storage * 1.0 / storage_limit) < 0.95 FROM users WHERE id = ?";
     List<Boolean> result = postgres.executeQuery(sql, List.of(userId), rs -> rs.getBoolean(1));
     return !result.isEmpty() && result.get(0);
   }
 
   public boolean isStorageFull(UUID userId) {
-    String sql = "SELECT used_storage >= storage_limit FROM users WHERE id = ?";
+    String sql = "SELECT (used_storage * 1.0 / storage_limit) >= 0.95 FROM users WHERE id = ?";
     List<Boolean> result = postgres.executeQuery(sql, List.of(userId), rs -> rs.getBoolean(1));
     return !result.isEmpty() && result.get(0);
   }

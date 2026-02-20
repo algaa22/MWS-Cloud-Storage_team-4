@@ -1,22 +1,24 @@
 spring:
   application:
     name: cloud-storage-backend
-    mail:
-      host: smtp.gmail.com
-      port: 587
-      username: alg@gmail.com
-      password: your-app-password
-      protocol: smtp
-      properties:
-        mail:
-          smtp:
-            auth: true
-            starttls:
-              enable: true
-              required: true
-            connectiontimeout: 5000
-            timeout: 5000
-            writetimeout: 5000
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: alg.aaa.2212@gmail.com
+    password: cjacjzbeswyplztj
+    protocol: smtp
+    test-connection: true
+    properties:
+      mail:
+        debug: true
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 netty:
   enable-logging: false
@@ -67,4 +69,4 @@ storage:
     jwt-secret-key: ${JWT_SECRET_KEY}
 
   quotas:
-    default-storage-limit: 10737418240
+    default-storage-limit: 819200 #10737418240

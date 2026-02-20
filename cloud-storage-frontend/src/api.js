@@ -373,8 +373,7 @@ export const searchFilesByTags = async (token, tags) => {
     return [];
   }
 
-  // Преобразуем теги в строку через запятую
-  const tagsString = Array.isArray(tags) ? tags.join(',') : tags;  // 👈 Обратите внимание: tagsString (c большой S)
+  const tagsString = Array.isArray(tags) ? tags.join(',') : tags;
 
   const url = `${BASE}/files/list/byTags?path=`;
 
@@ -387,7 +386,7 @@ export const searchFilesByTags = async (token, tags) => {
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "X-File-Tags": tagsString  // 👈 Здесь тоже tagsString (c большой S)
+        "X-File-Tags": tagsString
       }
     }, token);
 
@@ -478,7 +477,6 @@ export const downloadFile = async (token, path, filename, fileSize) => {
 
   const headers = {
     "X-Auth-Token": token
-    // Хедер X-Download-Mode удален
   };
 
   try {
@@ -491,12 +489,10 @@ export const downloadFile = async (token, path, filename, fileSize) => {
       throw new Error(`Download failed: ${res.status} ${txt}`);
     }
 
-    // РАБОТА С ПОТОКОМ (ЧАНКАМИ)
     const reader = res.body.getReader();
     const chunks = [];
     let receivedLength = 0;
 
-    // Читаем поток чанк за чанком
     while (true) {
       const { done, value } = await reader.read();
 
@@ -504,15 +500,9 @@ export const downloadFile = async (token, path, filename, fileSize) => {
 
       chunks.push(value);
       receivedLength += value.length;
-
-      // Здесь можно добавить лог прогресса, если нужно:
-      // console.log(`Received ${receivedLength} of ${fileSize}`);
     }
-
-    // Собираем все чанки в один Blob
     const blob = new Blob(chunks);
 
-    // Обычное сохранение файла
     const urlBlob = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.style.display = "none";
@@ -521,7 +511,6 @@ export const downloadFile = async (token, path, filename, fileSize) => {
     document.body.appendChild(a);
     a.click();
 
-    // Очистка
     setTimeout(() => {
       window.URL.revokeObjectURL(urlBlob);
       document.body.removeChild(a);

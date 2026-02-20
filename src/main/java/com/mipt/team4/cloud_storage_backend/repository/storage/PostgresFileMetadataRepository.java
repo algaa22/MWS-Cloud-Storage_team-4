@@ -37,7 +37,6 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
             fileEntity.getMimeType(),
             fileEntity.getVisibility(),
             fileEntity.isDeleted(),
-            //FileTagsMapper.toString(fileEntity.getTags()),
             fileEntity.isDirectory()));
     for (String tag : fileEntity.getTags()) {
       postgres.executeUpdate(
@@ -103,7 +102,6 @@ public class PostgresFileMetadataRepository implements FileMetadataRepository {
         List.of(
             fileEntity.getPath(),
             fileEntity.getVisibility(),
-            //FileTagsMapper.toString(fileEntity.getTags()),
             fileEntity.getUserId(),
             fileEntity.getEntityId()));
     for (String tag : fileEntity.getTags()) {

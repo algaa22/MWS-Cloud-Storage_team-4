@@ -453,7 +453,6 @@ export default function FileBrowser() {
       const results = await searchFilesByTags(token, tags);
       console.log("Search results:", results);
 
-      // Разделяем на папки и файлы
       const foldersList = results.filter(it => it.type === "folder");
       const filesList = results.filter(it => it.type !== "folder");
 
@@ -645,8 +644,8 @@ export default function FileBrowser() {
                 <button
                     onClick={() => {
                       setCurrentPath("");
-                      setTagSearch("");  // 👈 ОЧИЩАЕМ ПОИСК
-                      fetchFiles();      // 👈 ЗАГРУЖАЕМ ВСЕ ФАЙЛЫ
+                      setTagSearch("");
+                      fetchFiles();
                     }}
                     className="flex items-center bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl transition-all duration-200 group"
                 >
@@ -734,7 +733,7 @@ export default function FileBrowser() {
                       <button
                           onClick={() => {
                             setTagSearch("");
-                            fetchFiles(); // Возвращаем все файлы
+                            fetchFiles();
                           }}
                           className="px-3 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors"
                           title="Сбросить поиск"

@@ -116,7 +116,6 @@ public class PostgresConnection implements DatabaseConnection {
     createFilesTable();
     createRefreshTokensTable();
     createFileTagsTable();
-    createNotificationsTable();
   }
 
   private void createFilesTable() {
@@ -206,37 +205,6 @@ public class PostgresConnection implements DatabaseConnection {
 
     executeUpdate(
         "CREATE INDEX IF NOT EXISTS idx_file_tags_tag_file ON file_tags(tag, file_id);", List.of());
-  }
-
-  private void createNotificationsTable() {
-    String sql = """
-        CREATE TABLE IF NOT EXISTS notifications (
-            id UUID PRIMARY KEY,
-            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            user_email VARCHAR(255) NOT NULL,
-            type VARCHAR(50) NOT NULL,
-            subject VARCHAR(255) NOT NULL,
-            content TEXT NOT NULL,
-            created_at TIMESTAMP NOT NULL,
-            is_read BOOLEAN DEFAULT FALSE
-        )
-    """;
-
-    try {
-      executeUpdate(sql, List.of());
-
-      executeUpdate(
-          "CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)",
-          List.of()
-      );
-
-      executeUpdate(
-          "CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, is_read)",
-          List.of()
-      );
-    } catch (DbExecuteUpdateException e) {
-      throw new DbCreateTableException("notifications", e);
-    }
   }
 
   @PreDestroy

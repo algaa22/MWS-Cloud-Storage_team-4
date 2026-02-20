@@ -150,15 +150,11 @@ public class FilesRequestHandler {
       String userToken)
       throws UserNotFoundException, ValidationFailedException, HeaderNotFoundException {
 
-    // Получаем теги из заголовка
     String tagsHeader = RequestUtils.getRequiredHeader(request, "X-File-Tags");
     List<String> tags = FileTagsMapper.toList(tagsHeader);
-
-    // Вызываем контроллер с правильной DTO
     List<StorageEntity> files = fileController.searchFilesByTags(
         new SearchFilesByTagsRequest(userToken, tags));
 
-    // Формируем ответ
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();
@@ -166,8 +162,6 @@ public class FilesRequestHandler {
     if (files != null) {
       for (StorageEntity file : files) {
         ObjectNode fileNode = mapper.createObjectNode();
-
-        // Извлекаем имя из пути
         String path = file.getPath();
         String name = path;
         if (path != null && path.contains("/")) {
@@ -176,7 +170,7 @@ public class FilesRequestHandler {
 
         fileNode.put("path", path);
         fileNode.put("name", name);
-        fileNode.put("size", file.getSize());  // 👈 РАЗМЕР
+        fileNode.put("size", file.getSize());
         fileNode.put("type", file.isDirectory() ? "folder" : "file");
         fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
 

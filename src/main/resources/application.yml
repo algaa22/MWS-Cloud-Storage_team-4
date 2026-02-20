@@ -69,4 +69,4 @@ storage:
     jwt-secret-key: ${JWT_SECRET_KEY}
 
   quotas:
-    default-storage-limit: 819200 #10737418240
+    default-storage-limit: 10737418240

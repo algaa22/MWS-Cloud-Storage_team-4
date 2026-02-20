@@ -1,14 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.notification.service;
 
-import com.mipt.team4.cloud_storage_backend.notification.model.Notification;
-import com.mipt.team4.cloud_storage_backend.notification.model.NotificationType;
-import com.mipt.team4.cloud_storage_backend.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Slf4j
@@ -17,9 +11,8 @@ import java.util.UUID;
 public class NotificationService {
 
   private final EmailService emailService;
-  private final NotificationRepository notificationRepository;
 
-  private static final String WEBSITE_URL = "http://localhost:5173"; // URL вашего React-приложения
+  private static final String WEBSITE_URL = "http://localhost:5173";
   private static final String TELEGRAM_SUPPORT = "https://t.me/alg_aaa";
 
   public void notifyFileDeleted(String userEmail, String userName, String filePath, UUID userId) {
@@ -79,7 +72,7 @@ public class NotificationService {
         </html>
         """, userName, filePath, TELEGRAM_SUPPORT, WEBSITE_URL);
 
-    sendNotification(userEmail, subject, htmlContent, NotificationType.FILE_DELETED, userId, userName);
+    sendNotification(userEmail, subject, htmlContent, userId, userName);
   }
 
   public void notifyStorageAlmostFull(String userEmail, String userName,
@@ -171,7 +164,7 @@ public class NotificationService {
         </html>
         """, percentInt, userName, percentUsed, usedFormatted, limitFormatted, percentInt, TELEGRAM_SUPPORT, WEBSITE_URL);
 
-    sendNotification(userEmail, subject, htmlContent, NotificationType.STORAGE_ALMOST_FULL, userId, userName);
+    sendNotification(userEmail, subject, htmlContent, userId, userName);
   }
 
   public void notifyStorageFull(String userEmail, String userName, UUID userId) {
@@ -243,28 +236,12 @@ public class NotificationService {
         </html>
         """, userName, TELEGRAM_SUPPORT, WEBSITE_URL, WEBSITE_URL);
 
-    sendNotification(userEmail, subject, htmlContent, NotificationType.STORAGE_FULL, userId, userName);
+    sendNotification(userEmail, subject, htmlContent, userId, userName);
   }
 
   private void sendNotification(String userEmail, String subject,
-      String htmlContent, NotificationType type,
-      UUID userId, String userName) {
+      String htmlContent, UUID userId, String userName) {
     emailService.sendHtmlEmail(userEmail, subject, htmlContent);
-
-    String plainText = htmlContent.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").trim();
-
-    Notification notification = Notification.builder()
-        .id(UUID.randomUUID())
-        .userId(userId)
-        .userEmail(userEmail)
-        .type(type)
-        .subject(subject)
-        .content(plainText)
-        .createdAt(LocalDateTime.now())
-        .isRead(false)
-        .build();
-
-    notificationRepository.save(notification);
     log.info("HTML Notification sent to {}: {}", userEmail, subject);
   }
 

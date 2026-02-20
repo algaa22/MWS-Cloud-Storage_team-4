@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EmailService {
 
-  private final JavaMailSender mailSender;  // 👈 Spring сам создаст
+  private final JavaMailSender mailSender;
   private final MailConfig mailConfig;
 
   @Async

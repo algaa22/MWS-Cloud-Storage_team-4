@@ -196,15 +196,13 @@ public class FileService {
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
 
-    // Получаем полную информацию о пользователе для уведомления
     UserEntity user = userRepository
         .getUserById(userId)
         .orElseThrow(() -> new UserNotFoundException(deleteFileRequest.userToken()));
 
-    // Отправляем уведомление с именем пользователя
     notificationService.notifyFileDeleted(
         user.getEmail(),
-        user.getName(),  // ← передаем имя пользователя
+        user.getName(),
         deleteFileRequest.path(),
         userId
     );

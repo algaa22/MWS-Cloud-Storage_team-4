@@ -24,21 +24,23 @@ import org.springframework.stereotype.Repository;
 public class MinioContentRepository implements FileContentRepository {
 
   private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
-  private final MinioWrapper wrapper = new MinioWrapper();
   private final MinioConfig minioConfig;
+  private final MinioWrapper wrapper;
   private final String bucketName;
   private final String region;
 
   private MinioAsyncClient minioClient;
 
-  public MinioContentRepository(MinioConfig minioConfig) {
+  public MinioContentRepository(MinioConfig minioConfig, MinioWrapper wrapper) {
     this.minioConfig = minioConfig;
+    this.wrapper = wrapper;
+
     this.bucketName = minioConfig.userDataBucket().name();
     this.region = minioConfig.region();
   }
 
   @PostConstruct
-  private void initialize() {
+  public void initialize() {
     try {
       minioClient =
           MinioAsyncClient.builder()

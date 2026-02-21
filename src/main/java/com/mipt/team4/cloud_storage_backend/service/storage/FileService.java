@@ -20,6 +20,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFil
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
@@ -33,6 +34,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -48,15 +50,16 @@ public class FileService {
       throws UserNotFoundException, StorageFileAlreadyExistsException {
     UUID userId = userSessionService.extractUserIdFromToken(uploadSession.userToken());
     String uploadSessionId = uploadSession.sessionId();
-    String path = uploadSession.path();
+    UUID parentId = uploadSession.parentId();
+    String name = uploadSession.name();
 
     if (activeUploads.containsKey(uploadSessionId)) {
-      throw new StorageFileAlreadyExistsException(path);
+      throw new StorageFileAlreadyExistsException(parentId, name);
     }
 
-    Optional<StorageEntity> fileEntity = storageRepository.getFile(userId, path);
+    Optional<StorageEntity> fileEntity = storageRepository.getFile(userId, parentId, name);
     if (fileEntity.isPresent()) {
-      throw new StorageFileAlreadyExistsException(path);
+      throw new StorageFileAlreadyExistsException(parentId, name);
     }
 
     activeUploads.put(
@@ -66,10 +69,12 @@ public class FileService {
             StorageEntity.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
-                .mimeType(MimeTypeDetector.detect(path))
-                .path(path)
+                .mimeType(MimeTypeDetector.detect(name))
+                .parentId(parentId)
+                .name(name)
                 .isDirectory(false)
                 .tags(uploadSession.tags())
+                .status(FileStatus.PENDING)
                 .build()));
   }
 
@@ -88,6 +93,7 @@ public class FileService {
     }
   }
 
+  @Transactional
   public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
       throws TooSmallFilePartException,
           CombineChunksToPartException,
@@ -121,7 +127,10 @@ public class FileService {
       userRepository.increaseUsedStorage(fileEntity.getUserId(), uploadState.getFileSize());
 
       return new ChunkedUploadFileResultDto(
-          session.path(), uploadState.getFileSize(), uploadState.getTotalParts());
+          session.parentId(),
+          session.name(),
+          uploadState.getFileSize(),
+          uploadState.getTotalParts());
     } finally {
       activeUploads.remove(sessionId);
     }
@@ -132,11 +141,13 @@ public class FileService {
     UUID fileId = UUID.randomUUID();
     UUID userId = userSessionService.extractUserIdFromToken(fileUploadRequest.userToken());
 
-    if (storageRepository.fileExists(userId, fileUploadRequest.path())) {
-      throw new StorageFileAlreadyExistsException(fileUploadRequest.path());
+    if (storageRepository.fileExists(
+        userId, fileUploadRequest.parentId(), fileUploadRequest.name())) {
+      throw new StorageFileAlreadyExistsException(
+          fileUploadRequest.parentId(), fileUploadRequest.name());
     }
 
-    String mimeType = MimeTypeDetector.detect(fileUploadRequest.path());
+    String mimeType = MimeTypeDetector.detect(fileUploadRequest.name());
     byte[] data = fileUploadRequest.data();
 
     StorageEntity entity =
@@ -145,9 +156,11 @@ public class FileService {
             .userId(userId)
             .mimeType(mimeType)
             .size(data.length)
-            .path(fileUploadRequest.path())
+            .parentId(fileUploadRequest.parentId())
+            .name(fileUploadRequest.name())
             .isDirectory(false)
             .tags(fileUploadRequest.tags())
+            .status(FileStatus.READY)
             .build();
 
     storageRepository.addFile(entity, data);
@@ -158,83 +171,86 @@ public class FileService {
       throws UserNotFoundException, StorageFileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(fileDownload.userToken());
 
-    Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileDownload.path());
+    Optional<StorageEntity> entityOpt =
+        storageRepository.getFile(userId, fileDownload.parentId(), fileDownload.name());
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileDownload.path()));
+        entityOpt.orElseThrow(
+            () -> new StorageFileNotFoundException(fileDownload.parentId(), fileDownload.name()));
 
     return new FileDownloadDto(
-        fileDownload.path(),
+        fileDownload.parentId(),
+        fileDownload.name(),
         entityOpt.get().getMimeType(),
         storageRepository.downloadFile(entity),
         entity.getSize());
   }
 
+  @Transactional
   public void deleteFile(SimpleFileOperationRequest deleteFileRequest)
       throws UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
     UUID userId = userSessionService.extractUserIdFromToken(deleteFileRequest.userToken());
-    Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, deleteFileRequest.path());
+    Optional<StorageEntity> entityOpt =
+        storageRepository.getFile(userId, deleteFileRequest.parentId(), deleteFileRequest.name());
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(deleteFileRequest.path()));
+        entityOpt.orElseThrow(
+            () ->
+                new StorageFileNotFoundException(
+                    deleteFileRequest.parentId(), deleteFileRequest.name()));
 
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
   }
 
-  public List<StorageEntity> getFileList(GetFileListRequest filePathsRequest)
-      throws UserNotFoundException {
-    UUID userUuid = userSessionService.extractUserIdFromToken(filePathsRequest.userToken());
+  public List<StorageEntity> getFileList(GetFileListRequest request) throws UserNotFoundException {
+    UUID userUuid = userSessionService.extractUserIdFromToken(request.userToken());
     return storageRepository.getFilesList(
         new FileListFilter(
             userUuid,
-            filePathsRequest.includeDirectories(),
-            filePathsRequest.recursive(),
-            filePathsRequest.searchDirectory().orElse("")));
+            request.parentId().orElse(null),
+            request.includeDirectories(),
+            request.recursive()));
   }
 
   public StorageDto getFileInfo(SimpleFileOperationRequest fileInfoRequest)
       throws UserNotFoundException, StorageFileNotFoundException {
     UUID userUuid = userSessionService.extractUserIdFromToken(fileInfoRequest.userToken());
 
-    Optional<StorageEntity> entityOpt = storageRepository.getFile(userUuid, fileInfoRequest.path());
+    Optional<StorageEntity> entityOpt =
+        storageRepository.getFile(userUuid, fileInfoRequest.parentId(), fileInfoRequest.name());
     if (entityOpt.isEmpty()) {
-      throw new StorageFileNotFoundException(fileInfoRequest.path());
+      throw new StorageFileNotFoundException(fileInfoRequest.parentId(), fileInfoRequest.name());
     }
 
     return new StorageDto(entityOpt.get());
   }
 
-  public void changeFileMetadata(ChangeFileMetadataRequest changeFileMetadata)
+  @Transactional
+  public void changeFileMetadata(ChangeFileMetadataRequest request)
       throws UserNotFoundException,
           StorageFileNotFoundException,
           StorageFileAlreadyExistsException {
 
-    UUID userId = userSessionService.extractUserIdFromToken(changeFileMetadata.userToken());
-
-    Optional<StorageEntity> entityOpt =
-        storageRepository.getFile(userId, changeFileMetadata.oldPath());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(changeFileMetadata.oldPath()));
+        storageRepository
+            .getFileById(request.id())
+            .filter(f -> f.getUserId().equals(userId))
+            .orElseThrow(() -> new StorageFileNotFoundException(request.id()));
+    String targetName = request.newName().orElse(entity.getName());
+    UUID targetParentId =
+        request.newParentId().isPresent() ? request.newParentId().get() : entity.getParentId();
 
-    // TODO: Есть риск, что, пока мы обновляем entity, файл может быть удален другим потоком
-
-    if (changeFileMetadata.newPath().isPresent()) {
-      Optional<StorageEntity> existingFile =
-          storageRepository.getFile(userId, changeFileMetadata.newPath().get());
-      if (existingFile.isPresent()) {
-        throw new StorageFileAlreadyExistsException(changeFileMetadata.newPath().get());
+    if (request.newName().isPresent() || request.newParentId().isPresent()) {
+      if (storageRepository.fileExists(userId, targetParentId, targetName)) {
+        throw new StorageFileAlreadyExistsException(targetParentId, targetName);
       }
-
-      entity.setPath(changeFileMetadata.newPath().get());
+      entity.setName(targetName);
+      entity.setParentId(targetParentId);
     }
 
-    if (changeFileMetadata.tags().isPresent()) {
-      entity.setTags(changeFileMetadata.tags().get());
-    }
-
-    if (changeFileMetadata.visibility().isPresent()) {
-      entity.setVisibility(changeFileMetadata.visibility().get());
-    }
+    request.tags().ifPresent(entity::setTags);
+    request.visibility().ifPresent(entity::setVisibility);
 
     storageRepository.updateFile(entity);
   }

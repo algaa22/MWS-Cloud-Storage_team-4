@@ -4,18 +4,16 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import java.util.UUID;
 
-public record ChangeDirectoryPathRequest(
-    String userToken, String oldDirectoryPath, String newDirectoryPath) {
+public record DeleteDirectoryRequest(String userToken, UUID directoryId // Обязательно (что удаляем)
+    ) {
 
   public void validate(JwtService jwtService) throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
             Validators.validToken(jwtService, userToken),
-            Validators.mustBeDirectory("Old directory path", oldDirectoryPath),
-            Validators.mustBeDirectory("New directory path", newDirectoryPath),
-            Validators.notEqualIgnoreCase(
-                "Old and new directory paths", oldDirectoryPath, newDirectoryPath));
+            Validators.notNull("Directory ID", directoryId));
 
     Validators.throwExceptionIfNotValid(result);
   }

@@ -31,7 +31,8 @@ public class StorageEntity {
   @Builder.Default private String visibility = FileVisibility.PRIVATE.toString();
   @Builder.Default private boolean isDeleted = false;
   private List<String> tags;
-  private String path;
+  private UUID parentId;
+  private String name;
   private long size;
 
   @Builder.Default private FileStatus status = FileStatus.READY;

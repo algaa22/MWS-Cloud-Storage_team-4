@@ -4,14 +4,17 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import java.util.UUID;
 
-public record SimpleDirectoryOperationRequest(String userToken, String directoryPath) {
+public record CreateDirectoryRequest(
+    String userToken, UUID parentId, String name, UUID directoryId) {
 
   public void validate(JwtService jwtService) throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.mustBeDirectoryPath("Directory path", directoryPath),
-            Validators.validToken(jwtService, userToken));
+            Validators.validFileName("Directory name", name),
+            Validators.validToken(jwtService, userToken),
+            Validators.notNull("Directory id", directoryId));
 
     Validators.throwExceptionIfNotValid(result);
   }

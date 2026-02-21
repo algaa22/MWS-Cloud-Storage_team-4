@@ -1,3 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto;
 
-public record ChunkedUploadFileResultDto(String filePath, long fileSize, long totalParts) {}
+import java.util.UUID;
+
+public record ChunkedUploadFileResultDto(
+    UUID parentId, String name, long fileSize, long totalParts) {}

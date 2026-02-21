@@ -39,13 +39,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ChunkedUploadHandler {
   private final FileController fileController;
-
+  private final ObjectMapper mapper = new ObjectMapper();
   // TODO: ненужные поля (кроме isInProgress)
   private boolean isInProgress = false;
-  private List<String> currentFileTags;
   private String currentSessionId;
   private String currentUserToken;
-  private String currentFilePath;
+  private UUID currentParentId;
+  private String currentName;
+  private List<String> currentFileTags;
   private long receivedBytes = 0;
   private int receivedChunks = 0;
 
@@ -56,6 +57,7 @@ public class ChunkedUploadHandler {
           ValidationFailedException,
           StorageFileAlreadyExistsException,
           UserNotFoundException {
+
     if (isInProgress) {
       throw new TransferAlreadyStartedException();
     }
@@ -64,7 +66,7 @@ public class ChunkedUploadHandler {
 
     fileController.startChunkedUpload(
         new FileChunkedUploadRequest(
-            currentSessionId, currentUserToken, currentFilePath, currentFileTags));
+            currentSessionId, currentUserToken, currentParentId, currentName, currentFileTags));
 
     isInProgress = true;
     receivedChunks = 0;
@@ -72,10 +74,10 @@ public class ChunkedUploadHandler {
 
     if (log.isDebugEnabled()) {
       log.debug(
-          "Started chunked upload. Session: {}, user: {}, file: {}",
+          "Started chunked upload. Session: {}, name: {}, parentId: {}",
           currentSessionId,
-          currentUserToken,
-          currentFilePath);
+          currentName,
+          currentParentId);
     }
   }
 
@@ -95,7 +97,8 @@ public class ChunkedUploadHandler {
     chunkData.getBytes(chunkData.readerIndex(), chunkBytes);
 
     fileController.processFileChunk(
-        new UploadChunkRequest(currentSessionId, currentFilePath, receivedChunks, chunkBytes));
+        new UploadChunkRequest(
+            currentSessionId, currentName, currentParentId, receivedChunks, chunkBytes));
 
     receivedChunks++;
     receivedBytes += chunkSize;
@@ -138,9 +141,10 @@ public class ChunkedUploadHandler {
 
     if (log.isDebugEnabled()) {
       log.debug(
-          "Completed chunk upload. Session: {}, path: {}, chunks: {}, bytes: {}",
+          "Completed chunk upload. Session: {}, name: {}, parentId: {}, chunks: {}, bytes: {}",
           currentSessionId,
-          currentFilePath,
+          currentName,
+          currentParentId,
           receivedChunks,
           receivedBytes);
     }
@@ -153,7 +157,8 @@ public class ChunkedUploadHandler {
     isInProgress = false;
     currentSessionId = null;
     currentUserToken = null;
-    currentFilePath = null;
+    currentName = null;
+    currentParentId = null;
     currentFileTags = null;
     receivedBytes = 0;
     receivedChunks = 0;
@@ -163,16 +168,18 @@ public class ChunkedUploadHandler {
       throws QueryParameterNotFoundException, HeaderNotFoundException {
     currentSessionId = UUID.randomUUID().toString();
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-    currentFilePath = RequestUtils.getRequiredQueryParam(request, "path");
+    currentName = RequestUtils.getRequiredQueryParam(request, "name");
+    currentParentId = RequestUtils.getOptionalUuidQueryParam(request, "parentId");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
   }
 
   private void sendSuccessResponse(ChannelHandlerContext ctx, ChunkedUploadFileResultDto result) {
-    ObjectMapper mapper = new ObjectMapper();
+
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
-    json.put("path", result.filePath());
+    json.put("name", result.name());
+    json.put("parentId", result.parentId() != null ? result.parentId().toString() : null);
     json.put("fileSize", result.fileSize());
     json.put("totalParts", result.totalParts());
 

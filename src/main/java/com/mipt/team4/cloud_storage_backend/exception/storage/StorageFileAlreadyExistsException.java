@@ -1,8 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.exception.storage;
 
-public class StorageFileAlreadyExistsException extends Exception {
+import java.util.UUID;
 
-  public StorageFileAlreadyExistsException(String filePath) {
-    super("File already exists: path=" + filePath);
+public class StorageFileAlreadyExistsException extends RuntimeException {
+
+  public StorageFileAlreadyExistsException(UUID parentId, String name) {
+    super("File already exists: parent_id=" + parentId + "; name=" + name);
   }
 }

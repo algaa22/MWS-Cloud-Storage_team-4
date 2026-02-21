@@ -4,11 +4,10 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundExcept
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 public class RequestUtils {
 
@@ -16,6 +15,33 @@ public class RequestUtils {
       throws QueryParameterNotFoundException {
     return getQueryParam(request, paramName)
         .orElseThrow(() -> new QueryParameterNotFoundException(paramName));
+  }
+
+  // В классе RequestUtils
+  public static UUID getRequiredUuidQueryParam(HttpRequest request, String paramName)
+      throws QueryParameterNotFoundException {
+    String value = getRequiredQueryParam(request, paramName);
+    try {
+      return UUID.fromString(value);
+    } catch (IllegalArgumentException e) {
+      throw new QueryParameterNotFoundException(paramName + " must be a valid UUID");
+    }
+  }
+
+  public static UUID getOptionalUuidQueryParam(HttpRequest request, String paramName) {
+    String value = getOptionalQueryParam(request, paramName);
+    if (value == null || value.isEmpty()) {
+      return null;
+    }
+    try {
+      return UUID.fromString(value);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  public static String getOptionalQueryParam(HttpRequest request, String paramName) {
+    return getQueryParam(request, paramName).orElse(null);
   }
 
   public static String getQueryParam(HttpRequest request, String paramName, String defaultValue) {
@@ -27,10 +53,9 @@ public class RequestUtils {
     Map<String, List<String>> parameters = queryDecoder.parameters();
 
     if (parameters.containsKey(paramName) && !parameters.get(paramName).isEmpty()) {
-      String encodedValue = parameters.get(paramName).getFirst();
-      String decodedValue = URLDecoder.decode(encodedValue, StandardCharsets.UTF_8);
+      String value = parameters.get(paramName).getFirst();
 
-      return Optional.of(decodedValue);
+      return Optional.of(value);
     }
 
     return Optional.empty();

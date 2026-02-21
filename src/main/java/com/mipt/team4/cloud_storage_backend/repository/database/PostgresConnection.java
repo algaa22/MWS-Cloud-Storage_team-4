@@ -138,7 +138,7 @@ public class PostgresConnection implements DatabaseConnection {
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     retry_count INT DEFAULT 0,
                     error_message TEXT,
-            
+
                     CONSTRAINT check_no_self_reference CHECK (id != parent_id)
                 )
             """;

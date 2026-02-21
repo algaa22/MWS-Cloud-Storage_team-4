@@ -5,7 +5,7 @@ spring:
 netty:
   enable-logging: false
   enable-https: false
-  http-port: 8080
+  http-port: 8081
   https-port: 8443
   boss-threads: 1
   worker-threads: 4
@@ -52,3 +52,7 @@ storage:
 
   quotas:
     default-storage-limit: 10737418240
+
+  state-machine:
+    file-stale-time-min: 60
+    file-throttled-update-interval-sec: 15

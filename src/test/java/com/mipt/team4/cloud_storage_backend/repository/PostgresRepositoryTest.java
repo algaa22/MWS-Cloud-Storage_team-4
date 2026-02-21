@@ -4,14 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import com.mipt.team4.cloud_storage_backend.repository.storage.PostgresFileMetadataRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.time.LocalDateTime;
@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 @Tag("integration")
 public class PostgresRepositoryTest extends BasePostgresTest {
 
-  private static PostgresFileMetadataRepository fileMetadataRepository;
+  private static FileMetadataRepository fileMetadataRepository;
   private static UserRepository userRepository;
   private static PostgresConnection postgresConnection;
   private static StorageEntity commonFileEntity;
@@ -36,7 +36,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     BasePostgresTest.beforeAll();
 
     postgresConnection = TestUtils.createConnection(postgresContainer);
-    fileMetadataRepository = new PostgresFileMetadataRepository(postgresConnection);
+    fileMetadataRepository = new FileMetadataRepository(postgresConnection);
     userRepository = new UserRepository(postgresConnection);
 
     try {
@@ -73,7 +73,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   private static StorageEntity addTestFile() throws StorageFileAlreadyExistsException {
     StorageEntity fileEntity =
         StorageEntity.builder()
-            .entityId(UUID.randomUUID())
+            .id(UUID.randomUUID())
             .userId(testUserUuid)
             .mimeType("application/xml")
             .size(42L)
@@ -114,7 +114,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
   @Test
   void shouldAddAndDeleteFile_WithSameId()
-      throws StorageEntityNotFoundException, StorageFileAlreadyExistsException {
+      throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
     StorageEntity testFileEntity = addTestFile();
     assertTrue(
         fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));

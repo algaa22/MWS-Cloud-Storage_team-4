@@ -122,14 +122,21 @@ public class PostgresConnection implements DatabaseConnection {
         """
                 CREATE TABLE IF NOT EXISTS files (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     path VARCHAR(500) NOT NULL,
-                    file_size BIGINT NOT NULL,
+                    size BIGINT NOT NULL,
                     mime_type VARCHAR(100),
                     tags VARCHAR(500),
                     visibility VARCHAR(20) DEFAULT 'private',
                     is_deleted BOOLEAN DEFAULT false,
-                    is_directory BOOLEAN DEFAULT false
+                    is_directory BOOLEAN DEFAULT false,
+
+                    status VARCHAR(20) NOT NULL DEFAULT 'READY',
+                    operation_type VARCHAR(30),
+                    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    retry_count INT DEFAULT 0,
+                    error_message TEXT
                 )
             """;
 

@@ -8,15 +8,16 @@ import io.minio.errors.InsufficientDataException;
 import io.minio.errors.InternalException;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import org.springframework.stereotype.Component;
 
 @Component
 public class MinioWrapper {
 
-  public <T> T execute(MinioOperation<T> operation) {
+  public <T> T execute(Callable<T> operation) {
     try {
-      return operation.perform();
+      return operation.call();
     } catch (Exception e) {
       throw classifyException(e);
     }

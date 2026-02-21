@@ -6,9 +6,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @ConfigurationPropertiesScan
 @SpringBootApplication
+@EnableScheduling
 public class CloudStorageApplication {
   static void main(String[] args) {
     SpringApplication.run(CloudStorageApplication.class, args);

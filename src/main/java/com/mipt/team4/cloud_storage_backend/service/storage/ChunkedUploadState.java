@@ -1,43 +1,41 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class ChunkedUploadState {
 
   public final List<byte[]> chunks = new ArrayList<>();
   // TODO: сессия не удаляется, если completeMultipartUpload не вызван
-  private final UUID userId;
-  private final UUID fileId;
-  private final String path;
+  // TODO: нужны ли все поля session?
   private final FileChunkedUploadRequest session;
   private final Map<Integer, String> eTags = new HashMap<>();
+  private final StorageEntity entity;
   private long fileSize = 0;
   private int totalParts = 0;
   private int partSize = 0;
   private int partNum = 0;
   private String uploadId;
 
-  ChunkedUploadState(FileChunkedUploadRequest session, UUID userId, UUID fileId, String path) {
+  ChunkedUploadState(FileChunkedUploadRequest session, StorageEntity entity) {
     this.session = session;
-    this.userId = userId;
-    this.fileId = fileId;
-    this.path = path;
+    this.entity = entity;
   }
 
   String getOrCreateUploadId(StorageRepository repo) {
     if (uploadId == null) {
-      uploadId = repo.startMultipartUpload(userId, fileId);
+      uploadId = repo.startMultipartUpload(entity);
     }
 
     return uploadId;
   }
 
+  // TODO: LOMBOK
   public int getTotalParts() {
     return totalParts;
   }
@@ -48,18 +46,6 @@ public class ChunkedUploadState {
 
   public String getUploadId() {
     return uploadId;
-  }
-
-  public String getPath() {
-    return path;
-  }
-
-  public UUID getFileId() {
-    return fileId;
-  }
-
-  public UUID getUserId() {
-    return userId;
   }
 
   public Map<Integer, String> getETags() {
@@ -100,5 +86,9 @@ public class ChunkedUploadState {
 
   public void resetPartSize() {
     partSize = 0;
+  }
+
+  public StorageEntity getEntity() {
+    return entity;
   }
 }

@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
@@ -72,7 +72,7 @@ public class FilesRequestHandler {
   }
 
   public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken)
-      throws UserNotFoundException, StorageEntityNotFoundException, ValidationFailedException {
+      throws UserNotFoundException, StorageFileNotFoundException, ValidationFailedException {
     StorageDto storageDto =
         fileController.getFileInfo(new SimpleFileOperationRequest(filePath, userToken));
 
@@ -91,7 +91,7 @@ public class FilesRequestHandler {
 
   public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
+          StorageFileNotFoundException,
           ValidationFailedException,
           StorageIllegalAccessException,
           FileNotFoundException {
@@ -103,7 +103,7 @@ public class FilesRequestHandler {
   public void handleChangeFileMetadataRequest(
       ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken)
       throws UserNotFoundException,
-          StorageEntityNotFoundException,
+          StorageFileNotFoundException,
           StorageFileAlreadyExistsException,
           ValidationFailedException {
     Optional<String> newFilePath = RequestUtils.getQueryParam(request, "newPath");

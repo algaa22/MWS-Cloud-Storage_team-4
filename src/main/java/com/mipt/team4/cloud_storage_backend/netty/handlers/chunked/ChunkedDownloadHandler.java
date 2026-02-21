@@ -16,11 +16,13 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedInput;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -40,16 +42,33 @@ public class ChunkedDownloadHandler {
           QueryParameterNotFoundException,
           HeaderNotFoundException {
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-    String filePath = RequestUtils.getRequiredQueryParam(request, "path");
+    String name = RequestUtils.getRequiredQueryParam(request, "name");
+    UUID parentId = RequestUtils.getOptionalUuidQueryParam(request, "parentId");
 
     FileDownloadDto fileDownload =
-        fileController.downloadFile(new SimpleFileOperationRequest(filePath, userToken));
+        fileController.downloadFile(new SimpleFileOperationRequest(parentId, name, userToken));
 
     HttpResponse response =
         new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileDownload.size());
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_OCTET_STREAM);
-    response.headers().set("X-File-Path", fileDownload.path());
+    String contentType =
+        fileDownload.mimeType() != null ? fileDownload.mimeType() : "application/octet-stream";
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
+
+    String encodedFileName =
+        URLEncoder.encode(fileDownload.name(), StandardCharsets.UTF_8).replace("+", "%20");
+
+    response
+        .headers()
+        .set(
+            HttpHeaderNames.CONTENT_DISPOSITION,
+            "attachment; filename=\""
+                + fileDownload.name()
+                + "\"; filename*=UTF-8''"
+                + encodedFileName);
+
+    response.headers().set("X-File-Name", fileDownload.name());
     response.headers().set("X-File-Size", fileDownload.size());
     ctx.write(response);
 

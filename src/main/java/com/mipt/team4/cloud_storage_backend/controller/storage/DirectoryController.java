@@ -4,11 +4,12 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeDirectoryPathRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleDirectoryOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CreateDirectoryRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteDirectoryRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.MoveDirectoryRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.service.storage.DirectoryService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
-import java.io.FileNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
@@ -19,27 +20,33 @@ public class DirectoryController {
   private final DirectoryService service;
   private final JwtService jwtService;
 
-  public void createDirectory(SimpleDirectoryOperationRequest request)
+  public void createDirectory(CreateDirectoryRequest request)
       throws ValidationFailedException, UserNotFoundException, StorageFileAlreadyExistsException {
     request.validate(jwtService);
     service.createDirectory(request);
   }
 
-  public void changeDirectoryPath(ChangeDirectoryPathRequest request)
+  public void renameDirectory(RenameDirectoryRequest request)
       throws ValidationFailedException,
           UserNotFoundException,
           StorageFileAlreadyExistsException,
           StorageFileNotFoundException {
     request.validate(jwtService);
-    service.changeDirectoryPath(request);
+    service.renameDirectory(request.userToken(), request.directoryId(), request.newName());
   }
 
-  public void deleteDirectory(SimpleDirectoryOperationRequest request)
+  public void moveDirectory(MoveDirectoryRequest request)
       throws ValidationFailedException,
           UserNotFoundException,
-          StorageFileNotFoundException,
-          FileNotFoundException {
+          StorageFileAlreadyExistsException,
+          StorageFileNotFoundException {
     request.validate(jwtService);
-    service.deleteDirectory(request);
+    service.moveDirectory(request.userToken(), request.directoryId(), request.newParentId());
+  }
+
+  public void deleteDirectory(DeleteDirectoryRequest request)
+      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
+    request.validate(jwtService);
+    service.deleteDirectory(request.userToken(), request.directoryId());
   }
 }

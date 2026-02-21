@@ -73,7 +73,7 @@ public class StorageRepository {
         entity,
         FileOperationType.DELETE,
         () -> {
-          metadataRepository.deleteFile(entity.getUserId(), entity.getPath());
+          metadataRepository.deleteFile(entity.getUserId(), entity.getParentId(), entity.getName());
           contentRepository.hardDeleteFile(entity.getS3Key());
           return null;
         });
@@ -88,12 +88,16 @@ public class StorageRepository {
     return contentRepository.downloadObject(entity.getS3Key());
   }
 
-  public Optional<StorageEntity> getFile(UUID userId, String path) {
-    return metadataRepository.getFile(userId, path);
+  public Optional<StorageEntity> getFile(UUID userId, UUID parentId, String name) {
+    return metadataRepository.getFile(userId, parentId, name);
   }
 
-  public boolean fileExists(UUID userId, String path) {
-    return metadataRepository.fileExists(userId, path);
+  public Optional<StorageEntity> getFileById(UUID fileId) {
+    return metadataRepository.getFileById(fileId);
+  }
+
+  public boolean fileExists(UUID userId, UUID parentId, String name) {
+    return metadataRepository.fileExists(userId, parentId, name);
   }
 
   public List<StorageEntity> getFilesList(FileListFilter filter) {

@@ -43,32 +43,27 @@ public class Validators {
     return validate(value != null, field, field + " cannot be null", "NOT_NULL");
   }
 
-  public static ValidationResult mustBeFilePath(String field, String path) {
-    return notBlank(field, path).thenCombine(() -> notDirectory(field, path));
-  }
+  public static ValidationResult validFileName(String field, String fileName) {
+    ValidationResult notBlankResult = notBlank(field, fileName);
+    if (!notBlankResult.isValid()) {
+      return notBlankResult;
+    }
 
-  public static ValidationResult mustBeDirectoryPath(String field, String path) {
-    return notBlank(field, path).thenCombine(() -> mustBeDirectory(field, path));
-  }
+    String invalidChars = "/\\:*?\"<>|";
 
-  public static ValidationResult mustBeDirectory(String field, String path) {
-    char lastChar = path.charAt(path.length() - 1);
-
-    return validate(
-        lastChar == '/' || lastChar == '\\',
-        field,
-        field + " must be path to directory",
-        "MUST_BE_FOLDER");
-  }
-
-  public static ValidationResult notDirectory(String field, String path) {
-    char lastChar = path.charAt(path.length() - 1);
+    boolean containsInvalidChar = false;
+    for (char c : invalidChars.toCharArray()) {
+      if (fileName.indexOf(c) >= 0) {
+        containsInvalidChar = true;
+        break;
+      }
+    }
 
     return validate(
-        lastChar != '/' && lastChar != '\\',
+        !containsInvalidChar,
         field,
-        field + " must not be path to directory",
-        "NOT_DIRECTORY");
+        field + " contains invalid characters (/, \\, :, *, ?, \", <, >, |)",
+        "INVALID_FILENAME");
   }
 
   public static ValidationResult notBlank(String field, String value) {

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-  <appender class="ch.qos.logback.core.ConsoleAppender" name="CONSOLE">
-    <encoder>
-      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-    </encoder>
-  </appender>
+    <appender class="ch.qos.logback.core.ConsoleAppender" name="CONSOLE">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
 
-  <logger level="WARN" name="org.apache.hc.client5"/>
+    <logger level="WARN" name="org.apache.hc.client5"/>
 
-  <logger level="WARN" name="org.apache.hc.client5.http.wire"/>
-  <logger level="WARN" name="org.apache.hc.client5.http.headers"/>
-  <logger level="WARN" name="org.apache.hc.client5.http.context"/>
-  <root level="INFO">
-    <appender-ref ref="CONSOLE"/>
-  </root>
+    <logger level="WARN" name="org.apache.hc.client5.http.wire"/>
+    <logger level="WARN" name="org.apache.hc.client5.http.headers"/>
+    <logger level="WARN" name="org.apache.hc.client5.http.context"/>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
 </configuration>

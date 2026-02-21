@@ -41,7 +41,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     try {
       testUserUuid = addTestUser();
-      commonFileEntity = addTestFile();
+      commonFileEntity = addTestFile(null, "root-file.xml");
     } catch (UserAlreadyExistsException | StorageFileAlreadyExistsException e) {
       throw new RuntimeException(e);
     }
@@ -50,8 +50,9 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @AfterAll
   protected static void afterAll() {
     BasePostgresTest.afterAll();
-
-    postgresConnection.disconnect();
+    if (postgresConnection != null) {
+      postgresConnection.disconnect();
+    }
   }
 
   private static UUID addTestUser() throws UserAlreadyExistsException {
@@ -70,15 +71,18 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     return uuid;
   }
 
-  private static StorageEntity addTestFile() throws StorageFileAlreadyExistsException {
+  private static StorageEntity addTestFile(UUID parentId, String name)
+      throws StorageFileAlreadyExistsException {
     StorageEntity fileEntity =
         StorageEntity.builder()
             .id(UUID.randomUUID())
             .userId(testUserUuid)
+            .parentId(parentId)
+            .name(name)
             .mimeType("application/xml")
             .size(42L)
-            .path("file" + UUID.randomUUID())
             .isDirectory(false)
+            .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
             .tags(List.of("some xml"))
             .build();
 
@@ -91,18 +95,20 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   void fileExists_ShouldReturnTrue_WhenFileExists() {
     assertTrue(
         fileMetadataRepository.fileExists(
-            commonFileEntity.getUserId(), commonFileEntity.getPath()));
+            commonFileEntity.getUserId(),
+            commonFileEntity.getParentId(),
+            commonFileEntity.getName()));
   }
 
   @Test
   void fileExists_ShouldReturnFalse_WhenFileNotFound() {
     assertFalse(
-        fileMetadataRepository.fileExists(commonFileEntity.getUserId(), "non-existent-file"));
+        fileMetadataRepository.fileExists(commonFileEntity.getUserId(), null, "non-existent-file"));
   }
 
   @Test
   void shouldReturnNull_WhenGetNonexistentFile() {
-    assertFalse(fileMetadataRepository.getFile(testUserUuid, "non-existent-path").isPresent());
+    assertTrue(fileMetadataRepository.getFile(testUserUuid, null, "non-existent-path").isEmpty());
   }
 
   @Test
@@ -115,12 +121,30 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @Test
   void shouldAddAndDeleteFile_WithSameId()
       throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
-    StorageEntity testFileEntity = addTestFile();
-    assertTrue(
-        fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));
+    String uniqueName = "delete-me-" + UUID.randomUUID();
+    StorageEntity testFileEntity = addTestFile(null, uniqueName);
+    assertTrue(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
 
-    fileMetadataRepository.deleteFile(testFileEntity.getUserId(), testFileEntity.getPath());
-    assertFalse(
-        fileMetadataRepository.fileExists(testFileEntity.getUserId(), testFileEntity.getPath()));
+    fileMetadataRepository.deleteFile(testFileEntity.getUserId(), null, uniqueName);
+    assertFalse(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
+  }
+
+  @Test
+  void hierarchyTest_ShouldDetectDescendant() throws StorageFileAlreadyExistsException {
+    StorageEntity folder =
+        StorageEntity.builder()
+            .id(UUID.randomUUID())
+            .userId(testUserUuid)
+            .name("parent-folder")
+            .isDirectory(true)
+            .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
+            .build();
+    fileMetadataRepository.addFile(folder);
+
+    StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
+
+    assertTrue(fileMetadataRepository.isDescendant(folder.getId(), childFile.getId()));
+
+    assertFalse(fileMetadataRepository.isDescendant(childFile.getId(), folder.getId()));
   }
 }

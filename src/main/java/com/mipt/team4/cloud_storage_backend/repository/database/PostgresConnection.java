@@ -123,7 +123,8 @@ public class PostgresConnection implements DatabaseConnection {
                 CREATE TABLE IF NOT EXISTS files (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    path VARCHAR(500) NOT NULL,
+                    parent_id UUID REFERENCES files(id) ON DELETE CASCADE,
+                    name VARCHAR(500) NOT NULL,
                     size BIGINT NOT NULL,
                     mime_type VARCHAR(100),
                     tags VARCHAR(500),
@@ -136,7 +137,9 @@ public class PostgresConnection implements DatabaseConnection {
                     started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     retry_count INT DEFAULT 0,
-                    error_message TEXT
+                    error_message TEXT,
+
+                    CONSTRAINT check_no_self_reference CHECK (id != parent_id)
                 )
             """;
 

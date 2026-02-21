@@ -124,7 +124,7 @@ public class StorageRepositoryWrapper {
 
   private void checkIfStatusIs(StorageEntity entity, FileStatus expectedStatus) {
     if (entity.getStatus() != expectedStatus) {
-      throw new StorageFileLockedException(entity.getPath());
+      throw new StorageFileLockedException(entity.getParentId(), entity.getName());
     }
   }
 

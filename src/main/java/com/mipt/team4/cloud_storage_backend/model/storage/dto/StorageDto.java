@@ -12,7 +12,8 @@ import lombok.Builder;
 public record StorageDto(
     UUID storageId,
     UUID userId,
-    String path,
+    UUID parentId,
+    String name,
     String type,
     String visibility,
     long size,
@@ -30,7 +31,8 @@ public record StorageDto(
     this(
         entity.getId(),
         entity.getUserId(),
-        entity.getPath(),
+        entity.getParentId(),
+        entity.getName(),
         entity.getMimeType(),
         entity.getVisibility(),
         entity.getSize(),

@@ -95,11 +95,9 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       } else {
         switch (method.name()) {
           case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, request, userToken);
-          case "POST" ->
-              filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
+          case "POST" -> filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
           case "PUT" ->
-              filesRequestHandler.handleChangeFileMetadataRequest(
-                  ctx, request, userToken);
+              filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, userToken);
           default -> ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
         }
       }

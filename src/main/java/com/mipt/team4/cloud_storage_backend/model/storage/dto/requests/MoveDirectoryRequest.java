@@ -7,11 +7,11 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.UUID;
 
 public record MoveDirectoryRequest(String userToken, UUID directoryId, UUID newParentId) {
-    public void validate(JwtService jwtService) throws ValidationFailedException {
-        ValidationResult result = Validators.all(
-                Validators.validToken(jwtService, userToken),
-                Validators.notNull("Directory ID", directoryId)
-        );
-        Validators.throwExceptionIfNotValid(result);
-    }
+  public void validate(JwtService jwtService) throws ValidationFailedException {
+    ValidationResult result =
+        Validators.all(
+            Validators.validToken(jwtService, userToken),
+            Validators.notNull("Directory ID", directoryId));
+    Validators.throwExceptionIfNotValid(result);
+  }
 }

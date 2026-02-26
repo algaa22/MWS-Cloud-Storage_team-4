@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -24,7 +23,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -66,7 +64,7 @@ public class FilesRequestHandler {
 
     rootNode.set("files", filesArray);
 
-    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
   public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken) {
@@ -83,13 +81,13 @@ public class FilesRequestHandler {
     rootNode.put("IsDeleted", storageDto.isDeleted());
     rootNode.put("Tags", FileTagsMapper.toString(storageDto.tags()));
 
-    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
   public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken) {
     fileController.deleteFile(new SimpleFileOperationRequest(filePath, userToken));
 
-    ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully deleted");
   }
 
   public void handleChangeFileMetadataRequest(
@@ -110,7 +108,7 @@ public class FilesRequestHandler {
     fileController.changeFileMetadata(
         new ChangeFileMetadataRequest(userToken, filePath, newFilePath, fileVisibility, fileTags));
 
-    ResponseUtils.sendSuccessResponse(
+    ResponseUtils.sendSuccess(
         ctx, HttpResponseStatus.OK, "File metadata successfully changed");
   }
 
@@ -127,6 +125,6 @@ public class FilesRequestHandler {
 
     fileController.uploadFile(new FileUploadRequest(filePath, userToken, fileTags, fileData));
 
-    ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully uploaded");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully uploaded");
   }
 }

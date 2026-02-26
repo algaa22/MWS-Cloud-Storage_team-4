@@ -69,7 +69,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     } else if (uri.startsWith("/api/files") && method.equals(HttpMethod.GET)) {
       chunkedDownload.startChunkedDownload(ctx, request);
     } else {
-      ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
+      ResponseUtils.sendMethodNotSupported(ctx, uri, method);
     }
   }
 

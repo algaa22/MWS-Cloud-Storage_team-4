@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.error;
 
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelDuplexHandler;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.AttributeKey;
@@ -20,14 +19,13 @@ public class GlobalErrorHandler extends ChannelDuplexHandler {
 
   @Override
   public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-    ctx.write(
-        msg,
-        promise.addListener(
+    ResponseUtils.write(ctx, msg)
+        .addListener(
             future -> {
               if (!future.isSuccess()) {
                 exceptionCaught(ctx, future.cause());
               }
-            }));
+            });
   }
 
   @Override
@@ -44,7 +42,7 @@ public class GlobalErrorHandler extends ChannelDuplexHandler {
     }
 
     if (ctx.channel().isActive() && ctx.channel().isOpen()) {
-      ResponseUtils.sendInternalServerErrorResponse(ctx).addListener(ChannelFutureListener.CLOSE);
+      ResponseUtils.sendInternalServerErrorAndClose(ctx);
     } else {
       ctx.close();
     }

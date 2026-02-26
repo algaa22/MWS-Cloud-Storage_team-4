@@ -6,4 +6,8 @@ public class FatalStorageException extends BaseStorageException {
   public FatalStorageException(String message, Throwable cause) {
     super(message, cause, HttpResponseStatus.INTERNAL_SERVER_ERROR);
   }
+
+  public FatalStorageException(String message) {
+    super(message, HttpResponseStatus.INTERNAL_SERVER_ERROR);
+  }
 }

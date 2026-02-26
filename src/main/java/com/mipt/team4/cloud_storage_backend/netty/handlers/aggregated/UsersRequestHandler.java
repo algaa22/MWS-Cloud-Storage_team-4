@@ -69,7 +69,7 @@ public class UsersRequestHandler {
     userController.logoutUser(
         new SimpleUserRequest(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
-    ResponseUtils.sendSuccessResponse(
+    ResponseUtils.sendSuccess(
         ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
   }
 
@@ -88,7 +88,7 @@ public class UsersRequestHandler {
     rootNode.put("UsedStorage", userInfo.usedStorage());
     rootNode.put("IsActive", userInfo.isActive());
 
-    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
   public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request)
@@ -107,7 +107,7 @@ public class UsersRequestHandler {
             newUserPassword,
             newUsername));
 
-    ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "User info successfully changed");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "User info successfully changed");
   }
 
   public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request)
@@ -127,6 +127,6 @@ public class UsersRequestHandler {
     rootNode.put("AccessToken", tokenPair.accessToken());
     rootNode.put("RefreshToken", tokenPair.refreshToken());
 
-    ResponseUtils.sendJsonResponse(ctx, status, rootNode);
+    ResponseUtils.sendJson(ctx, status, rootNode);
   }
 }

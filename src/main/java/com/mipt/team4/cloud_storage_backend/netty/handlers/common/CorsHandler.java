@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
 import com.mipt.team4.cloud_storage_backend.config.props.CorsConfig;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -84,7 +85,7 @@ public class CorsHandler extends ChannelDuplexHandler {
 
     addCorsHeaders(response);
 
-    ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+    ResponseUtils.send(ctx, response).addListener(ChannelFutureListener.CLOSE);
   }
 
   private void addCorsHeaders(HttpResponse response) {

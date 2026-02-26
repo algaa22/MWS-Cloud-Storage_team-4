@@ -10,7 +10,7 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import io.netty.channel.ChannelFuture;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpResponse;
@@ -51,7 +51,8 @@ public class ChunkedDownloadHandler {
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_OCTET_STREAM);
     response.headers().set("X-File-Path", fileDownload.path());
     response.headers().set("X-File-Size", fileDownload.size());
-    ctx.write(response);
+
+    ResponseUtils.write(ctx, response);
 
     ChunkedInput<HttpContent> chunkedInput =
         new CustomChunkedInput(
@@ -59,7 +60,6 @@ public class ChunkedDownloadHandler {
             storageConfig.rest().fileDownloadChunkSize(),
             fileDownload.size());
 
-    ChannelFuture future = ctx.writeAndFlush(chunkedInput);
-    future.addListener(ChannelFutureListener.CLOSE);
+    ResponseUtils.send(ctx, chunkedInput).addListener(ChannelFutureListener.CLOSE);
   }
 }

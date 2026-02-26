@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedException;
@@ -102,9 +103,9 @@ public class StorageRepositoryWrapper {
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     try {
       return operation.apply();
-    } catch (Exception exception) {
+    } catch (BaseStorageException exception) {
       handleException(exception, entity, operationType);
-      throw new RuntimeException(exception); // TODO: BaseStorageException
+      throw exception;
     }
   }
 
@@ -183,6 +184,6 @@ public class StorageRepositoryWrapper {
 
   @FunctionalInterface
   public interface FileOperation<T> {
-    T apply() throws Exception;
+    T apply() throws BaseStorageException;
   }
 }

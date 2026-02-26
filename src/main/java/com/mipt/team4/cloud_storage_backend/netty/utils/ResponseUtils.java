@@ -89,7 +89,8 @@ public class ResponseUtils {
     return executeWrite(ctx, response, ctx::write);
   }
 
-  private static ChannelFuture executeWrite(ChannelHandlerContext ctx, Object response, Function<Object, ChannelFuture> operation) {
+  private static ChannelFuture executeWrite(
+      ChannelHandlerContext ctx, Object response, Function<Object, ChannelFuture> operation) {
     if (ctx.channel().isActive()) {
       return operation.apply(response);
     }

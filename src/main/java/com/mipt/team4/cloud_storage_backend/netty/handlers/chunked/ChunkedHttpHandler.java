@@ -35,26 +35,10 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
-    try {
-      if (msg instanceof HttpRequest request) {
-        handleHttpRequest(ctx, request);
-      } else if (msg instanceof HttpContent content) {
-        handleHttpContent(ctx, content);
-      }
-    } catch (StorageFileAlreadyExistsException
-        | UserNotFoundException
-        | UploadSessionNotFoundException
-        | HeaderNotFoundException
-        | TransferAlreadyStartedException
-        | TransferNotStartedYetException
-        | StorageFileNotFoundException
-        | TooSmallFilePartException
-        | ValidationFailedException
-        | QueryParameterNotFoundException e) {
-      ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
-    } catch (CombineChunksToPartException | MissingFilePartException e) {
-      ResponseUtils.sendInternalServerErrorResponse(ctx);
-      log.error("Internal server error: {}", e.getMessage());
+    if (msg instanceof HttpRequest request) {
+      handleHttpRequest(ctx, request);
+    } else if (msg instanceof HttpContent content) {
+      handleHttpContent(ctx, content);
     }
   }
 

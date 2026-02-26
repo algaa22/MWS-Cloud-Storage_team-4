@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
-import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
@@ -51,7 +50,6 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
         | StorageFileNotFoundException
         | TooSmallFilePartException
         | ValidationFailedException
-        | StorageIllegalAccessException
         | QueryParameterNotFoundException e) {
       ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
     } catch (CombineChunksToPartException | MissingFilePartException e) {
@@ -65,7 +63,6 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
           UserNotFoundException,
           StorageFileNotFoundException,
           ValidationFailedException,
-          StorageIllegalAccessException,
           QueryParameterNotFoundException,
           HeaderNotFoundException,
           TransferAlreadyStartedException {

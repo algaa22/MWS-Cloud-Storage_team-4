@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.FatalStorageException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.RecoverableStorageException;
+import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
+import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
 import io.minio.errors.ErrorResponseException;
 import io.minio.errors.InsufficientDataException;
@@ -61,7 +61,7 @@ public class MinioWrapper {
 
       int httpStatus = minioEx.response().code();
 
-      return httpStatus >= HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
+      return httpStatus >= HttpResponseStatus.INTERNAL_SERVER_ERROR.code() // Все 500-ые статусы
           || httpStatus == HttpResponseStatus.TOO_MANY_REQUESTS.code();
     }
 

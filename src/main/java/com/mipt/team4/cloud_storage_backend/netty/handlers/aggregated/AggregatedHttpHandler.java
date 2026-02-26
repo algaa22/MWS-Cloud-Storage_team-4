@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
-import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
@@ -65,7 +64,6 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           | WrongPasswordException
           | StorageFileNotFoundException
           | StorageFileAlreadyExistsException
-          | StorageIllegalAccessException
           | IOException e) {
         ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
       } catch (StorageFileLockedException e) {
@@ -81,7 +79,6 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           UserNotFoundException,
           StorageFileNotFoundException,
           ValidationFailedException,
-          StorageIllegalAccessException,
           IOException,
           StorageFileAlreadyExistsException,
           HeaderNotFoundException {

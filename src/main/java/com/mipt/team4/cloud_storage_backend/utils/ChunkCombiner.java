@@ -20,7 +20,7 @@ public class ChunkCombiner {
 
       return outputStream.toByteArray();
     } catch (IOException e) {
-      throw new CombineChunksToPartException();
+      throw new CombineChunksToPartException(e);
     }
   }
 }

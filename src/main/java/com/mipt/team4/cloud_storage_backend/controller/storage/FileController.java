@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
@@ -75,7 +74,6 @@ public class FileController {
 
   public void deleteFile(SimpleFileOperationRequest request)
       throws ValidationFailedException,
-          StorageIllegalAccessException,
           UserNotFoundException,
           StorageFileNotFoundException,
           FileNotFoundException {

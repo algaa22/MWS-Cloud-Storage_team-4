@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
@@ -93,7 +92,6 @@ public class FilesRequestHandler {
       throws UserNotFoundException,
           StorageFileNotFoundException,
           ValidationFailedException,
-          StorageIllegalAccessException,
           FileNotFoundException {
     fileController.deleteFile(new SimpleFileOperationRequest(filePath, userToken));
 

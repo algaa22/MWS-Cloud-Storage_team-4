@@ -100,7 +100,7 @@ public class StorageRepository {
     return metadataRepository.getFilesList(filter);
   }
 
-  public void addDirectory(StorageEntity entity) throws StorageFileAlreadyExistsException {
+  public void addDirectory(StorageEntity entity) {
     metadataRepository.addFile(entity);
   }
 }

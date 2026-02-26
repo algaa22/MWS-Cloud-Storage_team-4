@@ -25,38 +25,32 @@ public class UserController {
   private final UserService service;
   private final JwtService jwtService;
 
-  public TokenPairDto registerUser(RegisterRequest request)
-      throws ValidationFailedException, UserAlreadyExistsException {
+  public TokenPairDto registerUser(RegisterRequest request) {
     request.validate();
     return service.registerUser(request);
   }
 
-  public TokenPairDto loginUser(LoginRequest request)
-      throws ValidationFailedException, InvalidEmailOrPassword, WrongPasswordException {
+  public TokenPairDto loginUser(LoginRequest request) {
     request.validate();
     return service.loginUser(request);
   }
 
-  public void logoutUser(SimpleUserRequest request)
-      throws ValidationFailedException, UserNotFoundException, InvalidSessionException {
+  public void logoutUser(SimpleUserRequest request) {
     request.validate(jwtService);
     service.logoutUser(request);
   }
 
-  public TokenPairDto refresh(RefreshTokenRequest request)
-      throws InvalidSessionException, ValidationFailedException {
+  public TokenPairDto refresh(RefreshTokenRequest request) {
     request.validate();
     return service.refreshTokens(request);
   }
 
-  public UserDto getUserInfo(SimpleUserRequest request)
-      throws ValidationFailedException, UserNotFoundException {
+  public UserDto getUserInfo(SimpleUserRequest request) {
     request.validate(jwtService);
     return service.getUserInfo(request);
   }
 
-  public void updateUserInfo(UpdateUserInfoRequest request)
-      throws ValidationFailedException, UserNotFoundException, WrongPasswordException {
+  public void updateUserInfo(UpdateUserInfoRequest request) {
     request.validate(jwtService);
     service.updateUserInfo(request);
   }

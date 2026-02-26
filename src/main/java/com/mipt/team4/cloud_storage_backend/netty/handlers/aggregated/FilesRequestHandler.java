@@ -38,8 +38,7 @@ public class FilesRequestHandler {
   private final FileController fileController;
 
   public void handleGetFilePathsListRequest(
-      ChannelHandlerContext ctx, HttpRequest request, String userToken)
-      throws UserNotFoundException, ValidationFailedException {
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     boolean includeDirectories =
         SafeParser.parseBoolean(
             "Include directories",
@@ -70,8 +69,7 @@ public class FilesRequestHandler {
     ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken)
-      throws UserNotFoundException, StorageFileNotFoundException, ValidationFailedException {
+  public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken) {
     StorageDto storageDto =
         fileController.getFileInfo(new SimpleFileOperationRequest(filePath, userToken));
 
@@ -88,11 +86,7 @@ public class FilesRequestHandler {
     ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken)
-      throws UserNotFoundException,
-          StorageFileNotFoundException,
-          ValidationFailedException,
-          FileNotFoundException {
+  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken) {
     fileController.deleteFile(new SimpleFileOperationRequest(filePath, userToken));
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
@@ -121,11 +115,7 @@ public class FilesRequestHandler {
   }
 
   public void handleUploadFileRequest(
-      ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken)
-      throws HeaderNotFoundException,
-          StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          ValidationFailedException {
+      ChannelHandlerContext ctx, FullHttpRequest request, String filePath, String userToken) {
     List<String> fileTags =
         FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
 

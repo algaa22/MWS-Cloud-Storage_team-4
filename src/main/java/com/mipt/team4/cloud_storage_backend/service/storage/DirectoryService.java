@@ -25,8 +25,7 @@ public class DirectoryService {
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
 
-  public void createDirectory(SimpleDirectoryOperationRequest createDirectory)
-      throws UserNotFoundException, StorageFileAlreadyExistsException {
+  public void createDirectory(SimpleDirectoryOperationRequest createDirectory) {
     UUID userId = userSessionService.extractUserIdFromToken(createDirectory.userToken());
     String directoryPath = createDirectory.directoryPath();
 
@@ -48,10 +47,7 @@ public class DirectoryService {
     storageRepository.addDirectory(directoryEntity);
   }
 
-  public void changeDirectoryPath(ChangeDirectoryPathRequest changeDirectory)
-      throws UserNotFoundException,
-          StorageFileAlreadyExistsException,
-          StorageFileNotFoundException {
+  public void changeDirectoryPath(ChangeDirectoryPathRequest changeDirectory) {
     UUID userId = userSessionService.extractUserIdFromToken(changeDirectory.userToken());
     String oldDirectoryPath = changeDirectory.oldDirectoryPath();
     String newDirectoryPath = changeDirectory.newDirectoryPath();
@@ -77,8 +73,7 @@ public class DirectoryService {
     }
   }
 
-  public void deleteDirectory(SimpleDirectoryOperationRequest request)
-      throws UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
+  public void deleteDirectory(SimpleDirectoryOperationRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     String directoryPath = request.directoryPath();
 

@@ -19,26 +19,17 @@ public class DirectoryController {
   private final DirectoryService service;
   private final JwtService jwtService;
 
-  public void createDirectory(SimpleDirectoryOperationRequest request)
-      throws ValidationFailedException, UserNotFoundException, StorageFileAlreadyExistsException {
+  public void createDirectory(SimpleDirectoryOperationRequest request) {
     request.validate(jwtService);
     service.createDirectory(request);
   }
 
-  public void changeDirectoryPath(ChangeDirectoryPathRequest request)
-      throws ValidationFailedException,
-          UserNotFoundException,
-          StorageFileAlreadyExistsException,
-          StorageFileNotFoundException {
+  public void changeDirectoryPath(ChangeDirectoryPathRequest request) {
     request.validate(jwtService);
     service.changeDirectoryPath(request);
   }
 
-  public void deleteDirectory(SimpleDirectoryOperationRequest request)
-      throws ValidationFailedException,
-          UserNotFoundException,
-          StorageFileNotFoundException,
-          FileNotFoundException {
+  public void deleteDirectory(SimpleDirectoryOperationRequest request) {
     request.validate(jwtService);
     service.deleteDirectory(request);
   }

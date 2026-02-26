@@ -25,7 +25,7 @@ import org.springframework.stereotype.Repository;
 public class FileMetadataRepository {
   private final PostgresConnection postgres;
 
-  public void addFile(StorageEntity fileEntity) throws StorageFileAlreadyExistsException {
+  public void addFile(StorageEntity fileEntity) {
     if (fileExists(fileEntity.getUserId(), fileEntity.getPath(), false)) {
       throw new StorageFileAlreadyExistsException(fileEntity.getPath());
     }
@@ -100,7 +100,7 @@ public class FileMetadataRepository {
     return Optional.of(result.getFirst());
   }
 
-  public void deleteFile(UUID userId, String path) throws StorageFileNotFoundException {
+  public void deleteFile(UUID userId, String path) {
     if (!fileExists(userId, path, false)) {
       throw new StorageFileNotFoundException(path);
     }

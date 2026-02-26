@@ -25,8 +25,7 @@ public class DirectoriesRequestHandler {
   private final DirectoryController directoryController;
 
   public void handleCreateDirectoryRequest(
-      ChannelHandlerContext ctx, String directoryPath, String userToken)
-      throws UserNotFoundException, StorageFileAlreadyExistsException, ValidationFailedException {
+      ChannelHandlerContext ctx, String directoryPath, String userToken) {
     directoryController.createDirectory(
         new SimpleDirectoryOperationRequest(userToken, directoryPath));
 
@@ -35,12 +34,7 @@ public class DirectoriesRequestHandler {
   }
 
   public void handleChangeDirectoryPathRequest(
-      ChannelHandlerContext ctx, HttpRequest request, String userToken)
-      throws QueryParameterNotFoundException,
-          UserNotFoundException,
-          StorageFileAlreadyExistsException,
-          StorageFileNotFoundException,
-          ValidationFailedException {
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String oldDirectoryPath;
     String newDirectoryPath;
 
@@ -55,11 +49,7 @@ public class DirectoriesRequestHandler {
   }
 
   public void handleDeleteDirectoryRequest(
-      ChannelHandlerContext ctx, String directoryPath, String userToken)
-      throws UserNotFoundException,
-          StorageFileNotFoundException,
-          ValidationFailedException,
-          FileNotFoundException {
+      ChannelHandlerContext ctx, String directoryPath, String userToken) {
 
     directoryController.deleteDirectory(
         new SimpleDirectoryOperationRequest(userToken, directoryPath));

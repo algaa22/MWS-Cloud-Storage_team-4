@@ -44,44 +44,22 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       method = request.method();
       uri = request.uri();
 
-      try {
-        if (uri.startsWith("/api/files")) {
-          handleFilesRequest(ctx, request);
-        } else if (uri.startsWith("/api/directories")) {
-          handleDirectoriesRequest(ctx, request);
-        } else if (uri.startsWith("/api/users")) {
-          handleUsersRequest(ctx, request);
-        } else {
-          ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
-        }
-      } catch (QueryParameterNotFoundException
-          | InvalidSessionException
-          | ValidationFailedException
-          | HeaderNotFoundException
-          | UserNotFoundException
-          | UserAlreadyExistsException
-          | InvalidEmailOrPassword
-          | WrongPasswordException
-          | StorageFileNotFoundException
-          | StorageFileAlreadyExistsException
-          | IOException e) {
-        ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
-      } catch (StorageFileLockedException e) {
-        ResponseUtils.sendErrorResponse(ctx, HttpResponseStatus.CONFLICT, e.getMessage());
+
+      if (uri.startsWith("/api/files")) {
+        handleFilesRequest(ctx, request);
+      } else if (uri.startsWith("/api/directories")) {
+        handleDirectoriesRequest(ctx, request);
+      } else if (uri.startsWith("/api/users")) {
+        handleUsersRequest(ctx, request);
+      } else {
+        ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
       }
     } else {
       ResponseUtils.sendMethodNotSupportedResponse(ctx, uri, method);
     }
   }
 
-  private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request)
-      throws QueryParameterNotFoundException,
-          UserNotFoundException,
-          StorageFileNotFoundException,
-          ValidationFailedException,
-          IOException,
-          StorageFileAlreadyExistsException,
-          HeaderNotFoundException {
+  private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request) {
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
@@ -105,13 +83,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     }
   }
 
-  private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request)
-      throws QueryParameterNotFoundException,
-          UserNotFoundException,
-          StorageFileNotFoundException,
-          ValidationFailedException,
-          FileNotFoundException,
-          StorageFileAlreadyExistsException {
+  private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request) {
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST)) {
@@ -129,14 +101,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     }
   }
 
-  private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request)
-      throws InvalidSessionException,
-          ValidationFailedException,
-          HeaderNotFoundException,
-          UserNotFoundException,
-          UserAlreadyExistsException,
-          InvalidEmailOrPassword,
-          WrongPasswordException {
+  private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request) {
     if (method.equals(HttpMethod.POST)) {
       switch (uri) {
         case "/api/users/auth/login" -> usersRequestHandler.handleLoginRequest(ctx, request);

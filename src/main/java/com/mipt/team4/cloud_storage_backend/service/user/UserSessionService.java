@@ -48,7 +48,7 @@ public class UserSessionService {
     return activeSessions.containsKey(token);
   }
 
-  public void blacklistToken(String token) throws InvalidSessionException {
+  public void blacklistToken(String token) {
     Optional<SessionDto> session = getSession(token);
 
     if (session.isEmpty()) {
@@ -97,7 +97,7 @@ public class UserSessionService {
     return Optional.empty();
   }
 
-  public UUID extractUserIdFromToken(String token) throws UserNotFoundException {
+  public UUID extractUserIdFromToken(String token) {
     if (isBlacklisted(token) || isSessionExpired(token)) {
       throw new UserNotFoundException(token);
     }

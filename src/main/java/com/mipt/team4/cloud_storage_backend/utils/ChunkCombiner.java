@@ -7,8 +7,7 @@ import java.io.IOException;
 
 public class ChunkCombiner {
 
-  public static byte[] combineChunksToPart(ChunkedUploadState uploadState)
-      throws CombineChunksToPartException {
+  public static byte[] combineChunksToPart(ChunkedUploadState uploadState) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       for (byte[] chunk : uploadState.chunks) {
         outputStream.write(chunk);

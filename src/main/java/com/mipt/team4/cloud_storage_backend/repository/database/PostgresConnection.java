@@ -78,8 +78,6 @@ public class PostgresConnection implements DatabaseConnection {
 
       return results;
     } catch (SQLException e) {
-      handleSqlException(e);
-
       throw new DbExecuteQueryException(query, e);
     }
   }
@@ -90,16 +88,7 @@ public class PostgresConnection implements DatabaseConnection {
 
       return statement.executeUpdate();
     } catch (SQLException e) {
-      handleSqlException(e);
-
       throw new DbExecuteUpdateException(query, e);
-    }
-  }
-
-  private void handleSqlException(SQLException e) {
-    // TODO: обработать больше ошибок
-    if (e.getSQLState().startsWith("08")) {
-      throw new DbUnavailableException(e);
     }
   }
 

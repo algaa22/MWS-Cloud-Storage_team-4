@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.channel;
 
 import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.GlobalErrorHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.error.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.ProtocolNegotiationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;

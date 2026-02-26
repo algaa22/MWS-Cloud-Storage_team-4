@@ -67,7 +67,8 @@ public class FilesRequestHandler {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleGetFileInfoRequest(ChannelHandlerContext ctx, String filePath, String userToken) {
+  public void handleGetFileInfoRequest(
+      ChannelHandlerContext ctx, String filePath, String userToken) {
     StorageDto storageDto =
         fileController.getFileInfo(new SimpleFileOperationRequest(filePath, userToken));
 
@@ -84,7 +85,8 @@ public class FilesRequestHandler {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleDeleteFileRequest(ChannelHandlerContext ctx, String filePath, String userToken) {
+  public void handleDeleteFileRequest(
+      ChannelHandlerContext ctx, String filePath, String userToken) {
     fileController.deleteFile(new SimpleFileOperationRequest(filePath, userToken));
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully deleted");
@@ -108,8 +110,7 @@ public class FilesRequestHandler {
     fileController.changeFileMetadata(
         new ChangeFileMetadataRequest(userToken, filePath, newFilePath, fileVisibility, fileTags));
 
-    ResponseUtils.sendSuccess(
-        ctx, HttpResponseStatus.OK, "File metadata successfully changed");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File metadata successfully changed");
   }
 
   public void handleUploadFileRequest(

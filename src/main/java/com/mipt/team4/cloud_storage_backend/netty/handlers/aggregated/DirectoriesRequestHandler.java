@@ -23,8 +23,7 @@ public class DirectoriesRequestHandler {
     directoryController.createDirectory(
         new SimpleDirectoryOperationRequest(userToken, directoryPath));
 
-    ResponseUtils.sendSuccess(
-        ctx, HttpResponseStatus.CREATED, "Directory successfully created");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.CREATED, "Directory successfully created");
   }
 
   public void handleChangeDirectoryPathRequest(
@@ -38,8 +37,7 @@ public class DirectoriesRequestHandler {
     directoryController.changeDirectoryPath(
         new ChangeDirectoryPathRequest(userToken, oldDirectoryPath, newDirectoryPath));
 
-    ResponseUtils.sendSuccess(
-        ctx, HttpResponseStatus.OK, "Directory path successfully changed");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Directory path successfully changed");
   }
 
   public void handleDeleteDirectoryRequest(

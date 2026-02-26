@@ -69,8 +69,7 @@ public class UsersRequestHandler {
     userController.logoutUser(
         new SimpleUserRequest(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
 
-    ResponseUtils.sendSuccess(
-        ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
   }
 
   public void handleGetUserRequest(ChannelHandlerContext ctx, HttpRequest request)

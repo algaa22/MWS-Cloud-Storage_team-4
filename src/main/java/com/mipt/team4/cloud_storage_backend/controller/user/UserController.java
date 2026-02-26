@@ -1,11 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
-import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
-import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.LoginRequest;

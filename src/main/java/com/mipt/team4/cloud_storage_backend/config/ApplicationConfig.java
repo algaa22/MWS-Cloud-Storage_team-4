@@ -23,13 +23,11 @@ public class ApplicationConfig {
   public MainChannelInitializer httpChannelInitializer(
       PipelineBuilder pipelineBuilder,
       SslContextFactory sslContextFactory,
-      ObjectProvider<GlobalErrorHandler> globalErrorHandler,
       ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
       NettyConfig nettyConfig) {
     return new MainChannelInitializer(
         pipelineBuilder,
         sslContextFactory,
-        globalErrorHandler,
         protocolNegotiationHandler,
         nettyConfig,
         ServerProtocol.HTTP);
@@ -39,13 +37,11 @@ public class ApplicationConfig {
   public MainChannelInitializer httpsChannelInitializer(
       PipelineBuilder pipelineBuilder,
       SslContextFactory sslContextFactory,
-      ObjectProvider<GlobalErrorHandler> globalErrorHandler,
       ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
       NettyConfig nettyConfig) {
     return new MainChannelInitializer(
         pipelineBuilder,
         sslContextFactory,
-        globalErrorHandler,
         protocolNegotiationHandler,
         nettyConfig,
         ServerProtocol.HTTPS);

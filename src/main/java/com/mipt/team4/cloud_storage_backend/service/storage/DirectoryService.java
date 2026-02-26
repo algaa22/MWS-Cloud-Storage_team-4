@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeDirectoryPathRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleDirectoryOperationRequest;
@@ -10,7 +9,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
-import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,8 +23,7 @@ public class DirectoryService {
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
 
-  public void createDirectory(SimpleDirectoryOperationRequest createDirectory)
-      throws UserNotFoundException, StorageFileAlreadyExistsException {
+  public void createDirectory(SimpleDirectoryOperationRequest createDirectory) {
     UUID userId = userSessionService.extractUserIdFromToken(createDirectory.userToken());
     String directoryPath = createDirectory.directoryPath();
 
@@ -48,10 +45,7 @@ public class DirectoryService {
     storageRepository.addDirectory(directoryEntity);
   }
 
-  public void changeDirectoryPath(ChangeDirectoryPathRequest changeDirectory)
-      throws UserNotFoundException,
-          StorageFileAlreadyExistsException,
-          StorageFileNotFoundException {
+  public void changeDirectoryPath(ChangeDirectoryPathRequest changeDirectory) {
     UUID userId = userSessionService.extractUserIdFromToken(changeDirectory.userToken());
     String oldDirectoryPath = changeDirectory.oldDirectoryPath();
     String newDirectoryPath = changeDirectory.newDirectoryPath();
@@ -77,8 +71,7 @@ public class DirectoryService {
     }
   }
 
-  public void deleteDirectory(SimpleDirectoryOperationRequest request)
-      throws UserNotFoundException, StorageFileNotFoundException, FileNotFoundException {
+  public void deleteDirectory(SimpleDirectoryOperationRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     String directoryPath = request.directoryPath();
 

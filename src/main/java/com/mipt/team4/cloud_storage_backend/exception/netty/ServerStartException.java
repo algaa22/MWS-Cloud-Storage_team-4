@@ -1,10 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.exception.netty;
 
-public class ServerStartException extends RuntimeException {
+import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 
-  public ServerStartException(String message) {
-    super(message);
-  }
+public class ServerStartException extends FatalStorageException {
 
   public ServerStartException(Throwable cause) {
     super("Failed to start the server", cause);

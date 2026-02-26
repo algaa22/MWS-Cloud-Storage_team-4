@@ -179,8 +179,7 @@ public class Validators {
     return ValidationResult.valid();
   }
 
-  public static void throwExceptionIfNotValid(ValidationResult result)
-      throws ValidationFailedException {
+  public static void throwExceptionIfNotValid(ValidationResult result) {
     if (!result.isValid()) {
       throw new ValidationFailedException(result);
     }

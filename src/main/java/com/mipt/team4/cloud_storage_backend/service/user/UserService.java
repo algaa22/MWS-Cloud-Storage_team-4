@@ -34,7 +34,7 @@ public class UserService {
   private final PasswordHasher passwordHasher;
   private final StorageConfig storageConfig;
 
-  public UserDto getUserInfo(SimpleUserRequest getUserInfoRequest) throws UserNotFoundException {
+  public UserDto getUserInfo(SimpleUserRequest getUserInfoRequest) {
     String token = getUserInfoRequest.token();
     UUID userId = userSessionService.extractUserIdFromToken(token);
     Optional<UserEntity> userOpt = userRepository.getUserById(userId);
@@ -56,8 +56,7 @@ public class UserService {
         userEntity.isActive());
   }
 
-  public TokenPairDto registerUser(RegisterRequest registerRequest)
-      throws UserAlreadyExistsException {
+  public TokenPairDto registerUser(RegisterRequest registerRequest) {
     if (userRepository.getUserByEmail(registerRequest.email()).isPresent()) {
       throw new UserAlreadyExistsException(registerRequest.email());
     }
@@ -81,8 +80,7 @@ public class UserService {
     return new TokenPairDto(session.token(), refreshToken.token());
   }
 
-  public TokenPairDto loginUser(LoginRequest loginRequest)
-      throws WrongPasswordException, InvalidEmailOrPassword {
+  public TokenPairDto loginUser(LoginRequest loginRequest) {
     Optional<UserEntity> userOpt = userRepository.getUserByEmail(loginRequest.email());
     if (userOpt.isEmpty()) {
       throw new InvalidEmailOrPassword();
@@ -101,8 +99,7 @@ public class UserService {
     return new TokenPairDto(usedSession.token(), refreshToken.token());
   }
 
-  public void logoutUser(SimpleUserRequest logoutRequest)
-      throws UserNotFoundException, InvalidSessionException {
+  public void logoutUser(SimpleUserRequest logoutRequest) {
     String token = logoutRequest.token();
 
     if (userSessionService.tokenExists(token)) {
@@ -115,8 +112,7 @@ public class UserService {
     }
   }
 
-  public TokenPairDto refreshTokens(RefreshTokenRequest refreshTokenRequest)
-      throws InvalidSessionException {
+  public TokenPairDto refreshTokens(RefreshTokenRequest refreshTokenRequest) {
     String refreshToken = refreshTokenRequest.refreshToken();
     RefreshTokenDto stored = refreshTokenService.validate(refreshToken);
 
@@ -143,8 +139,7 @@ public class UserService {
     return new TokenPairDto(newSession.token(), newRefreshToken.token());
   }
 
-  public void updateUserInfo(UpdateUserInfoRequest updateUserInfoRequest)
-      throws UserNotFoundException, WrongPasswordException {
+  public void updateUserInfo(UpdateUserInfoRequest updateUserInfoRequest) {
 
     UUID id = userSessionService.extractUserIdFromToken(updateUserInfoRequest.userToken());
     Optional<UserEntity> userOpt = userRepository.getUserById(id);

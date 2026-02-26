@@ -7,7 +7,6 @@ import com.mipt.team4.cloud_storage_backend.exception.database.DbConnectionExcep
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCreateTableException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
-import com.mipt.team4.cloud_storage_backend.exception.database.DbUnavailableException;
 import com.mipt.team4.cloud_storage_backend.exception.database.JdbcNotFoundException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -78,8 +77,6 @@ public class PostgresConnection implements DatabaseConnection {
 
       return results;
     } catch (SQLException e) {
-      handleSqlException(e);
-
       throw new DbExecuteQueryException(query, e);
     }
   }
@@ -90,16 +87,7 @@ public class PostgresConnection implements DatabaseConnection {
 
       return statement.executeUpdate();
     } catch (SQLException e) {
-      handleSqlException(e);
-
       throw new DbExecuteUpdateException(query, e);
-    }
-  }
-
-  private void handleSqlException(SQLException e) {
-    // TODO: обработать больше ошибок
-    if (e.getSQLState().startsWith("08")) {
-      throw new DbUnavailableException(e);
     }
   }
 

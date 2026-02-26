@@ -16,7 +16,7 @@ public class FileLoader {
     try {
       return new FileInputStream(filePath);
     } catch (FileNotFoundException e) {
-      throw new InputStreamNotFoundException(filePath);
+      throw new InputStreamNotFoundException(filePath, e);
     }
   }
 }

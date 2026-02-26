@@ -35,7 +35,7 @@ public class FileCleanupService {
 
     for (StorageEntity entity : staleFiles) {
       try {
-        handleScaleFile(entity);
+        handleStaleFile(entity);
       } catch (Exception e) {
         log.error("Failed to cleanup file {}", entity.getId(), e);
       }
@@ -43,7 +43,7 @@ public class FileCleanupService {
   }
 
   // TODO: @Transactional
-  private void handleScaleFile(StorageEntity entity) {
+  private void handleStaleFile(StorageEntity entity) {
     switch (entity.getOperationType()) {
       case UPLOAD -> {
         storageRepository.deleteFile(entity);

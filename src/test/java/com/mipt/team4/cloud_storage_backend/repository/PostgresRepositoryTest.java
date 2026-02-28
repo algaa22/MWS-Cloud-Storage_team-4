@@ -112,13 +112,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   }
 
   @Test
-  void shouldThrowException_WhenAddExistentFile() {
-    assertThrows(
-        StorageFileAlreadyExistsException.class,
-        () -> fileMetadataRepository.addFile(commonFileEntity));
-  }
-
-  @Test
   void shouldAddAndDeleteFile_WithSameId()
       throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
     String uniqueName = "delete-me-" + UUID.randomUUID();

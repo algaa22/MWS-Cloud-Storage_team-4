@@ -1,7 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
@@ -25,15 +23,12 @@ import org.springframework.stereotype.Repository;
 public class FileMetadataRepository {
   private final PostgresConnection postgres;
 
-  public void addFile(StorageEntity fileEntity) throws StorageFileAlreadyExistsException {
-    if (fileExists(fileEntity.getUserId(), fileEntity.getParentId(), fileEntity.getName(), false)) {
-      throw new StorageFileAlreadyExistsException(fileEntity.getParentId(), fileEntity.getName());
-    }
-
+  public void addFile(StorageEntity fileEntity) {
     postgres.executeUpdate(
         "INSERT INTO files (id, user_id, parent_id, name, size, mime_type, visibility, is_deleted, tags, is_directory, "
             + "status, operation_type, started_at, updated_at, retry_count, error_message) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            + "ON CONFLICT (user_id, path) DO NOTHING",
         Arrays.asList(
             fileEntity.getId(),
             fileEntity.getUserId(),
@@ -129,10 +124,6 @@ public class FileMetadataRepository {
   }
 
   public void deleteFile(UUID userId, UUID parentId, String name) {
-    if (!fileExists(userId, parentId, name, false)) {
-      throw new StorageFileNotFoundException(parentId, name);
-    }
-
     postgres.executeUpdate(
         "DELETE FROM files WHERE user_id = ? AND parent_id IS NOT DISTINCT FROM ? AND name = ?;",
         Arrays.asList(userId, parentId, name));

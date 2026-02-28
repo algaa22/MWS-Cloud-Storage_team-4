@@ -108,8 +108,7 @@ public class StorageRepositoryWrapper {
 
       throw exception;
     } catch (Exception exception) {
-      FatalStorageException fatalException =
-          new FatalStorageException("Unknown exception caught", exception);
+      FatalStorageException fatalException = new FatalStorageException(exception);
       handleException(fatalException, entity, operationType);
 
       throw fatalException;

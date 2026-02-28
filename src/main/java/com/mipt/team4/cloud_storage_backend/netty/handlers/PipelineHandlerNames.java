@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers;
 
-import io.netty.channel.ChannelHandler;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 

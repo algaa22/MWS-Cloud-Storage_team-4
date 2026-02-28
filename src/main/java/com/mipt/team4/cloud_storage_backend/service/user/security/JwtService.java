@@ -15,11 +15,10 @@ import org.springframework.stereotype.Service;
 
 /**
  * Сервис генерации и верификации JSON Web Tokens (JWT).
- * <p>
- * Использует алгоритм <b>HMAC-SHA256</b>. В токены инкапсулируются метаданные
- * пользователя (ID, Email) и технические атрибуты (jti, tokenType) для
- * предотвращения атак типа "Replay Attack" и разграничения прав доступа.
- * </p>
+ *
+ * <p>Использует алгоритм <b>HMAC-SHA256</b>. В токены инкапсулируются метаданные пользователя (ID,
+ * Email) и технические атрибуты (jti, tokenType) для предотвращения атак типа "Replay Attack" и
+ * разграничения прав доступа.
  */
 @Service
 public class JwtService {
@@ -56,13 +55,14 @@ public class JwtService {
 
   /**
    * Генерирует детерминированный токен с уникальным идентификатором (JTI).
+   *
    * <p><b>ч:</b>
+   *
    * <ul>
-   * <li>{@code sub}: ID пользователя</li>
-   * <li>{@code jti}: UUID для уникальности каждой генерации</li>
-   * <li>{@code tokenType}: Явное разделение на access/refresh</li>
+   *   <li>{@code sub}: ID пользователя
+   *   <li>{@code jti}: UUID для уникальности каждой генерации
+   *   <li>{@code tokenType}: Явное разделение на access/refresh
    * </ul>
-   * </p>
    */
   private String generateToken(UserEntity user, long expirationSec) {
     Date now = new Date();

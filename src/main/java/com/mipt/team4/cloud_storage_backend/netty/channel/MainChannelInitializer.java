@@ -13,7 +13,6 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.web.ServerProperties.Netty;
 
 public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   private final PipelineBuilder pipelineBuilder;

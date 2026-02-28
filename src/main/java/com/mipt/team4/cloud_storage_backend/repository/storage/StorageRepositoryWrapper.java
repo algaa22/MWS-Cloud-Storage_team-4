@@ -157,9 +157,24 @@ public class StorageRepositoryWrapper {
     entity.setErrorMessage(exception.getMessage());
 
     if (exception instanceof RecoverableStorageException) {
-      syncEntityWithDatabase(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
+      if (entity.getRetryCount() == storageConfig.stateMachine().maxRetryCount()) {
+        log.error(
+            "FATAL: Max retry count reached for operation {}, userId: {}, fileId: {}",
+            operationType,
+            entity.getUserId(),
+            entity.getId(),
+            exception);
+        syncEntityWithDatabase(entity, FileStatus.FATAL);
+      } else {
+        syncEntityWithDatabase(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
+      }
     } else if (exception instanceof FatalStorageException) {
-      log.error("FATAL: Failed to perform operation {}", operationType, exception);
+      log.error(
+          "FATAL: Failed to perform operation {}, userId: {}, fileId: {}",
+          operationType,
+          entity.getUserId(),
+          entity.getId(),
+          exception);
       syncEntityWithDatabase(entity, FileStatus.FATAL);
     } else {
       syncEntityWithDatabase(entity, FileStatus.READY);

@@ -15,5 +15,5 @@ public record StorageConfig(Rest rest, Auth auth, Quotas quotas, StateMachine st
 
   public record Quotas(long defaultStorageLimit) {}
 
-  public record StateMachine(int fileStaleTimeMin, int fileThrottledUpdateIntervalSec) {}
+  public record StateMachine(int maxRetryCount, int fileStaleTimeMin, int fileThrottledUpdateIntervalSec) {}
 }

@@ -61,7 +61,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   private PipelineType previousPipeline = null;
 
   @Override
-  public void channelRead(ChannelHandlerContext ctx, Object msg) {
+  public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     if (!(msg instanceof HttpObject)) {
       ReferenceCountUtil.release(msg);
       throw new NotHttpRequestException();
@@ -86,7 +86,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       }
     }
 
-    ctx.fireChannelRead(msg);
+    super.channelRead(ctx, msg);
   }
 
   private void cleanupPipeline(ChannelHandlerContext ctx) {

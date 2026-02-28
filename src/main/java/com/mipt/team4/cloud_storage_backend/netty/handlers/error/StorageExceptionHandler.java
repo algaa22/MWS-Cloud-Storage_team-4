@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 public class StorageExceptionHandler extends ChannelInboundHandlerAdapter {
 
   @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
     if (cause instanceof BaseStorageException storageException) {
       if (cause instanceof FatalStorageException) {
         log.error("A fatal error has been caught", cause);
@@ -27,6 +27,6 @@ public class StorageExceptionHandler extends ChannelInboundHandlerAdapter {
       return;
     }
 
-    ctx.fireExceptionCaught(cause);
+    super.exceptionCaught(ctx, cause);
   }
 }

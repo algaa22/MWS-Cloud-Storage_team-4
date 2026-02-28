@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.netty.utils;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpTrafficStrategySelector;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.StorageExceptionHandler;
 import io.netty.channel.ChannelPipeline;
@@ -15,6 +16,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PipelineBuilder {
   private final ObjectProvider<HttpTrafficStrategySelector> strategySelectors;
+  private final ObjectProvider<StorageExceptionHandler> storageExceptionHandlers;
+  private final ObjectProvider<GlobalErrorHandler> globalErrorHandlers;
+  private final ObjectProvider<IdleTimeoutHandler> idleTimeoutHandlers;
   private final ObjectProvider<CorsHandler> corsHandler;
 
   public void buildHttp11Pipeline(ChannelPipeline pipeline) {
@@ -26,7 +30,8 @@ public class PipelineBuilder {
     pipeline.addLast(PipelineHandlerNames.CORS, corsHandler.getObject());
     pipeline.addLast(PipelineHandlerNames.TRAFFIC_STRATEGY_SELECTOR, strategySelectors.getObject());
 
-    pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, new StorageExceptionHandler());
-    pipeline.addLast(PipelineHandlerNames.GLOBAL_ERROR, new GlobalErrorHandler());
+    pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, storageExceptionHandlers.getObject());
+    pipeline.addLast(PipelineHandlerNames.GLOBAL_ERROR, globalErrorHandlers.getObject());
+    pipeline.addLast(PipelineHandlerNames.IDLE_TIMEOUT, idleTimeoutHandlers.getObject());
   }
 }

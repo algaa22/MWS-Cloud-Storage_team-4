@@ -80,7 +80,7 @@ public class FileCleanupService {
         log.info("Cleanup: Retried deletion for file {}", entity.getId());
       }
       case CHANGE_METADATA -> {
-        storageRepositoryWrapper.forceRollbackOperation(entity);
+        storageRepositoryWrapper.resetToReady(entity);
         log.info(
             "Cleanup: Forced rollback to stuck metadata operation for file {}", entity.getId());
       }

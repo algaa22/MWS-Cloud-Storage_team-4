@@ -21,7 +21,7 @@ public class StorageRepository {
   private final StorageRepositoryWrapper wrapper;
 
   public void addFile(StorageEntity entity, byte[] data) {
-    wrapper.executeCreateOperation(
+    wrapper.wrapNewFileTask(
         entity,
         FileOperationType.UPLOAD,
         () -> {
@@ -33,7 +33,7 @@ public class StorageRepository {
   }
 
   public String startMultipartUpload(StorageEntity entity) {
-    return wrapper.executeStartComplexOperation(
+    return wrapper.initiateStep(
         entity,
         FileOperationType.UPLOAD,
         () -> {
@@ -43,7 +43,7 @@ public class StorageRepository {
   }
 
   public String uploadPart(StorageEntity entity, UploadPartRequest request) {
-    return wrapper.executeInProgressOperation(
+    return wrapper.processStep(
         entity,
         FileOperationType.UPLOAD,
         () ->
@@ -53,7 +53,7 @@ public class StorageRepository {
 
   public void completeMultipartUpload(
       StorageEntity entity, long fileSize, String uploadId, Map<Integer, String> eTags) {
-    wrapper.executeFinalComplexOperation(
+    wrapper.completeStep(
         entity,
         FileOperationType.UPLOAD,
         () -> {
@@ -64,11 +64,11 @@ public class StorageRepository {
   }
 
   public void updateFile(StorageEntity entity) {
-    wrapper.executeUpdateOperation(entity, FileOperationType.CHANGE_METADATA, () -> null);
+    wrapper.wrapUpdate(entity, FileOperationType.CHANGE_METADATA, () -> null);
   }
 
   public void deleteFile(StorageEntity entity) {
-    wrapper.executeUpdateOperation(
+    wrapper.wrapUpdate(
         entity,
         FileOperationType.DELETE,
         () -> {

@@ -16,11 +16,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * Менеджер активных пользовательских сессий и механизмов отзыва токенов.
+ *
+ * <p>Данная реализация использует In-Memory хранилище (ConcurrentHashMap). Для обеспечения
+ * безопасности при выходе (logout) используется механизм <b>Blacklisting</b>: токены помечаются как
+ * недействительные до момента их естественного истечения.
+ */
 @Service
 @RequiredArgsConstructor
 public class UserSessionService {
-
-  // TODO: Сделать его синглтоном (?)
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
   private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
   private final Duration accessTokenDuration = Duration.ofMinutes(15);
@@ -48,6 +53,13 @@ public class UserSessionService {
     return activeSessions.containsKey(token);
   }
 
+  /**
+   * Добавляет токен в черный список и инициирует превентивную очистку.
+   *
+   * <p>Токен будет считаться невалидным, даже если его подпись верна и срок действия еще не истек.
+   * Очистка черного списка происходит <b>On-Demand</b> при каждом вызове метода для экономии
+   * памяти.
+   */
   public void blacklistToken(String token) {
     Optional<SessionDto> session = getSession(token);
 

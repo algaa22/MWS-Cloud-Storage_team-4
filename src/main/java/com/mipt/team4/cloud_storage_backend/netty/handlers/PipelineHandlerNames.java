@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 public final class PipelineHandlerNames {
   public static final String SSL = "sslHandler";
   public static final String LOGGING = "loggingHandler";
+  public static final String IDLE_STATE = "idleStateHandler";
   public static final String HTTP2_MULTIPLEX = "http2MultiplexHandler";
 
   public static final String HTTP2_FRAME = "http2FrameCodec";
@@ -27,4 +28,5 @@ public final class PipelineHandlerNames {
 
   public static final String STORAGE_EXCEPTION = "storageExceptionHandler";
   public static final String GLOBAL_ERROR = "globalErrorHandler";
+  public static final String IDLE_TIMEOUT = "idleTimeoutHandler";
 }

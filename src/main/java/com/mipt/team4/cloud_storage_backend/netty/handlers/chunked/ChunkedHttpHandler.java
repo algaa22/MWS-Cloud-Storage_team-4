@@ -90,9 +90,9 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
   }
 
   @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
     chunkedUpload.cleanup();
 
-    ctx.fireExceptionCaught(cause);
+    super.exceptionCaught(ctx, cause);
   }
 }

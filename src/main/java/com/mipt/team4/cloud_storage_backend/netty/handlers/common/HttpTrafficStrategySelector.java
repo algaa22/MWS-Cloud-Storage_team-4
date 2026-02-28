@@ -24,12 +24,37 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+/**
+ * Динамический селектор стратегии обработки трафика.
+ *
+ * <p>Класс анализирует метаданные входящего HTTP-запроса и на лету перестраивает {@link
+ * ChannelPipeline}, переключаясь между агрегированной (в памяти) и потоковой (chunked) обработкой
+ * данных. <b>Логика выбора:</b>
+ *
+ * <ul>
+ *   <li>{@link PipelineType#CHUNKED}: Используется для загрузки файлов, превышающих лимит {@code
+ *       maxAggregatedContentLength}, и для скачивания файлов. Позволяет работать с большими данными
+ *       без риска OutOfMemory.
+ *   <li>{@link PipelineType#AGGREGATED}: Используется для стандартных API-запросов. Весь запрос
+ *       собирается в один FullHttpRequest для удобства обработки.
+ * </ul>
+ *
+ * <b>Важные нюансы реализации:</b>
+ *
+ * <ul>
+ *   <li>Имеет состояние (поле {@code previousPipeline}), поэтому помечен как
+ *       {@code @Scope("prototype")}. Для каждого нового соединения создается свой экземпляр.
+ *   <li>При переключении стратегий корректно удаляет старые хендлеры, предотвращая дублирование или
+ *       конфликты в пайплайне.
+ *   <li>Обеспечивает ручное управление счетчиком ссылок (Reference Counting) при возникновении
+ *       исключений, чтобы избежать утечек в Direct Memory.
+ * </ul>
+ */
 @Component
 @Scope("prototype")
 @Slf4j
 @RequiredArgsConstructor
 public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
-
   private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlers;
   private final ObjectProvider<AggregatedHttpHandler> aggregatedHttpHandlerProvider;
   private final StorageConfig storageConfig;
@@ -37,7 +62,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   private PipelineType previousPipeline = null;
 
   @Override
-  public void channelRead(ChannelHandlerContext ctx, Object msg) {
+  public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     if (!(msg instanceof HttpObject)) {
       ReferenceCountUtil.release(msg);
       throw new NotHttpRequestException();
@@ -62,7 +87,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       }
     }
 
-    ctx.fireChannelRead(msg);
+    super.channelRead(ctx, msg);
   }
 
   private void cleanupPipeline(ChannelHandlerContext ctx) {

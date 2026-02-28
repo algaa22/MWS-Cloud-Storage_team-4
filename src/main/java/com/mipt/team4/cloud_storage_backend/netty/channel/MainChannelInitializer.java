@@ -11,6 +11,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.springframework.beans.factory.ObjectProvider;
 
 public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
@@ -41,6 +42,9 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
     if (nettyConfig.enableLogging()) {
       pipeline.addFirst(PipelineHandlerNames.LOGGING, new LoggingHandler(LogLevel.INFO));
     }
+
+    pipeline.addLast(
+        PipelineHandlerNames.IDLE_STATE, new IdleStateHandler(0, 0, nettyConfig.idleTimeoutSec()));
 
     if (protocol == ServerProtocol.HTTPS) {
       pipeline.addLast(

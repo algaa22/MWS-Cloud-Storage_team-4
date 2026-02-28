@@ -12,6 +12,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+/**
+ * Сервис автоматической очистки и восстановления консистентности хранилища.
+ *
+ * <p>Выполняет периодическую проверку объектов, которые находятся в переходных состояниях (PENDING)
+ * дольше допустимого времени. Предотвращает утечки места в S3 и "зависание" метаданных в БД
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -21,7 +27,13 @@ public class FileCleanupService {
   private final StorageRepository storageRepository;
   private final StorageConfig storageConfig;
 
-  @Scheduled(cron = "17 42 * * * *")
+  /**
+   * Периодическая задача по поиску и обработке "протухших" (stale) файлов.
+   *
+   * <p>Выполняется по расписанию (cron). Файл считается stale, если его последнее обновление
+   * ({@code updatedAt}) было произведено ранее, чем {@code now() - staleTimeThreshold}.
+   */
+  @Scheduled(cron = "0 0 * * * *")
   public void cleanupStaleFiles() {
     int staleTime = storageConfig.stateMachine().fileStaleTimeMin();
     LocalDateTime threshold = LocalDateTime.now().minusMinutes(staleTime);
@@ -42,6 +54,20 @@ public class FileCleanupService {
     }
   }
 
+  /**
+   * Применяет стратегию восстановления в зависимости от типа прерванной операции:
+   *
+   * <ul>
+   *   <li><b>UPLOAD:</b> Полное удаление объекта из S3 и метаданных из БД, так как целостность
+   *       файла не гарантирована (загрузка прервана).
+   *   <li><b>DELETE:</b> Повторная попытка удаления. Если файл "завис" в статусе удаления, значит
+   *       физический объект в S3 мог остаться.
+   *   <li><b>CHANGE_METADATA:</b> Принудительный откат (Rollback) к предыдущему валидному состоянию
+   *       метаданных.
+   * </ul>
+   *
+   * @param entity сущность, требующая очистки или восстановления.
+   */
   // TODO: @Transactional
   private void handleStaleFile(StorageEntity entity) {
     switch (entity.getOperationType()) {

@@ -7,6 +7,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -92,12 +93,32 @@ public class ResponseUtils {
 
   private static ChannelFuture executeWrite(
       ChannelHandlerContext ctx, Object response, Function<Object, ChannelFuture> operation) {
-    if (ctx.channel().isActive()) {
-      return operation.apply(response);
-    }
+    ChannelPromise promise = ctx.newPromise();
 
-    ReferenceCountUtil.release(response);
-    return ctx.newSucceededFuture();
+    ctx.executor()
+        .execute(
+            () -> {
+              try {
+                if (ctx.channel().isActive()) {
+                  operation
+                      .apply(response)
+                      .addListener(
+                          future -> {
+                            if (future.isSuccess()) promise.setSuccess();
+                            else promise.setFailure(future.cause());
+                          });
+                } else {
+                  ReferenceCountUtil.release(response);
+                  promise.setSuccess();
+                }
+              } catch (Exception e) {
+                ReferenceCountUtil.safeRelease(response);
+                promise.setFailure(e);
+                ctx.fireExceptionCaught(e);
+              }
+            });
+
+    return promise;
   }
 
   public static FullHttpResponse createJson(HttpResponseStatus status, String json) {

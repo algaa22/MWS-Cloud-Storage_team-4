@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
+import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
+import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -7,6 +9,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.util.ReferenceCountUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -20,36 +23,47 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   private final FilesRequestHandler filesRequestHandler;
   private final UsersRequestHandler usersRequestHandler;
 
-  private HttpMethod method;
-  private String uri;
-
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
-    if (msg instanceof FullHttpRequest request) {
-      method = request.method();
-      uri = request.uri();
-
-      if (uri.startsWith("/api/files")) {
-        handleFilesRequest(ctx, request);
-      } else if (uri.startsWith("/api/directories")) {
-        handleDirectoriesRequest(ctx, request);
-      } else if (uri.startsWith("/api/users")) {
-        handleUsersRequest(ctx, request);
-      } else {
-        ResponseUtils.sendMethodNotSupported(ctx, uri, method);
-      }
-    } else {
-      ResponseUtils.sendMethodNotSupported(ctx, uri, method);
+    if (!(msg instanceof FullHttpRequest request)) {
+      throw new NotHttpRequestException();
     }
+
+    ReferenceCountUtil.retain(msg);
+    startVirtualProcessor(ctx, request);
   }
 
-  private void handleFilesRequest(ChannelHandlerContext ctx, FullHttpRequest request) {
+  private void startVirtualProcessor(ChannelHandlerContext ctx, FullHttpRequest request) {
+    Thread.startVirtualThread(
+        () -> {
+          try {
+            HttpMethod method = request.method();
+            String uri = request.uri();
+
+            if (uri.startsWith("/api/files")) {
+              handleFilesRequest(ctx, request, uri, method);
+            } else if (uri.startsWith("/api/directories")) {
+              handleDirectoriesRequest(ctx, request, uri, method);
+            } else if (uri.startsWith("/api/users")) {
+              handleUsersRequest(ctx, request, uri, method);
+            } else {
+              ResponseUtils.sendMethodNotSupported(ctx, uri, method);
+            }
+          } catch (Exception e) {
+            ctx.executor().execute(() -> ctx.fireExceptionCaught(e));
+          } finally {
+            ReferenceCountUtil.release(request);
+          }
+        });
+  }
+
+  private void handleFilesRequest(
+      ChannelHandlerContext ctx, FullHttpRequest request, String uri, HttpMethod method) {
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
       filesRequestHandler.handleGetFileListRequest(ctx, request, userToken);
     } else {
-
       if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET)) {
         filesRequestHandler.handleGetFileInfoRequest(ctx, request, userToken);
       } else {
@@ -64,13 +78,13 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     }
   }
 
-  private void handleDirectoriesRequest(ChannelHandlerContext ctx, HttpRequest request) {
+  private void handleDirectoriesRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String uri, HttpMethod method) {
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST)) {
       directoriesRequestHandler.handleChangeDirectoryRequest(ctx, request, userToken);
     } else {
-
       if (uri.startsWith("/api/directories") && method.equals(HttpMethod.PUT)) {
         directoriesRequestHandler.handleCreateDirectoryRequest(ctx, request, userToken);
       } else if (method.equals(HttpMethod.DELETE)) {
@@ -81,7 +95,8 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     }
   }
 
-  private void handleUsersRequest(ChannelHandlerContext ctx, HttpRequest request) {
+  private void handleUsersRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String uri, HttpMethod method) {
     if (method.equals(HttpMethod.POST)) {
       switch (uri) {
         case "/api/users/auth/login" -> usersRequestHandler.handleLoginRequest(ctx, request);

@@ -1,18 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -113,10 +101,10 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     String uri = request.uri();
     HttpMethod method = request.method();
 
-    if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
-      chunkedUpload.startChunkedUpload(request);
-    } else if (uri.startsWith("/api/files") && method.equals(HttpMethod.GET)) {
-      chunkedDownload.startChunkedDownload(ctx, request);
+    if (uri.startsWith("/api/files/upload/resume") && method.equals(HttpMethod.POST)) {
+      chunkedUpload.resume(ctx, request);
+    } else if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
+      chunkedUpload.start(request);
     } else {
       ResponseUtils.sendMethodNotSupported(ctx, uri, method);
     }
@@ -124,9 +112,9 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
 
   private void handleHttpContent(ChannelHandlerContext ctx, HttpContent content) {
     if (content instanceof LastHttpContent) {
-      chunkedUpload.completeChunkedUpload(ctx, (LastHttpContent) content);
+      chunkedUpload.complete(ctx, (LastHttpContent) content);
     } else {
-      chunkedUpload.handleFileChunk(content);
+      chunkedUpload.handleChunk(ctx, content);
     }
   }
 

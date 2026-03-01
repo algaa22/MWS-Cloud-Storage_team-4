@@ -4,6 +4,8 @@ import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
+import com.mipt.team4.cloud_storage_backend.exception.retry.ChangeMetadataRetriableException;
+import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
@@ -158,57 +160,75 @@ public class StorageRepositoryWrapper {
       Throwable throwable, StorageEntity entity, FileOperationType operationType) {
     entity.setErrorMessage(throwable.getMessage());
 
-    if (throwable instanceof RecoverableStorageException) {
-      handleRecoverableException(throwable, entity, operationType);
-    } else if (throwable instanceof FatalStorageException) {
-      handleFatalException(throwable, entity, operationType);
+    if (throwable instanceof RecoverableStorageException exception) {
+      handleRecoverableException(exception, entity, operationType);
+    } else if (throwable instanceof FatalStorageException exception) {
+      handleFatalException(exception, entity, operationType);
     } else {
       handleBusinessException(entity);
     }
   }
 
   private void handleRecoverableException(
-      Throwable throwable, StorageEntity entity, FileOperationType operationType) {
+      RecoverableStorageException exception,
+      StorageEntity entity,
+      FileOperationType operationType) {
     if (entity.getRetryCount() >= storageConfig.stateMachine().maxRetryCount()) {
       log.error(
           "FATAL: Max retry count reached for operation {}, userId: {}, fileId: {}",
           operationType,
           entity.getUserId(),
           entity.getId(),
-          throwable);
+          exception);
       syncEntityWithDatabase(entity, FileStatus.FATAL);
       return;
     }
 
     if (entity.getRetryCount() == 0) {
-      switch (operationType) {
-        case UPLOAD -> {
-          // TODO
-        }
-        case CHANGE_METADATA -> {
-          // TODO
-        }
-      }
-
-      return;
+      initiateRetryStrategy(exception, entity, operationType);
     }
 
     syncEntityWithDatabase(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
   }
 
   private void handleFatalException(
-      Throwable throwable, StorageEntity entity, FileOperationType operationType) {
+      FatalStorageException exception, StorageEntity entity, FileOperationType operationType) {
     log.error(
         "FATAL: Failed to perform operation {}, userId: {}, fileId: {}",
         operationType,
         entity.getUserId(),
         entity.getId(),
-        throwable);
+        exception);
     syncEntityWithDatabase(entity, FileStatus.FATAL);
   }
 
   private void handleBusinessException(StorageEntity entity) {
     syncEntityWithDatabase(entity, FileStatus.READY);
+  }
+
+
+  private void initiateRetryStrategy(
+      RecoverableStorageException exception,
+      StorageEntity entity,
+      FileOperationType operationType) {
+    switch (operationType) {
+      case UPLOAD -> {
+        try {
+          metadataRepository.deleteFile(entity.getUserId(), entity.getPath());
+        } catch (Exception e) {
+          log.warn(
+              "Failed to delete metadata after upload error. Ghost record may remain. File: {}",
+              entity.getPath(),
+              e);
+        }
+
+        throw new UploadRetriableException(exception);
+      }
+      case CHANGE_METADATA -> {
+        syncEntityWithDatabase(entity, FileStatus.READY, 0);
+        throw new ChangeMetadataRetriableException(exception);
+      }
+    }
   }
 
   private void syncEntityWithDatabase(StorageEntity entity, FileStatus newStatus) {
@@ -229,7 +249,8 @@ public class StorageRepositoryWrapper {
     }
 
     try {
-      metadataRepository.updateEntity(entity);
+      metadataRepository.updateEntity(
+          entity); // TODO: в failsafe (мб postgres и minio отдельно ретраить failsafe'ом?)
     } catch (Exception e) {
       log.error("FATAL: Failed to update file entity {}", entity.getId(), e);
     }

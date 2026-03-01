@@ -28,7 +28,15 @@ public class FileMetadataRepository {
         "INSERT INTO files (id, user_id, parent_id, name, size, mime_type, visibility, is_deleted, tags, is_directory, "
             + "status, operation_type, started_at, updated_at, retry_count, error_message) "
             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-            + "ON CONFLICT (user_id, path) DO NOTHING",
+            + "ON CONFLICT (user_id, path) "
+            + "DO UPDATE SET "
+            + "    size = EXCLUDED.size,"
+            + "    mime_type = EXCLUDED.mime_type,"
+            + "    tags = EXCLUDED.tags,"
+            + "    status = 'PENDING',"
+            + "    error_message = NULL,"
+            + "    updated_at = NOW() "
+            + "WHERE status != 'READY'",
         Arrays.asList(
             fileEntity.getId(),
             fileEntity.getUserId(),

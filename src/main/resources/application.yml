@@ -59,3 +59,10 @@ storage:
     max-retry-count: 3
     file-stale-time-min: 60
     file-throttled-update-interval-sec: 15
+
+  failsafe-retry:
+    max-attempts: 3
+    delay-factor: 2.0
+    first-delay: 200ms
+    max-delay: 1s
+    jitter: 0.1

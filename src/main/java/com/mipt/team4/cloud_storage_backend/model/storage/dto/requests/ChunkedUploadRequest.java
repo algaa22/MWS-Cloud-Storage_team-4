@@ -7,7 +7,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
 import java.util.Optional;
 
-public record FileChunkedUploadRequest(
+public record ChunkedUploadRequest(
     String sessionId, String userToken, Optional<String> parentId, String name, List<String> tags) {
 
   public void validate(JwtService jwtService) throws ValidationFailedException {

@@ -32,12 +32,7 @@ public class ChunkedDownloadHandler {
   private final StorageConfig storageConfig;
 
   // TODO: refactor
-  public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
-      throws UserNotFoundException,
-          StorageFileNotFoundException,
-          ValidationFailedException,
-          QueryParameterNotFoundException,
-          HeaderNotFoundException {
+  public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request) {
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 

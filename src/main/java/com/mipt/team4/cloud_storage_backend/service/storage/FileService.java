@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class FileService {
+  // TODO: нужен Scheduler для очистки старых сессий загрузки
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
 
   private final UserSessionService userSessionService;

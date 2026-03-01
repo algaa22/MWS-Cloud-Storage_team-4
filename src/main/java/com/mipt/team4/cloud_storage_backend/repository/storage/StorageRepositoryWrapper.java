@@ -8,17 +8,21 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedE
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+// TODO: доки с упоминанием failsafe ретраев
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
   private final FileMetadataRepository metadataRepository;
   private final StorageConfig storageConfig;
+  private final RetryPolicy<Object> retryPolicy;
 
   // TODO: @Transactional
 
@@ -90,7 +94,6 @@ public class StorageRepositoryWrapper {
   public <T> void completeStep(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsPending(entity);
-
     finalizeOperation(entity, operationType, operation);
   }
 
@@ -102,7 +105,7 @@ public class StorageRepositoryWrapper {
   private <T> T executeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     try {
-      return operation.apply();
+      return Failsafe.with(retryPolicy).get(operation::apply);
     } catch (BaseStorageException exception) {
       handleException(exception, entity, operationType);
 
@@ -152,32 +155,60 @@ public class StorageRepositoryWrapper {
   }
 
   private void handleException(
-      Exception exception, StorageEntity entity, FileOperationType operationType) {
-    entity.setErrorMessage(exception.getMessage());
+      Throwable throwable, StorageEntity entity, FileOperationType operationType) {
+    entity.setErrorMessage(throwable.getMessage());
 
-    if (exception instanceof RecoverableStorageException) {
-      if (entity.getRetryCount() == storageConfig.stateMachine().maxRetryCount()) {
-        log.error(
-            "FATAL: Max retry count reached for operation {}, userId: {}, fileId: {}",
-            operationType,
-            entity.getUserId(),
-            entity.getId(),
-            exception);
-        syncEntityWithDatabase(entity, FileStatus.FATAL);
-      } else {
-        syncEntityWithDatabase(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
-      }
-    } else if (exception instanceof FatalStorageException) {
+    if (throwable instanceof RecoverableStorageException) {
+      handleRecoverableException(throwable, entity, operationType);
+    } else if (throwable instanceof FatalStorageException) {
+      handleFatalException(throwable, entity, operationType);
+    } else {
+      handleBusinessException(entity);
+    }
+  }
+
+  private void handleRecoverableException(
+      Throwable throwable, StorageEntity entity, FileOperationType operationType) {
+    if (entity.getRetryCount() >= storageConfig.stateMachine().maxRetryCount()) {
       log.error(
-          "FATAL: Failed to perform operation {}, userId: {}, fileId: {}",
+          "FATAL: Max retry count reached for operation {}, userId: {}, fileId: {}",
           operationType,
           entity.getUserId(),
           entity.getId(),
-          exception);
+          throwable);
       syncEntityWithDatabase(entity, FileStatus.FATAL);
-    } else {
-      syncEntityWithDatabase(entity, FileStatus.READY);
+      return;
     }
+
+    if (entity.getRetryCount() == 0) {
+      switch (operationType) {
+        case UPLOAD -> {
+          // TODO
+        }
+        case CHANGE_METADATA -> {
+          // TODO
+        }
+      }
+
+      return;
+    }
+
+    syncEntityWithDatabase(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
+  }
+
+  private void handleFatalException(
+      Throwable throwable, StorageEntity entity, FileOperationType operationType) {
+    log.error(
+        "FATAL: Failed to perform operation {}, userId: {}, fileId: {}",
+        operationType,
+        entity.getUserId(),
+        entity.getId(),
+        throwable);
+    syncEntityWithDatabase(entity, FileStatus.FATAL);
+  }
+
+  private void handleBusinessException(StorageEntity entity) {
+    syncEntityWithDatabase(entity, FileStatus.READY);
   }
 
   private void syncEntityWithDatabase(StorageEntity entity, FileStatus newStatus) {

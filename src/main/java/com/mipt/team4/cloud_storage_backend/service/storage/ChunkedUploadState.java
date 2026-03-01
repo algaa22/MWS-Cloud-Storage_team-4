@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
 
+@Getter
 public class ChunkedUploadState {
 
   public final List<byte[]> chunks = new ArrayList<>();
@@ -35,33 +37,8 @@ public class ChunkedUploadState {
     return uploadId;
   }
 
-  // TODO: LOMBOK
-  public int getTotalParts() {
-    return totalParts;
-  }
-
-  public long getFileSize() {
-    return fileSize;
-  }
-
-  public String getUploadId() {
-    return uploadId;
-  }
-
-  public Map<Integer, String> getETags() {
-    return eTags;
-  }
-
   public void addCompletedPart(int partIndex, String eTag) {
     eTags.put(partIndex, eTag);
-  }
-
-  public FileChunkedUploadRequest getSession() {
-    return session;
-  }
-
-  public int getPartNum() {
-    return partNum;
   }
 
   public void increaseTotalParts() {
@@ -86,9 +63,5 @@ public class ChunkedUploadState {
 
   public void resetPartSize() {
     partSize = 0;
-  }
-
-  public StorageEntity getEntity() {
-    return entity;
   }
 }

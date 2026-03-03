@@ -77,8 +77,7 @@ public class DirectoryService {
     }
 
     if (metadataRepository.isDescendant(directoryId, newParentId)) {
-      throw new StorageDirectoryCycleException(
-          "Cannot move directory into its own sub-directory");
+      throw new StorageDirectoryCycleException("Cannot move directory into its own sub-directory");
     }
 
     if (metadataRepository.fileExists(userId, newParentId, dir.getName())) {

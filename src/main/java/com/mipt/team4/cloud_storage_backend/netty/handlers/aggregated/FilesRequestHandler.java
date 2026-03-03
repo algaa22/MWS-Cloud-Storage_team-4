@@ -52,7 +52,8 @@ public class FilesRequestHandler {
     ArrayNode filesArray = mapper.createArrayNode();
 
     if (files != null) {
-      for (StorageEntity file : files) { // TODO: entity в контроллере? put по dto через функции jackson
+      for (StorageEntity file :
+          files) { // TODO: entity в контроллере? put по dto через функции jackson
         ObjectNode fileNode = mapper.createObjectNode();
         fileNode.put("id", file.getId().toString());
         fileNode.put("parentId", String.valueOf(file.getParentId()));

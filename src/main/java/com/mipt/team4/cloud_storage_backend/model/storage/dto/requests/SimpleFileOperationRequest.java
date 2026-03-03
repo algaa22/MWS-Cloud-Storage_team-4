@@ -10,8 +10,7 @@ public record SimpleFileOperationRequest(String fileId, String userToken) {
   public void validate(JwtService jwtService) throws ValidationFailedException {
     ValidationResult result =
         Validators.all(
-            Validators.isUuid("File ID", fileId),
-            Validators.validToken(jwtService, userToken));
+            Validators.isUuid("File ID", fileId), Validators.validToken(jwtService, userToken));
 
     Validators.throwExceptionIfNotValid(result);
   }

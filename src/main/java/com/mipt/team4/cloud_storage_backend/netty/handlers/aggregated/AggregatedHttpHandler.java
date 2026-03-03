@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
-import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;

@@ -24,10 +24,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
+  private static final HttpObject POISON_PILL = new DefaultHttpContent(Unpooled.EMPTY_BUFFER);
   private final ChunkedUploadHandler chunkedUpload;
   private final ChunkedDownloadHandler chunkedDownload;
-
-  private static final HttpObject POISON_PILL = new DefaultHttpContent(Unpooled.EMPTY_BUFFER);
   private final BlockingQueue<HttpObject> httpObjectsQueue = new LinkedBlockingQueue<>();
   private boolean threadStarted = false;
 

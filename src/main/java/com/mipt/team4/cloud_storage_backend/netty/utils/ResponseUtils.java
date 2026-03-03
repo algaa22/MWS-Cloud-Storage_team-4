@@ -95,23 +95,28 @@ public class ResponseUtils {
       ChannelHandlerContext ctx, Object response, Function<Object, ChannelFuture> operation) {
     ChannelPromise promise = ctx.newPromise();
 
-    ctx.executor().execute(() -> {
-      try {
-        if (ctx.channel().isActive()) {
-          operation.apply(response).addListener(future -> {
-            if (future.isSuccess()) promise.setSuccess();
-            else promise.setFailure(future.cause());
-          });
-        } else {
-          ReferenceCountUtil.release(response);
-          promise.setSuccess();
-        }
-      } catch (Exception e) {
-        ReferenceCountUtil.safeRelease(response);
-        promise.setFailure(e);
-        ctx.fireExceptionCaught(e);
-      }
-    });
+    ctx.executor()
+        .execute(
+            () -> {
+              try {
+                if (ctx.channel().isActive()) {
+                  operation
+                      .apply(response)
+                      .addListener(
+                          future -> {
+                            if (future.isSuccess()) promise.setSuccess();
+                            else promise.setFailure(future.cause());
+                          });
+                } else {
+                  ReferenceCountUtil.release(response);
+                  promise.setSuccess();
+                }
+              } catch (Exception e) {
+                ReferenceCountUtil.safeRelease(response);
+                promise.setFailure(e);
+                ctx.fireExceptionCaught(e);
+              }
+            });
 
     return promise;
   }

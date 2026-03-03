@@ -4,7 +4,8 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "storage")
-public record StorageConfig(Rest rest, Auth auth, Quotas quotas, StateMachine stateMachine, FailsafeRetry failsafeRetry) {
+public record StorageConfig(
+    Rest rest, Auth auth, Quotas quotas, StateMachine stateMachine, FailsafeRetry failsafeRetry) {
   public record Rest(
       int maxAggregatedContentLength,
       long maxFileSize,
@@ -20,9 +21,5 @@ public record StorageConfig(Rest rest, Auth auth, Quotas quotas, StateMachine st
       int maxRetryCount, int fileStaleTimeMin, int fileThrottledUpdateIntervalSec) {}
 
   public record FailsafeRetry(
-      int maxAttempts,
-      double delayFactor,
-      Duration firstDelay,
-      Duration maxDelay,
-      double jitter) {}
+      int maxAttempts, double delayFactor, Duration firstDelay, Duration maxDelay, double jitter) {}
 }

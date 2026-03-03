@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Iterator;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -40,19 +41,19 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
       return;
     }
 
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
-
+    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
     String otherUserToken = userAuthUtils.sendRegisterRandomUserRequest(client);
-    HttpResponse<String> otherUserResponse =
-        client.send(
-            createRawRequestWithToken(otherUserToken), HttpResponse.BodyHandlers.ofString());
 
     if (pathParam == PathParam.EXISTENT_FILE) {
-      assertFileNotFound(otherUserResponse);
-    } else if (pathParam == PathParam.EXISTENT_FOLDER) {
+      assertFileNotFound(otherUserToken, fileId);
+    } else if (pathParam == PathParam.EXISTENT_DIRECTORY) {
       HttpResponse<String> ownerResponse =
           client.send(
               createRawRequestWithToken(currentUserToken), HttpResponse.BodyHandlers.ofString());
+
+      HttpResponse<String> otherUserResponse =
+          client.send(
+              createRawRequestWithToken(otherUserToken), HttpResponse.BodyHandlers.ofString());
 
       assertNotEquals(ownerResponse.body(), otherUserResponse.body());
     }
@@ -64,28 +65,7 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
       return;
     }
 
-    simpleUploadFile("asdfghjklasdasdflhgehsagjak");
-
-    HttpResponse<String> response =
-        client.send(
-            createRawRequestWithToken(currentUserToken), HttpResponse.BodyHandlers.ofString());
-
-    assertFileNotFound(response);
-  }
-
-  @Test
-  public void shouldNotDoX_WhenSpecifyDirectory() throws IOException, InterruptedException {
-    if (pathParam != PathParam.EXISTENT_FILE) {
-      return;
-    }
-
-    HttpResponse<String> response =
-        client.send(
-            createRawRequestWithToken(currentUserToken, rawEndpoint + "/"),
-            HttpResponse.BodyHandlers.ofString());
-
-    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
-    assertTrue(containsValidationError(response, "File path"));
+    assertFileNotFound(currentUserToken, UUID.randomUUID());
   }
 
   @Test
@@ -130,13 +110,15 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
     return hasTargetValidationError;
   }
 
-  private HttpRequest createRawRequestWithToken(String userToken) {
-    return createRawRequestWithToken(userToken, this.rawEndpoint);
-  }
+  protected HttpRequest createRawRequestWithToken(String userToken) {
+    String endpoint = rawEndpoint + "?id=%s";
 
-  protected HttpRequest createRawRequestWithToken(String userToken, String endpoint) {
+    if (pathParam == PathParam.NEW_ENTITY) {
+      endpoint += "&name=_";
+    }
+
     return itUtils
-        .createRequest(endpoint)
+        .createRequest(itUtils.fillQuery(endpoint, UUID.randomUUID()))
         .header("X-Auth-Token", userToken)
         .header("X-File-Tags", "")
         .header("X-File-New-Tags", "")

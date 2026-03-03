@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,11 +15,11 @@ public class DirectoryOperationsITUtils {
   private final ITUtils itUtils;
 
   public HttpResponse<String> sendCreateDirectoryRequest(
-      HttpClient client, String userToken, String directoryPath)
+      HttpClient client, String userToken, String directoryName)
       throws IOException, InterruptedException {
     HttpRequest request =
         itUtils
-            .createRequest("/api/directories?path=" + directoryPath)
+            .createRequest(itUtils.fillQuery("/api/directories?name=%s", directoryName))
             .header("X-Auth-Token", userToken)
             .PUT(HttpRequest.BodyPublishers.noBody())
             .build();
@@ -27,11 +28,11 @@ public class DirectoryOperationsITUtils {
   }
 
   public HttpResponse<String> sendDeleteDirectoryRequest(
-      HttpClient client, String userToken, String directoryPath)
+      HttpClient client, String userToken, UUID directoryId)
       throws IOException, InterruptedException {
     HttpRequest request =
         itUtils
-            .createRequest("/api/directories?path=" + directoryPath)
+            .createRequest(itUtils.fillQuery("/api/directories?id=%s", directoryId))
             .header("X-Auth-Token", userToken)
             .DELETE()
             .build();
@@ -39,13 +40,14 @@ public class DirectoryOperationsITUtils {
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  public HttpResponse<String> sendChangeDirectoryPathRequest(
-      HttpClient client, String currentUserToken, String oldDirectoryPath, String newDirectoryPath)
+  public HttpResponse<String> sendChangeDirectoryNameRequest(
+      HttpClient client, String currentUserToken, UUID oldDirectoryId, String newDirectoryName)
       throws IOException, InterruptedException {
     HttpRequest request =
         itUtils
             .createRequest(
-                "/api/directories?from=%s&to=%s".formatted(oldDirectoryPath, newDirectoryPath))
+                itUtils.fillQuery(
+                    "/api/directories?id=%s&newName=%s", oldDirectoryId, newDirectoryName))
             .header("X-Auth-Token", currentUserToken)
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();

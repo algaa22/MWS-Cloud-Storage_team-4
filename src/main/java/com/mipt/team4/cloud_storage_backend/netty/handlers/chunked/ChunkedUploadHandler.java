@@ -183,6 +183,6 @@ public class ChunkedUploadHandler {
     json.put("fileSize", result.fileSize());
     json.put("totalParts", result.totalParts());
 
-    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.CREATED, json);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, json);
   }
 }

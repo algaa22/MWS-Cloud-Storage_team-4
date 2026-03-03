@@ -3,17 +3,14 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageDirectoryCycleException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CreateDirectoryRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteDirectoryRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.MoveDirectoryRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDirectoryRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeDirectoryPathRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleDirectoryOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +25,7 @@ public class DirectoryService {
   private final FileMetadataRepository metadataRepository;
   private final UserRepository userRepository;
 
-  public UUID createDirectory(CreateDirectoryRequest request)
-      throws UserNotFoundException, StorageFileAlreadyExistsException {
+  public UUID createDirectory(CreateDirectoryRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
     String name = request.name();
@@ -57,8 +53,7 @@ public class DirectoryService {
     return directoryId;
   }
 
-  public void renameDirectory(RenameDirectoryRequest request)
-      throws UserNotFoundException, StorageFileAlreadyExistsException {
+  public void renameDirectory(RenameDirectoryRequest request) {
     String newName = request.newName();
     UUID directoryId = UUID.fromString(request.directoryId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
@@ -73,8 +68,7 @@ public class DirectoryService {
     metadataRepository.updateEntity(dirEntity);
   }
 
-  public void moveDirectory(MoveDirectoryRequest request)
-      throws UserNotFoundException, StorageFileAlreadyExistsException {
+  public void moveDirectory(MoveDirectoryRequest request) {
     UUID newParentId = UUID.fromString(request.newParentId());
     UUID directoryId = UUID.fromString(request.directoryId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
@@ -98,8 +92,7 @@ public class DirectoryService {
     metadataRepository.updateEntity(dir);
   }
 
-  public void deleteDirectory(DeleteDirectoryRequest request)
-      throws UserNotFoundException, StorageFileNotFoundException {
+  public void deleteDirectory(DeleteDirectoryRequest request) {
     UUID directoryId = UUID.fromString(request.directoryId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 

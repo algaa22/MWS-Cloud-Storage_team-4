@@ -10,6 +10,7 @@ public record NettyConfig(
     int httpsPort,
     int bossThreads,
     int workerThreads,
+    int idleTimeoutSec,
     Start start,
     Shutdown shutdown) {
 

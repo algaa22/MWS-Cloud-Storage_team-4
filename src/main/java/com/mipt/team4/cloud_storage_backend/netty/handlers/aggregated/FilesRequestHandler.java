@@ -4,9 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.database.StorageIllegalAccessException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -26,7 +23,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,9 +37,8 @@ public class FilesRequestHandler {
   private final FileController fileController;
   private final ObjectMapper mapper = new ObjectMapper();
 
-  public void handleGetFileListRequest(
-      ChannelHandlerContext ctx, HttpRequest request, String userToken)
-      throws UserNotFoundException, ValidationFailedException {
+  public void handleGetFilePathsListRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     boolean includeDirectories =
         SafeParser.parseBoolean(
             "Include directories",
@@ -78,15 +73,11 @@ public class FilesRequestHandler {
 
     rootNode.set("files", filesArray);
 
-    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
   public void handleGetFileInfoRequest(
-      ChannelHandlerContext ctx, HttpRequest request, String userToken)
-      throws UserNotFoundException,
-          StorageFileNotFoundException,
-          ValidationFailedException,
-          QueryParameterNotFoundException {
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
     StorageDto storageDto =
         fileController.getFileInfo(new SimpleFileOperationRequest(fileId, userToken));
@@ -103,31 +94,19 @@ public class FilesRequestHandler {
     rootNode.put("IsDeleted", storageDto.isDeleted());
     rootNode.put("Tags", FileTagsMapper.toString(storageDto.tags()));
 
-    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
   public void handleDeleteFileRequest(
-      ChannelHandlerContext ctx, HttpRequest request, String userToken)
-      throws UserNotFoundException,
-          StorageFileNotFoundException,
-          ValidationFailedException,
-          StorageIllegalAccessException,
-          FileNotFoundException,
-          QueryParameterNotFoundException {
-
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
     fileController.deleteFile(new SimpleFileOperationRequest(fileId, userToken));
 
-    ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "File successfully deleted");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully deleted");
   }
 
   public void handleChangeFileMetadataRequest(
-      ChannelHandlerContext ctx, FullHttpRequest request, String userToken)
-      throws UserNotFoundException,
-          StorageFileNotFoundException,
-          StorageFileAlreadyExistsException,
-          ValidationFailedException,
-          QueryParameterNotFoundException {
+      ChannelHandlerContext ctx, FullHttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 
     Optional<String> newName = RequestUtils.getQueryParam(request, "newName");
@@ -144,18 +123,11 @@ public class FilesRequestHandler {
         new ChangeFileMetadataRequest(
             userToken, fileId, newName, newParentId, fileVisibility, fileTags));
 
-    ResponseUtils.sendSuccessResponse(
-        ctx, HttpResponseStatus.OK, "File metadata successfully changed");
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File metadata successfully changed");
   }
 
   public void handleUploadFileRequest(
-      ChannelHandlerContext ctx, FullHttpRequest request, String userToken)
-      throws HeaderNotFoundException,
-          StorageFileAlreadyExistsException,
-          UserNotFoundException,
-          ValidationFailedException,
-          QueryParameterNotFoundException {
-
+      ChannelHandlerContext ctx, FullHttpRequest request, String userToken) {
     String fileName = RequestUtils.getRequiredQueryParam(request, "name");
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
     List<String> fileTags =

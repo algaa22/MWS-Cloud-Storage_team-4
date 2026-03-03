@@ -36,7 +36,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
     HttpResponse<String> response =
         fileOperationsITUtils.sendChangeFilePathRequest(
             client, currentUserToken, firstFileId, NEW_NAME);
-    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    assertEquals(HttpStatus.SC_CONFLICT, response.statusCode());
 
     JsonNode rootNode = itUtils.getRootNodeFromResponse(response);
     assertTrue(rootNode.get("message").asText().contains("already exists"));

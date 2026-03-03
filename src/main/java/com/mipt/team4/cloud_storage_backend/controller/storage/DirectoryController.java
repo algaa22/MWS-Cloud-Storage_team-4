@@ -21,32 +21,22 @@ public class DirectoryController {
   private final DirectoryService service;
   private final JwtService jwtService;
 
-  public UUID createDirectory(CreateDirectoryRequest request)
-      throws ValidationFailedException, UserNotFoundException, StorageFileAlreadyExistsException {
+  public UUID createDirectory(CreateDirectoryRequest request) {
     request.validate(jwtService);
     return service.createDirectory(request);
   }
 
-  public void renameDirectory(RenameDirectoryRequest request)
-      throws ValidationFailedException,
-          UserNotFoundException,
-          StorageFileAlreadyExistsException,
-          StorageFileNotFoundException {
+  public void renameDirectory(RenameDirectoryRequest request) {
     request.validate(jwtService);
     service.renameDirectory(request);
   }
 
-  public void moveDirectory(MoveDirectoryRequest request)
-      throws ValidationFailedException,
-          UserNotFoundException,
-          StorageFileAlreadyExistsException,
-          StorageFileNotFoundException {
+  public void moveDirectory(MoveDirectoryRequest request) {
     request.validate(jwtService);
     service.moveDirectory(request);
   }
 
-  public void deleteDirectory(DeleteDirectoryRequest request)
-      throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
+  public void deleteDirectory(DeleteDirectoryRequest request) {
     request.validate(jwtService);
     service.deleteDirectory(request);
   }

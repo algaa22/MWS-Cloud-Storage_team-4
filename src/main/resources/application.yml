@@ -9,6 +9,7 @@ netty:
   https-port: 8443
   boss-threads: 1
   worker-threads: 4
+  idle-timeout-sec: 60
 
   start:
     timeout-sec: 5

@@ -39,7 +39,7 @@ public abstract class BaseStorageIT extends BaseIT {
       throws IOException, InterruptedException {
     HttpResponse<String> response =
         operationsITUtils.sendGetFileInfoRequest(client, userToken, fileId);
-    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    assertEquals(HttpStatus.SC_NOT_FOUND, response.statusCode());
 
     JsonNode rootNode = itUtils.getRootNodeFromResponse(response);
     assertTrue(rootNode.get("message").asText().contains("not found"));

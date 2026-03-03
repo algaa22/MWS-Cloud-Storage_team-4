@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Scope("prototype")
 @Slf4j
-public class GlobalErrorHandler extends ChannelDuplexHandler {
+public class FinalErrorHandler extends ChannelDuplexHandler {
   private static final AttributeKey<Boolean> IGNORABLE_ERROR_LOGGED =
       AttributeKey.valueOf("ignorable_error_logged");
 

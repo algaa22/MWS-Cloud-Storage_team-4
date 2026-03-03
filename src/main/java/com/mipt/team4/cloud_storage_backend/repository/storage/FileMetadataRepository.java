@@ -128,8 +128,7 @@ public class FileMetadataRepository {
     return Optional.of(result.getFirst());
   }
 
-  public void deleteFile(UUID userId, UUID parentId, String name)
-      throws StorageFileNotFoundException {
+  public void deleteFile(UUID userId, UUID parentId, String name) {
     if (!fileExists(userId, parentId, name, false)) {
       throw new StorageFileNotFoundException(parentId, name);
     }

@@ -58,7 +58,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
           case "POST" -> filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
           case "PUT" ->
               filesRequestHandler.handleChangeFileMetadataRequest(
-                  ctx, request, filePath, userToken);
+                  ctx, request, userToken);
           default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
         }
       }

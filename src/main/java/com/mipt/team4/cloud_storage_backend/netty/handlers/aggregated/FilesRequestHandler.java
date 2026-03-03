@@ -33,7 +33,7 @@ public class FilesRequestHandler {
   private final FileController fileController;
   private final ObjectMapper mapper = new ObjectMapper();
 
-  public void handleGetFilePathsListRequest(
+  public void handleGetFileListRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     boolean includeDirectories =
         SafeParser.parseBoolean(

@@ -4,7 +4,7 @@ import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpTrafficStrategySelector;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.error.GlobalErrorHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.error.FinalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.StorageExceptionHandler;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpServerCodec;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class PipelineBuilder {
   private final ObjectProvider<HttpTrafficStrategySelector> strategySelectors;
   private final ObjectProvider<StorageExceptionHandler> storageExceptionHandlers;
-  private final ObjectProvider<GlobalErrorHandler> globalErrorHandlers;
+  private final ObjectProvider<FinalErrorHandler> globalErrorHandlers;
   private final ObjectProvider<IdleTimeoutHandler> idleTimeoutHandlers;
   private final ObjectProvider<CorsHandler> corsHandler;
 

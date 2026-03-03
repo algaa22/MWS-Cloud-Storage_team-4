@@ -55,8 +55,7 @@ public class FileOperationsITUtils {
       throws IOException, InterruptedException {
     String endpoint =
         itUtils.fillQuery(
-            "/api/files/list?includeDirectories=%b&recursive=%b",
-            includeDirectories, recursive);
+            "/api/files/list?includeDirectories=%b&recursive=%b", includeDirectories, recursive);
 
     if (searchDirectoryId != null) {
       endpoint += itUtils.fillQuery("&parentId=%s", searchDirectoryId);
@@ -100,8 +99,7 @@ public class FileOperationsITUtils {
     HttpRequest request =
         itUtils
             .createRequest(
-                itUtils.fillQuery(
-                    "/api/files?id=%s&newName=%s", targetFileId, newTargetFileName))
+                itUtils.fillQuery("/api/files?id=%s&newName=%s", targetFileId, newTargetFileName))
             .header("X-Auth-Token", userToken)
             .PUT(HttpRequest.BodyPublishers.noBody())
             .build();

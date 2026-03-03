@@ -4,6 +4,8 @@ import java.util.UUID;
 
 public class StorageFileLockedException extends BaseStorageException {
   public StorageFileLockedException(UUID parentId, String name) {
-    super("File locked by other operation: parentId=" + parentId + ", name=" + name, HttpResponseStatus.CONFLICT);
+    super(
+        "File locked by other operation: parentId=" + parentId + ", name=" + name,
+        HttpResponseStatus.CONFLICT);
   }
 }

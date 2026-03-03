@@ -15,7 +15,6 @@ import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 

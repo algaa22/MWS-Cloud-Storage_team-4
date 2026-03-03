@@ -25,7 +25,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
   @Autowired private FileOperationsITUtils fileOperationsITUtils;
 
   public ChangeFileMetadataDetailedIT() {
-    super( "/api/files", HttpMethod.PUT.name(), PathParam.EXISTENT_FILE);
+    super("/api/files", HttpMethod.PUT.name(), PathParam.EXISTENT_FILE);
   }
 
   @Test
@@ -51,7 +51,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
             client, currentUserToken, fileId, NEW_NAME, NEW_VISIBILITY, NEW_TAGS);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
-    assertFileInfoMatches(fileId, NEW_NAME,  NEW_VISIBILITY, NEW_TAGS);
+    assertFileInfoMatches(fileId, NEW_NAME, NEW_VISIBILITY, NEW_TAGS);
   }
 
   @Test
@@ -76,13 +76,11 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
     assertEquals(HttpStatus.SC_OK, changeFileVisibilityResponse.statusCode());
 
     HttpResponse<String> changeFileTagsResponse =
-        fileOperationsITUtils.sendChangeFileTagsRequest(
-            client, currentUserToken, fileId, NEW_TAGS);
+        fileOperationsITUtils.sendChangeFileTagsRequest(client, currentUserToken, fileId, NEW_TAGS);
     assertEquals(HttpStatus.SC_OK, changeFileTagsResponse.statusCode());
 
     HttpResponse<String> changeFilePathResponse =
-        fileOperationsITUtils.sendChangeFilePathRequest(
-            client, currentUserToken, fileId, NEW_NAME);
+        fileOperationsITUtils.sendChangeFilePathRequest(client, currentUserToken, fileId, NEW_NAME);
     assertEquals(HttpStatus.SC_OK, changeFilePathResponse.statusCode());
 
     assertFileInfoMatches(fileId, NEW_NAME, NEW_VISIBILITY, NEW_TAGS);

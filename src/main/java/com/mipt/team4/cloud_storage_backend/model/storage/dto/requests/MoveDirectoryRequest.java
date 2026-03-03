@@ -4,7 +4,6 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
-import java.util.UUID;
 
 public record MoveDirectoryRequest(String userToken, String directoryId, String newParentId) {
   public void validate(JwtService jwtService) throws ValidationFailedException {

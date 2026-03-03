@@ -6,8 +6,6 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;

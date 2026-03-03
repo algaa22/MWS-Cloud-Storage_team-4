@@ -114,9 +114,7 @@ public class FileMetadataRepository {
 
   public Optional<StorageEntity> getFile(UUID userId, UUID fileId) {
     return getFile(
-        "SELECT * FROM files WHERE user_id = ? AND id = ? AND status = 'READY';",
-        userId,
-        fileId);
+        "SELECT * FROM files WHERE user_id = ? AND id = ? AND status = 'READY';", userId, fileId);
   }
 
   private Optional<StorageEntity> getFile(String sql, Object... params) {

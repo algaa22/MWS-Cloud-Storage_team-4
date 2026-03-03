@@ -6,7 +6,6 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 public record FileUploadRequest(
     Optional<String> parentId, String name, String userToken, List<String> tags, byte[] data) {

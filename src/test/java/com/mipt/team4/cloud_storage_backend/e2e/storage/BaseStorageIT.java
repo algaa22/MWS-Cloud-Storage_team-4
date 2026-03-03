@@ -35,7 +35,8 @@ public abstract class BaseStorageIT extends BaseIT {
     currentUserToken = userAuthUtils.sendRegisterRandomUserRequest(client);
   }
 
-  protected void assertFileNotFound(String userToken, UUID fileId) throws IOException, InterruptedException {
+  protected void assertFileNotFound(String userToken, UUID fileId)
+      throws IOException, InterruptedException {
     HttpResponse<String> response =
         operationsITUtils.sendGetFileInfoRequest(client, userToken, fileId);
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());

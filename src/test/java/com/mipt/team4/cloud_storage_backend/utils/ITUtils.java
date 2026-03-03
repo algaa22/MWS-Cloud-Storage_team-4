@@ -25,8 +25,7 @@ public class ITUtils {
   private final NettyConfig nettyConfig;
 
   public String fillQuery(String endpoint, Object... objects) {
-    Object[] encodedObjects =
-        Arrays.stream(objects).map(this::toQueryParam).toArray();
+    Object[] encodedObjects = Arrays.stream(objects).map(this::toQueryParam).toArray();
 
     return endpoint.formatted(encodedObjects);
   }

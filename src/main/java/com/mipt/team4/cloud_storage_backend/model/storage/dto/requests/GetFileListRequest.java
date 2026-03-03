@@ -5,7 +5,6 @@ import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.Optional;
-import java.util.UUID;
 
 public record GetFileListRequest(
     String userToken, boolean includeDirectories, boolean recursive, Optional<String> parentId) {

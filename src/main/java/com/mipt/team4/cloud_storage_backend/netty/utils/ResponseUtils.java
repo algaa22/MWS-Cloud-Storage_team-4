@@ -110,8 +110,7 @@ public class ResponseUtils {
     return response;
   }
 
-  public static void sendCreatedResponse(
-      ChannelHandlerContext ctx, UUID entityId, String message) {
+  public static void sendCreatedResponse(ChannelHandlerContext ctx, UUID entityId, String message) {
     ObjectNode root = ResponseUtils.createJsonResponseNode(true, message);
     root.put("id", entityId.toString());
 

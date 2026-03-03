@@ -6,13 +6,12 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 public record ChangeFileMetadataRequest(
     String userToken,
-    UUID id,
+    String fileId,
     Optional<String> newName,
-    Optional<UUID> newParentId,
+    Optional<String> newParentId,
     Optional<String> visibility,
     Optional<List<String>> tags) {
 
@@ -20,7 +19,7 @@ public record ChangeFileMetadataRequest(
     ValidationResult result =
         Validators.all(
             Validators.validToken(jwtService, userToken),
-            Validators.notNull("File ID", id),
+            Validators.notNull("File ID", fileId),
             Validators.any(
                 "New file name",
                 "Invalid file name",

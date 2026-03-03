@@ -14,9 +14,9 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStarte
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadFileResponse;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
@@ -27,6 +27,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +45,7 @@ public class ChunkedUploadHandler {
   private boolean isInProgress = false;
   private String currentSessionId;
   private String currentUserToken;
-  private UUID currentParentId;
+  private Optional<String> currentParentId;
   private String currentName;
   private List<String> currentFileTags;
   private long receivedBytes = 0;
@@ -130,7 +131,7 @@ public class ChunkedUploadHandler {
       handleFileChunk(content);
     }
 
-    ChunkedUploadFileResultDto result;
+    ChunkedUploadFileResponse result;
 
     try {
       result = fileController.completeChunkedUpload(currentSessionId);
@@ -158,7 +159,7 @@ public class ChunkedUploadHandler {
     currentSessionId = null;
     currentUserToken = null;
     currentName = null;
-    currentParentId = null;
+    currentParentId = Optional.empty();
     currentFileTags = null;
     receivedBytes = 0;
     receivedChunks = 0;
@@ -169,20 +170,19 @@ public class ChunkedUploadHandler {
     currentSessionId = UUID.randomUUID().toString();
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     currentName = RequestUtils.getRequiredQueryParam(request, "name");
-    currentParentId = RequestUtils.getOptionalUuidQueryParam(request, "parentId");
+    currentParentId = RequestUtils.getQueryParam(request, "parentId");
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
   }
 
-  private void sendSuccessResponse(ChannelHandlerContext ctx, ChunkedUploadFileResultDto result) {
+  private void sendSuccessResponse(ChannelHandlerContext ctx, ChunkedUploadFileResponse result) {
 
     ObjectNode json = mapper.createObjectNode();
 
     json.put("status", "complete");
-    json.put("name", result.name());
-    json.put("parentId", result.parentId() != null ? result.parentId().toString() : null);
+    json.put("id", result.fileId().toString());
     json.put("fileSize", result.fileSize());
     json.put("totalParts", result.totalParts());
 
-    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, json);
+    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.CREATED, json);
   }
 }

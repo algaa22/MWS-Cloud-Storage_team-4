@@ -3,10 +3,11 @@ package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import java.util.Optional;
 import java.util.UUID;
 
 public record UploadChunkRequest(
-    String sessionId, String name, UUID parentId, int chunkIndex, byte[] chunkData) {
+    String sessionId, String name, Optional<String> parentId, int chunkIndex, byte[] chunkData) {
 
   public void validate(long maxFileChunkSize) throws ValidationFailedException {
     ValidationResult result =

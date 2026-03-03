@@ -60,10 +60,10 @@ public class FileMetadataRepository {
         this::createStorageEntityByResultSet);
   }
 
-  public List<StorageEntity> getFilesList(FileListFilter filter) {
+  public List<StorageEntity> getFileList(FileListFilter filter) {
     List<Object> params = new ArrayList<>();
-
     String query;
+
     if (filter.recursive()) {
       query =
           """
@@ -112,6 +112,13 @@ public class FileMetadataRepository {
         name);
   }
 
+  public Optional<StorageEntity> getFile(UUID userId, UUID fileId) {
+    return getFile(
+        "SELECT * FROM files WHERE user_id = ? AND id = ? AND status = 'READY';",
+        userId,
+        fileId);
+  }
+
   private Optional<StorageEntity> getFile(String sql, Object... params) {
     List<StorageEntity> result =
         postgres.executeQuery(sql, Arrays.asList(params), this::createStorageEntityByResultSet);
@@ -121,15 +128,6 @@ public class FileMetadataRepository {
     }
 
     return Optional.of(result.getFirst());
-  }
-
-  public Optional<StorageEntity> getFileById(UUID fileId) {
-    String query = "SELECT * FROM files WHERE id = ?;";
-
-    List<StorageEntity> result =
-        postgres.executeQuery(query, List.of(fileId), this::createStorageEntityByResultSet);
-
-    return result.isEmpty() ? Optional.empty() : Optional.of(result.getFirst());
   }
 
   public void deleteFile(UUID userId, UUID parentId, String name)

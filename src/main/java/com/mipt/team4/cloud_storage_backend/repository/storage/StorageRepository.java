@@ -92,16 +92,16 @@ public class StorageRepository {
     return metadataRepository.getFile(userId, parentId, name);
   }
 
-  public Optional<StorageEntity> getFileById(UUID fileId) {
-    return metadataRepository.getFileById(fileId);
+  public Optional<StorageEntity> getFile(UUID userId, UUID fileId) {
+    return metadataRepository.getFile(userId, fileId);
   }
 
   public boolean fileExists(UUID userId, UUID parentId, String name) {
     return metadataRepository.fileExists(userId, parentId, name);
   }
 
-  public List<StorageEntity> getFilesList(FileListFilter filter) {
-    return metadataRepository.getFilesList(filter);
+  public List<StorageEntity> getFileList(FileListFilter filter) {
+    return metadataRepository.getFileList(filter);
   }
 
   public void addDirectory(StorageEntity entity) throws StorageFileAlreadyExistsException {

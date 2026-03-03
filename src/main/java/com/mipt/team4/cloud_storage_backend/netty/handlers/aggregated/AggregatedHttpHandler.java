@@ -87,7 +87,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
-      filesRequestHandler.handleGetFilePathsListRequest(ctx, request, userToken);
+      filesRequestHandler.handleGetFileListRequest(ctx, request, userToken);
     } else {
 
       if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET)) {

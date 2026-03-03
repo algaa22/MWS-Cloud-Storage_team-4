@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
@@ -15,6 +16,7 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
@@ -33,13 +35,13 @@ public class DirectoriesRequestHandler {
           ValidationFailedException,
           QueryParameterNotFoundException {
     String name = RequestUtils.getRequiredQueryParam(request, "name");
-    UUID parentId = RequestUtils.getOptionalUuidQueryParam(request, "parentId");
+    Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
 
-    directoryController.createDirectory(
-        new CreateDirectoryRequest(userToken, parentId, name, UUID.randomUUID()));
+    UUID createdId =
+        directoryController.createDirectory(
+            new CreateDirectoryRequest(userToken, parentId, name, UUID.randomUUID()));
 
-    ResponseUtils.sendSuccessResponse(
-        ctx, HttpResponseStatus.CREATED, "Directory successfully created");
+    ResponseUtils.sendCreatedResponse(ctx, createdId, "Directory successfully created");
   }
 
   public void handleChangeDirectoryRequest(
@@ -49,18 +51,19 @@ public class DirectoriesRequestHandler {
           StorageFileAlreadyExistsException,
           StorageFileNotFoundException,
           ValidationFailedException {
-    UUID directoryId = RequestUtils.getRequiredUuidQueryParam(request, "id");
-    String newName = RequestUtils.getOptionalQueryParam(request, "newName");
-    UUID newParentId = RequestUtils.getOptionalUuidQueryParam(request, "newParentId");
+    String directoryId = RequestUtils.getRequiredQueryParam(request, "id");
+    Optional<String> newName = RequestUtils.getQueryParam(request, "newName");
+    Optional<String> newParentId = RequestUtils.getQueryParam(request, "newParentId");
 
-    if (newName != null) {
+    // TODO: убрать != null, объединить эти два метода и вынести в контроллер?
+    if (newName.isPresent()) {
       directoryController.renameDirectory(
-          new RenameDirectoryRequest(userToken, directoryId, newName));
+          new RenameDirectoryRequest(userToken, directoryId, newName.get()));
     }
 
-    if (newParentId != null) {
+    if (newParentId.isPresent()) {
       directoryController.moveDirectory(
-          new MoveDirectoryRequest(userToken, directoryId, newParentId));
+          new MoveDirectoryRequest(userToken, directoryId, newParentId.get()));
     }
 
     ResponseUtils.sendSuccessResponse(ctx, HttpResponseStatus.OK, "Directory successfully updated");
@@ -73,7 +76,7 @@ public class DirectoriesRequestHandler {
           ValidationFailedException,
           QueryParameterNotFoundException {
 
-    UUID directoryId = RequestUtils.getRequiredUuidQueryParam(request, "id");
+    String directoryId = RequestUtils.getRequiredQueryParam(request, "id");
 
     directoryController.deleteDirectory(new DeleteDirectoryRequest(userToken, directoryId));
 

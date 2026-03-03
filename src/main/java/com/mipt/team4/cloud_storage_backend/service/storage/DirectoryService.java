@@ -5,16 +5,19 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CreateDirectoryRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteDirectoryRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.MoveDirectoryRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,58 +28,66 @@ public class DirectoryService {
   private final FileMetadataRepository metadataRepository;
   private final UserRepository userRepository;
 
-  public void createDirectory(CreateDirectoryRequest createDirectory)
+  public UUID createDirectory(CreateDirectoryRequest request)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
-    UUID userId = userSessionService.extractUserIdFromToken(createDirectory.userToken());
-    UUID parentId = createDirectory.parentId();
-    String name = createDirectory.name();
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+    UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
+    String name = request.name();
 
     if (storageRepository.fileExists(userId, parentId, name)) {
       throw new StorageFileAlreadyExistsException(parentId, name);
     }
 
+    UUID directoryId = UUID.randomUUID();
     StorageEntity directoryEntity =
         StorageEntity.builder()
-            .id(UUID.randomUUID())
+            .id(directoryId)
             .userId(userId)
             .mimeType("application/x-directory")
             .size(0)
             .parentId(parentId)
             .name(name)
             .isDirectory(true)
+            .updatedAt(LocalDateTime.now())
             .tags(List.of())
             .build();
 
     storageRepository.addDirectory(directoryEntity);
+
+    return directoryId;
   }
 
-  public void renameDirectory(String userToken, UUID directoryId, String newName)
+  public void renameDirectory(RenameDirectoryRequest request)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
-    UUID userId = userSessionService.extractUserIdFromToken(userToken);
-    StorageEntity dir = getDirectoryOrThrow(userId, directoryId);
+    String newName = request.newName();
+    UUID directoryId = UUID.fromString(request.directoryId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
-    if (metadataRepository.fileExists(userId, dir.getParentId(), newName)) {
-      throw new StorageFileAlreadyExistsException(dir.getParentId(), newName);
+    StorageEntity dirEntity = getDirectoryOrThrow(userId, directoryId);
+
+    if (metadataRepository.fileExists(userId, dirEntity.getParentId(), newName)) {
+      throw new StorageFileAlreadyExistsException(dirEntity.getParentId(), newName);
     }
 
-    dir.setName(newName);
-    metadataRepository.updateEntity(dir);
+    dirEntity.setName(newName);
+    metadataRepository.updateEntity(dirEntity);
   }
 
-  public void moveDirectory(String userToken, UUID directoryId, UUID newParentId)
+  public void moveDirectory(MoveDirectoryRequest request)
       throws UserNotFoundException, StorageFileAlreadyExistsException {
-    UUID userId = userSessionService.extractUserIdFromToken(userToken);
+    UUID newParentId = UUID.fromString(request.newParentId());
+    UUID directoryId = UUID.fromString(request.directoryId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+
     StorageEntity dir = getDirectoryOrThrow(userId, directoryId);
 
     if (directoryId.equals(newParentId)) {
       throw new IllegalArgumentException("Cannot move directory into itself");
     }
 
-    if (newParentId != null) {
-      if (metadataRepository.isDescendant(directoryId, newParentId)) {
-        throw new StorageDirectoryCycleException(
-            "Cannot move directory into its own sub-directory");
-      }
+    if (metadataRepository.isDescendant(directoryId, newParentId)) {
+      throw new StorageDirectoryCycleException(
+          "Cannot move directory into its own sub-directory");
     }
 
     if (metadataRepository.fileExists(userId, newParentId, dir.getName())) {
@@ -87,13 +98,12 @@ public class DirectoryService {
     metadataRepository.updateEntity(dir);
   }
 
-  @Transactional
-  public void deleteDirectory(String userToken, UUID directoryId)
+  public void deleteDirectory(DeleteDirectoryRequest request)
       throws UserNotFoundException, StorageFileNotFoundException {
-    UUID userId = userSessionService.extractUserIdFromToken(userToken);
+    UUID directoryId = UUID.fromString(request.directoryId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     StorageEntity directoryEntity = getDirectoryOrThrow(userId, directoryId);
-
     long freedSize = metadataRepository.calculateTotalSizeOfTree(directoryId);
 
     metadataRepository.deleteFile(userId, directoryEntity.getParentId(), directoryEntity.getName());
@@ -105,9 +115,7 @@ public class DirectoryService {
 
   private StorageEntity getDirectoryOrThrow(UUID userId, UUID directoryId) {
     return metadataRepository
-        .getFile(directoryId)
-        .filter(f -> f.getUserId().equals(userId))
-        .filter(StorageEntity::isDirectory)
+        .getFile(userId, directoryId)
         .orElseThrow(() -> new StorageFileNotFoundException(directoryId));
   }
 }

@@ -8,6 +8,6 @@ public class StorageFileNotFoundException extends RuntimeException {
   }
 
   public StorageFileNotFoundException(UUID id) {
-    super("File or directory not found: Id=" + id);
+    super("File or directory not found: fileId=" + id);
   }
 }

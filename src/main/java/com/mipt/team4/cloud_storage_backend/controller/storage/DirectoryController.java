@@ -10,6 +10,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.MoveDirec
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.service.storage.DirectoryService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
@@ -20,10 +21,10 @@ public class DirectoryController {
   private final DirectoryService service;
   private final JwtService jwtService;
 
-  public void createDirectory(CreateDirectoryRequest request)
+  public UUID createDirectory(CreateDirectoryRequest request)
       throws ValidationFailedException, UserNotFoundException, StorageFileAlreadyExistsException {
     request.validate(jwtService);
-    service.createDirectory(request);
+    return service.createDirectory(request);
   }
 
   public void renameDirectory(RenameDirectoryRequest request)
@@ -32,7 +33,7 @@ public class DirectoryController {
           StorageFileAlreadyExistsException,
           StorageFileNotFoundException {
     request.validate(jwtService);
-    service.renameDirectory(request.userToken(), request.directoryId(), request.newName());
+    service.renameDirectory(request);
   }
 
   public void moveDirectory(MoveDirectoryRequest request)
@@ -41,12 +42,12 @@ public class DirectoryController {
           StorageFileAlreadyExistsException,
           StorageFileNotFoundException {
     request.validate(jwtService);
-    service.moveDirectory(request.userToken(), request.directoryId(), request.newParentId());
+    service.moveDirectory(request);
   }
 
   public void deleteDirectory(DeleteDirectoryRequest request)
       throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
     request.validate(jwtService);
-    service.deleteDirectory(request.userToken(), request.directoryId());
+    service.deleteDirectory(request);
   }
 }

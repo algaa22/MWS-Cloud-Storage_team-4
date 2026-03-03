@@ -13,6 +13,7 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 public class ResponseUtils {
 
@@ -96,5 +97,13 @@ public class ResponseUtils {
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
 
     return response;
+  }
+
+  public static void sendCreatedResponse(
+      ChannelHandlerContext ctx, UUID entityId, String message) {
+    ObjectNode root = ResponseUtils.createJsonResponseNode(true, message);
+    root.put("id", entityId.toString());
+
+    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.CREATED, root);
   }
 }

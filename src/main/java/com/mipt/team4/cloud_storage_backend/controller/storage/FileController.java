@@ -10,8 +10,8 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartE
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadFileResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
@@ -25,6 +25,7 @@ import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.io.FileNotFoundException;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
@@ -50,7 +51,7 @@ public class FileController {
     service.uploadChunk(request);
   }
 
-  public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId)
+  public ChunkedUploadFileResponse completeChunkedUpload(String sessionId)
       throws MissingFilePartException,
           ValidationFailedException,
           TooSmallFilePartException,
@@ -83,10 +84,10 @@ public class FileController {
     service.deleteFile(request);
   }
 
-  public void uploadFile(FileUploadRequest request)
+  public UUID uploadFile(FileUploadRequest request)
       throws StorageFileAlreadyExistsException, ValidationFailedException, UserNotFoundException {
     request.validate(jwtService);
-    service.uploadFile(request);
+    return service.uploadFile(request);
   }
 
   public void changeFileMetadata(ChangeFileMetadataRequest request)
@@ -98,7 +99,7 @@ public class FileController {
     service.changeFileMetadata(request);
   }
 
-  public FileDownloadDto downloadFile(SimpleFileOperationRequest request)
+  public FileDownloadResponse downloadFile(SimpleFileOperationRequest request)
       throws ValidationFailedException, UserNotFoundException, StorageFileNotFoundException {
     request.validate(jwtService);
     return service.downloadFile(request);

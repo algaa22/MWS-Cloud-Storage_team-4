@@ -71,7 +71,7 @@ public class MimeTypeDetector {
   }
 
   private static String detectByExtension(String path) {
-    String extension = FilePaths.getFileExtension(path);
+    String extension = FileNames.getFileExtension(path);
     return EXTENSION_MAP.getOrDefault(extension, "application/octet-stream");
   }
 }

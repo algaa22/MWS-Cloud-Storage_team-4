@@ -7,7 +7,7 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFou
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import io.netty.channel.ChannelFuture;
@@ -20,9 +20,6 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedInput;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -42,11 +39,10 @@ public class ChunkedDownloadHandler {
           QueryParameterNotFoundException,
           HeaderNotFoundException {
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-    String name = RequestUtils.getRequiredQueryParam(request, "name");
-    UUID parentId = RequestUtils.getOptionalUuidQueryParam(request, "parentId");
+    String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 
-    FileDownloadDto fileDownload =
-        fileController.downloadFile(new SimpleFileOperationRequest(parentId, name, userToken));
+    FileDownloadResponse fileDownload =
+        fileController.downloadFile(new SimpleFileOperationRequest(fileId, userToken));
 
     HttpResponse response =
         new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
@@ -55,20 +51,6 @@ public class ChunkedDownloadHandler {
     String contentType =
         fileDownload.mimeType() != null ? fileDownload.mimeType() : "application/octet-stream";
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
-
-    String encodedFileName =
-        URLEncoder.encode(fileDownload.name(), StandardCharsets.UTF_8).replace("+", "%20");
-
-    response
-        .headers()
-        .set(
-            HttpHeaderNames.CONTENT_DISPOSITION,
-            "attachment; filename=\""
-                + fileDownload.name()
-                + "\"; filename*=UTF-8''"
-                + encodedFileName);
-
-    response.headers().set("X-File-Name", fileDownload.name());
     response.headers().set("X-File-Size", fileDownload.size());
     ctx.write(response);
 

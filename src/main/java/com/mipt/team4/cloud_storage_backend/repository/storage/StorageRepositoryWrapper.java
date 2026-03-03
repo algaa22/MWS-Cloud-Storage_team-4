@@ -206,7 +206,6 @@ public class StorageRepositoryWrapper {
     syncEntityWithDatabase(entity, FileStatus.READY);
   }
 
-
   private void initiateRetryStrategy(
       RecoverableStorageException exception,
       StorageEntity entity,
@@ -214,11 +213,11 @@ public class StorageRepositoryWrapper {
     switch (operationType) {
       case UPLOAD -> {
         try {
-          metadataRepository.deleteFile(entity.getUserId(), entity.getPath());
+          metadataRepository.deleteFile(entity);
         } catch (Exception e) {
           log.warn(
-              "Failed to delete metadata after upload error. Ghost record may remain. File: {}",
-              entity.getPath(),
+              "Failed to delete metadata after upload error. Ghost record may remain. File ID: {}",
+              entity.getId(),
               e);
         }
 

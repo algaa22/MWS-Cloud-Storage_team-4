@@ -11,7 +11,6 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartE
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadNotStoppedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;

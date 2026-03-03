@@ -64,7 +64,7 @@ public class MinioWrapper {
       }
 
       if (cause instanceof Exception) {
-        e = (Exception) cause;
+        return classifyException((Exception) cause);
       }
     }
 

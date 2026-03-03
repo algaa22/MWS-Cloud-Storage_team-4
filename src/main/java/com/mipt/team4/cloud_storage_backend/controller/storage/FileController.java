@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;

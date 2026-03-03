@@ -2,11 +2,6 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
@@ -32,7 +27,7 @@ public class ChunkedDownloadHandler {
   private final StorageConfig storageConfig;
 
   // TODO: refactor
-  public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request) {
+  public void start(ChannelHandlerContext ctx, HttpRequest request) {
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 

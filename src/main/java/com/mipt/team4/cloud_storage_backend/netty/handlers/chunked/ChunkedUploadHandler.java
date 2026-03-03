@@ -43,8 +43,6 @@ public class ChunkedUploadHandler {
   private String currentUserToken;
   private String currentName;
   private Optional<String> currentParentId;
-  private long receivedBytes = 0;
-  private int receivedChunks = 0;
 
   public void start(HttpRequest request) {
     if (isInProgress) {
@@ -122,7 +120,7 @@ public class ChunkedUploadHandler {
     }
   }
 
-  public void resume(ChannelHandlerContext ctx, HttpRequest request) {
+  public void resume(HttpRequest request) {
     if (isInProgress) {
       throw new UploadNotStoppedException();
     }
@@ -132,7 +130,7 @@ public class ChunkedUploadHandler {
 
     fileController.resumeChunkedUpload(
         new ChunkedUploadRequest(
-            currentSessionId, currentUserToken, currentName, currentParentId, currentFileTags));
+            currentSessionId, currentUserToken, currentParentId, currentName, currentFileTags));
 
     if (log.isDebugEnabled()) {
       log.debug(

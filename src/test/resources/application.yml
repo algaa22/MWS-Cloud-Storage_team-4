@@ -17,6 +17,7 @@ netty:
     quiet-period-sec: 2
     timeout-sec: 15
 
+
 cors:
   access-control:
     allow-origin: "http://localhost:5173"
@@ -34,6 +35,7 @@ minio:
   password: ${MINIO_PASSWORD}
 
   min-file-part-size: 5242880 # 5mb
+  region: "eu-central-1"
 
   user-data-bucket:
     name: user-data
@@ -54,5 +56,13 @@ storage:
     default-storage-limit: 10737418240
 
   state-machine:
+    max-retry-count: 3
     file-stale-time-min: 60
     file-throttled-update-interval-sec: 15
+
+  failsafe-retry:
+    max-attempts: 1
+    delay-factor: 2.0
+    first-delay: 200ms
+    max-delay: 1s
+    jitter: 0.1

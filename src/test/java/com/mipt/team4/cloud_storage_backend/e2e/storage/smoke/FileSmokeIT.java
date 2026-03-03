@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
+import com.mipt.team4.cloud_storage_backend.e2e.BaseIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
@@ -15,7 +16,7 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import java.util.UUID;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,8 +29,8 @@ public class FileSmokeIT extends BaseStorageIT {
 
   @Test
   public void shouldSimpleUploadAndDownloadFile() throws IOException, InterruptedException {
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
-    checkDownloadFile(apacheClient, TestFiles.SMALL_FILE.getData());
+    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
+    checkDownloadFile(fileId, TestFiles.SMALL_FILE.getData());
   }
 
   // TODO: тест на удаление файла во время скачивания/загрузки
@@ -43,44 +44,44 @@ public class FileSmokeIT extends BaseStorageIT {
         chunkedITUtils.sendUploadRequest(
             apacheClient,
             currentUserToken,
-            DEFAULT_FILE_TARGET_PATH,
+            DEFAULT_FILE_TARGET_NAME,
             TestConstants.BIG_FILE_LOCAL_PATH,
             "",
             fileData.length);
-    assertEquals(HttpStatus.SC_OK, uploadResult.statusCode());
+    UUID fileId = itUtils.extractIdFromBody(uploadResult.body());
 
-    checkDownloadFile(apacheClient, fileData);
+    assertEquals(HttpStatus.SC_CREATED, uploadResult.statusCode());
+    checkDownloadFile(fileId, fileData);
   }
 
   @Test
-  public void shouldGetFilePathsList() throws IOException, InterruptedException {
-    List<String> filePaths = new ArrayList<>();
+  public void shouldGetFileNamesList() throws IOException, InterruptedException {
+    List<String> fileNames = new ArrayList<>();
 
     for (int i = 0; i < 10; i++) {
-      String targetFilePath = "file" + i + ".txt";
-      filePaths.add(targetFilePath);
+      String targetFileName = "file" + i + ".txt";
+      fileNames.add(targetFileName);
 
-      simpleUploadFile(targetFilePath);
+      simpleUploadFile(targetFileName);
     }
 
     assertTrue(
-        fileOperationsITUtils.filePathsListContainsFiles(
-            client, currentUserToken, filePaths, false, true, null));
+        fileOperationsITUtils.fileListContainsFileNames(
+            client, currentUserToken, fileNames, false, true, null));
   }
 
   @Test
   public void shouldGetFileInfo() throws IOException, InterruptedException {
-    simpleUploadFile(TestConstants.SMALL_FILE_LOCAL_PATH, DEFAULT_FILE_TARGET_PATH, "1,2,3");
+    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME, "1,2,3");
 
     HttpResponse<String> response =
-        fileOperationsITUtils.sendGetFileInfoRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
+        fileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, fileId);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
     byte[] testFile = TestFiles.SMALL_FILE.getData();
 
     JsonNode rootNode = itUtils.getRootNodeFromResponse(response);
-    assertEquals(DEFAULT_FILE_TARGET_PATH, rootNode.get("Path").asText());
+    assertEquals(DEFAULT_FILE_TARGET_NAME, rootNode.get("Name").asText());
     assertEquals("private", rootNode.get("Visibility").asText());
     assertEquals("1,2,3", rootNode.get("Tags").asText());
     assertEquals(testFile.length, rootNode.get("Size").asLong());
@@ -90,58 +91,54 @@ public class FileSmokeIT extends BaseStorageIT {
 
   @Test
   public void shouldDeleteFile() throws IOException, InterruptedException {
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
+    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
 
     HttpResponse<String> deletedResponse =
-        fileOperationsITUtils.sendDeleteFileRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
+        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId);
     assertEquals(HttpStatus.SC_OK, deletedResponse.statusCode());
 
-    assertFileExistsIs(false, DEFAULT_FILE_TARGET_PATH);
+    assertFileNotFound(currentUserToken, fileId);
   }
 
   @Test
   public void shouldChangeFilePath() throws IOException, InterruptedException {
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
+    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
+    final String NEW_FILE_NAME = "new_file";
 
     HttpResponse<String> changeFileResponse =
         fileOperationsITUtils.sendChangeFilePathRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH, "new_file");
+            client, currentUserToken, fileId, NEW_FILE_NAME);
     assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
 
-    assertFileExistsIs(false, DEFAULT_FILE_TARGET_PATH);
-    assertFileExistsIs(true, "new_file");
+    assertFileInfoMatches(fileId, NEW_FILE_NAME, null, null);
   }
 
   @Test
   public void shouldChangeFileVisibility() throws IOException, InterruptedException {
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
+    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
 
     HttpResponse<String> changeFileResponse =
         fileOperationsITUtils.sendChangeFileVisibilityRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH, "public");
+            client, currentUserToken, fileId, "public");
     assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
 
-    assertFileInfoMatches(DEFAULT_FILE_TARGET_PATH, "public", null);
+    assertFileInfoMatches(fileId, null, "public", null);
   }
 
   @Test
   public void shouldChangeFileTags() throws IOException, InterruptedException {
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
+    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
 
     HttpResponse<String> changeFileResponse =
-        fileOperationsITUtils.sendChangeFileTagsRequest(
-            client, currentUserToken, DEFAULT_FILE_TARGET_PATH, "1,2,3");
+        fileOperationsITUtils.sendChangeFileTagsRequest(client, currentUserToken, fileId, "1,2,3");
     assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
 
-    assertFileInfoMatches(DEFAULT_FILE_TARGET_PATH, null, "1,2,3");
+    assertFileInfoMatches(fileId, null, null, "1,2,3");
   }
 
-  private void checkDownloadFile(CloseableHttpClient apacheClient, byte[] originalFileData)
-      throws IOException {
+  private void checkDownloadFile(UUID fileId, byte[] originalFileData) throws IOException {
     FileChunkedTransferITUtils.DownloadResult downloadResult =
-        chunkedITUtils.sendDownloadRequest(
-            apacheClient, currentUserToken, DEFAULT_FILE_TARGET_PATH);
+        chunkedITUtils.sendDownloadRequest(BaseIT.apacheClient, currentUserToken, fileId);
     assertEquals(HttpStatus.SC_OK, downloadResult.statusCode());
 
     assertDownloadResponseValid(downloadResult, originalFileData.length);
@@ -151,11 +148,8 @@ public class FileSmokeIT extends BaseStorageIT {
   private void assertDownloadResponseValid(
       FileChunkedTransferITUtils.DownloadResult downloadResult, int fileSize) {
     Map<String, String> headers = downloadResult.headers();
-
-    String receivedFilePath = headers.get("X-File-Path");
     String receivedFileSize = headers.get("X-File-Size");
 
-    assertEquals(DEFAULT_FILE_TARGET_PATH, receivedFilePath);
     assertEquals(String.valueOf(fileSize), receivedFileSize);
   }
 

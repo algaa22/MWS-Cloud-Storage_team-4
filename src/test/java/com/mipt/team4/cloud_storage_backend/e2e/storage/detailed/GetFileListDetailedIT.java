@@ -13,12 +13,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
-public class GetFilePathsDetailedIT extends BaseDetailedFileIT {
+public class GetFileListDetailedIT extends BaseDetailedFileIT {
   @Autowired private FileOperationsITUtils fileOperationsITUtils;
   @Autowired private ITUtils itUtils;
 
-  public GetFilePathsDetailedIT() {
-    super("/api/files/list", HttpMethod.GET.name(), PathParam.EXISTENT_FOLDER);
+  public GetFileListDetailedIT() {
+    super("/api/files/list", HttpMethod.GET.name(), PathParam.EXISTENT_DIRECTORY);
   }
 
   @Test

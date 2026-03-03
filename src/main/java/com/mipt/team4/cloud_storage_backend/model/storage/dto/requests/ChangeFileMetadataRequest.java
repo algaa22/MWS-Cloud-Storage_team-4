@@ -9,8 +9,9 @@ import java.util.Optional;
 
 public record ChangeFileMetadataRequest(
     String userToken,
-    String oldPath,
-    Optional<String> newPath,
+    String fileId,
+    Optional<String> newName,
+    Optional<String> newParentId,
     Optional<String> visibility,
     Optional<List<String>> tags) {
 
@@ -18,21 +19,22 @@ public record ChangeFileMetadataRequest(
     ValidationResult result =
         Validators.all(
             Validators.validToken(jwtService, userToken),
-            Validators.mustBeFilePath("Old file path", oldPath),
+            Validators.notNull("File ID", fileId),
             Validators.any(
-                "New file path",
-                "If new file path specified, it must not be directory",
-                Validators.validate(newPath.isEmpty(), null, null),
-                Validators.mustBeFilePath(null, newPath.orElse(null))),
+                "New file name",
+                "Invalid file name",
+                Validators.validate(newName.isEmpty(), null, null),
+                Validators.validFileName("New file name", newName.orElse(""))),
             Validators.any(
                 "New file visibility",
-                "If new file visibility specified, it must be has valid value",
+                "Invalid visibility",
                 Validators.validate(visibility.isEmpty(), null, null),
                 Validators.validateVisibility(visibility.orElse(null))),
             Validators.any(
                 "New file metadata",
                 "One of the fields {New file Path, File visibility, File tags} must be specified",
-                Validators.validate(newPath.isPresent() && !newPath.get().isEmpty(), null, null),
+                Validators.validate(newName.isPresent() && !newName.get().isBlank(), null, null),
+                Validators.validate(newParentId.isPresent(), null, null),
                 Validators.validate(
                     visibility.isPresent() && !visibility.get().isEmpty(), null, null),
                 Validators.validate(tags.isPresent(), null, null)));

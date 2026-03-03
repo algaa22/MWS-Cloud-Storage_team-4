@@ -15,6 +15,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import java.util.function.Function;
 
 public class ResponseUtils {
@@ -108,5 +109,12 @@ public class ResponseUtils {
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
 
     return response;
+  }
+
+  public static void sendCreatedResponse(ChannelHandlerContext ctx, UUID entityId, String message) {
+    ObjectNode root = ResponseUtils.createJsonNode(true, message);
+    root.put("id", entityId.toString());
+
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, root);
   }
 }

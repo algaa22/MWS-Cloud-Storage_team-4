@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -48,13 +49,15 @@ public class FileChunkedTransferITUtils {
   public UploadResult sendUploadRequest(
       CloseableHttpClient client,
       String userToken,
-      String targetFilePath,
+      String targetFileName,
       String filePath,
       String fileTags,
       long fileSize)
       throws IOException {
     HttpPost request =
-        new HttpPost(itUtils.createUriString("/api/files/upload?path=" + targetFilePath));
+        new HttpPost(
+            itUtils.createUriString(
+                itUtils.fillQuery("/api/files/upload?name=%s", targetFileName)));
 
     InputStream fileStream = FileLoader.getInputStream(filePath);
     InputStreamEntity entity =
@@ -70,9 +73,10 @@ public class FileChunkedTransferITUtils {
   }
 
   public DownloadResult sendDownloadRequest(
-      CloseableHttpClient client, String userToken, String targetFilePath) throws IOException {
+      CloseableHttpClient client, String userToken, UUID targetFileId) throws IOException {
     HttpGet request =
-        new HttpGet(itUtils.createUriString("/api/files/download?path=" + targetFilePath));
+        new HttpGet(
+            itUtils.createUriString(itUtils.fillQuery("/api/files/download?id=%s", targetFileId)));
 
     request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
     request.setHeader("X-Auth-Token", userToken);

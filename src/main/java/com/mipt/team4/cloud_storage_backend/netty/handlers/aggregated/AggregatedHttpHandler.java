@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
-import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -48,20 +47,17 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
-      filesRequestHandler.handleGetFilePathsListRequest(ctx, request, userToken);
+      filesRequestHandler.handleGetFileListRequest(ctx, request, userToken);
     } else {
-      String filePath = RequestUtils.getRequiredQueryParam(request, "path");
 
       if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET)) {
-        filesRequestHandler.handleGetFileInfoRequest(ctx, filePath, userToken);
+        filesRequestHandler.handleGetFileInfoRequest(ctx, request, userToken);
       } else {
         switch (method.name()) {
-          case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, filePath, userToken);
-          case "POST" ->
-              filesRequestHandler.handleUploadFileRequest(ctx, request, filePath, userToken);
+          case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, request, userToken);
+          case "POST" -> filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
           case "PUT" ->
-              filesRequestHandler.handleChangeFileMetadataRequest(
-                  ctx, request, filePath, userToken);
+              filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, userToken);
           default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
         }
       }
@@ -72,14 +68,13 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     String userToken = extractUserTokenFromRequest(request);
 
     if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST)) {
-      directoriesRequestHandler.handleChangeDirectoryPathRequest(ctx, request, userToken);
+      directoriesRequestHandler.handleChangeDirectoryRequest(ctx, request, userToken);
     } else {
-      String directoryPath = RequestUtils.getRequiredQueryParam(request, "path");
 
       if (uri.startsWith("/api/directories") && method.equals(HttpMethod.PUT)) {
-        directoriesRequestHandler.handleCreateDirectoryRequest(ctx, directoryPath, userToken);
+        directoriesRequestHandler.handleCreateDirectoryRequest(ctx, request, userToken);
       } else if (method.equals(HttpMethod.DELETE)) {
-        directoriesRequestHandler.handleDeleteDirectoryRequest(ctx, directoryPath, userToken);
+        directoriesRequestHandler.handleDeleteDirectoryRequest(ctx, request, userToken);
       } else {
         ResponseUtils.sendMethodNotSupported(ctx, uri, method);
       }

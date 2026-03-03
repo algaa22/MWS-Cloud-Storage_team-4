@@ -6,8 +6,6 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
@@ -17,12 +15,16 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileLi
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadFileResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,49 +43,53 @@ public class FileService {
   private final UserRepository userRepository;
   private final MinioConfig minioConfig;
 
-  public void startChunkedUploadSession(FileChunkedUploadRequest uploadSession) {
-    UUID userId = userSessionService.extractUserIdFromToken(uploadSession.userToken());
-    String uploadSessionId = uploadSession.sessionId();
-    String path = uploadSession.path();
+  public void startChunkedUploadSession(FileChunkedUploadRequest request) {
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+    UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
+    String uploadSessionId = request.sessionId();
+    String name = request.name();
 
     if (activeUploads.containsKey(uploadSessionId)) {
-      throw new StorageFileAlreadyExistsException(path);
+      throw new StorageFileAlreadyExistsException(parentId, name);
     }
 
-    Optional<StorageEntity> fileEntity = storageRepository.getFile(userId, path);
+    Optional<StorageEntity> fileEntity = storageRepository.getFile(userId, parentId, name);
     if (fileEntity.isPresent()) {
-      throw new StorageFileAlreadyExistsException(path);
+      throw new StorageFileAlreadyExistsException(parentId, name);
     }
 
     activeUploads.put(
-        uploadSession.sessionId(),
+        request.sessionId(),
         new ChunkedUploadState(
-            uploadSession,
+            request,
             StorageEntity.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
-                .mimeType(MimeTypeDetector.detect(path))
-                .path(path)
+                .mimeType(MimeTypeDetector.detect(name))
+                .parentId(parentId)
+                .name(name)
                 .isDirectory(false)
-                .tags(uploadSession.tags())
+                .tags(request.tags())
+                .status(FileStatus.READY)
+                .updatedAt(LocalDateTime.now())
                 .build()));
   }
 
-  public void uploadChunk(UploadChunkRequest uploadRequest) {
-    ChunkedUploadState uploadState = activeUploads.get(uploadRequest.sessionId());
+  public void uploadChunk(UploadChunkRequest request) {
+    ChunkedUploadState uploadState = activeUploads.get(request.sessionId());
     if (uploadState == null) {
-      throw new UploadSessionNotFoundException(uploadRequest.sessionId());
+      throw new UploadSessionNotFoundException(request.sessionId());
     }
 
-    uploadState.chunks.add(uploadRequest.chunkData());
-    uploadState.addPartSize(uploadRequest.chunkData().length);
+    uploadState.chunks.add(request.chunkData());
+    uploadState.addPartSize(request.chunkData().length);
 
     if (uploadState.getPartSize() >= minioConfig.minFilePartSize()) {
       uploadPart(uploadState);
     }
   }
 
-  public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId) {
+  public ChunkedUploadFileResponse completeChunkedUpload(String sessionId) {
     ChunkedUploadState uploadState = activeUploads.get(sessionId);
     if (uploadState == null) {
       throw new UploadSessionNotFoundException(sessionId);
@@ -98,7 +104,6 @@ public class FileService {
         uploadPart(uploadState);
       }
 
-      FileChunkedUploadRequest session = uploadState.getSession();
       for (int i = 1; i <= uploadState.getTotalParts(); i++) {
         if (!uploadState.getETags().containsKey(i)) {
           throw new MissingFilePartException(i);
@@ -111,23 +116,26 @@ public class FileService {
           fileEntity, uploadState.getFileSize(), uploadState.getUploadId(), uploadState.getETags());
       userRepository.increaseUsedStorage(fileEntity.getUserId(), uploadState.getFileSize());
 
-      return new ChunkedUploadFileResultDto(
-          session.path(), uploadState.getFileSize(), uploadState.getTotalParts());
+      return new ChunkedUploadFileResponse(
+          fileEntity.getId(), fileEntity.getSize(), uploadState.getTotalParts());
     } finally {
       activeUploads.remove(sessionId);
     }
   }
 
-  public void uploadFile(FileUploadRequest fileUploadRequest) {
+  public UUID uploadFile(FileUploadRequest request) {
     UUID fileId = UUID.randomUUID();
-    UUID userId = userSessionService.extractUserIdFromToken(fileUploadRequest.userToken());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
-    if (storageRepository.fileExists(userId, fileUploadRequest.path())) {
-      throw new StorageFileAlreadyExistsException(fileUploadRequest.path());
+    String fileName = request.name();
+    UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
+
+    if (storageRepository.fileExists(userId, parentId, fileName)) {
+      throw new StorageFileAlreadyExistsException(parentId, fileName);
     }
 
-    String mimeType = MimeTypeDetector.detect(fileUploadRequest.path());
-    byte[] data = fileUploadRequest.data();
+    String mimeType = MimeTypeDetector.detect(fileName);
+    byte[] data = request.data();
 
     StorageEntity entity =
         StorageEntity.builder()
@@ -135,89 +143,87 @@ public class FileService {
             .userId(userId)
             .mimeType(mimeType)
             .size(data.length)
-            .path(fileUploadRequest.path())
+            .parentId(parentId)
+            .name(fileName)
             .isDirectory(false)
-            .tags(fileUploadRequest.tags())
+            .tags(request.tags())
+            .status(FileStatus.READY)
+            .updatedAt(LocalDateTime.now())
             .build();
 
     storageRepository.addFile(entity, data);
     userRepository.increaseUsedStorage(userId, data.length);
+
+    return fileId;
   }
 
-  public FileDownloadDto downloadFile(SimpleFileOperationRequest fileDownload) {
-    UUID userId = userSessionService.extractUserIdFromToken(fileDownload.userToken());
+  public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
+    UUID fileId = UUID.fromString(request.fileId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
-    Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileDownload.path());
-    StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileDownload.path()));
+    Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileId);
+    StorageEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-    return new FileDownloadDto(
-        fileDownload.path(),
-        entityOpt.get().getMimeType(),
-        storageRepository.downloadFile(entity),
-        entity.getSize());
+    return new FileDownloadResponse(
+        entityOpt.get().getMimeType(), storageRepository.downloadFile(entity), entity.getSize());
   }
 
-  public void deleteFile(SimpleFileOperationRequest deleteFileRequest) {
-    UUID userId = userSessionService.extractUserIdFromToken(deleteFileRequest.userToken());
-    Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, deleteFileRequest.path());
-    StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(deleteFileRequest.path()));
+  public void deleteFile(SimpleFileOperationRequest request) {
+    UUID fileId = UUID.fromString(request.fileId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+
+    Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileId);
+    StorageEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
   }
 
-  public List<StorageEntity> getFileList(GetFileListRequest filePathsRequest) {
-    UUID userUuid = userSessionService.extractUserIdFromToken(filePathsRequest.userToken());
-    return storageRepository.getFilesList(
-        new FileListFilter(
-            userUuid,
-            filePathsRequest.includeDirectories(),
-            filePathsRequest.recursive(),
-            filePathsRequest.searchDirectory().orElse("")));
+  public List<StorageEntity> getFileList(GetFileListRequest request) {
+    UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+
+    return storageRepository.getFileList(
+        new FileListFilter(userId, parentId, request.includeDirectories(), request.recursive()));
   }
 
-  public StorageDto getFileInfo(SimpleFileOperationRequest fileInfoRequest) {
-    UUID userUuid = userSessionService.extractUserIdFromToken(fileInfoRequest.userToken());
+  public StorageDto getFileInfo(SimpleFileOperationRequest request) {
+    UUID fileId = UUID.fromString(request.fileId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
-    Optional<StorageEntity> entityOpt = storageRepository.getFile(userUuid, fileInfoRequest.path());
+    Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileId);
     if (entityOpt.isEmpty()) {
-      throw new StorageFileNotFoundException(fileInfoRequest.path());
+      throw new StorageFileNotFoundException(fileId);
     }
 
     return new StorageDto(entityOpt.get());
   }
 
-  public void changeFileMetadata(ChangeFileMetadataRequest changeFileMetadata) {
-
-    UUID userId = userSessionService.extractUserIdFromToken(changeFileMetadata.userToken());
-
-    Optional<StorageEntity> entityOpt =
-        storageRepository.getFile(userId, changeFileMetadata.oldPath());
+  public void changeFileMetadata(ChangeFileMetadataRequest request) {
+    UUID fileId = UUID.fromString(request.fileId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     StorageEntity entity =
-        entityOpt.orElseThrow(() -> new StorageFileNotFoundException(changeFileMetadata.oldPath()));
+        storageRepository
+            .getFile(userId, fileId)
+            .filter(f -> f.getUserId().equals(userId))
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+    String targetName = request.newName().orElse(entity.getName());
+    UUID targetParentId =
+        request.newParentId().isPresent()
+            ? UUID.fromString(request.newParentId().get())
+            : entity.getParentId();
 
-    // TODO: Есть риск, что, пока мы обновляем entity, файл может быть удален другим потоком
-
-    if (changeFileMetadata.newPath().isPresent()) {
-      Optional<StorageEntity> existingFile =
-          storageRepository.getFile(userId, changeFileMetadata.newPath().get());
-      if (existingFile.isPresent()) {
-        throw new StorageFileAlreadyExistsException(changeFileMetadata.newPath().get());
+    if (request.newName().isPresent() || request.newParentId().isPresent()) {
+      if (storageRepository.fileExists(userId, targetParentId, targetName)) {
+        throw new StorageFileAlreadyExistsException(targetParentId, targetName);
       }
-
-      entity.setPath(changeFileMetadata.newPath().get());
+      entity.setName(targetName);
+      entity.setParentId(targetParentId);
     }
 
-    if (changeFileMetadata.tags().isPresent()) {
-      entity.setTags(changeFileMetadata.tags().get());
-    }
-
-    if (changeFileMetadata.visibility().isPresent()) {
-      entity.setVisibility(changeFileMetadata.visibility().get());
-    }
+    request.tags().ifPresent(entity::setTags);
+    request.visibility().ifPresent(entity::setVisibility);
 
     storageRepository.updateFile(entity);
   }

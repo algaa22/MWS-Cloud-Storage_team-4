@@ -1,8 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResultDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
@@ -10,11 +8,14 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploa
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadFileResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
@@ -36,7 +37,7 @@ public class FileController {
     service.uploadChunk(request);
   }
 
-  public ChunkedUploadFileResultDto completeChunkedUpload(String sessionId) {
+  public ChunkedUploadFileResponse completeChunkedUpload(String sessionId) {
     Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));
 
     return service.completeChunkedUpload(sessionId);
@@ -57,9 +58,9 @@ public class FileController {
     service.deleteFile(request);
   }
 
-  public void uploadFile(FileUploadRequest request) {
+  public UUID uploadFile(FileUploadRequest request) {
     request.validate(jwtService);
-    service.uploadFile(request);
+    return service.uploadFile(request);
   }
 
   public void changeFileMetadata(ChangeFileMetadataRequest request) {
@@ -67,7 +68,7 @@ public class FileController {
     service.changeFileMetadata(request);
   }
 
-  public FileDownloadDto downloadFile(SimpleFileOperationRequest request) {
+  public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
     request.validate(jwtService);
     return service.downloadFile(request);
   }

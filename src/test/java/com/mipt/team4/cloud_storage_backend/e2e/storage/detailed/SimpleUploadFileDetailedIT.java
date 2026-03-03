@@ -10,6 +10,7 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransfer
 import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
 import java.net.http.HttpResponse;
+import java.util.UUID;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,25 +22,25 @@ public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
   @Autowired private FileSimpleTransferITUtils transferITUtils;
 
   public SimpleUploadFileDetailedIT() {
-    super("/api/files/upload?path=_", HttpMethod.POST.name(), PathParam.NEW_FILE);
+    super("/api/files/upload", HttpMethod.POST.name(), PathParam.NEW_ENTITY);
   }
 
   @Test
   public void shouldUploadFile_AfterDelete() throws IOException, InterruptedException {
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
+    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
 
     HttpResponse<String> response =
-        operationsITUtils.sendDeleteFileRequest(client, currentUserToken, DEFAULT_FILE_TARGET_PATH);
+        operationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
-    simpleUploadFile(DEFAULT_FILE_TARGET_PATH);
+    simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
   }
 
   @Test
   public void shouldNotUploadEmptyFile() throws IOException, InterruptedException {
     HttpResponse<String> uploadResponse =
         transferITUtils.sendUploadRequest(
-            client, currentUserToken, EMPTY_FILE_LOCAL_PATH, DEFAULT_FILE_TARGET_PATH, "");
+            client, currentUserToken, EMPTY_FILE_LOCAL_PATH, null, DEFAULT_FILE_TARGET_NAME, "");
     assertEquals(HttpStatus.SC_BAD_REQUEST, uploadResponse.statusCode());
   }
 }

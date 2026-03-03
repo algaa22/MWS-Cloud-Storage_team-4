@@ -7,8 +7,8 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFou
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelFutureListener;
@@ -16,7 +16,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -40,16 +39,18 @@ public class ChunkedDownloadHandler {
           QueryParameterNotFoundException,
           HeaderNotFoundException {
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-    String filePath = RequestUtils.getRequiredQueryParam(request, "path");
+    String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 
-    FileDownloadDto fileDownload =
-        fileController.downloadFile(new SimpleFileOperationRequest(filePath, userToken));
+    FileDownloadResponse fileDownload =
+        fileController.downloadFile(new SimpleFileOperationRequest(fileId, userToken));
 
     HttpResponse response =
         new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileDownload.size());
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_OCTET_STREAM);
-    response.headers().set("X-File-Path", fileDownload.path());
+    String contentType =
+        fileDownload.mimeType() != null ? fileDownload.mimeType() : "application/octet-stream";
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
     response.headers().set("X-File-Size", fileDownload.size());
 
     ResponseUtils.write(ctx, response);

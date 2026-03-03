@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import io.minio.errors.ErrorResponseException;
 import io.minio.errors.InsufficientDataException;
 import io.minio.errors.InternalException;
@@ -51,8 +52,14 @@ public class MinioWrapper {
       Throwable cause = e.getCause();
 
       if (cause instanceof ErrorResponseException ex) {
-        if ("NoSuchKey".equals(ex.errorResponse().code()) || ex.response().code() == 404) {
+        String code = ex.errorResponse().code();
+
+        if ("NoSuchKey".equals(code) || ex.response().code() == 404) {
           return new StorageObjectNotFoundException("", e);
+        }
+
+        if ("NoSuchUpload".equals(code)) {
+          return new UploadSessionNotFoundException(new RecoverableStorageException(ex));
         }
       }
 
@@ -67,7 +74,7 @@ public class MinioWrapper {
     }
 
     if (isRecoverable(e)) {
-      return new RecoverableStorageException("Temporary MinIO issue", e);
+      return new RecoverableStorageException(e);
     }
 
     return new FatalStorageException("Critical MinIO error", e);

@@ -1,14 +1,14 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadFileResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
@@ -27,7 +27,7 @@ public class FileController {
   private final JwtService jwtService;
   private final StorageConfig storageConfig;
 
-  public void startChunkedUpload(FileChunkedUploadRequest request) {
+  public void startChunkedUpload(ChunkedUploadRequest request) {
     request.validate(jwtService);
     service.startChunkedUploadSession(request);
   }
@@ -37,10 +37,15 @@ public class FileController {
     service.uploadChunk(request);
   }
 
-  public ChunkedUploadFileResponse completeChunkedUpload(String sessionId) {
-    Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId));
+  public ChunkedUploadFileResult completeChunkedUpload(String sessionId) {
+    Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId)); // TODO: в DTO
 
     return service.completeChunkedUpload(sessionId);
+  }
+
+  public void resumeChunkedUpload(ChunkedUploadRequest request) {
+    request.validate(jwtService);
+    service.resumeChunkedUploadSession(request);
   }
 
   public List<StorageEntity> getFileList(GetFileListRequest request) {

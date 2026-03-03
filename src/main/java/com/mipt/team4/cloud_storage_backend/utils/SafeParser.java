@@ -36,7 +36,7 @@ public class SafeParser {
     }
   }
 
-  public static Double parseDouble(String field, String value) throws ParseException {
+  public static Double parseDouble(String field, String value) {
     try {
       return Double.parseDouble(value);
     } catch (NumberFormatException e) {

@@ -1,7 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
@@ -25,15 +23,20 @@ import org.springframework.stereotype.Repository;
 public class FileMetadataRepository {
   private final PostgresConnection postgres;
 
-  public void addFile(StorageEntity fileEntity) throws StorageFileAlreadyExistsException {
-    if (fileExists(fileEntity.getUserId(), fileEntity.getParentId(), fileEntity.getName(), false)) {
-      throw new StorageFileAlreadyExistsException(fileEntity.getParentId(), fileEntity.getName());
-    }
-
+  public void addFile(StorageEntity fileEntity) {
     postgres.executeUpdate(
         "INSERT INTO files (id, user_id, parent_id, name, size, mime_type, visibility, is_deleted, tags, is_directory, "
             + "status, operation_type, started_at, updated_at, retry_count, error_message) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            + "ON CONFLICT (user_id, name, (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'))) "
+            + "DO UPDATE SET "
+            + "    size = EXCLUDED.size,"
+            + "    mime_type = EXCLUDED.mime_type,"
+            + "    tags = EXCLUDED.tags,"
+            + "    status = 'PENDING',"
+            + "    error_message = NULL,"
+            + "    updated_at = NOW() "
+            + "WHERE files.status != 'READY'",
         Arrays.asList(
             fileEntity.getId(),
             fileEntity.getUserId(),
@@ -128,35 +131,31 @@ public class FileMetadataRepository {
     return Optional.of(result.getFirst());
   }
 
-  public void deleteFile(UUID userId, UUID parentId, String name) {
-    if (!fileExists(userId, parentId, name, false)) {
-      throw new StorageFileNotFoundException(parentId, name);
-    }
-
+  public void deleteFile(StorageEntity entity) {
     postgres.executeUpdate(
-        "DELETE FROM files WHERE user_id = ? AND parent_id IS NOT DISTINCT FROM ? AND name = ?;",
-        Arrays.asList(userId, parentId, name));
+        "DELETE FROM files WHERE user_id = ? AND id = ?;",
+        Arrays.asList(entity.getUserId(), entity.getId()));
   }
 
-  public void updateEntity(StorageEntity fileEntity) {
+  public void updateEntity(StorageEntity entity) {
     postgres.executeUpdate(
         "UPDATE files SET parent_id = ?, name = ?, visibility = ?, tags = ?, size = ?, status = ?, "
             + "operation_type = ?, retry_count = ?, started_at = ?, updated_at = ?, error_message = ? "
             + "WHERE user_id = ? AND id = ?",
         Arrays.asList(
-            fileEntity.getParentId(),
-            fileEntity.getName(),
-            fileEntity.getVisibility(),
-            FileTagsMapper.toString(fileEntity.getTags()),
-            fileEntity.getSize(),
-            fileEntity.getStatus() != null ? fileEntity.getStatus().name() : null,
-            fileEntity.getOperationType() != null ? fileEntity.getOperationType().name() : null,
-            fileEntity.getRetryCount(),
-            fileEntity.getStartedAt(),
-            fileEntity.getUpdatedAt(),
-            fileEntity.getErrorMessage(),
-            fileEntity.getUserId(),
-            fileEntity.getId()));
+            entity.getParentId(),
+            entity.getName(),
+            entity.getVisibility(),
+            FileTagsMapper.toString(entity.getTags()),
+            entity.getSize(),
+            entity.getStatus() != null ? entity.getStatus().name() : null,
+            entity.getOperationType() != null ? entity.getOperationType().name() : null,
+            entity.getRetryCount(),
+            entity.getStartedAt(),
+            entity.getUpdatedAt(),
+            entity.getErrorMessage(),
+            entity.getUserId(),
+            entity.getId()));
   }
 
   public boolean fileExists(UUID userId, UUID parentId, String name) {

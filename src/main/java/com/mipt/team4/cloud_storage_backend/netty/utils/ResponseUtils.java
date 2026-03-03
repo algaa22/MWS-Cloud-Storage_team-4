@@ -7,6 +7,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -51,20 +52,20 @@ public class ResponseUtils {
   }
 
   public static void sendJson(ChannelHandlerContext ctx, HttpResponseStatus status, String json) {
-    send(ctx, createJson(status, json));
+    send(ctx, createJsonResponse(status, json));
   }
 
   private static FullHttpResponse createSuccess(HttpResponseStatus status, String message) {
-    return createJson(status, true, message);
+    return createJsonResponse(status, true, message);
   }
 
   public static FullHttpResponse createError(HttpResponseStatus status, String message) {
-    return createJson(status, false, message);
+    return createJsonResponse(status, false, message);
   }
 
-  public static FullHttpResponse createJson(
+  public static FullHttpResponse createJsonResponse(
       HttpResponseStatus status, boolean success, String message) {
-    return createJson(status, createJsonNode(success, message));
+    return createJsonResponse(status, createJsonNode(success, message));
   }
 
   public static ObjectNode createJsonNode(boolean success, String message) {
@@ -78,8 +79,8 @@ public class ResponseUtils {
     return json;
   }
 
-  public static FullHttpResponse createJson(HttpResponseStatus status, ObjectNode json) {
-    return createJson(status, json.toString());
+  public static FullHttpResponse createJsonResponse(HttpResponseStatus status, ObjectNode json) {
+    return createJsonResponse(status, json.toString());
   }
 
   public static ChannelFuture send(ChannelHandlerContext ctx, Object response) {
@@ -92,15 +93,35 @@ public class ResponseUtils {
 
   private static ChannelFuture executeWrite(
       ChannelHandlerContext ctx, Object response, Function<Object, ChannelFuture> operation) {
-    if (ctx.channel().isActive()) {
-      return operation.apply(response);
-    }
+    ChannelPromise promise = ctx.newPromise();
 
-    ReferenceCountUtil.release(response);
-    return ctx.newSucceededFuture();
+    ctx.executor()
+        .execute(
+            () -> {
+              try {
+                if (ctx.channel().isActive()) {
+                  operation
+                      .apply(response)
+                      .addListener(
+                          future -> {
+                            if (future.isSuccess()) promise.setSuccess();
+                            else promise.setFailure(future.cause());
+                          });
+                } else {
+                  ReferenceCountUtil.release(response);
+                  promise.setSuccess();
+                }
+              } catch (Exception e) {
+                ReferenceCountUtil.safeRelease(response);
+                promise.setFailure(e);
+                ctx.fireExceptionCaught(e);
+              }
+            });
+
+    return promise;
   }
 
-  public static FullHttpResponse createJson(HttpResponseStatus status, String json) {
+  public static FullHttpResponse createJsonResponse(HttpResponseStatus status, String json) {
     FullHttpResponse response =
         new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer(json, StandardCharsets.UTF_8));

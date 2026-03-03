@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class JwtService {
-
+  // TODO: неиспользующиеся методы для рефреш-токенов
   private final long accessTokenExpirationSec;
   private final long refreshTokenExpirationSec;
   private final String jwtSecretKey;

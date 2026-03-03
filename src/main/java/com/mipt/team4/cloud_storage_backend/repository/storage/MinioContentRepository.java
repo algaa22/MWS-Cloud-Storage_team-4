@@ -3,7 +3,9 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
@@ -48,7 +50,7 @@ public class MinioContentRepository implements FileContentRepository {
               .credentials(minioConfig.username(), minioConfig.password())
               .build();
     } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize MinIO", e);
+      throw new FatalStorageException("Failed to initialize MinIO", e);
     }
 
     if (!bucketExists(bucketName)) {
@@ -106,15 +108,26 @@ public class MinioContentRepository implements FileContentRepository {
 
   @Override
   public void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags) {
-
-    wrapper.execute(
-        () -> {
-          minioClient
-              .completeMultipartUploadAsync(
-                  bucketName, region, s3Key, uploadId, createPartArray(eTags), EMPTY_MAP, EMPTY_MAP)
-              .get();
-          return null;
-        });
+    try {
+      wrapper.execute(
+          () -> {
+            minioClient
+                .completeMultipartUploadAsync(
+                    bucketName,
+                    region,
+                    s3Key,
+                    uploadId,
+                    createPartArray(eTags),
+                    EMPTY_MAP,
+                    EMPTY_MAP)
+                .get();
+            return null;
+          });
+    } catch (UploadSessionNotFoundException exception) {
+      if (!objectExists(s3Key)) {
+        throw exception.getRecoverableCause();
+      }
+    }
   }
 
   @Override
@@ -161,9 +174,12 @@ public class MinioContentRepository implements FileContentRepository {
   public void hardDeleteFile(String s3Key) {
     wrapper.execute(
         () -> {
-          minioClient
-              .removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(s3Key).build())
-              .get();
+          if (objectExists(s3Key)) {
+            minioClient
+                .removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(s3Key).build())
+                .get();
+          }
+
           return null;
         });
   }

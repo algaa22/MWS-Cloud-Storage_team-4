@@ -1,21 +1,25 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
+import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
+import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadNotStoppedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadFileResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -36,6 +40,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class FileService {
+  // TODO: нужен Scheduler для очистки старых сессий загрузки
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
 
   private final UserSessionService userSessionService;
@@ -43,7 +48,7 @@ public class FileService {
   private final UserRepository userRepository;
   private final MinioConfig minioConfig;
 
-  public void startChunkedUploadSession(FileChunkedUploadRequest request) {
+  public void startChunkedUploadSession(ChunkedUploadRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
     String uploadSessionId = request.sessionId();
@@ -75,13 +80,28 @@ public class FileService {
                 .build()));
   }
 
+  public void resumeChunkedUploadSession(ChunkedUploadRequest request) {
+    String uploadSessionId = request.sessionId();
+    ChunkedUploadState uploadState = activeUploads.get(uploadSessionId);
+
+    if (uploadState == null) {
+      throw new UploadSessionNotFoundException();
+    }
+
+    if (!uploadState.isStopped()) {
+      throw new UploadNotStoppedException();
+    }
+
+    uploadState.resume();
+  }
+
   public void uploadChunk(UploadChunkRequest request) {
     ChunkedUploadState uploadState = activeUploads.get(request.sessionId());
     if (uploadState == null) {
-      throw new UploadSessionNotFoundException(request.sessionId());
+      throw new UploadSessionNotFoundException();
     }
 
-    uploadState.chunks.add(request.chunkData());
+    uploadState.getChunks().add(request.chunkData());
     uploadState.addPartSize(request.chunkData().length);
 
     if (uploadState.getPartSize() >= minioConfig.minFilePartSize()) {
@@ -89,10 +109,10 @@ public class FileService {
     }
   }
 
-  public ChunkedUploadFileResponse completeChunkedUpload(String sessionId) {
+  public ChunkedUploadFileResult completeChunkedUpload(String sessionId) {
     ChunkedUploadState uploadState = activeUploads.get(sessionId);
     if (uploadState == null) {
-      throw new UploadSessionNotFoundException(sessionId);
+      throw new UploadSessionNotFoundException();
     }
 
     try {
@@ -109,18 +129,29 @@ public class FileService {
           throw new MissingFilePartException(i);
         }
       }
+    } catch (Exception exception) {
+      if (!(exception instanceof UploadRetriableException)) {
+        activeUploads.remove(sessionId);
+      }
 
-      StorageEntity fileEntity = uploadState.getEntity();
+      throw exception;
+    }
 
+    StorageEntity fileEntity = uploadState.getEntity();
+
+    try {
       storageRepository.completeMultipartUpload(
           fileEntity, uploadState.getFileSize(), uploadState.getUploadId(), uploadState.getETags());
-      userRepository.increaseUsedStorage(fileEntity.getUserId(), uploadState.getFileSize());
-
-      return new ChunkedUploadFileResponse(
-          fileEntity.getId(), fileEntity.getSize(), uploadState.getTotalParts());
-    } finally {
-      activeUploads.remove(sessionId);
+    } catch (UploadRetriableException exception) {
+      uploadState.stop();
+      throw new CompleteUploadRetriableException(exception.getCause());
     }
+
+    userRepository.increaseUsedStorage(fileEntity.getUserId(), uploadState.getFileSize());
+    activeUploads.remove(sessionId);
+
+    return new ChunkedUploadFileResult(
+        fileEntity.getId(), fileEntity.getSize(), uploadState.getTotalParts());
   }
 
   public UUID uploadFile(FileUploadRequest request) {
@@ -233,13 +264,24 @@ public class FileService {
     byte[] part = ChunkCombiner.combineChunksToPart(uploadState);
     StorageEntity entity = uploadState.getEntity();
 
-    String eTag =
-        storageRepository.uploadPart(
-            entity,
-            new UploadPartRequest(
-                uploadId, entity.getUserId(), entity.getId(), uploadState.getPartNum(), part));
+    String eTag;
 
-    uploadState.addCompletedPart(uploadState.getPartNum(), eTag);
+    try {
+      eTag =
+          storageRepository.uploadPart(
+              entity,
+              new UploadPartRequest(
+                  uploadId, entity.getUserId(), entity.getId(), uploadState.getPartNum(), part));
+    } catch (UploadRetriableException exception) {
+      uploadState.stop();
+      throw new ProcessUploadRetriableException(
+          uploadState.getFileSize(), uploadState.getPartNum(), exception.getCause());
+    } finally {
+      uploadState.getChunks().clear();
+      uploadState.resetPartSize();
+    }
+
+    uploadState.getETags().put(uploadState.getPartNum(), eTag);
     uploadState.addFileSize(part.length);
     uploadState.increaseTotalParts();
   }

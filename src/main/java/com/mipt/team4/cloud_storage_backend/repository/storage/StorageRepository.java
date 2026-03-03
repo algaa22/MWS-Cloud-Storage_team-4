@@ -72,7 +72,7 @@ public class StorageRepository {
         entity,
         FileOperationType.DELETE,
         () -> {
-          metadataRepository.deleteFile(entity.getUserId(), entity.getParentId(), entity.getName());
+          metadataRepository.deleteFile(entity);
           contentRepository.hardDeleteFile(entity.getS3Key());
           return null;
         });

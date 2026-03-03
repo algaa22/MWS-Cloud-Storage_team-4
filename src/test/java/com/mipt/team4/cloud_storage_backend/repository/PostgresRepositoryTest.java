@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
@@ -112,20 +111,13 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   }
 
   @Test
-  void shouldThrowException_WhenAddExistentFile() {
-    assertThrows(
-        StorageFileAlreadyExistsException.class,
-        () -> fileMetadataRepository.addFile(commonFileEntity));
-  }
-
-  @Test
   void shouldAddAndDeleteFile_WithSameId()
       throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
     String uniqueName = "delete-me-" + UUID.randomUUID();
     StorageEntity testFileEntity = addTestFile(null, uniqueName);
     assertTrue(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
 
-    fileMetadataRepository.deleteFile(testFileEntity.getUserId(), null, uniqueName);
+    fileMetadataRepository.deleteFile(testFileEntity);
     assertFalse(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
   }
 

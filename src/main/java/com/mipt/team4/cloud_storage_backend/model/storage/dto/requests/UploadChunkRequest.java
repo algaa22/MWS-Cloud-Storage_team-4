@@ -6,7 +6,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.Optional;
 
 public record UploadChunkRequest(
-    String sessionId, String name, Optional<String> parentId, int chunkIndex, byte[] chunkData) {
+    String sessionId, String name, Optional<String> parentId, byte[] chunkData) {
 
   public void validate(long maxFileChunkSize) throws ValidationFailedException {
     ValidationResult result =
@@ -15,8 +15,7 @@ public record UploadChunkRequest(
             Validators.validFileName("File name", name),
             Validators.notNull("Chunk data", chunkData),
             Validators.mustBePositive("Chunk data size", chunkData.length),
-            Validators.numberMax("Chunk size", chunkData.length, maxFileChunkSize),
-            Validators.cannotBeNegative("Chunk index", chunkIndex));
+            Validators.numberMax("Chunk size", chunkData.length, maxFileChunkSize));
 
     Validators.throwExceptionIfNotValid(result);
   }

@@ -4,21 +4,27 @@ import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
+import com.mipt.team4.cloud_storage_backend.exception.retry.ChangeMetadataRetriableException;
+import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+// TODO: доки с упоминанием failsafe ретраев
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
   private final FileMetadataRepository metadataRepository;
   private final StorageConfig storageConfig;
+  private final RetryPolicy<Object> retryPolicy;
 
   // TODO: @Transactional
 
@@ -90,7 +96,6 @@ public class StorageRepositoryWrapper {
   public <T> void completeStep(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsPending(entity);
-
     finalizeOperation(entity, operationType, operation);
   }
 
@@ -102,14 +107,13 @@ public class StorageRepositoryWrapper {
   private <T> T executeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     try {
-      return operation.apply();
+      return Failsafe.with(retryPolicy).get(operation::apply);
     } catch (BaseStorageException exception) {
       handleException(exception, entity, operationType);
 
       throw exception;
     } catch (Exception exception) {
-      FatalStorageException fatalException =
-          new FatalStorageException("Unknown exception caught", exception);
+      FatalStorageException fatalException = new FatalStorageException(exception);
       handleException(fatalException, entity, operationType);
 
       throw fatalException;
@@ -153,16 +157,76 @@ public class StorageRepositoryWrapper {
   }
 
   private void handleException(
-      Exception exception, StorageEntity entity, FileOperationType operationType) {
-    entity.setErrorMessage(exception.getMessage());
+      Throwable throwable, StorageEntity entity, FileOperationType operationType) {
+    entity.setErrorMessage(throwable.getMessage());
 
-    if (exception instanceof RecoverableStorageException) {
-      syncEntityWithDatabase(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
-    } else if (exception instanceof FatalStorageException) {
-      log.error("FATAL: Failed to perform operation {}", operationType, exception);
-      syncEntityWithDatabase(entity, FileStatus.FATAL);
+    if (throwable instanceof RecoverableStorageException exception) {
+      handleRecoverableException(exception, entity, operationType);
+    } else if (throwable instanceof FatalStorageException exception) {
+      handleFatalException(exception, entity, operationType);
     } else {
-      syncEntityWithDatabase(entity, FileStatus.READY);
+      handleBusinessException(entity);
+    }
+  }
+
+  private void handleRecoverableException(
+      RecoverableStorageException exception,
+      StorageEntity entity,
+      FileOperationType operationType) {
+    if (entity.getRetryCount() >= storageConfig.stateMachine().maxRetryCount()) {
+      log.error(
+          "FATAL: Max retry count reached for operation {}, userId: {}, fileId: {}",
+          operationType,
+          entity.getUserId(),
+          entity.getId(),
+          exception);
+      syncEntityWithDatabase(entity, FileStatus.FATAL);
+      return;
+    }
+
+    if (entity.getRetryCount() == 0) {
+      initiateRetryStrategy(exception, entity, operationType);
+    }
+
+    syncEntityWithDatabase(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
+  }
+
+  private void handleFatalException(
+      FatalStorageException exception, StorageEntity entity, FileOperationType operationType) {
+    log.error(
+        "FATAL: Failed to perform operation {}, userId: {}, fileId: {}",
+        operationType,
+        entity.getUserId(),
+        entity.getId(),
+        exception);
+    syncEntityWithDatabase(entity, FileStatus.FATAL);
+  }
+
+  private void handleBusinessException(StorageEntity entity) {
+    syncEntityWithDatabase(entity, FileStatus.READY);
+  }
+
+  private void initiateRetryStrategy(
+      RecoverableStorageException exception,
+      StorageEntity entity,
+      FileOperationType operationType) {
+    switch (operationType) {
+      case UPLOAD -> {
+        try {
+          metadataRepository.deleteFile(entity);
+        } catch (Exception e) {
+          log.warn(
+              "Failed to delete metadata after upload error. Ghost record may remain. File ID: {}",
+              entity.getId(),
+              e);
+        }
+
+        throw new UploadRetriableException(exception);
+      }
+      case CHANGE_METADATA -> {
+        syncEntityWithDatabase(entity, FileStatus.READY, 0);
+        throw new ChangeMetadataRetriableException(exception);
+      }
     }
   }
 
@@ -184,7 +248,8 @@ public class StorageRepositoryWrapper {
     }
 
     try {
-      metadataRepository.updateEntity(entity);
+      metadataRepository.updateEntity(
+          entity); // TODO: в failsafe (мб postgres и minio отдельно ретраить failsafe'ом?)
     } catch (Exception e) {
       log.error("FATAL: Failed to update file entity {}", entity.getId(), e);
     }

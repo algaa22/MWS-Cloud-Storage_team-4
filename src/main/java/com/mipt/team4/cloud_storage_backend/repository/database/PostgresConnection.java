@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.database;
 import com.mipt.team4.cloud_storage_backend.config.props.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCheckConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCloseConnectionException;
-import com.mipt.team4.cloud_storage_backend.exception.database.DbConnectionException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbCreateConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCreateTableException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
@@ -49,7 +49,7 @@ public class PostgresConnection implements DatabaseConnection {
           DriverManager.getConnection(
               databaseConfig.url(), databaseConfig.username(), databaseConfig.password());
     } catch (SQLException e) {
-      throw new DbConnectionException(e);
+      throw new DbCreateConnectionException(e);
     }
 
     createTables();
@@ -128,7 +128,10 @@ public class PostgresConnection implements DatabaseConnection {
                     error_message TEXT,
 
                     CONSTRAINT check_no_self_reference CHECK (id != parent_id)
-                )
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_files_upsert
+                ON files (user_id, name, (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000')));
             """;
 
     try {

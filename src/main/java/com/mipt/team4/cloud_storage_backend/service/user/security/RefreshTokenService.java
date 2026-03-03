@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
-
   private final RefreshTokenRepository repository;
   private final SecureRandom random;
 

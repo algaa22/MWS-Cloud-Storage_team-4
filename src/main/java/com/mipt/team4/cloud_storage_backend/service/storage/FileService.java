@@ -300,8 +300,7 @@ public class FileService {
       long limit = user.getStorageLimit();
       double percent = (used * 100.0) / limit;
 
-      log.info("Storage check for user {}: used={}, limit={}, {}%",
-          userId, used, limit, String.format("%.2f", percent));
+      log.info("Storage check for user {}: used={}, limit={}, {}%", userId, used, limit, String.format("%.2f", percent));
 
       if (userRepository.isStorageFull(userId)) {
         notificationService.notifyStorageFull(

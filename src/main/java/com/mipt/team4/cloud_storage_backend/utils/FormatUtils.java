@@ -2,8 +2,7 @@ package com.mipt.team4.cloud_storage_backend.utils;
 
 public final class FormatUtils {
 
-  private FormatUtils() {
-  }
+  private FormatUtils() {}
 
   public static String formatBytes(long bytes) {
     if (bytes < 0) {

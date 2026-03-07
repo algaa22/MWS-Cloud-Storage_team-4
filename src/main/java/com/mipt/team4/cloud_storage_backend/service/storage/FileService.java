@@ -220,23 +220,19 @@ public class FileService {
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
 
-    UserEntity user = userRepository
-        .getUserById(userId)
-        .orElseThrow(() -> new UserNotFoundException(request.userToken()));
+    UserEntity user =
+        userRepository
+            .getUserById(userId)
+            .orElseThrow(() -> new UserNotFoundException(request.userToken()));
 
     String filePath = storageRepository.getFullFilePath(entity.getId());
     if (filePath == null) {
       filePath = entity.getName();
-      log.warn("Could not get full path for file {}, using name only: {}",
-          entity.getId(), filePath);
+      log.warn(
+          "Could not get full path for file {}, using name only: {}", entity.getId(), filePath);
     }
 
-    notificationService.notifyFileDeleted(
-        user.getEmail(),
-        user.getName(),
-        filePath,
-        userId
-    );
+    notificationService.notifyFileDeleted(user.getEmail(), user.getName(), filePath, userId);
 
     log.info("File deleted: {} (path: {})", entity.getId(), filePath);
   }
@@ -267,11 +263,10 @@ public class FileService {
     return storageRepository.getFilesByTags(userId, request.tags());
   }
 
-  public void changeFileMetadata(ChangeFileMetadataRequest request)
-       {
+  public void changeFileMetadata(ChangeFileMetadataRequest request) {
 
-         UUID fileId = UUID.fromString(request.fileId());
-         UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+    UUID fileId = UUID.fromString(request.fileId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     StorageEntity entity =
         storageRepository
@@ -326,31 +321,35 @@ public class FileService {
   }
 
   private void checkStorageAndNotify(UUID userId) {
-    userRepository.getStorageUsage(userId).ifPresent(usage -> {
-      double ratio = usage.getRatio();
+    userRepository
+        .getStorageUsage(userId)
+        .ifPresent(
+            usage -> {
+              double ratio = usage.getRatio();
 
-      log.info("Storage check for user {}: used={}, limit={}, {}%",
-          userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
+              log.info(
+                  "Storage check for user {}: used={}, limit={}, {}%",
+                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
 
-      if (ratio >= storageNotificationConfig.getFullThreshold()) {
-        userRepository.getUserById(userId).ifPresent(user ->
-            notificationService.notifyStorageFull(
-                user.getEmail(),
-                user.getName(),
-                userId
-            )
-        );
-      } else if (ratio >= storageNotificationConfig.getAlmostFullThreshold()) {
-        userRepository.getUserById(userId).ifPresent(user ->
-            notificationService.notifyStorageAlmostFull(
-                user.getEmail(),
-                user.getName(),
-                usage.used(),
-                usage.limit(),
-                userId
-            )
-        );
-      }
-    });
+              if (ratio >= storageNotificationConfig.getFullThreshold()) {
+                userRepository
+                    .getUserById(userId)
+                    .ifPresent(
+                        user ->
+                            notificationService.notifyStorageFull(
+                                user.getEmail(), user.getName(), userId));
+              } else if (ratio >= storageNotificationConfig.getAlmostFullThreshold()) {
+                userRepository
+                    .getUserById(userId)
+                    .ifPresent(
+                        user ->
+                            notificationService.notifyStorageAlmostFull(
+                                user.getEmail(),
+                                user.getName(),
+                                usage.used(),
+                                usage.limit(),
+                                userId));
+              }
+            });
   }
 }

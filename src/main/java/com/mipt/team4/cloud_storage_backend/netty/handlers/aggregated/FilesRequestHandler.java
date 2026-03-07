@@ -56,8 +56,9 @@ public class FilesRequestHandler {
       SearchFilesByTagsRequest searchRequest = new SearchFilesByTagsRequest(userToken, tags);
       files = fileController.searchFilesByTags(searchRequest);
     } else {
-      files = fileController.getFileList(
-          new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
+      files =
+          fileController.getFileList(
+              new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
     }
 
     ObjectNode rootNode = mapper.createObjectNode();
@@ -75,7 +76,8 @@ public class FilesRequestHandler {
         fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
         fileNode.put("mimeType", file.getMimeType() != null ? file.getMimeType() : "");
         fileNode.put("visibility", file.getVisibility());
-        fileNode.put("updatedAt", file.getUpdatedAt() != null ? file.getUpdatedAt().toString() : null);
+        fileNode.put(
+            "updatedAt", file.getUpdatedAt() != null ? file.getUpdatedAt().toString() : null);
         fileNode.put("isDirectory", file.isDirectory());
         fileNode.put("type", file.isDirectory() ? "folder" : "file");
 

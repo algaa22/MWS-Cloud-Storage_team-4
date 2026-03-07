@@ -138,8 +138,7 @@ public class FileMetadataRepository {
     postgres.executeUpdate(
         "DELETE FROM files WHERE user_id = ? AND id = ?;",
         Arrays.asList(entity.getUserId(), entity.getId()));
-    postgres.executeUpdate(
-        "DELETE FROM file_tags WHERE file_id = ?", List.of(entity.getId()));
+    postgres.executeUpdate("DELETE FROM file_tags WHERE file_id = ?", List.of(entity.getId()));
   }
 
   public void updateEntity(StorageEntity entity) {
@@ -284,14 +283,12 @@ public class FileMetadataRepository {
 
   private List<String> getFileTags(UUID fileId) {
     return postgres.executeQuery(
-        "SELECT tag FROM file_tags WHERE file_id = ?",
-        List.of(fileId),
-        rs -> rs.getString("tag")
-    );
+        "SELECT tag FROM file_tags WHERE file_id = ?", List.of(fileId), rs -> rs.getString("tag"));
   }
 
   public String getFullFilePath(UUID fileId) {
-    String sql = """
+    String sql =
+        """
         WITH RECURSIVE file_path AS (
             SELECT
                 id,
@@ -301,9 +298,9 @@ public class FileMetadataRepository {
                 1 as level
             FROM files
             WHERE id = ? AND is_deleted = false
-        
+
             UNION ALL
-        
+
             SELECT
                 f.id,
                 f.name,
@@ -321,24 +318,15 @@ public class FileMetadataRepository {
         LIMIT 1
         """;
 
-    List<String> result = postgres.executeQuery(
-        sql,
-        List.of(fileId),
-        rs -> rs.getString("full_path")
-    );
+    List<String> result =
+        postgres.executeQuery(sql, List.of(fileId), rs -> rs.getString("full_path"));
 
     return result.isEmpty() ? null : result.getFirst();
   }
 
   public String getFileName(UUID fileId) {
     String sql = "SELECT name FROM files WHERE id = ?";
-    List<String> result = postgres.executeQuery(
-        sql,
-        List.of(fileId),
-        rs -> rs.getString("name")
-    );
+    List<String> result = postgres.executeQuery(sql, List.of(fileId), rs -> rs.getString("name"));
     return result.isEmpty() ? null : result.getFirst();
   }
-
-
 }

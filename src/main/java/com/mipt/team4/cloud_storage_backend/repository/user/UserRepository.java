@@ -119,14 +119,11 @@ public class UserRepository {
 
   public Optional<StorageUsage> getStorageUsage(UUID userId) {
     String sql = "SELECT used_storage, storage_limit FROM users WHERE id = ?";
-    List<StorageUsage> result = postgres.executeQuery(
-        sql,
-        List.of(userId),
-        rs -> new StorageUsage(
-            rs.getLong("used_storage"),
-            rs.getLong("storage_limit")
-        )
-    );
+    List<StorageUsage> result =
+        postgres.executeQuery(
+            sql,
+            List.of(userId),
+            rs -> new StorageUsage(rs.getLong("used_storage"), rs.getLong("storage_limit")));
     return result.stream().findFirst();
   }
 }

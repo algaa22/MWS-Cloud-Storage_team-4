@@ -31,8 +31,8 @@ public class NotificationService {
     sendNotification(userEmail, subject, htmlContent, userId, userName);
   }
 
-  public void notifyStorageAlmostFull(String userEmail, String userName,
-      long usedStorage, long storageLimit, UUID userId) {
+  public void notifyStorageAlmostFull(
+      String userEmail, String userName, long usedStorage, long storageLimit, UUID userId) {
     String subject = notificationConfig.getSubjects().getStorageAlmostFull();
 
     double percentUsed = (usedStorage * 100.0) / storageLimit;
@@ -66,8 +66,8 @@ public class NotificationService {
     sendNotification(userEmail, subject, htmlContent, userId, userName);
   }
 
-  private void sendNotification(String userEmail, String subject,
-      String htmlContent, UUID userId, String userName) {
+  private void sendNotification(
+      String userEmail, String subject, String htmlContent, UUID userId, String userName) {
     emailService.sendHtmlEmail(userEmail, subject, htmlContent);
     log.info("HTML Notification sent to {}: {}", userEmail, subject);
   }

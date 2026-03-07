@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
 import com.mipt.team4.cloud_storage_backend.netty.channel.Http2StreamInitializer;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
@@ -29,8 +30,10 @@ public class ProtocolNegotiationHandler extends ApplicationProtocolNegotiationHa
     ChannelPipeline pipeline = ctx.pipeline();
 
     if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
-      pipeline.addLast(Http2FrameCodecBuilder.forServer().build());
-      pipeline.addLast(new Http2MultiplexHandler(http2StreamInitializer));
+      pipeline.addLast(
+          PipelineHandlerNames.HTTP2_FRAME, Http2FrameCodecBuilder.forServer().build());
+      pipeline.addLast(
+          PipelineHandlerNames.HTTP2_MULTIPLEX, new Http2MultiplexHandler(http2StreamInitializer));
     } else if (ApplicationProtocolNames.HTTP_1_1.equals(protocol)) {
       pipelineBuilder.buildHttp11Pipeline(pipeline);
     } else {

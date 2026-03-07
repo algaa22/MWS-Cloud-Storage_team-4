@@ -9,10 +9,16 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * Менеджер активных пользовательских сессий и механизмов отзыва токенов.
+ *
+ * <p>Данная реализация использует In-Memory хранилище (ConcurrentHashMap). Для обеспечения
+ * безопасности при выходе (logout) используется механизм <b>Blacklisting</b>: токены помечаются как
+ * недействительные до момента их естественного истечения.
+ */
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
-
   private final RefreshTokenRepository repository;
   private final SecureRandom random;
 

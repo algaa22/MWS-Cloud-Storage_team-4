@@ -1,8 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.exception.session;
 
-public class InvalidSessionException extends Exception {
+import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
+public class InvalidSessionException extends BaseStorageException {
 
   public InvalidSessionException(String message) {
-    super(message);
+    super(message, HttpResponseStatus.UNAUTHORIZED);
   }
 }

@@ -12,8 +12,7 @@ import java.util.Optional;
 
 public class RequestUtils {
 
-  public static String getRequiredQueryParam(HttpRequest request, String paramName)
-      throws QueryParameterNotFoundException {
+  public static String getRequiredQueryParam(HttpRequest request, String paramName) {
     return getQueryParam(request, paramName)
         .orElseThrow(() -> new QueryParameterNotFoundException(paramName));
   }
@@ -36,8 +35,7 @@ public class RequestUtils {
     return Optional.empty();
   }
 
-  public static String getRequiredHeader(HttpRequest request, String headerName)
-      throws HeaderNotFoundException {
+  public static String getRequiredHeader(HttpRequest request, String headerName) {
     return getHeader(request, headerName)
         .orElseThrow(() -> new HeaderNotFoundException(headerName));
   }

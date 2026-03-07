@@ -3,11 +3,10 @@ package com.mipt.team4.cloud_storage_backend.repository.database;
 import com.mipt.team4.cloud_storage_backend.config.props.DatabaseConfig;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCheckConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCloseConnectionException;
-import com.mipt.team4.cloud_storage_backend.exception.database.DbConnectionException;
+import com.mipt.team4.cloud_storage_backend.exception.database.DbCreateConnectionException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbCreateTableException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteQueryException;
 import com.mipt.team4.cloud_storage_backend.exception.database.DbExecuteUpdateException;
-import com.mipt.team4.cloud_storage_backend.exception.database.DbUnavailableException;
 import com.mipt.team4.cloud_storage_backend.exception.database.JdbcNotFoundException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -50,7 +49,7 @@ public class PostgresConnection implements DatabaseConnection {
           DriverManager.getConnection(
               databaseConfig.url(), databaseConfig.username(), databaseConfig.password());
     } catch (SQLException e) {
-      throw new DbConnectionException(e);
+      throw new DbCreateConnectionException(e);
     }
 
     createTables();
@@ -78,8 +77,6 @@ public class PostgresConnection implements DatabaseConnection {
 
       return results;
     } catch (SQLException e) {
-      handleSqlException(e);
-
       throw new DbExecuteQueryException(query, e);
     }
   }
@@ -90,16 +87,7 @@ public class PostgresConnection implements DatabaseConnection {
 
       return statement.executeUpdate();
     } catch (SQLException e) {
-      handleSqlException(e);
-
       throw new DbExecuteUpdateException(query, e);
-    }
-  }
-
-  private void handleSqlException(SQLException e) {
-    // TODO: обработать больше ошибок
-    if (e.getSQLState().startsWith("08")) {
-      throw new DbUnavailableException(e);
     }
   }
 
@@ -123,14 +111,27 @@ public class PostgresConnection implements DatabaseConnection {
         """
                 CREATE TABLE IF NOT EXISTS files (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    path VARCHAR(500) NOT NULL,
-                    file_size BIGINT NOT NULL,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    parent_id UUID REFERENCES files(id) ON DELETE CASCADE,
+                    name VARCHAR(500) NOT NULL,
+                    size BIGINT NOT NULL,
                     mime_type VARCHAR(100),
                     visibility VARCHAR(20) DEFAULT 'private',
                     is_deleted BOOLEAN DEFAULT false,
-                    is_directory BOOLEAN DEFAULT false
-                )
+                    is_directory BOOLEAN DEFAULT false,
+
+                    status VARCHAR(20) NOT NULL DEFAULT 'READY',
+                    operation_type VARCHAR(30),
+                    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    retry_count INT DEFAULT 0,
+                    error_message TEXT,
+
+                    CONSTRAINT check_no_self_reference CHECK (id != parent_id)
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_files_upsert
+                ON files (user_id, name, (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000')));
             """;
 
     try {

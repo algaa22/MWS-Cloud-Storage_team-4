@@ -2,21 +2,15 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
-import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.QueryParameterNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import io.netty.channel.ChannelFuture;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -33,25 +27,23 @@ public class ChunkedDownloadHandler {
   private final StorageConfig storageConfig;
 
   // TODO: refactor
-  public void startChunkedDownload(ChannelHandlerContext ctx, HttpRequest request)
-      throws UserNotFoundException,
-          StorageEntityNotFoundException,
-          ValidationFailedException,
-          QueryParameterNotFoundException,
-          HeaderNotFoundException {
+  public void start(ChannelHandlerContext ctx, HttpRequest request) {
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-    String filePath = RequestUtils.getRequiredQueryParam(request, "path");
+    String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 
-    FileDownloadDto fileDownload =
-        fileController.downloadFile(new SimpleFileOperationRequest(filePath, userToken));
+    FileDownloadResponse fileDownload =
+        fileController.downloadFile(new SimpleFileOperationRequest(fileId, userToken));
 
     HttpResponse response =
         new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileDownload.size());
-    response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_OCTET_STREAM);
-    response.headers().set("X-File-Path", fileDownload.path());
+    String contentType =
+        fileDownload.mimeType() != null ? fileDownload.mimeType() : "application/octet-stream";
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
     response.headers().set("X-File-Size", fileDownload.size());
-    ctx.write(response);
+
+    ResponseUtils.write(ctx, response);
 
     ChunkedInput<HttpContent> chunkedInput =
         new CustomChunkedInput(
@@ -59,7 +51,6 @@ public class ChunkedDownloadHandler {
             storageConfig.rest().fileDownloadChunkSize(),
             fileDownload.size());
 
-    ChannelFuture future = ctx.writeAndFlush(chunkedInput);
-    future.addListener(ChannelFutureListener.CLOSE);
+    ResponseUtils.send(ctx, chunkedInput).addListener(ChannelFutureListener.CLOSE);
   }
 }

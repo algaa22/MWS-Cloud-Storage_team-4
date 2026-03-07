@@ -41,7 +41,7 @@ public class UserSmokeIT extends BaseUserIT {
     HttpResponse<String> response =
         userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "User1");
 
-    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    assertEquals(HttpStatus.SC_CONFLICT, response.statusCode());
   }
 
   @Test
@@ -64,7 +64,7 @@ public class UserSmokeIT extends BaseUserIT {
     HttpResponse<String> response =
         userITUtils.sendLoginRequest(client, testEmail, "wrong_password");
 
-    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    assertEquals(HttpStatus.SC_NOT_FOUND, response.statusCode());
   }
 
   @Test
@@ -119,7 +119,7 @@ public class UserSmokeIT extends BaseUserIT {
     assertEquals(HttpStatus.SC_OK, logoutResponse.statusCode());
 
     HttpResponse<String> infoResponse = userITUtils.sendUserInfoRequest(client, accessToken);
-    assertEquals(HttpStatus.SC_BAD_REQUEST, infoResponse.statusCode());
+    assertEquals(HttpStatus.SC_NOT_FOUND, infoResponse.statusCode());
   }
 
   @Test
@@ -127,7 +127,7 @@ public class UserSmokeIT extends BaseUserIT {
     HttpResponse<String> response =
         userITUtils.sendRefreshTokenRequest(client, "invalid-refresh-token");
 
-    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    assertEquals(HttpStatus.SC_UNAUTHORIZED, response.statusCode());
   }
 
   @Test
@@ -144,6 +144,6 @@ public class UserSmokeIT extends BaseUserIT {
 
     HttpResponse<String> secondRefresh =
         userITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
-    assertEquals(HttpStatus.SC_BAD_REQUEST, secondRefresh.statusCode());
+    assertEquals(HttpStatus.SC_UNAUTHORIZED, secondRefresh.statusCode());
   }
 }

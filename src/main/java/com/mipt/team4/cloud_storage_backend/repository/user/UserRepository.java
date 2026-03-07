@@ -17,7 +17,7 @@ import org.springframework.stereotype.Repository;
 public class UserRepository {
   private final PostgresConnection postgres;
 
-  public void addUser(UserEntity userEntity) throws UserAlreadyExistsException {
+  public void addUser(UserEntity userEntity) {
 
     if (userExists(userEntity.getId())) {
       throw new UserAlreadyExistsException(userEntity.getId());

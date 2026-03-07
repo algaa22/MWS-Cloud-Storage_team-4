@@ -7,20 +7,19 @@ import java.io.IOException;
 
 public class ChunkCombiner {
 
-  public static byte[] combineChunksToPart(ChunkedUploadState uploadState)
-      throws CombineChunksToPartException {
+  public static byte[] combineChunksToPart(ChunkedUploadState uploadState) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      for (byte[] chunk : uploadState.chunks) {
+      for (byte[] chunk : uploadState.getChunks()) {
         outputStream.write(chunk);
       }
 
-      uploadState.chunks.clear();
+      uploadState.getChunks().clear();
       uploadState.resetPartSize();
       uploadState.increasePartNum();
 
       return outputStream.toByteArray();
     } catch (IOException e) {
-      throw new CombineChunksToPartException();
+      throw new CombineChunksToPartException(e);
     }
   }
 }

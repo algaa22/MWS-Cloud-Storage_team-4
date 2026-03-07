@@ -27,6 +27,7 @@ netty:
   https-port: 8443
   boss-threads: 1
   worker-threads: 4
+  idle-timeout-sec: 60
 
   start:
     timeout-sec: 5
@@ -52,6 +53,7 @@ minio:
   password: ${MINIO_PASSWORD}
 
   min-file-part-size: 5242880 # 5mb
+  region: "eu-central-1"
 
   user-data-bucket:
     name: user-data
@@ -70,3 +72,15 @@ storage:
 
   quotas:
     default-storage-limit: 10737418240
+
+  state-machine:
+    max-retry-count: 3
+    file-stale-time-min: 60
+    file-throttled-update-interval-sec: 15
+
+  failsafe-retry:
+    max-attempts: 3
+    delay-factor: 2.0
+    first-delay: 200ms
+    max-delay: 1s
+    jitter: 0.1

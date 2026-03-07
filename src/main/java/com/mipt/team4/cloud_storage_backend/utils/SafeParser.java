@@ -4,7 +4,7 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 
 public class SafeParser {
 
-  public static Boolean parseBoolean(String field, String value) throws ParseException {
+  public static Boolean parseBoolean(String field, String value) {
     try {
       return Boolean.parseBoolean(value);
     } catch (NumberFormatException e) {
@@ -12,7 +12,7 @@ public class SafeParser {
     }
   }
 
-  public static Integer parseInt(String field, String value) throws ParseException {
+  public static Integer parseInt(String field, String value) {
     try {
       return Integer.parseInt(value);
     } catch (NumberFormatException e) {
@@ -20,7 +20,7 @@ public class SafeParser {
     }
   }
 
-  public static Long parseLong(String field, String value) throws ParseException {
+  public static Long parseLong(String field, String value) {
     try {
       return Long.parseLong(value);
     } catch (NumberFormatException e) {
@@ -28,7 +28,7 @@ public class SafeParser {
     }
   }
 
-  public static Float parseFloat(String field, String value) throws ParseException {
+  public static Float parseFloat(String field, String value) {
     try {
       return Float.parseFloat(value);
     } catch (NumberFormatException e) {
@@ -36,7 +36,7 @@ public class SafeParser {
     }
   }
 
-  public static Double parseDouble(String field, String value) throws ParseException {
+  public static Double parseDouble(String field, String value) {
     try {
       return Double.parseDouble(value);
     } catch (NumberFormatException e) {

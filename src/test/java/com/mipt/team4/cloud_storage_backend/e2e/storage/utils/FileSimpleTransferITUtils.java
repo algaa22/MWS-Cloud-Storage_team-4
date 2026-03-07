@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -18,14 +19,30 @@ public class FileSimpleTransferITUtils {
       HttpClient client,
       String userToken,
       String localFilePath,
-      String targetFilePath,
+      String targetFileName,
+      String fileTags)
+      throws IOException, InterruptedException {
+    return sendUploadRequest(client, userToken, localFilePath, null, targetFileName, fileTags);
+  }
+
+  public HttpResponse<String> sendUploadRequest(
+      HttpClient client,
+      String userToken,
+      String localFilePath,
+      UUID parentId,
+      String targetFileName,
       String fileTags)
       throws IOException, InterruptedException {
     byte[] testFile = FileLoader.getInputStream(localFilePath).readAllBytes();
 
+    String endpoint = itUtils.fillQuery("/api/files/upload?name=%s", targetFileName);
+    if (parentId != null) {
+      endpoint += itUtils.fillQuery("&parentId=%s", parentId);
+    }
+
     HttpRequest request =
         itUtils
-            .createRequest("/api/files/upload?path=" + targetFilePath)
+            .createRequest(endpoint)
             .header("X-Auth-Token", userToken)
             .header("X-File-Tags", fileTags)
             .POST(HttpRequest.BodyPublishers.ofByteArray(testFile))

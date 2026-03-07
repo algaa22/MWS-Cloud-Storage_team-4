@@ -8,6 +8,7 @@ public record MinioConfig(
     String url,
     String username,
     String password,
+    String region,
     UserDataBucket userDataBucket) {
   public record UserDataBucket(String name) {}
 }

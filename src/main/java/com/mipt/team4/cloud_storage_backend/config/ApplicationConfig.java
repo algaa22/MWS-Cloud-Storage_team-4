@@ -1,12 +1,15 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
 import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig.FailsafeRetry;
+import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.netty.channel.MainChannelInitializer;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.ProtocolNegotiationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
+import dev.failsafe.RetryPolicy;
 import java.security.SecureRandom;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -23,13 +26,11 @@ public class ApplicationConfig {
   public MainChannelInitializer httpChannelInitializer(
       PipelineBuilder pipelineBuilder,
       SslContextFactory sslContextFactory,
-      ObjectProvider<GlobalErrorHandler> globalErrorHandler,
       ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
       NettyConfig nettyConfig) {
     return new MainChannelInitializer(
         pipelineBuilder,
         sslContextFactory,
-        globalErrorHandler,
         protocolNegotiationHandler,
         nettyConfig,
         ServerProtocol.HTTP);
@@ -39,15 +40,25 @@ public class ApplicationConfig {
   public MainChannelInitializer httpsChannelInitializer(
       PipelineBuilder pipelineBuilder,
       SslContextFactory sslContextFactory,
-      ObjectProvider<GlobalErrorHandler> globalErrorHandler,
       ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
       NettyConfig nettyConfig) {
     return new MainChannelInitializer(
         pipelineBuilder,
         sslContextFactory,
-        globalErrorHandler,
         protocolNegotiationHandler,
         nettyConfig,
         ServerProtocol.HTTPS);
+  }
+
+  @Bean
+  public RetryPolicy<Object> retryPolicy(StorageConfig config) {
+    FailsafeRetry retry = config.failsafeRetry();
+
+    return RetryPolicy.builder()
+        .handle(RecoverableStorageException.class)
+        .withBackoff(retry.firstDelay(), retry.maxDelay(), retry.delayFactor())
+        .withMaxRetries(retry.maxAttempts())
+        .withJitter(retry.jitter())
+        .build();
   }
 }

@@ -5,74 +5,70 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.util.ReferenceCountUtil;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+import java.util.function.Function;
 
 public class ResponseUtils {
 
-  public static ChannelFuture sendInternalServerErrorResponse(ChannelHandlerContext ctx) {
-    // TODO: нормальная обработка внутренних ошибок
-    return ResponseUtils.sendErrorResponse(
-        ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+  public static void sendInternalServerErrorAndClose(ChannelHandlerContext ctx) {
+    sendInternalServerError(ctx).addListener(ChannelFutureListener.CLOSE);
   }
 
-  public static void sendMethodNotSupportedResponse(
+  public static ChannelFuture sendInternalServerError(ChannelHandlerContext ctx) {
+    return sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+  }
+
+  public static void sendMethodNotSupported(
       ChannelHandlerContext ctx, String uri, HttpMethod method) {
-    sendErrorResponse(
+    sendError(
         ctx,
         HttpResponseStatus.BAD_REQUEST,
         "Request {uri: %s, method: %s} not supported".formatted(uri, method));
   }
 
-  public static void sendBadRequestExceptionResponse(
-      ChannelHandlerContext ctx, Exception exception) {
-    ResponseUtils.sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, exception.getMessage());
-  }
-
-  public static void sendSuccessResponse(
+  public static void sendSuccess(
       ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
-    sendResponse(ctx, createSuccessResponse(status, message));
+    send(ctx, createSuccess(status, message));
   }
 
-  public static ChannelFuture sendErrorResponse(
+  public static ChannelFuture sendError(
       ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
-    return sendResponse(ctx, createErrorResponse(status, message));
+    return send(ctx, createError(status, message));
   }
 
-  public static void sendJsonResponse(
-      ChannelHandlerContext ctx, HttpResponseStatus status, JsonNode json) {
-    sendJsonResponse(ctx, status, json.toString());
+  public static void sendJson(ChannelHandlerContext ctx, HttpResponseStatus status, JsonNode json) {
+    sendJson(ctx, status, json.toString());
   }
 
-  public static void sendJsonResponse(
-      ChannelHandlerContext ctx, HttpResponseStatus status, String json) {
-    sendResponse(ctx, createJsonResponse(status, json));
+  public static void sendJson(ChannelHandlerContext ctx, HttpResponseStatus status, String json) {
+    send(ctx, createJsonResponse(status, json));
   }
 
-  public static ChannelFuture sendResponse(ChannelHandlerContext ctx, FullHttpResponse response) {
-    return ctx.writeAndFlush(response);
-  }
-
-  private static FullHttpResponse createSuccessResponse(HttpResponseStatus status, String message) {
+  private static FullHttpResponse createSuccess(HttpResponseStatus status, String message) {
     return createJsonResponse(status, true, message);
   }
 
-  public static FullHttpResponse createErrorResponse(HttpResponseStatus status, String message) {
+  public static FullHttpResponse createError(HttpResponseStatus status, String message) {
     return createJsonResponse(status, false, message);
   }
 
   public static FullHttpResponse createJsonResponse(
       HttpResponseStatus status, boolean success, String message) {
-    return createJsonResponse(status, createJsonResponseNode(success, message));
+    return createJsonResponse(status, createJsonNode(success, message));
   }
 
-  public static ObjectNode createJsonResponseNode(boolean success, String message) {
+  public static ObjectNode createJsonNode(boolean success, String message) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode json = mapper.createObjectNode();
 
@@ -87,6 +83,44 @@ public class ResponseUtils {
     return createJsonResponse(status, json.toString());
   }
 
+  public static ChannelFuture send(ChannelHandlerContext ctx, Object response) {
+    return executeWrite(ctx, response, ctx::writeAndFlush);
+  }
+
+  public static ChannelFuture write(ChannelHandlerContext ctx, Object response) {
+    return executeWrite(ctx, response, ctx::write);
+  }
+
+  private static ChannelFuture executeWrite(
+      ChannelHandlerContext ctx, Object response, Function<Object, ChannelFuture> operation) {
+    ChannelPromise promise = ctx.newPromise();
+
+    ctx.executor()
+        .execute(
+            () -> {
+              try {
+                if (ctx.channel().isActive()) {
+                  operation
+                      .apply(response)
+                      .addListener(
+                          future -> {
+                            if (future.isSuccess()) promise.setSuccess();
+                            else promise.setFailure(future.cause());
+                          });
+                } else {
+                  ReferenceCountUtil.release(response);
+                  promise.setSuccess();
+                }
+              } catch (Exception e) {
+                ReferenceCountUtil.safeRelease(response);
+                promise.setFailure(e);
+                ctx.fireExceptionCaught(e);
+              }
+            });
+
+    return promise;
+  }
+
   public static FullHttpResponse createJsonResponse(HttpResponseStatus status, String json) {
     FullHttpResponse response =
         new DefaultFullHttpResponse(
@@ -96,5 +130,12 @@ public class ResponseUtils {
     response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
 
     return response;
+  }
+
+  public static void sendCreatedResponse(ChannelHandlerContext ctx, UUID entityId, String message) {
+    ObjectNode root = ResponseUtils.createJsonNode(true, message);
+    root.put("id", entityId.toString());
+
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, root);
   }
 }

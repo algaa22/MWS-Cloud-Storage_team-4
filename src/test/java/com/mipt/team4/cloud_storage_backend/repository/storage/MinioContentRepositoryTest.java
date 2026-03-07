@@ -26,7 +26,7 @@ import org.testcontainers.containers.MinIOContainer;
 
 @SpringBootTest(
     webEnvironment = WebEnvironment.NONE,
-    classes = {MinioContentRepository.class})
+    classes = {MinioContentRepository.class, MinioWrapper.class})
 @EnableConfigurationProperties(MinioConfig.class)
 @Tag("integration")
 class MinioContentRepositoryTest {

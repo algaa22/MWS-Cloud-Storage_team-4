@@ -1,12 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageEntityNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
-import java.io.FileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -20,72 +18,93 @@ import org.springframework.stereotype.Repository;
 public class StorageRepository {
   private final FileMetadataRepository metadataRepository;
   private final FileContentRepository contentRepository;
+  private final StorageRepositoryWrapper wrapper;
 
-  public void addFile(StorageEntity storageEntity, byte[] data)
-      throws StorageFileAlreadyExistsException {
-    String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
+  public void addFile(StorageEntity entity, byte[] data) {
+    wrapper.wrapNewFileTask(
+        entity,
+        FileOperationType.UPLOAD,
+        () -> {
+          metadataRepository.addFile(entity);
+          contentRepository.putObject(entity.getS3Key(), data);
 
-    metadataRepository.addFile(storageEntity);
-    contentRepository.putObject(s3Key, data);
+          return null;
+        });
   }
 
-  public Optional<StorageEntity> getFile(UUID userId, String path) {
-    return metadataRepository.getFile(userId, path);
+  public String startMultipartUpload(StorageEntity entity) {
+    return wrapper.initiateStep(
+        entity,
+        FileOperationType.UPLOAD,
+        () -> {
+          metadataRepository.addFile(entity);
+          return contentRepository.startMultipartUpload(entity.getS3Key());
+        });
   }
 
-  public boolean fileExists(UUID userId, String path) {
-    return metadataRepository.fileExists(userId, path);
-  }
-
-  public String startMultipartUpload(UUID userId, UUID fileId) {
-    String s3Key = StoragePaths.getS3Key(userId, fileId);
-    return contentRepository.startMultipartUpload(s3Key);
-  }
-
-  public String uploadPart(UploadPartRequest request) {
-    String s3Key = StoragePaths.getS3Key(request.userId(), request.fileId());
-    return contentRepository.uploadPart(
-        request.uploadId(), s3Key, request.partIndex(), request.bytes());
-  }
-
-  public List<StorageEntity> getFileList(FileListFilter filter) {
-    return metadataRepository.getFilesList(filter);
+  public String uploadPart(StorageEntity entity, UploadPartRequest request) {
+    return wrapper.processStep(
+        entity,
+        FileOperationType.UPLOAD,
+        () ->
+            contentRepository.uploadPart(
+                request.uploadId(), entity.getS3Key(), request.partIndex(), request.bytes()));
   }
 
   public void completeMultipartUpload(
-      StorageEntity storageEntity, String uploadId, Map<Integer, String> eTags)
-      throws StorageFileAlreadyExistsException {
-    String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
-
-    metadataRepository.addFile(storageEntity);
-    contentRepository.completeMultipartUpload(s3Key, uploadId, eTags);
-  }
-
-  public InputStream downloadFile(StorageEntity storageEntity) {
-    String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
-    return contentRepository.downloadObject(s3Key);
-  }
-
-  public void deleteFile(UUID userId, String path)
-      throws StorageEntityNotFoundException, FileNotFoundException {
-    metadataRepository.deleteFile(userId, path);
-    contentRepository.hardDeleteFile(path);
+      StorageEntity entity, long fileSize, String uploadId, Map<Integer, String> eTags) {
+    wrapper.completeStep(
+        entity,
+        FileOperationType.UPLOAD,
+        () -> {
+          entity.setSize(fileSize);
+          contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
+          return null;
+        });
   }
 
   public void updateFile(StorageEntity entity) {
-    metadataRepository.updateFile(entity);
+    wrapper.wrapUpdate(entity, FileOperationType.CHANGE_METADATA, () -> null);
   }
 
-  public void deleteFile(StorageEntity storageEntity)
-      throws StorageEntityNotFoundException, FileNotFoundException {
-    String s3Key = StoragePaths.getS3Key(storageEntity.getUserId(), storageEntity.getEntityId());
-
-    metadataRepository.deleteFile(storageEntity.getUserId(), storageEntity.getPath());
-    contentRepository.hardDeleteFile(s3Key);
+  public void deleteFile(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.DELETE,
+        () -> {
+          metadataRepository.deleteFile(entity);
+          contentRepository.hardDeleteFile(entity.getS3Key());
+          return null;
+        });
   }
 
-  public void addDirectory(StorageEntity directoryEntity) throws StorageFileAlreadyExistsException {
-    metadataRepository.addFile(directoryEntity);
+  public InputStream downloadFile(StorageEntity entity) {
+    if (entity.getStatus() != FileStatus.READY) {
+      throw new IllegalStateException(
+          "FATAL: Attempt to download non-ready file: " + entity.getId());
+    }
+
+    return contentRepository.downloadObject(entity.getS3Key());
+  }
+
+  public Optional<StorageEntity> getFile(UUID userId, UUID parentId, String name) {
+    return metadataRepository.getFile(userId, parentId, name);
+  }
+
+  public Optional<StorageEntity> getFile(UUID userId, UUID fileId) {
+    return metadataRepository.getFile(userId, fileId);
+  }
+
+  public boolean fileExists(UUID userId, UUID parentId, String name) {
+    return metadataRepository.fileExists(userId, parentId, name);
+  }
+
+  public List<StorageEntity> getFileList(FileListFilter filter) {
+    return metadataRepository.getFileList(filter);
+  }
+
+  public void addDirectory(StorageEntity entity) {
+    metadataRepository.addFile(entity);
   }
 
   public List<StorageEntity> getFilesByTags(UUID userId, List<String> tags) {

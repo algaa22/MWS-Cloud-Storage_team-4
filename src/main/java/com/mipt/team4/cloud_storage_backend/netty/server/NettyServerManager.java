@@ -19,6 +19,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+/**
+ * Оркестратор сетевых интерфейсов приложения.
+ *
+ * <p>В отличие от стандартных Servlet-контейнеров (Tomcat/Jetty), данный менеджер вручную управляет
+ * нативным транспортным слоем (NIO) и разделяет ресурсы между HTTP и HTTPS стеками. <b>Специфика
+ * реализации:</b>
+ *
+ * <ul>
+ *   <li><b>Shared Event Loops:</b> Оба сервера (HTTP/HTTPS) используют общий пул рабочих потоков
+ *       (Worker Group), что оптимизирует переключение контекста при одновременной нагрузке на оба
+ *       порта.
+ *   <li><b>Dual-Stack Startup:</b> Реализует атомарный запуск: если один из протоколов не смог
+ *       занять порт (например, HTTPS порт занят), менеджер прерывает запуск всего приложения для
+ *       предотвращения работы в "полу-рабочем" состоянии.
+ *   <li><b>Synchronous Shutdown:</b> Гарантирует полную остановку Netty-циклов (EventLoops) до
+ *       завершения жизненного цикла Spring-контекста, предотвращая "зависание" JVM при выходе.
+ * </ul>
+ */
 @Component
 @Slf4j
 public class NettyServerManager {
@@ -80,7 +98,7 @@ public class NettyServerManager {
     }
   }
 
-  private void addCloseListeners() throws InterruptedException {
+  private void addCloseListeners() {
     Promise<Void> closePromise = bossGroup.next().newPromise();
 
     if (httpsServerChannel != null) {
@@ -119,7 +137,6 @@ public class NettyServerManager {
     int timeout = nettyConfig.shutdown().timeoutSec();
 
     Future<?> bossShutdown = bossGroup.shutdownGracefully(queryPeriod, timeout, TimeUnit.SECONDS);
-
     Future<?> workerShutdown =
         workerGroup.shutdownGracefully(queryPeriod, timeout, TimeUnit.SECONDS);
 
@@ -147,7 +164,6 @@ public class NettyServerManager {
             protocol == ServerProtocol.HTTP ? httpChannelInitializer : httpsChannelInitializer);
 
     int port = protocol == ServerProtocol.HTTPS ? nettyConfig.httpsPort() : nettyConfig.httpPort();
-
     Channel channel = bootstrap.bind(port).sync().channel();
 
     log.info("{} server starting on port {}...", protocol.name(), port);

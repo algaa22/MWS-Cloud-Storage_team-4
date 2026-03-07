@@ -1,13 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated.AggregatedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.chunked.ChunkedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -16,7 +16,6 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.util.ReferenceCountUtil;
 import lombok.RequiredArgsConstructor;
@@ -25,23 +24,48 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+/**
+ * Динамический селектор стратегии обработки трафика.
+ *
+ * <p>Класс анализирует метаданные входящего HTTP-запроса и на лету перестраивает {@link
+ * ChannelPipeline}, переключаясь между агрегированной (в памяти) и потоковой (chunked) обработкой
+ * данных. <b>Логика выбора:</b>
+ *
+ * <ul>
+ *   <li>{@link PipelineType#CHUNKED}: Используется для загрузки файлов, превышающих лимит {@code
+ *       maxAggregatedContentLength}, и для скачивания файлов. Позволяет работать с большими данными
+ *       без риска OutOfMemory.
+ *   <li>{@link PipelineType#AGGREGATED}: Используется для стандартных API-запросов. Весь запрос
+ *       собирается в один FullHttpRequest для удобства обработки.
+ * </ul>
+ *
+ * <b>Важные нюансы реализации:</b>
+ *
+ * <ul>
+ *   <li>Имеет состояние (поле {@code previousPipeline}), поэтому помечен как
+ *       {@code @Scope("prototype")}. Для каждого нового соединения создается свой экземпляр.
+ *   <li>При переключении стратегий корректно удаляет старые хендлеры, предотвращая дублирование или
+ *       конфликты в пайплайне.
+ *   <li>Обеспечивает ручное управление счетчиком ссылок (Reference Counting) при возникновении
+ *       исключений, чтобы избежать утечек в Direct Memory.
+ * </ul>
+ */
 @Component
 @Scope("prototype")
 @Slf4j
 @RequiredArgsConstructor
 public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
-
-  private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlerProvider;
+  private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlers;
   private final ObjectProvider<AggregatedHttpHandler> aggregatedHttpHandlerProvider;
   private final StorageConfig storageConfig;
 
   private PipelineType previousPipeline = null;
 
   @Override
-  public void channelRead(ChannelHandlerContext ctx, Object msg) {
+  public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     if (!(msg instanceof HttpObject)) {
-      handleNotHttpRequest(ctx, msg);
-      return;
+      ReferenceCountUtil.release(msg);
+      throw new NotHttpRequestException();
     }
 
     if (msg instanceof HttpRequest request) {
@@ -51,9 +75,8 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
         currentPipeline =
             PipelineType.from(request, storageConfig.rest().maxAggregatedContentLength());
       } catch (ParseException e) {
-        ResponseUtils.sendBadRequestExceptionResponse(ctx, e);
         ReferenceCountUtil.release(msg);
-        return;
+        throw e;
       }
 
       if (previousPipeline != currentPipeline) {
@@ -64,7 +87,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       }
     }
 
-    ctx.fireChannelRead(msg);
+    super.channelRead(ctx, msg);
   }
 
   private void cleanupPipeline(ChannelHandlerContext ctx) {
@@ -85,12 +108,23 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
     ChannelPipeline pipeline = ctx.pipeline();
 
     if (currentPipeline == PipelineType.CHUNKED) {
-      pipeline.addLast(new ChunkedWriteHandler());
-      pipeline.addLast(chunkedHttpHandlerProvider.getObject());
+      addHandlerToPipeline(pipeline, PipelineHandlerNames.CHUNKED_WRITE, new ChunkedWriteHandler());
+      addHandlerToPipeline(
+          pipeline, PipelineHandlerNames.CHUNKED_HTTP, chunkedHttpHandlers.getObject());
     } else {
-      pipeline.addLast(new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
-      pipeline.addLast(aggregatedHttpHandlerProvider.getObject());
+      addHandlerToPipeline(
+          pipeline,
+          PipelineHandlerNames.HTTP_OBJECT_AGGREGATOR,
+          new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
+      addHandlerToPipeline(
+          pipeline,
+          PipelineHandlerNames.AGGREGATED_HTTP,
+          aggregatedHttpHandlerProvider.getObject());
     }
+  }
+
+  private void addHandlerToPipeline(ChannelPipeline pipeline, String name, ChannelHandler handler) {
+    pipeline.addBefore(PipelineHandlerNames.STORAGE_EXCEPTION, name, handler);
   }
 
   private void safeRemoveFromPipeline(
@@ -98,18 +132,6 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
     if (pipeline.get(handlerClass) != null) {
       pipeline.remove(handlerClass);
     }
-  }
-
-  private void handleNotHttpRequest(ChannelHandlerContext ctx, Object msg) {
-    log.error(
-        "Unexpected message mimeType before pipeline configuration: {}",
-        msg.getClass().getSimpleName());
-
-    ResponseUtils.sendErrorResponse(
-            ctx,
-            HttpResponseStatus.BAD_REQUEST,
-            msg.getClass().getSimpleName() + " before pipeline configuration with HttpRequest")
-        .addListener(ChannelFutureListener.CLOSE);
   }
 
   public enum PipelineType {

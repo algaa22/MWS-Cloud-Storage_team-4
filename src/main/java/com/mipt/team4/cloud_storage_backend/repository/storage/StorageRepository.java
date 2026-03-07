@@ -113,4 +113,8 @@ public class StorageRepository {
     }
     return metadataRepository.getFilesByTags(userId, tags);
   }
+
+  public String getFullFilePath(UUID fileId) {
+    return metadataRepository.getFullFilePath(fileId);
+  }
 }

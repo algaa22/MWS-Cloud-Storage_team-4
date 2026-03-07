@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageUsage;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.sql.ResultSet;
@@ -116,15 +117,16 @@ public class UserRepository {
         .build();
   }
 
-  public boolean isStorageAlmostFull(UUID userId) {
-    String sql = "SELECT (used_storage * 1.0 / storage_limit) >= 0.75 AND (used_storage * 1.0 / storage_limit) < 0.95 FROM users WHERE id = ?";
-    List<Boolean> result = postgres.executeQuery(sql, List.of(userId), rs -> rs.getBoolean(1));
-    return !result.isEmpty() && result.get(0);
-  }
-
-  public boolean isStorageFull(UUID userId) {
-    String sql = "SELECT (used_storage * 1.0 / storage_limit) >= 0.95 FROM users WHERE id = ?";
-    List<Boolean> result = postgres.executeQuery(sql, List.of(userId), rs -> rs.getBoolean(1));
-    return !result.isEmpty() && result.get(0);
+  public Optional<StorageUsage> getStorageUsage(UUID userId) {
+    String sql = "SELECT used_storage, storage_limit FROM users WHERE id = ?";
+    List<StorageUsage> result = postgres.executeQuery(
+        sql,
+        List.of(userId),
+        rs -> new StorageUsage(
+            rs.getLong("used_storage"),
+            rs.getLong("storage_limit")
+        )
+    );
+    return result.stream().findFirst();
   }
 }

@@ -290,5 +290,55 @@ public class FileMetadataRepository {
     );
   }
 
+  public String getFullFilePath(UUID fileId) {
+    String sql = """
+        WITH RECURSIVE file_path AS (
+            SELECT
+                id,
+                name,
+                parent_id,
+                name as full_path,
+                1 as level
+            FROM files
+            WHERE id = ? AND is_deleted = false
+        
+            UNION ALL
+        
+            SELECT
+                f.id,
+                f.name,
+                f.parent_id,
+                f.name || '/' || fp.full_path,
+                fp.level + 1
+            FROM files f
+            INNER JOIN file_path fp ON f.id = fp.parent_id
+            WHERE f.is_deleted = false AND f.is_directory = true
+        )
+        SELECT full_path
+        FROM file_path
+        WHERE parent_id IS NULL  -- Дошли до корня
+        ORDER BY level DESC
+        LIMIT 1
+        """;
+
+    List<String> result = postgres.executeQuery(
+        sql,
+        List.of(fileId),
+        rs -> rs.getString("full_path")
+    );
+
+    return result.isEmpty() ? null : result.getFirst();
+  }
+
+  public String getFileName(UUID fileId) {
+    String sql = "SELECT name FROM files WHERE id = ?";
+    List<String> result = postgres.executeQuery(
+        sql,
+        List.of(fileId),
+        rs -> rs.getString("name")
+    );
+    return result.isEmpty() ? null : result.getFirst();
+  }
+
 
 }

@@ -13,6 +13,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFil
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
@@ -34,9 +35,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class FilesRequestHandler {
   private final FileController fileController;
   private final ObjectMapper mapper = new ObjectMapper();
+  private final StorageRepository storageRepository;
 
   public void handleGetFileListRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+
     boolean includeDirectories =
         SafeParser.parseBoolean(
             "Include directories",
@@ -45,33 +48,42 @@ public class FilesRequestHandler {
         SafeParser.parseBoolean(
             "Recursive", RequestUtils.getQueryParam(request, "recursive", "false"));
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
+    List<String> tags = RequestUtils.getQueryParamList(request, "tags");
 
-    List<StorageEntity> files =
-        fileController.getFileList(
-            new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
+    List<StorageEntity> files;
+
+    if (tags != null && !tags.isEmpty()) {
+      SearchFilesByTagsRequest searchRequest = new SearchFilesByTagsRequest(userToken, tags);
+      files = fileController.searchFilesByTags(searchRequest);
+    } else {
+      files = fileController.getFileList(
+          new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
+    }
 
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();
 
     if (files != null) {
-      for (StorageEntity file :
-          files) { // TODO: entity в контроллере? put по dto через функции jackson
+      for (StorageEntity file : files) {
         ObjectNode fileNode = mapper.createObjectNode();
+        String fullPath = getFullPath(file);
         fileNode.put("id", file.getId().toString());
-        fileNode.put("parentId", String.valueOf(file.getParentId()));
+        fileNode.put("path", fullPath);
+        fileNode.put("parentId", file.getParentId() != null ? file.getParentId().toString() : null);
         fileNode.put("name", file.getName());
         fileNode.put("size", file.getSize());
         fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
-        fileNode.put("mimeType", file.getMimeType());
+        fileNode.put("mimeType", file.getMimeType() != null ? file.getMimeType() : "");
         fileNode.put("visibility", file.getVisibility());
-        fileNode.put("updatedAt", file.getUpdatedAt().toString());
+        fileNode.put("updatedAt", file.getUpdatedAt() != null ? file.getUpdatedAt().toString() : null);
         fileNode.put("isDirectory", file.isDirectory());
+        fileNode.put("type", file.isDirectory() ? "folder" : "file");
+
         filesArray.add(fileNode);
       }
     }
 
     rootNode.set("files", filesArray);
-
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
@@ -145,41 +157,17 @@ public class FilesRequestHandler {
     ResponseUtils.sendCreatedResponse(ctx, createdId, "File successfully uploaded");
   }
 
-  public void handleSearchFilesByTags(
-      ChannelHandlerContext ctx,
-      FullHttpRequest request,
-      String userToken)
-      throws UserNotFoundException, ValidationFailedException, HeaderNotFoundException {
+  private String getFullPath(StorageEntity file) {
+    if (file == null) return "";
 
-    String tagsHeader = RequestUtils.getRequiredHeader(request, "X-File-Tags");
-    List<String> tags = FileTagsMapper.toList(tagsHeader);
-    List<StorageEntity> files = fileController.searchFilesByTags(
-        new SearchFilesByTagsRequest(userToken, tags));
-
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode rootNode = mapper.createObjectNode();
-    ArrayNode filesArray = mapper.createArrayNode();
-
-    if (files != null) {
-      for (StorageEntity file : files) {
-        ObjectNode fileNode = mapper.createObjectNode();
-        String path = file.getPath();
-        String name = path;
-        if (path != null && path.contains("/")) {
-          name = path.substring(path.lastIndexOf("/") + 1);
-        }
-
-        fileNode.put("path", path);
-        fileNode.put("name", name);
-        fileNode.put("size", file.getSize());
-        fileNode.put("type", file.isDirectory() ? "folder" : "file");
-        fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
-
-        filesArray.add(fileNode);
+    try {
+      String path = storageRepository.getFullFilePath(file.getId());
+      if (path != null) {
+        return "/" + path;
       }
+    } catch (Exception e) {
     }
 
-    rootNode.set("files", filesArray);
-    ResponseUtils.sendJsonResponse(ctx, HttpResponseStatus.OK, rootNode);
+    return "/" + file.getName();
   }
 }

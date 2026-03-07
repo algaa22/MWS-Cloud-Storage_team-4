@@ -9,6 +9,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import com.mipt.team4.cloud_storage_backend.exception.notification.SendEmailException;
 
 @Slf4j
 @Service
@@ -34,7 +35,7 @@ public class EmailService {
 
     } catch (MessagingException e) {
       log.error("Failed to send email to: {}", to, e);
-      throw new RuntimeException("Failed to send email", e);
+      throw new SendEmailException("Failed to send email to: " + to, e);
     }
   }
 }

@@ -6,6 +6,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,14 @@ public class RequestUtils {
 
   public static String getQueryParam(HttpRequest request, String paramName, String defaultValue) {
     return getQueryParam(request, paramName).orElse(defaultValue);
+  }
+
+  public static List<String> getQueryParamList(HttpRequest request, String paramName) {
+    String value = getQueryParam(request, paramName, null);
+    if (value == null || value.trim().isEmpty()) {
+      return List.of();
+    }
+    return Arrays.asList(value.split(","));
   }
 
   public static Optional<String> getQueryParam(HttpRequest request, String paramName) {

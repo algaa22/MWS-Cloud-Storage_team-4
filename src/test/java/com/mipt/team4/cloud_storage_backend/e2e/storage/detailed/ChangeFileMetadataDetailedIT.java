@@ -28,6 +28,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
     super("/api/files", HttpMethod.PUT.name(), PathParam.EXISTENT_FILE);
   }
 
+
   @Test
   public void shouldNotRenameToExistingFilename() throws IOException, InterruptedException {
     UUID firstFileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);

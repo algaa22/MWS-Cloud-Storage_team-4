@@ -60,11 +60,6 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       ChannelHandlerContext ctx, FullHttpRequest request, String uri, HttpMethod method) {
     String userToken = extractUserTokenFromRequest(request);
 
-    if (uri.startsWith("/api/files/list/byTags") && method.equals(HttpMethod.POST)) {
-      filesRequestHandler.handleSearchFilesByTags(ctx, request, userToken);
-      return;
-    }
-    //TODO: сделать в list/tags
     if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
       filesRequestHandler.handleGetFileListRequest(ctx, request, userToken);
     } else {

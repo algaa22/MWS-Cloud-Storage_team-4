@@ -79,8 +79,7 @@ public class FileController {
     return service.downloadFile(request);
   }
 
-  public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request)
-      throws ValidationFailedException, UserNotFoundException {
+  public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request) {
     request.validate(jwtService);
     return service.searchFilesByTags(request);
   }

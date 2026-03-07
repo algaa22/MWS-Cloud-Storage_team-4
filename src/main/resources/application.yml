@@ -20,6 +20,16 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+app:
+  notifications:
+    subjects:
+      file-deleted: "📁 Файл был удален"
+      storage-almost-full: "⚠️ Внимание: заканчивается место в хранилище"
+      storage-full: "❌ Хранилище полностью заполнено"
+    urls:
+      website: "http://localhost:5173"
+      telegram-support: "https://t.me/alg_aaa"
+
 netty:
   enable-logging: false
   enable-https: true

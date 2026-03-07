@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageNotificationConfig;
 import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
@@ -54,6 +55,7 @@ public class FileService {
   private final UserRepository userRepository;
   private final MinioConfig minioConfig;
   private final NotificationService notificationService;
+  private final StorageNotificationConfig storageNotificationConfig;
 
   public void startChunkedUploadSession(ChunkedUploadRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
@@ -222,13 +224,21 @@ public class FileService {
         .getUserById(userId)
         .orElseThrow(() -> new UserNotFoundException(request.userToken()));
 
+    String filePath = storageRepository.getFullFilePath(entity.getId());
+    if (filePath == null) {
+      filePath = entity.getName();
+      log.warn("Could not get full path for file {}, using name only: {}",
+          entity.getId(), filePath);
+    }
+
     notificationService.notifyFileDeleted(
         user.getEmail(),
         user.getName(),
-        request.path(),
-        //TODO: sql-запрос
+        filePath,
         userId
     );
+
+    log.info("File deleted: {} (path: {})", entity.getId(), filePath);
   }
 
   public List<StorageEntity> getFileList(GetFileListRequest request) {
@@ -316,34 +326,31 @@ public class FileService {
   }
 
   private void checkStorageAndNotify(UUID userId) {
-    try {
-      UserEntity user = userRepository
-          .getUserById(userId)
-          .orElseThrow(() -> new UserNotFoundException("User not found"));
+    userRepository.getStorageUsage(userId).ifPresent(usage -> {
+      double ratio = usage.getRatio();
 
-      long used = user.getUsedStorage();
-      long limit = user.getStorageLimit();
-      double percent = (used * 100.0) / limit;
+      log.info("Storage check for user {}: used={}, limit={}, {}%",
+          userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
 
-      log.info("Storage check for user {}: used={}, limit={}, {}%", userId, used, limit, String.format("%.2f", percent));
-
-      if (userRepository.isStorageFull(userId)) {
-        notificationService.notifyStorageFull(
-            user.getEmail(),
-            user.getName(),
-            userId
+      if (ratio >= storageNotificationConfig.getFullThreshold()) {
+        userRepository.getUserById(userId).ifPresent(user ->
+            notificationService.notifyStorageFull(
+                user.getEmail(),
+                user.getName(),
+                userId
+            )
         );
-      } else if (userRepository.isStorageAlmostFull(userId)) {
-        notificationService.notifyStorageAlmostFull(
-            user.getEmail(),
-            user.getName(),
-            used,
-            limit,
-            userId
+      } else if (ratio >= storageNotificationConfig.getAlmostFullThreshold()) {
+        userRepository.getUserById(userId).ifPresent(user ->
+            notificationService.notifyStorageAlmostFull(
+                user.getEmail(),
+                user.getName(),
+                usage.used(),
+                usage.limit(),
+                userId
+            )
         );
-      } else {
       }
-    } catch (Exception e) {
-    }
+    });
   }
 }

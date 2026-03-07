@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.notification.service;
 
+import com.mipt.team4.cloud_storage_backend.exception.notification.SendEmailException;
 import com.mipt.team4.cloud_storage_backend.notification.config.MailConfig;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -9,7 +10,6 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import com.mipt.team4.cloud_storage_backend.exception.notification.SendEmailException;
 
 @Slf4j
 @Service

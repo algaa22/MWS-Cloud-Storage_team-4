@@ -25,9 +25,9 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChu
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.service.NotificationService;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
@@ -142,7 +142,6 @@ public class FileService {
       if (!(exception instanceof UploadRetriableException)) {
         activeUploads.remove(sessionId);
       }
-
       throw exception;
     }
 
@@ -233,7 +232,6 @@ public class FileService {
     }
 
     notificationService.notifyFileDeleted(user.getEmail(), user.getName(), filePath, userId);
-
     log.info("File deleted: {} (path: {})", entity.getId(), filePath);
   }
 
@@ -264,7 +262,6 @@ public class FileService {
   }
 
   public void changeFileMetadata(ChangeFileMetadataRequest request) {
-
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
@@ -273,6 +270,7 @@ public class FileService {
             .getFile(userId, fileId)
             .filter(f -> f.getUserId().equals(userId))
             .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
     String targetName = request.newName().orElse(entity.getName());
     UUID targetParentId =
         request.newParentId().isPresent()

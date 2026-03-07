@@ -16,19 +16,23 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.RequestParam;
 
+@Slf4j
 @Component
 @Scope("prototype")
 @RequiredArgsConstructor
@@ -68,6 +72,7 @@ public class FilesRequestHandler {
       for (StorageEntity file : files) {
         ObjectNode fileNode = mapper.createObjectNode();
         String fullPath = getFullPath(file);
+
         fileNode.put("id", file.getId().toString());
         fileNode.put("path", fullPath);
         fileNode.put("parentId", file.getParentId() != null ? file.getParentId().toString() : null);
@@ -160,7 +165,9 @@ public class FilesRequestHandler {
   }
 
   private String getFullPath(StorageEntity file) {
-    if (file == null) return "";
+    if (file == null) {
+      return "";
+    }
 
     try {
       String path = storageRepository.getFullFilePath(file.getId());
@@ -168,6 +175,7 @@ public class FilesRequestHandler {
         return "/" + path;
       }
     } catch (Exception e) {
+      log.warn("Could not get full path for file {}: {}", file.getId(), e.getMessage());
     }
 
     return "/" + file.getName();

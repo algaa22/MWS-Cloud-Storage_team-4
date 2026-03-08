@@ -14,4 +14,7 @@ public class NotificationRequest {
     private Long usedStorage;
     private Long storageLimit;
     private UUID userId;
+    private String tariffName;
+    private Integer daysLeft;
+    private String endDate;
 }

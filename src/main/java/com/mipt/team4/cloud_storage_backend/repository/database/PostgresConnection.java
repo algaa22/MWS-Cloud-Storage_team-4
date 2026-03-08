@@ -152,7 +152,14 @@ public class PostgresConnection implements DatabaseConnection {
                     storage_limit BIGINT DEFAULT 10737418240,
                     used_storage BIGINT DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    is_active BOOLEAN DEFAULT true
+                    is_active BOOLEAN DEFAULT true, 
+                    tariff_plan VARCHAR(20) DEFAULT 'TRIAL',
+                    tariff_start_date TIMESTAMP,
+                    tariff_end_date TIMESTAMP,
+                    auto_renew BOOLEAN DEFAULT true,
+                    payment_method_id VARCHAR(255),
+                    trial_start_date TIMESTAMP
+                   
                 )
             """;
 

@@ -47,6 +47,7 @@ public class StorageEntity {
   @Column(name = "mime_type")
   private String mimeType;
 
+  @Column(name = "is_directory")
   private boolean isDirectory;
 
   @Builder.Default private String visibility = FileVisibility.PRIVATE.toString();

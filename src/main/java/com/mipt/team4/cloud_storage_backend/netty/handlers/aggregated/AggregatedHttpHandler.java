@@ -60,7 +60,9 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       ChannelHandlerContext ctx, FullHttpRequest request, String uri, HttpMethod method) {
     String userToken = extractUserTokenFromRequest(request);
 
-    if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
+    if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
+      filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
+    } else if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
       filesRequestHandler.handleGetFileListRequest(ctx, request, userToken);
     } else {
       if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET)) {
@@ -68,7 +70,6 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
       } else {
         switch (method.name()) {
           case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, request, userToken);
-          case "POST" -> filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
           case "PUT" ->
               filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, userToken);
           default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);

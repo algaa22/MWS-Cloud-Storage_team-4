@@ -10,7 +10,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import java.time.LocalDateTime;
@@ -32,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 @Transactional
-@Import({FileMetadataRepository.class, UserRepository.class, PostgresConnection.class})
+@Import({FileMetadataRepository.class, UserRepository.class})
 public class PostgresRepositoryTest extends BasePostgresTest {
   @MockitoBean private NettyServerManager nettyServerManager;
 
@@ -42,7 +41,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   private UUID testUserUuid;
 
   @BeforeEach
-  protected void beforeEach() {
+  void beforeEach() {
     testUserUuid = addTestUser();
     commonFileEntity = addTestFile(null, "root-file.xml");
   }

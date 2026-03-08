@@ -23,6 +23,10 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   List<StorageEntity> findByStatusInAndUpdatedAtBefore(
       List<FileStatus> statuses, LocalDateTime threshold);
 
+  @Query(nativeQuery = true, value = "SELECT * FROM files WHERE id = :id AND user_id = :userId")
+  Optional<StorageEntity> findByIdIncludeDeleted(
+      @Param("userId") UUID userId, @Param("id") UUID id);
+
   @Query(
       """
         SELECT f FROM StorageEntity f
@@ -90,13 +94,6 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       value = "SELECT * FROM files WHERE id = :id AND user_id = :userId AND is_deleted = true")
   Optional<StorageEntity> getDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Query(
-      "SELECT f FROM StorageEntity f WHERE f.userId = :userId "
-          + "AND f.name = :name AND f.status = 'READY' "
-          + "AND (f.parentId = :parentId OR (:parentId IS NULL AND f.parentId IS NULL))")
-  Optional<StorageEntity> findFileInFolder(
-      @Param("userId") UUID userId, @Param("parentId") UUID parentId, @Param("name") String name);
-
   @Modifying
   @Query(
       nativeQuery = true,
@@ -134,7 +131,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value =
-          """
+"""
     WITH RECURSIVE folder_tree AS (
         SELECT id, size FROM files WHERE id = :directoryId
         UNION ALL

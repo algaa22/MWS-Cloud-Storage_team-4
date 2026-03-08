@@ -204,11 +204,13 @@ public class FileService {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
-    Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileId);
+    Optional<StorageEntity> entityOpt = storageRepository.getFileIncludeDeleted(userId, fileId);
     StorageEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
     storageRepository.deleteFile(entity, request.permanent());
-    userRepository.decreaseUsedStorage(userId, entity.getSize());
+    if (request.permanent()) {
+      userRepository.decreaseUsedStorage(userId, entity.getSize());
+    }
   }
 
   @Transactional

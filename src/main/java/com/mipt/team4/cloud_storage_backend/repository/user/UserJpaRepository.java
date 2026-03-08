@@ -9,15 +9,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
-    Optional<UserEntity> findByEmail(String email);
+  Optional<UserEntity> findByEmail(String email);
 
-    boolean existsByEmail(String email);
+  boolean existsByEmail(String email);
 
-    boolean existsByUsername(String username);
+  boolean existsByUsername(String username);
 
-    @Modifying
-    @Query("UPDATE UserEntity u SET u.usedStorage = " +
-            "CASE WHEN (u.usedStorage + :delta) < 0 THEN 0 ELSE (u.usedStorage + :delta) END " +
-            "WHERE u.id = :id")
-    void updateUsedStorage(@Param("id") UUID id, @Param("delta") long delta);
+  @Modifying
+  @Query(
+      "UPDATE UserEntity u SET u.usedStorage = "
+          + "CASE WHEN (u.usedStorage + :delta) < 0 THEN 0 ELSE (u.usedStorage + :delta) END "
+          + "WHERE u.id = :id")
+  void updateUsedStorage(@Param("id") UUID id, @Param("delta") long delta);
 }

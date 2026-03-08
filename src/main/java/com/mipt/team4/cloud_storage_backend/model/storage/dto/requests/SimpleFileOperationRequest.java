@@ -5,7 +5,7 @@ import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record SimpleFileOperationRequest(String fileId, String userToken) {
+public record SimpleFileOperationRequest(String fileId, String userToken, boolean permanent) {
 
   public void validate(JwtService jwtService) throws ValidationFailedException {
     ValidationResult result =

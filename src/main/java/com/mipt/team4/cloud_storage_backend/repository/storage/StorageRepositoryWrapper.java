@@ -213,7 +213,7 @@ public class StorageRepositoryWrapper {
     switch (operationType) {
       case UPLOAD -> {
         try {
-          metadataRepository.deleteFile(entity);
+          metadataRepository.hardDeleteFile(entity);
         } catch (Exception e) {
           log.warn(
               "Failed to delete metadata after upload error. Ghost record may remain. File ID: {}",

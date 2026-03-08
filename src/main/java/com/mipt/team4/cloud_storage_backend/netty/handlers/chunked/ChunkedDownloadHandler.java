@@ -32,7 +32,7 @@ public class ChunkedDownloadHandler {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 
     FileDownloadResponse fileDownload =
-        fileController.downloadFile(new SimpleFileOperationRequest(fileId, userToken));
+        fileController.downloadFile(new SimpleFileOperationRequest(fileId, userToken, false));
 
     HttpResponse response =
         new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);

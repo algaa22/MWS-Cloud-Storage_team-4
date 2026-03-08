@@ -72,11 +72,11 @@ public class FileCleanupService {
   private void handleStaleFile(StorageEntity entity) {
     switch (entity.getOperationType()) {
       case UPLOAD -> {
-        storageRepository.deleteFile(entity);
+        storageRepository.deleteFile(entity, true);
         log.info("Cleanup: Deleted stale upload for file {}", entity.getId());
       }
       case DELETE -> {
-        storageRepository.deleteFile(entity);
+        storageRepository.deleteFile(entity, true);
         log.info("Cleanup: Retried deletion for file {}", entity.getId());
       }
       case CHANGE_METADATA -> {

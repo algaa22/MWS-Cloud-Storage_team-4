@@ -67,15 +67,35 @@ public class StorageRepository {
     wrapper.wrapUpdate(entity, FileOperationType.CHANGE_METADATA, () -> null);
   }
 
-  public void deleteFile(StorageEntity entity) {
-    wrapper.wrapUpdate(
-        entity,
-        FileOperationType.DELETE,
-        () -> {
-          metadataRepository.deleteFile(entity);
-          contentRepository.hardDeleteFile(entity.getS3Key());
-          return null;
-        });
+  public void deleteFile(StorageEntity entity, boolean permanent) {
+    if (permanent) {
+      wrapper.wrapUpdate(
+          entity,
+          FileOperationType.DELETE,
+          () -> {
+            metadataRepository.hardDeleteFile(entity);
+            contentRepository.hardDeleteFile(entity.getS3Key());
+            return null;
+          });
+    } else {
+      wrapper.wrapUpdate(
+          entity,
+          FileOperationType.CHANGE_METADATA,
+          () -> {
+            metadataRepository.softDeleteFile(entity.getUserId(), entity.getId());
+            return null;
+          });
+    }
+  }
+
+  public void restoreFile(StorageEntity entity) {
+      wrapper.wrapUpdate(
+              entity,
+              FileOperationType.CHANGE_METADATA,
+              () -> {
+                  metadataRepository.restoreFile(entity.getUserId(), entity.getId(), entity.isDirectory());
+                  return null;
+              });
   }
 
   public InputStream downloadFile(StorageEntity entity) {
@@ -87,6 +107,7 @@ public class StorageRepository {
     return contentRepository.downloadObject(entity.getS3Key());
   }
 
+
   public Optional<StorageEntity> getFile(UUID userId, UUID parentId, String name) {
     return metadataRepository.getFile(userId, parentId, name);
   }
@@ -94,6 +115,10 @@ public class StorageRepository {
   public Optional<StorageEntity> getFile(UUID userId, UUID fileId) {
     return metadataRepository.getFile(userId, fileId);
   }
+
+    public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
+        return metadataRepository.getDeletedById(userId, fileId);
+    }
 
   public boolean fileExists(UUID userId, UUID parentId, String name) {
     return metadataRepository.fileExists(userId, parentId, name);

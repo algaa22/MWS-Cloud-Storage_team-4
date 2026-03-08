@@ -100,7 +100,7 @@ public class DirectoryService {
     StorageEntity directoryEntity = getDirectoryOrThrow(userId, directoryId);
     long freedSize = metadataRepository.calculateTotalSizeOfTree(directoryId);
 
-    metadataRepository.deleteFile(directoryEntity);
+    metadataRepository.hardDeleteFile(directoryEntity);
 
     if (freedSize > 0) {
       userRepository.decreaseUsedStorage(userId, freedSize);

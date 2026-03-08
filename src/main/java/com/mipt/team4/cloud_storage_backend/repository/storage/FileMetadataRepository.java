@@ -92,8 +92,27 @@ public class FileMetadataRepository {
     return jpaRepository.findByUserIdAndIdAndStatus(userId, fileId, FileStatus.READY);
   }
 
-  public void deleteFile(StorageEntity entity) {
+  @Transactional
+  public void softDeleteFile(UUID userId, UUID fileId) {
+    jpaRepository.softDelete(userId, fileId);
+  }
+
+  public void hardDeleteFile(StorageEntity entity) {
     jpaRepository.deleteByUserIdAndId(entity.getUserId(), entity.getId());
+  }
+
+  @Transactional
+  public void restoreFile(UUID userId, UUID fileId, boolean recursive) {
+    if (recursive) {
+      jpaRepository.restoreRecursive(userId, fileId);
+    } else {
+      jpaRepository.restore(userId, fileId);
+    }
+  }
+
+  @Transactional
+  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
+    return jpaRepository.getDeletedById(userId, fileId);
   }
 
   public void updateEntity(StorageEntity entity) {

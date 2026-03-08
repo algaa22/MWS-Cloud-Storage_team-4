@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -206,9 +208,21 @@ public class FileService {
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileId);
     StorageEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-    storageRepository.deleteFile(entity);
+    storageRepository.deleteFile(entity, request.permanent());
     userRepository.decreaseUsedStorage(userId, entity.getSize());
   }
+
+    @Transactional
+    public void restoreFile(UUID userId, UUID fileId) {
+        StorageEntity entity = storageRepository.getDeletedById(userId, fileId)
+                .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
+        if (storageRepository.fileExists(userId, entity.getParentId(), entity.getName())) {
+      throw new StorageFileAlreadyExistsException(entity.getParentId(), entity.getName());
+        }
+
+        storageRepository.restoreFile(entity);
+    }
 
   public List<StorageEntity> getFileList(GetFileListRequest request) {
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);

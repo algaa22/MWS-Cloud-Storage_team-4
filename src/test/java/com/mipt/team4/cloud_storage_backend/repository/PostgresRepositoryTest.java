@@ -107,7 +107,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     StorageEntity testFileEntity = addTestFile(null, uniqueName);
     assertTrue(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
 
-    fileMetadataRepository.deleteFile(testFileEntity);
+    fileMetadataRepository.hardDeleteFile(testFileEntity);
     assertFalse(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
   }
 

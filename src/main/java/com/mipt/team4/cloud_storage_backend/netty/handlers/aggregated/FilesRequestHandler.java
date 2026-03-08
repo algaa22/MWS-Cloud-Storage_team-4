@@ -77,7 +77,7 @@ public class FilesRequestHandler {
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
     StorageDto storageDto =
-        fileController.getFileInfo(new SimpleFileOperationRequest(fileId, userToken));
+        fileController.getFileInfo(new SimpleFileOperationRequest(fileId, userToken, false));
 
     ObjectNode rootNode = mapper.createObjectNode();
 
@@ -97,7 +97,12 @@ public class FilesRequestHandler {
   public void handleDeleteFileRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
-    fileController.deleteFile(new SimpleFileOperationRequest(fileId, userToken));
+
+    boolean permanent =
+        SafeParser.parseBoolean(
+            "Permanent delete", RequestUtils.getQueryParam(request, "permanent", "false"));
+
+    fileController.deleteFile(new SimpleFileOperationRequest(fileId, userToken, permanent));
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully deleted");
   }

@@ -50,7 +50,42 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
 
   @Modifying
   @Transactional
+  @Query("UPDATE StorageEntity s SET s.isDeleted = true WHERE s.id = :id AND s.userId = :userId")
+  void softDelete(@Param("userId") UUID userId, @Param("id") UUID id);
+
+  @Modifying
+  @Query(
+      "UPDATE StorageEntity s SET s.isDeleted = false, s.updatedAt = CURRENT_TIMESTAMP "
+          + "WHERE s.id = :id AND s.userId = :userId")
+  void restore(@Param("userId") UUID userId, @Param("id") UUID id);
+
+    @Modifying
+    @Transactional
+    @Query(nativeQuery = true, value = """
+        WITH RECURSIVE folder_tree AS (
+            SELECT id FROM files 
+            WHERE id = :id AND user_id = :userId
+            
+            UNION ALL
+            
+            SELECT f.id FROM files f 
+            INNER JOIN folder_tree ft ON f.parent_id = ft.id
+        )
+        UPDATE files 
+        SET is_deleted = false, 
+            updated_at = CURRENT_TIMESTAMP 
+        WHERE id IN (SELECT id FROM folder_tree)
+    """)
+    void restoreRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
+
+  @Modifying
+  @Transactional
   void deleteByUserIdAndId(UUID userId, UUID id);
+
+  @Query(
+      nativeQuery = true,
+      value = "SELECT * FROM files WHERE id = :id AND user_id = :userId AND is_deleted = true")
+  Optional<StorageEntity> getDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Query(
       "SELECT f FROM StorageEntity f WHERE f.userId = :userId "
@@ -67,6 +102,8 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
         INSERT INTO files (id, user_id, parent_id, name, size, mime_type, visibility, is_deleted, tags, is_directory, status, operation_type, started_at, updated_at, retry_count, error_message)
         VALUES (:#{#f.id}, :#{#f.userId}, :#{#f.parentId}, :#{#f.name}, :#{#f.size}, :#{#f.mimeType}, :#{#f.visibility}, :#{#f.isDeleted}, :tagsStr, :#{#f.isDirectory}, :#{#f.status.name()}, :#{#f.operationType?.name()}, :#{#f.startedAt}, :#{#f.updatedAt}, :#{#f.retryCount}, :#{#f.errorMessage})
         ON CONFLICT (user_id, name, (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000')))
+        WHERE is_deleted = false
+
         DO UPDATE SET
             size = EXCLUDED.size,
             mime_type = EXCLUDED.mime_type,
@@ -94,7 +131,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value =
-          """
+"""
     WITH RECURSIVE folder_tree AS (
         SELECT id, size FROM files WHERE id = :directoryId
         UNION ALL

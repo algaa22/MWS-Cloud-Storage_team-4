@@ -44,14 +44,13 @@ public class FilesRequestHandler {
   public void handleGetFileListRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
 
-    boolean includeDirectories = SafeParser.parseBoolean(
-        "Include directories",
-        RequestUtils.getQueryParam(request, "includeDirectories", "false")
-    );
-    boolean recursive = SafeParser.parseBoolean(
-        "Recursive",
-        RequestUtils.getQueryParam(request, "recursive", "false")
-    );
+    boolean includeDirectories =
+        SafeParser.parseBoolean(
+            "Include directories",
+            RequestUtils.getQueryParam(request, "includeDirectories", "false"));
+    boolean recursive =
+        SafeParser.parseBoolean(
+            "Recursive", RequestUtils.getQueryParam(request, "recursive", "false"));
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
     List<String> tags = RequestUtils.getQueryParamList(request, "tags");
 
@@ -61,9 +60,9 @@ public class FilesRequestHandler {
       SearchFilesByTagsRequest searchRequest = new SearchFilesByTagsRequest(userToken, tags);
       files = fileController.searchFilesByTags(searchRequest);
     } else {
-      files = fileController.getFileList(
-          new GetFileListRequest(userToken, includeDirectories, recursive, parentId)
-      );
+      files =
+          fileController.getFileList(
+              new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
     }
 
     ObjectNode rootNode = mapper.createObjectNode();
@@ -76,22 +75,14 @@ public class FilesRequestHandler {
 
         fileNode.put("id", file.getId().toString());
         fileNode.put("path", fullPath);
-        fileNode.put(
-            "parentId",
-            file.getParentId() != null ? file.getParentId().toString() : null
-        );
+        fileNode.put("parentId", file.getParentId() != null ? file.getParentId().toString() : null);
         fileNode.put("name", file.getName());
         fileNode.put("size", file.getSize());
         fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
-        fileNode.put(
-            "mimeType",
-            file.getMimeType() != null ? file.getMimeType() : ""
-        );
+        fileNode.put("mimeType", file.getMimeType() != null ? file.getMimeType() : "");
         fileNode.put("visibility", file.getVisibility());
         fileNode.put(
-            "updatedAt",
-            file.getUpdatedAt() != null ? file.getUpdatedAt().toString() : null
-        );
+            "updatedAt", file.getUpdatedAt() != null ? file.getUpdatedAt().toString() : null);
         fileNode.put("isDirectory", file.isDirectory());
         fileNode.put("type", file.isDirectory() ? "folder" : "file");
 
@@ -106,18 +97,15 @@ public class FilesRequestHandler {
   public void handleGetFileInfoRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
-    StorageDto storageDto = fileController.getFileInfo(
-        new SimpleFileOperationRequest(fileId, userToken)
-    );
+    StorageDto storageDto =
+        fileController.getFileInfo(new SimpleFileOperationRequest(fileId, userToken));
 
     ObjectNode rootNode = mapper.createObjectNode();
 
     rootNode.put("Id", storageDto.storageId().toString());
     rootNode.put("Name", storageDto.name());
     rootNode.put(
-        "ParentId",
-        storageDto.parentId() != null ? storageDto.parentId().toString() : null
-    );
+        "ParentId", storageDto.parentId() != null ? storageDto.parentId().toString() : null);
     rootNode.put("Type", storageDto.type());
     rootNode.put("Visibility", storageDto.visibility());
     rootNode.put("Size", storageDto.size());
@@ -142,19 +130,16 @@ public class FilesRequestHandler {
     Optional<String> newName = RequestUtils.getQueryParam(request, "newName");
     Optional<String> newParentId = RequestUtils.getQueryParam(request, "newParentId");
 
-    Optional<String> fileVisibility = Optional.ofNullable(
-        RequestUtils.getHeader(request, "X-File-New-Visibility", null)
-    );
+    Optional<String> fileVisibility =
+        Optional.ofNullable(RequestUtils.getHeader(request, "X-File-New-Visibility", null));
 
-    Optional<List<String>> fileTags = Optional.ofNullable(
-        FileTagsMapper.toList(RequestUtils.getHeader(request, "X-File-New-Tags", null))
-    );
+    Optional<List<String>> fileTags =
+        Optional.ofNullable(
+            FileTagsMapper.toList(RequestUtils.getHeader(request, "X-File-New-Tags", null)));
 
     fileController.changeFileMetadata(
         new ChangeFileMetadataRequest(
-            userToken, fileId, newName, newParentId, fileVisibility, fileTags
-        )
-    );
+            userToken, fileId, newName, newParentId, fileVisibility, fileTags));
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File metadata successfully changed");
   }
@@ -163,9 +148,8 @@ public class FilesRequestHandler {
       ChannelHandlerContext ctx, FullHttpRequest request, String userToken) {
     String fileName = RequestUtils.getRequiredQueryParam(request, "name");
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
-    List<String> fileTags = FileTagsMapper.toList(
-        RequestUtils.getRequiredHeader(request, "X-File-Tags")
-    );
+    List<String> fileTags =
+        FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
 
     // TODO: проверка на размер
 
@@ -173,9 +157,9 @@ public class FilesRequestHandler {
     byte[] fileData = new byte[fileByteBuf.readableBytes()];
     fileByteBuf.readBytes(fileData);
 
-    UUID createdId = fileController.uploadFile(
-        new FileUploadRequest(parentId, fileName, userToken, fileTags, fileData)
-    );
+    UUID createdId =
+        fileController.uploadFile(
+            new FileUploadRequest(parentId, fileName, userToken, fileTags, fileData));
 
     ResponseUtils.sendCreatedResponse(ctx, createdId, "File successfully uploaded");
   }

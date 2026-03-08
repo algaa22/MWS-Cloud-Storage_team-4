@@ -227,6 +227,15 @@ public class FileService {
     storageRepository.restoreFile(entity);
   }
 
+    @Transactional
+    public void restoreFile(SimpleFileOperationRequest request) {
+        UUID fileId = UUID.fromString(request.fileId());
+
+        UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+
+        restoreFile(userId, fileId);
+    }
+
   public List<StorageEntity> getFileList(GetFileListRequest request) {
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());

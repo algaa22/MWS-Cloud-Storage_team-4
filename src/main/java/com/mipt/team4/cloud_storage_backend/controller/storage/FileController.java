@@ -73,6 +73,11 @@ public class FileController {
     service.changeFileMetadata(request);
   }
 
+  public void restoreFile(SimpleFileOperationRequest request) {
+      request.validate(jwtService);
+      service.restoreFile(request);
+  }
+
   public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
     request.validate(jwtService);
     return service.downloadFile(request);

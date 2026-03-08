@@ -62,6 +62,8 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
 
     if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
       filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
+    } else if (uri.startsWith("/api/files/restore") && method.equals(HttpMethod.PUT)) {
+      filesRequestHandler.handleRestoreFileRequest(ctx, request, userToken);
     } else if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
       filesRequestHandler.handleGetFileListRequest(ctx, request, userToken);
     } else {

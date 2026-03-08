@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageUsage;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import java.sql.ResultSet;
@@ -115,15 +114,5 @@ public class UserRepository {
         .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
         .isActive(rs.getBoolean("is_active"))
         .build();
-  }
-
-  public Optional<StorageUsage> getStorageUsage(UUID userId) {
-    String sql = "SELECT used_storage, storage_limit FROM users WHERE id = ?";
-    List<StorageUsage> result =
-        postgres.executeQuery(
-            sql,
-            List.of(userId),
-            rs -> new StorageUsage(rs.getLong("used_storage"), rs.getLong("storage_limit")));
-    return result.stream().findFirst();
   }
 }

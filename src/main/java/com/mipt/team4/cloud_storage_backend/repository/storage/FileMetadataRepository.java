@@ -5,6 +5,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
+import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -24,13 +25,14 @@ public class FileMetadataRepository {
 
   public void addFile(StorageEntity fileEntity) {
     postgres.executeUpdate(
-        "INSERT INTO files (id, user_id, parent_id, name, size, mime_type, visibility, is_deleted, is_directory, "
+        "INSERT INTO files (id, user_id, parent_id, name, size, mime_type, visibility, is_deleted, tags, is_directory, "
             + "status, operation_type, started_at, updated_at, retry_count, error_message) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             + "ON CONFLICT (user_id, name, (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'))) "
             + "DO UPDATE SET "
             + "    size = EXCLUDED.size,"
             + "    mime_type = EXCLUDED.mime_type,"
+            + "    tags = EXCLUDED.tags,"
             + "    status = 'PENDING',"
             + "    error_message = NULL,"
             + "    updated_at = NOW() "
@@ -44,6 +46,7 @@ public class FileMetadataRepository {
             fileEntity.getMimeType(),
             fileEntity.getVisibility(),
             fileEntity.isDeleted(),
+            FileTagsMapper.toString(fileEntity.getTags()),
             fileEntity.isDirectory(),
             fileEntity.getStatus() != null ? fileEntity.getStatus().name() : "PENDING",
             fileEntity.getOperationType() != null ? fileEntity.getOperationType().name() : null,
@@ -51,11 +54,6 @@ public class FileMetadataRepository {
             fileEntity.getUpdatedAt(),
             fileEntity.getRetryCount(),
             fileEntity.getErrorMessage()));
-    for (String tag : fileEntity.getTags()) {
-      postgres.executeUpdate(
-          "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
-          List.of(fileEntity.getId(), tag));
-    }
   }
 
   public List<StorageEntity> getStaleFiles(LocalDateTime threshold) {
@@ -137,18 +135,18 @@ public class FileMetadataRepository {
     postgres.executeUpdate(
         "DELETE FROM files WHERE user_id = ? AND id = ?;",
         Arrays.asList(entity.getUserId(), entity.getId()));
-    postgres.executeUpdate("DELETE FROM file_tags WHERE file_id = ?", List.of(entity.getId()));
   }
 
   public void updateEntity(StorageEntity entity) {
     postgres.executeUpdate(
-        "UPDATE files SET parent_id = ?, name = ?, visibility = ?, size = ?, status = ?, "
+        "UPDATE files SET parent_id = ?, name = ?, visibility = ?, tags = ?, size = ?, status = ?, "
             + "operation_type = ?, retry_count = ?, started_at = ?, updated_at = ?, error_message = ? "
             + "WHERE user_id = ? AND id = ?",
         Arrays.asList(
             entity.getParentId(),
             entity.getName(),
             entity.getVisibility(),
+            FileTagsMapper.toString(entity.getTags()),
             entity.getSize(),
             entity.getStatus() != null ? entity.getStatus().name() : null,
             entity.getOperationType() != null ? entity.getOperationType().name() : null,
@@ -158,11 +156,6 @@ public class FileMetadataRepository {
             entity.getErrorMessage(),
             entity.getUserId(),
             entity.getId()));
-    for (String tag : entity.getTags()) {
-      postgres.executeUpdate(
-          "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
-          List.of(entity.getId(), tag));
-    }
   }
 
   public boolean fileExists(UUID userId, UUID parentId, String name) {
@@ -218,32 +211,7 @@ public class FileMetadataRepository {
     return result.isEmpty() ? 0L : result.getFirst();
   }
 
-  public List<StorageEntity> getFilesByTags(UUID userId, List<String> tags) {
-    if (tags == null || tags.isEmpty()) {
-      return new ArrayList<>();
-    }
-
-    String sql =
-        """
-        SELECT f.*
-        FROM files f
-        JOIN file_tags ft ON f.id = ft.file_id
-        WHERE f.owner_id = ?
-          AND f.is_deleted = FALSE
-          AND ft.tag = ANY (?)
-        GROUP BY f.id
-        HAVING COUNT(DISTINCT ft.tag) = ?
-    """;
-
-    return postgres.executeQuery(
-        sql,
-        List.of(userId, tags.toArray(new String[0]), tags.size()),
-        this::createStorageEntityByResultSet);
-  }
-
   private StorageEntity createStorageEntityByResultSet(ResultSet rs) throws SQLException {
-    UUID fileId = UUID.fromString(rs.getString("id"));
-    List<String> tags = getFileTags(fileId);
     return StorageEntity.builder()
         .id(getUUID(rs, "id"))
         .userId(getUUID(rs, "user_id"))
@@ -254,13 +222,13 @@ public class FileMetadataRepository {
         .visibility(rs.getString("visibility"))
         .isDeleted(rs.getBoolean("is_deleted"))
         .isDirectory(rs.getBoolean("is_directory"))
+        .tags(FileTagsMapper.toList(rs.getString("tags")))
         .status(getEnum(rs, "status", FileStatus.class))
         .operationType(getEnum(rs, "operation_type", FileOperationType.class))
         .startedAt(getLocalDateTime(rs, "started_at"))
         .updatedAt(getLocalDateTime(rs, "updated_at"))
         .retryCount(rs.getInt("retry_count"))
         .errorMessage(rs.getString("error_message"))
-        .tags(tags)
         .build();
   }
 
@@ -278,54 +246,5 @@ public class FileMetadataRepository {
       throws SQLException {
     String val = rs.getString(column);
     return val != null ? Enum.valueOf(clazz, val) : null;
-  }
-
-  private List<String> getFileTags(UUID fileId) {
-    return postgres.executeQuery(
-        "SELECT tag FROM file_tags WHERE file_id = ?", List.of(fileId), rs -> rs.getString("tag"));
-  }
-
-  public String getFullFilePath(UUID fileId) {
-    String sql =
-        """
-        WITH RECURSIVE file_path AS (
-            SELECT
-                id,
-                name,
-                parent_id,
-                name as full_path,
-                1 as level
-            FROM files
-            WHERE id = ? AND is_deleted = false
-
-            UNION ALL
-
-            SELECT
-                f.id,
-                f.name,
-                f.parent_id,
-                f.name || '/' || fp.full_path,
-                fp.level + 1
-            FROM files f
-            INNER JOIN file_path fp ON f.id = fp.parent_id
-            WHERE f.is_deleted = false AND f.is_directory = true
-        )
-        SELECT full_path
-        FROM file_path
-        WHERE parent_id IS NULL  -- Дошли до корня
-        ORDER BY level DESC
-        LIMIT 1
-        """;
-
-    List<String> result =
-        postgres.executeQuery(sql, List.of(fileId), rs -> rs.getString("full_path"));
-
-    return result.isEmpty() ? null : result.getFirst();
-  }
-
-  public String getFileName(UUID fileId) {
-    String sql = "SELECT name FROM files WHERE id = ?";
-    List<String> result = postgres.executeQuery(sql, List.of(fileId), rs -> rs.getString("name"));
-    return result.isEmpty() ? null : result.getFirst();
   }
 }

@@ -38,7 +38,6 @@ public class FileMetadataRepository {
   public List<StorageEntity> getFileList(FileListFilter filter) {
     StringBuilder sql = new StringBuilder();
 
-    // Собираем запрос динамически, как и раньше
     if (filter.recursive()) {
       sql.append(
           """
@@ -74,7 +73,6 @@ public class FileMetadataRepository {
 
     sql.append(" ORDER BY CASE WHEN is_directory THEN 1 ELSE 2 END, name ASC");
 
-    // ИСПОЛЬЗУЕМ EntityManager для маппинга Native Query в Entity
     Query query = entityManager.createNativeQuery(sql.toString(), StorageEntity.class);
     query.setParameter("userId", filter.userId());
     query.setParameter("parentId", filter.parentId());

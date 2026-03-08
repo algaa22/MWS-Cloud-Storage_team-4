@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mipt.team4.cloud_storage_backend.controller.user.TariffController;
 import com.mipt.team4.cloud_storage_backend.controller.user.UserController;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HeaderNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
@@ -10,15 +11,14 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsExce
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.LoginRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RefreshTokenRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RegisterRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateUserInfoRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.*;
+import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
+import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -32,6 +32,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UsersRequestHandler {
   private final UserController userController;
+  private final TariffController tariffController;
+  private final ObjectMapper mapper = new ObjectMapper();
 
   public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException, ValidationFailedException, UserAlreadyExistsException {
@@ -128,4 +130,115 @@ public class UsersRequestHandler {
 
     ResponseUtils.sendJson(ctx, status, rootNode);
   }
+
+  public void handlePurchaseTariff(ChannelHandlerContext ctx, HttpRequest request)
+          throws HeaderNotFoundException, ValidationFailedException {
+
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    String tariffPlanStr = RequestUtils.getRequiredQueryParam(request, "plan");
+    String paymentToken = RequestUtils.getRequiredHeader(request, "X-Payment-Token");
+    boolean autoRenew = SafeParser.parseBoolean("Auto renew",
+            RequestUtils.getQueryParam(request, "autoRenew", "true"));
+
+    TariffPlan plan = TariffPlan.valueOf(tariffPlanStr);
+
+    TariffRequest tariffRequest = new TariffRequest(
+            userToken, plan, paymentToken, autoRenew
+    );
+
+    tariffController.purchaseTariff(tariffRequest);
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Tariff purchased successfully");
+  }
+
+  /**
+   * Получить информацию о текущем тарифе
+   */
+  public void handleGetTariffInfo(ChannelHandlerContext ctx, HttpRequest request)
+          throws HeaderNotFoundException, ValidationFailedException {
+
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
+
+    TariffInfoDto info = tariffController.getTariffInfo(userRequest);
+
+    ObjectNode rootNode = mapper.createObjectNode();
+    rootNode.put("tariffPlan", info.getTariffPlan().name());
+    rootNode.put("storageLimit", info.getStorageLimit());
+    rootNode.put("usedStorage", info.getUsedStorage());
+    rootNode.put("startDate", info.getStartDate() != null ? info.getStartDate().toString() : null);
+    rootNode.put("endDate", info.getEndDate() != null ? info.getEndDate().toString() : null);
+    rootNode.put("autoRenew", info.isAutoRenew());
+    rootNode.put("isActive", info.isActive());
+    rootNode.put("daysLeft", info.getDaysLeft());
+
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
+  }
+
+  /**
+   * Отключить автопродление
+   */
+  public void handleDisableAutoRenew(ChannelHandlerContext ctx, HttpRequest request)
+          throws HeaderNotFoundException, ValidationFailedException {
+
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
+
+    tariffController.disableAutoRenew(userRequest);
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Auto-renew disabled");
+  }
+
+  /**
+   * Включить автопродление
+   */
+  public void handleEnableAutoRenew(ChannelHandlerContext ctx, HttpRequest request)
+          throws HeaderNotFoundException, ValidationFailedException {
+
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
+
+    tariffController.enableAutoRenew(userRequest);
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Auto-renew enabled");
+  }
+
+  /**
+   * Обновить способ оплаты
+   */
+  public void handleUpdatePaymentMethod(ChannelHandlerContext ctx, HttpRequest request)
+          throws HeaderNotFoundException, ValidationFailedException {
+
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    String paymentMethodId = RequestUtils.getRequiredHeader(request, "X-Payment-Method-Id");
+
+    UpdateAutoRenewRequest updateRequest = new UpdateAutoRenewRequest(userToken, paymentMethodId);
+
+    tariffController.updatePaymentMethod(updateRequest);
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Payment method updated");
+  }
+
+  /**
+   * Получить список доступных тарифов
+   */
+  public void handleGetAvailableTariffs(ChannelHandlerContext ctx, HttpRequest request) {
+    ObjectNode rootNode = mapper.createObjectNode();
+    ObjectNode tariffsNode = mapper.createObjectNode();
+
+    for (TariffPlan plan : TariffPlan.values()) {
+      if (!plan.isTrial()) {  // не показываем TRIAL в списке для покупки
+        ObjectNode planNode = mapper.createObjectNode();
+        planNode.put("name", plan.name());
+        planNode.put("storageLimit", plan.getStorageLimit());
+        planNode.put("priceRub", plan.getPriceRub());
+        planNode.put("durationDays", plan.getDurationDays());
+        tariffsNode.set(plan.name(), planNode);
+      }
+    }
+
+    rootNode.set("tariffs", tariffsNode);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
+  }
+
 }

@@ -2,6 +2,8 @@ package com.mipt.team4.cloud_storage_backend.model.user.entity;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,4 +27,10 @@ public class UserEntity {
   private long storageLimit;
   @Builder.Default private long usedStorage = 0L;
   private LocalDateTime createdAt;
+  private TariffPlan tariffPlan;
+  private LocalDateTime tariffStartDate;
+  private LocalDateTime tariffEndDate;
+  @Builder.Default private boolean autoRenew = true;
+  private String paymentMethodId;
+  private LocalDateTime trialStartDate;
 }

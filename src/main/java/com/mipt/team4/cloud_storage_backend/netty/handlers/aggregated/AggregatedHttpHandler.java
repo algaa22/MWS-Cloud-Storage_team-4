@@ -33,7 +33,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
   }
 
   private void startVirtualProcessor(ChannelHandlerContext ctx, FullHttpRequest request) {
-    Thread.startVirtualThread(
+    Thread.startVirtualThread( // TODO: interrupted exception
         () -> {
           try {
             HttpMethod method = request.method();

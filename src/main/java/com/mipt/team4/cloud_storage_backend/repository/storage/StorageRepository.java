@@ -80,7 +80,7 @@ public class StorageRepository {
 
   public InputStream downloadFile(StorageEntity entity) {
     if (entity.getStatus() != FileStatus.READY) {
-      throw new IllegalStateException(
+      throw new IllegalStateException( // TODO: illegal state?
           "FATAL: Attempt to download non-ready file: " + entity.getId());
     }
 

@@ -59,24 +59,27 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
           + "WHERE s.id = :id AND s.userId = :userId")
   void restore(@Param("userId") UUID userId, @Param("id") UUID id);
 
-    @Modifying
-    @Transactional
-    @Query(nativeQuery = true, value = """
+  @Modifying
+  @Transactional
+  @Query(
+      nativeQuery = true,
+      value =
+          """
         WITH RECURSIVE folder_tree AS (
-            SELECT id FROM files 
+            SELECT id FROM files
             WHERE id = :id AND user_id = :userId
-            
+
             UNION ALL
-            
-            SELECT f.id FROM files f 
+
+            SELECT f.id FROM files f
             INNER JOIN folder_tree ft ON f.parent_id = ft.id
         )
-        UPDATE files 
-        SET is_deleted = false, 
-            updated_at = CURRENT_TIMESTAMP 
+        UPDATE files
+        SET is_deleted = false,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id IN (SELECT id FROM folder_tree)
     """)
-    void restoreRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
+  void restoreRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying
   @Transactional
@@ -131,7 +134,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value =
-"""
+          """
     WITH RECURSIVE folder_tree AS (
         SELECT id, size FROM files WHERE id = :directoryId
         UNION ALL

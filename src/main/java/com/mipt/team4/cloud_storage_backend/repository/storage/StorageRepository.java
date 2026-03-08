@@ -89,13 +89,13 @@ public class StorageRepository {
   }
 
   public void restoreFile(StorageEntity entity) {
-      wrapper.wrapUpdate(
-              entity,
-              FileOperationType.CHANGE_METADATA,
-              () -> {
-                  metadataRepository.restoreFile(entity.getUserId(), entity.getId(), entity.isDirectory());
-                  return null;
-              });
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.CHANGE_METADATA,
+        () -> {
+          metadataRepository.restoreFile(entity.getUserId(), entity.getId(), entity.isDirectory());
+          return null;
+        });
   }
 
   public InputStream downloadFile(StorageEntity entity) {
@@ -107,7 +107,6 @@ public class StorageRepository {
     return contentRepository.downloadObject(entity.getS3Key());
   }
 
-
   public Optional<StorageEntity> getFile(UUID userId, UUID parentId, String name) {
     return metadataRepository.getFile(userId, parentId, name);
   }
@@ -116,9 +115,9 @@ public class StorageRepository {
     return metadataRepository.getFile(userId, fileId);
   }
 
-    public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
-        return metadataRepository.getDeletedById(userId, fileId);
-    }
+  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
+    return metadataRepository.getDeletedById(userId, fileId);
+  }
 
   public boolean fileExists(UUID userId, UUID parentId, String name) {
     return metadataRepository.fileExists(userId, parentId, name);

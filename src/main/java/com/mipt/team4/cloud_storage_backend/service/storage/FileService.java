@@ -28,14 +28,13 @@ import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
+import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -212,17 +211,19 @@ public class FileService {
     userRepository.decreaseUsedStorage(userId, entity.getSize());
   }
 
-    @Transactional
-    public void restoreFile(UUID userId, UUID fileId) {
-        StorageEntity entity = storageRepository.getDeletedById(userId, fileId)
-                .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+  @Transactional
+  public void restoreFile(UUID userId, UUID fileId) {
+    StorageEntity entity =
+        storageRepository
+            .getDeletedById(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-        if (storageRepository.fileExists(userId, entity.getParentId(), entity.getName())) {
+    if (storageRepository.fileExists(userId, entity.getParentId(), entity.getName())) {
       throw new StorageFileAlreadyExistsException(entity.getParentId(), entity.getName());
-        }
-
-        storageRepository.restoreFile(entity);
     }
+
+    storageRepository.restoreFile(entity);
+  }
 
   public List<StorageEntity> getFileList(GetFileListRequest request) {
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);

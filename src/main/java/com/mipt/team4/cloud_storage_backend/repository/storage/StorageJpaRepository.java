@@ -94,7 +94,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value =
-"""
+          """
     WITH RECURSIVE folder_tree AS (
         SELECT id, size FROM files WHERE id = :directoryId
         UNION ALL

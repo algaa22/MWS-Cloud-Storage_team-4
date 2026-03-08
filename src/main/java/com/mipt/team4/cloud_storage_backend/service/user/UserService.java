@@ -47,7 +47,7 @@ public class UserService {
 
     return new UserDto(
         null,
-        userEntity.getName(),
+        userEntity.getUsername(),
         userEntity.getEmail(),
         null,
         userEntity.getStorageLimit(),
@@ -64,8 +64,7 @@ public class UserService {
     String hash = passwordHasher.hash(registerRequest.password());
     UserEntity userEntity =
         UserEntity.builder()
-            .id(UUID.randomUUID())
-            .name(registerRequest.userName())
+            .username(registerRequest.userName())
             .email(registerRequest.email())
             .passwordHash(hash)
             .storageLimit(storageConfig.quotas().defaultStorageLimit())
@@ -161,13 +160,12 @@ public class UserService {
     }
 
     if (updateUserInfoRequest.newName().isPresent()) {
-      entity.setName(updateUserInfoRequest.newName().get());
+      entity.setUsername(updateUserInfoRequest.newName().get());
     }
 
-    // Обновляем в репозитории
     userRepository.updateInfo(
         id,
-        updateUserInfoRequest.newName().orElse(entity.getName()),
+        updateUserInfoRequest.newName().orElse(entity.getUsername()),
         updateUserInfoRequest
             .newPassword()
             .map(passwordHasher::hash)

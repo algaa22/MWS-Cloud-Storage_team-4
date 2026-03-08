@@ -8,69 +8,59 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
 
 @Tag("integration")
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles("test")
+@Transactional
+@Import({FileMetadataRepository.class, UserRepository.class})
 public class PostgresRepositoryTest extends BasePostgresTest {
+  @MockitoBean private NettyServerManager nettyServerManager;
 
-  private static FileMetadataRepository fileMetadataRepository;
-  private static UserRepository userRepository;
-  private static PostgresConnection postgresConnection;
-  private static StorageEntity commonFileEntity;
-  private static UUID testUserUuid;
+  @Autowired private FileMetadataRepository fileMetadataRepository;
+  @Autowired private UserRepository userRepository;
+  private StorageEntity commonFileEntity;
+  private UUID testUserUuid;
 
-  @BeforeAll
-  protected static void beforeAll() {
-    BasePostgresTest.beforeAll();
-
-    postgresConnection = TestUtils.createConnection(postgresContainer);
-    fileMetadataRepository = new FileMetadataRepository(postgresConnection);
-    userRepository = new UserRepository(postgresConnection);
-
-    try {
-      testUserUuid = addTestUser();
-      commonFileEntity = addTestFile(null, "root-file.xml");
-    } catch (UserAlreadyExistsException | StorageFileAlreadyExistsException e) {
-      throw new RuntimeException(e);
-    }
+  @BeforeEach
+  void beforeEach() {
+    testUserUuid = addTestUser();
+    commonFileEntity = addTestFile(null, "root-file.xml");
   }
 
-  @AfterAll
-  protected static void afterAll() {
-    BasePostgresTest.afterAll();
-    if (postgresConnection != null) {
-      postgresConnection.disconnect();
-    }
-  }
-
-  private static UUID addTestUser() throws UserAlreadyExistsException {
-    UUID uuid = UUID.randomUUID();
-
-    userRepository.addUser(
+  private UUID addTestUser() throws UserAlreadyExistsException {
+    UserEntity user =
         UserEntity.builder()
-            .id(uuid)
-            .name("name")
-            .email("email")
+            .username("name")
+            .email("test-" + UUID.randomUUID() + "@email.com")
             .passwordHash("password")
-            .storageLimit((long) 1e10)
+            .storageLimit(10737418240L)
             .createdAt(LocalDateTime.now())
-            .build());
+            .build();
 
-    return uuid;
+    userRepository.addUser(user);
+    return user.getId();
   }
 
-  private static StorageEntity addTestFile(UUID parentId, String name)
+  private StorageEntity addTestFile(UUID parentId, String name)
       throws StorageFileAlreadyExistsException {
     StorageEntity fileEntity =
         StorageEntity.builder()

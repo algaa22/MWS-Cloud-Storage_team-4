@@ -1,49 +1,54 @@
 package com.mipt.team4.cloud_storage_backend.repository.user;
 
+import com.mipt.team4.cloud_storage_backend.model.refreshtoken.entity.RefreshTokenEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
 public class RefreshTokenRepository {
 
-  private final PostgresConnection postgres;
+  private final RefreshTokenJpaRepository jpaRepository;
 
+  @Transactional
   public void revokeById(UUID id) {
-    postgres.executeUpdate("UPDATE refresh_tokens SET revoked = TRUE WHERE id = ?;", List.of(id));
+    jpaRepository.revokeById(id);
   }
 
+  @Transactional
   public void deleteByUserId(UUID userId) {
-    postgres.executeUpdate("DELETE FROM refresh_tokens WHERE user_id = ?;", List.of(userId));
+    jpaRepository.deleteByUserId(userId);
   }
 
-  public void save(RefreshTokenDto token) {
-    postgres.executeUpdate(
-        "INSERT INTO refresh_tokens (id, user_id, token, expires_at, revoked) VALUES (?, ?, ?, ?, ?) "
-            + "ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token, expires_at = EXCLUDED.expires_at, revoked = EXCLUDED.revoked;",
-        List.of(token.id(), token.userId(), token.token(), token.expiresAt(), token.revoked()));
+  @Transactional
+  public void save(RefreshTokenDto dto) {
+    RefreshTokenEntity entity =
+        RefreshTokenEntity.builder()
+            .id(dto.id())
+            .userId(dto.userId())
+            .token(dto.token())
+            .expiresAt(dto.expiresAt())
+            .revoked(dto.revoked())
+            .build();
+
+    jpaRepository.save(entity);
   }
 
+  @Transactional(readOnly = true)
   public Optional<RefreshTokenDto> findByToken(String tokenStr) {
-    List<RefreshTokenDto> result =
-        postgres.executeQuery(
-            "SELECT id, user_id, token, expires_at, revoked FROM refresh_tokens WHERE token = ?;",
-            List.of(tokenStr),
-            rs ->
+    return jpaRepository
+        .findByToken(tokenStr)
+        .map(
+            entity ->
                 new RefreshTokenDto(
-                    UUID.fromString(rs.getString("id")),
-                    UUID.fromString(rs.getString("user_id")),
-                    rs.getString("token"),
-                    rs.getTimestamp("expires_at").toLocalDateTime(),
-                    rs.getBoolean("revoked")));
-    if (result.isEmpty()) {
-      return Optional.empty();
-    }
-    return Optional.of(result.getFirst());
+                    entity.getId(),
+                    entity.getUserId(),
+                    entity.getToken(),
+                    entity.getExpiresAt(),
+                    entity.isRevoked()));
   }
 }

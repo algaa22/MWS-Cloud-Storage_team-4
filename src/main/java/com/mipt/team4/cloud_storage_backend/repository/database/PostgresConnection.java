@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,18 +18,18 @@ import org.springframework.stereotype.Component;
 public class PostgresConnection implements DatabaseConnection {
   private final javax.sql.DataSource dataSource;
 
-    public boolean isConnected() {
-        try (Connection conn = dataSource.getConnection()) {
-            return conn != null && !conn.isClosed();
-        } catch (SQLException e) {
-            return false;
-        }
+  public boolean isConnected() {
+    try (Connection conn = dataSource.getConnection()) {
+      return conn != null && !conn.isClosed();
+    } catch (SQLException e) {
+      return false;
     }
+  }
 
   @Override
   public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) {
-    try (Connection conn = dataSource.getConnection();
-         PreparedStatement statement = conn.prepareStatement(query)) {
+    Connection conn = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = conn.prepareStatement(query)) {
       setParameters(statement, params);
 
       ResultSet resultSet = statement.executeQuery();
@@ -41,17 +42,21 @@ public class PostgresConnection implements DatabaseConnection {
       return results;
     } catch (SQLException e) {
       throw new DbExecuteQueryException(query, e);
+    } finally {
+      DataSourceUtils.releaseConnection(conn, dataSource);
     }
   }
 
   public int executeUpdate(String query, List<Object> params) {
-    try (Connection conn = dataSource.getConnection();
-         PreparedStatement statement = conn.prepareStatement(query)) {
+    Connection conn = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = conn.prepareStatement(query)) {
       setParameters(statement, params);
 
       return statement.executeUpdate();
     } catch (SQLException e) {
       throw new DbExecuteUpdateException(query, e);
+    } finally {
+      DataSourceUtils.releaseConnection(conn, dataSource);
     }
   }
 
@@ -62,7 +67,6 @@ public class PostgresConnection implements DatabaseConnection {
       }
     }
   }
-
 
   @FunctionalInterface
   public interface ResultSetMapper<T> {

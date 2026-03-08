@@ -34,8 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @Import({FileMetadataRepository.class, UserRepository.class, PostgresConnection.class})
 public class PostgresRepositoryTest extends BasePostgresTest {
-  @MockitoBean
-  private NettyServerManager nettyServerManager;
+  @MockitoBean private NettyServerManager nettyServerManager;
 
   @Autowired private FileMetadataRepository fileMetadataRepository;
   @Autowired private UserRepository userRepository;
@@ -49,19 +48,17 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   }
 
   private UUID addTestUser() throws UserAlreadyExistsException {
-    UUID uuid = UUID.randomUUID();
-
-    userRepository.addUser(
+    UserEntity user =
         UserEntity.builder()
-            .id(uuid)
-            .name("name")
-            .email("test-" + uuid + "@email.com")
+            .username("name")
+            .email("test-" + UUID.randomUUID() + "@email.com")
             .passwordHash("password")
-            .storageLimit((long) 1e10)
+            .storageLimit(10737418240L)
             .createdAt(LocalDateTime.now())
-            .build());
+            .build();
 
-    return uuid;
+    userRepository.addUser(user);
+    return user.getId();
   }
 
   private StorageEntity addTestFile(UUID parentId, String name)

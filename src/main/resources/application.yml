@@ -1,11 +1,39 @@
 spring:
   application:
     name: cloud-storage-backend
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: alg.aaa.2212@gmail.com
+    password: cjacjzbeswyplztj
+    protocol: smtp
+    test-connection: true
+    properties:
+      mail:
+        debug: true
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+app:
+  notifications:
+    subjects:
+      file-deleted: "📁 Файл был удален"
+      storage-almost-full: "⚠️ Внимание: заканчивается место в хранилище"
+      storage-full: "❌ Хранилище полностью заполнено"
+    urls:
+      website: "http://localhost:5173"
+      telegram-support: "https://t.me/alg_aaa"
 
 netty:
   enable-logging: false
   enable-https: true
-  http-port: 8080
+  http-port: 8081
   https-port: 8443
   boss-threads: 1
   worker-threads: 4

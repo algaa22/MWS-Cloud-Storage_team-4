@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f4f4; }
+    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .header { padding: 30px 40px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 10px 10px 0 0; text-align: center; }
+    .header h1 { color: white; margin: 0; font-size: 24px; }
+    .content { padding: 40px; }
+    .content h2 { color: #333; margin-top: 0; }
+    .alert-box { background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 5px; }
+    .alert-box p { margin: 0; color: #555; font-size: 16px; }
+    .actions { margin: 20px 0; }
+    .action-item { padding: 10px; background-color: #f8f9fa; margin: 5px 0; border-radius: 5px; border-left: 4px solid #ef4444; }
+    .button { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block; margin: 10px; transition: transform 0.2s; }
+    .button:hover { transform: scale(1.05); }
+    .button-secondary { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block; margin: 10px; transition: transform 0.2s; }
+    .button-secondary:hover { transform: scale(1.05); }
+    .footer { text-align: center; padding: 20px; color: #999; font-size: 14px; border-top: 1px solid #eee; }
+    .support-link { color: #3b82f6; text-decoration: none; font-weight: 500; }
+    .support-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>❌ MWS Cloud Storage</h1>
+  </div>
+  <div class="content">
+    <h2 th:text="'Здравствуйте, ' + ${userName} + '!'">Здравствуйте, Имя!</h2>
+
+    <div class="alert-box">
+      <p>⚠️ Ваше облачное хранилище полностью заполнено. Вы не сможете загружать новые файлы, пока не освободите место.</p>
+    </div>
+
+    <p style="color: #666;"><strong>Что можно сделать прямо сейчас:</strong></p>
+
+    <div class="actions">
+      <div class="action-item">🗑️ <strong>Удалить ненужные файлы</strong> — очистите корзину</div>
+      <div class="action-item">📦 <strong>Архивировать старые проекты</strong> — сожмите их в ZIP</div>
+      <div class="action-item">⭐ <strong>Обновить тариф</strong> — получите больше места</div>
+    </div>
+
+    <p style="color: #666; line-height: 1.6;">
+      Нужна помощь?
+      <a th:href="${telegramSupportUrl}" class="support-link" target="_blank">Напишите в Telegram</a>
+    </p>
+
+    <div style="text-align: center;">
+      <a th:href="${websiteUrl} + '/files'" class="button" target="_blank">🧹 Очистить хранилище</a>
+      <a th:href="${websiteUrl} + '/settings'" class="button-secondary" target="_blank">⭐ Обновить тариф</a>
+    </div>
+
+    <div class="footer">
+      <p>С уважением, команда MWS Cloud Storage</p>
+      <p>© 2026 MWS Cloud Storage. Все права защищены.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

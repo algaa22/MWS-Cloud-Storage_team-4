@@ -103,6 +103,7 @@ public class PostgresConnection implements DatabaseConnection {
     createUsersTable();
     createFilesTable();
     createRefreshTokensTable();
+    createFileTagsTable();
   }
 
   private void createFilesTable() {
@@ -115,7 +116,6 @@ public class PostgresConnection implements DatabaseConnection {
                     name VARCHAR(500) NOT NULL,
                     size BIGINT NOT NULL,
                     mime_type VARCHAR(100),
-                    tags VARCHAR(500),
                     visibility VARCHAR(20) DEFAULT 'private',
                     is_deleted BOOLEAN DEFAULT false,
                     is_directory BOOLEAN DEFAULT false,
@@ -181,6 +181,31 @@ public class PostgresConnection implements DatabaseConnection {
     } catch (DbExecuteUpdateException e) {
       throw new DbCreateTableException("refresh_tokens", e);
     }
+  }
+
+  private void createFileTagsTable() {
+    String sql =
+        """
+        CREATE TABLE IF NOT EXISTS file_tags (
+            file_id UUID REFERENCES files(id) ON DELETE CASCADE,
+            tag TEXT NOT NULL,
+            PRIMARY KEY (file_id, tag)
+        )
+        """;
+
+    try {
+      executeUpdate(sql, List.of());
+    } catch (DbExecuteUpdateException e) {
+      throw new DbCreateTableException("file_tags", e);
+    }
+
+    createFileTagsIndexes();
+  }
+
+  private void createFileTagsIndexes() {
+
+    executeUpdate(
+        "CREATE INDEX IF NOT EXISTS idx_file_tags_tag_file ON file_tags(tag, file_id);", List.of());
   }
 
   @PreDestroy

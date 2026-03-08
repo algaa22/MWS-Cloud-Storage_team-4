@@ -361,6 +361,115 @@ export const getFiles = async (token, currentPath = "") => {
   }
 };
 
+export const searchFilesByTags = async (token, tags) => {
+  console.log("=== SEARCH FILES BY TAGS ===");
+  console.log("Searching for tags:", tags);
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
+  const tagsString = Array.isArray(tags) ? tags.join(',') : tags;
+
+  const url = `${BASE}/files/list/byTags?path=`;
+
+  console.log("Request URL:", url);
+  console.log("Tags header:", tagsString);
+
+  try {
+    const response = await fetchWithTokenRefresh(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-File-Tags": tagsString
+      }
+    }, token);
+
+    console.log("Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Search failed: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("Search results:", data);
+
+    const files = data?.files || data || [];
+
+    const formattedResults = files.map((item, index) => {
+      const path = item.path || "";
+      let name = "Без имени";
+
+      if (item.name && item.name.trim() !== "") {
+        name = item.name;
+      } else if (path) {
+        const pathParts = path.split('/').filter(p => p && p !== '');
+        if (pathParts.length > 0) {
+          name = pathParts[pathParts.length - 1];
+        }
+      }
+
+      return {
+        name: name,
+        path: path,
+        type: item.type || "file",
+        size: item.size || 0,
+        id: item.id || path || Math.random().toString(),
+        fullPath: path,
+        tags: item.tags || [],
+        _raw: item
+      };
+    });
+
+    console.log("Formatted results:", formattedResults);
+    return formattedResults;
+
+  } catch (error) {
+    console.error("Error searching files by tags:", error);
+    throw error;
+  }
+};
+
+export const filterFilesByTags = async (token, tags) => {
+  console.log("=== FILTER FILES BY TAGS (CLIENT-SIDE) ===");
+
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
+  try {
+    const allFiles = await getFiles(token, "");
+    const matchedFiles = [];
+
+    for (const file of allFiles) {
+      if (file.type === "file") {
+        const fileTags = await getFileTags(token, file.fullPath);
+
+        const hasAllTags = tags.every(tag =>
+            fileTags.tags && fileTags.tags.includes(tag)
+        );
+
+        if (hasAllTags) {
+          matchedFiles.push(file);
+        }
+      }
+    }
+
+    console.log(`Found ${matchedFiles.length} files matching tags:`, tags);
+    return matchedFiles;
+
+  } catch (error) {
+    console.error("Error filtering files by tags:", error);
+    throw error;
+  }
+};
+
 export const downloadFile = async (token, path, filename, fileSize) => {
   console.log("downloadFile request (Streaming mode):", { path, filename, fileSize });
 
@@ -368,7 +477,6 @@ export const downloadFile = async (token, path, filename, fileSize) => {
 
   const headers = {
     "X-Auth-Token": token
-    // Хедер X-Download-Mode удален
   };
 
   try {
@@ -381,12 +489,10 @@ export const downloadFile = async (token, path, filename, fileSize) => {
       throw new Error(`Download failed: ${res.status} ${txt}`);
     }
 
-    // РАБОТА С ПОТОКОМ (ЧАНКАМИ)
     const reader = res.body.getReader();
     const chunks = [];
     let receivedLength = 0;
 
-    // Читаем поток чанк за чанком
     while (true) {
       const { done, value } = await reader.read();
 
@@ -394,15 +500,9 @@ export const downloadFile = async (token, path, filename, fileSize) => {
 
       chunks.push(value);
       receivedLength += value.length;
-
-      // Здесь можно добавить лог прогресса, если нужно:
-      // console.log(`Received ${receivedLength} of ${fileSize}`);
     }
-
-    // Собираем все чанки в один Blob
     const blob = new Blob(chunks);
 
-    // Обычное сохранение файла
     const urlBlob = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.style.display = "none";
@@ -411,7 +511,6 @@ export const downloadFile = async (token, path, filename, fileSize) => {
     document.body.appendChild(a);
     a.click();
 
-    // Очистка
     setTimeout(() => {
       window.URL.revokeObjectURL(urlBlob);
       document.body.removeChild(a);

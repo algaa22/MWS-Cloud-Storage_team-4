@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFil
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SearchFilesByTagsRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
@@ -76,5 +77,10 @@ public class FileController {
   public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
     request.validate(jwtService);
     return service.downloadFile(request);
+  }
+
+  public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request) {
+    request.validate(jwtService);
+    return service.searchFilesByTags(request);
   }
 }

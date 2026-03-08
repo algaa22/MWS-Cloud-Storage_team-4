@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f4f4; }
+    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .header { padding: 30px 40px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 10px 10px 0 0; text-align: center; }
+    .header h1 { color: white; margin: 0; font-size: 24px; }
+    .content { padding: 40px; }
+    .content h2 { color: #333; margin-top: 0; }
+    .stats { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+    .stats table { width: 100%; }
+    .stats td { text-align: center; padding: 10px; }
+    .stats-number { font-size: 28px; font-weight: bold; color: #d97706; }
+    .stats-label { color: #666; }
+    .progress-bar { background-color: #f0f0f0; border-radius: 10px; height: 20px; overflow: hidden; margin: 15px 0; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706); border-radius: 10px; }
+    .tips { margin: 20px 0; padding: 0; list-style: none; }
+    .tips li { padding: 10px; background-color: #f8f9fa; margin: 5px 0; border-radius: 5px; }
+    .button { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block; margin: 20px 0; transition: transform 0.2s; }
+    .button:hover { transform: scale(1.05); }
+    .footer { text-align: center; padding: 20px; color: #999; font-size: 14px; border-top: 1px solid #eee; }
+    .support-link { color: #3b82f6; text-decoration: none; font-weight: 500; }
+    .support-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⚠️ MWS Cloud Storage</h1>
+  </div>
+  <div class="content">
+    <h2 th:text="'Здравствуйте, ' + ${userName} + '!'">Здравствуйте, Имя!</h2>
+
+    <p style="color: #666; font-size: 16px;">Ваше облачное хранилище почти заполнено:</p>
+
+    <div class="stats">
+      <table>
+        <tr>
+          <td>
+            <div class="stats-number" th:text="${percentFormatted}">75.5%</div>
+            <div class="stats-label">заполнено</div>
+          </td>
+          <td>
+            <div class="stats-number" th:text="${usedFormatted}">1.5 GB</div>
+            <div class="stats-label">использовано</div>
+          </td>
+          <td>
+            <div class="stats-number" th:text="${limitFormatted}">2 GB</div>
+            <div class="stats-label">всего</div>
+          </td>
+        </tr>
+      </table>
+
+      <div class="progress-bar">
+        <div class="progress-fill" th:style="'width: ' + ${percentInt} + '%;'"></div>
+      </div>
+    </div>
+
+    <p style="color: #666;"><strong>Что можно сделать:</strong></p>
+
+    <ul class="tips">
+      <li>🧹 <strong>Очистить хранилище</strong> — удалите ненужные файлы</li>
+      <li>📦 <strong>Архивировать старые файлы</strong> — сожмите редко используемые данные</li>
+      <li>⭐ <strong>Увеличить лимит</strong> — перейдите на премиум-тариф</li>
+    </ul>
+
+    <p style="color: #666; line-height: 1.6;">
+      Нужна помощь?
+      <a th:href="${telegramSupportUrl}" class="support-link" target="_blank">Напишите в Telegram</a>
+    </p>
+
+    <div style="text-align: center;">
+      <a th:href="${websiteUrl} + '/files'" class="button" target="_blank">📊 Управлять хранилищем</a>
+    </div>
+
+    <div class="footer">
+      <p>С уважением, команда MWS Cloud Storage</p>
+      <p>© 2026 MWS Cloud Storage. Все права защищены.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

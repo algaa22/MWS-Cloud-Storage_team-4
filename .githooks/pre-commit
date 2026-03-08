@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "Formatting code before commit..."
+./mvnw fmt:format || mvn fmt:format
+
+git add .

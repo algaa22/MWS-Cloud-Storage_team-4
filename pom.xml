@@ -207,6 +207,7 @@
                     <argLine>-XX:+EnableDynamicAgentLoading</argLine>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
@@ -225,6 +226,28 @@
                         <goals>
                             <goal>format</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>install-githooks</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy file="${project.basedir}/.githooks/pre-commit"
+                                  tofile="${project.basedir}/.git/hooks/pre-commit"
+                                  overwrite="true"/>
+                                <chmod file="${project.basedir}/.git/hooks/pre-commit" perm="755"/>
+                            </target>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

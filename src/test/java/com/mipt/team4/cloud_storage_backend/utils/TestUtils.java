@@ -1,7 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
-import com.mipt.team4.cloud_storage_backend.config.props.DatabaseConfig;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 

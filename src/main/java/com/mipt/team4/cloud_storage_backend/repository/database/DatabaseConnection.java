@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.repository.database;
 
-import java.sql.SQLException;
 import java.util.List;
 
 public interface DatabaseConnection {

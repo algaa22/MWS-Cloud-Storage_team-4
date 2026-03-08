@@ -26,16 +26,14 @@ import lombok.Setter;
 @NoArgsConstructor()
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class UserEntity {
+  @Builder.Default
+  @Column(name = "is_active")
+  boolean isActive = true;
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   @Column(name = "id", updatable = false, nullable = false)
   @EqualsAndHashCode.Include
   private UUID id;
-
-  @Builder.Default
-  @Column(name = "is_active")
-  boolean isActive = true;
-
   @Column(name = "username", nullable = false)
   private String username;
 

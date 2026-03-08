@@ -92,9 +92,9 @@ public class FileMetadataRepository {
     return jpaRepository.findByUserIdAndIdAndStatus(userId, fileId, FileStatus.READY);
   }
 
-    public Optional<StorageEntity> getFileIncludeDeleted(UUID userId, UUID fileId) {
-        return jpaRepository.findByIdIncludeDeleted(userId, fileId);
-    }
+  public Optional<StorageEntity> getFileIncludeDeleted(UUID userId, UUID fileId) {
+    return jpaRepository.findByIdIncludeDeleted(userId, fileId);
+  }
 
   @Transactional
   public void softDeleteFile(UUID userId, UUID fileId) {

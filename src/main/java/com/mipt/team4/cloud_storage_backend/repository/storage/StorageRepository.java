@@ -115,9 +115,9 @@ public class StorageRepository {
     return metadataRepository.getFile(userId, fileId);
   }
 
-    public Optional<StorageEntity> getFileIncludeDeleted(UUID userId, UUID fileId) {
-        return metadataRepository.getFileIncludeDeleted(userId, fileId);
-    }
+  public Optional<StorageEntity> getFileIncludeDeleted(UUID userId, UUID fileId) {
+    return metadataRepository.getFileIncludeDeleted(userId, fileId);
+  }
 
   public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
     return metadataRepository.getDeletedById(userId, fileId);

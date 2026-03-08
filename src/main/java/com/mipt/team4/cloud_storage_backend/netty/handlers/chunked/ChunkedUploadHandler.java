@@ -163,7 +163,6 @@ public class ChunkedUploadHandler {
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     currentName = RequestUtils.getRequiredQueryParam(request, "name");
     currentParentId = RequestUtils.getQueryParam(request, "parentId");
-    currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
   }
 
   private void sendSuccessResponse(ChannelHandlerContext ctx, ChunkedUploadFileResult result) {

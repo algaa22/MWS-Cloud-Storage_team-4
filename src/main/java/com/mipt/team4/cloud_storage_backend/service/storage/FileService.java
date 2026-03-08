@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
-import com.mipt.team4.cloud_storage_backend.config.props.StorageNotificationConfig;
 import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
@@ -11,7 +10,6 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadNotStoppedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
@@ -19,15 +17,12 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUp
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SearchFilesByTagsRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
-import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import com.mipt.team4.cloud_storage_backend.notification.service.NotificationService;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
@@ -40,10 +35,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileService {
@@ -54,8 +47,6 @@ public class FileService {
   private final StorageRepository storageRepository;
   private final UserRepository userRepository;
   private final MinioConfig minioConfig;
-  private final NotificationService notificationService;
-  private final StorageNotificationConfig storageNotificationConfig;
 
   public void startChunkedUploadSession(ChunkedUploadRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
@@ -142,6 +133,7 @@ public class FileService {
       if (!(exception instanceof UploadRetriableException)) {
         activeUploads.remove(sessionId);
       }
+
       throw exception;
     }
 
@@ -154,7 +146,6 @@ public class FileService {
       uploadState.stop();
       throw new CompleteUploadRetriableException(exception.getCause());
     }
-    checkStorageAndNotify(fileEntity.getUserId());
 
     userRepository.increaseUsedStorage(fileEntity.getUserId(), uploadState.getFileSize());
     activeUploads.remove(sessionId);
@@ -194,7 +185,6 @@ public class FileService {
     storageRepository.addFile(entity, data);
     userRepository.increaseUsedStorage(userId, data.length);
 
-    checkStorageAndNotify(userId);
     return fileId;
   }
 
@@ -218,21 +208,6 @@ public class FileService {
 
     storageRepository.deleteFile(entity);
     userRepository.decreaseUsedStorage(userId, entity.getSize());
-
-    UserEntity user =
-        userRepository
-            .getUserById(userId)
-            .orElseThrow(() -> new UserNotFoundException(request.userToken()));
-
-    String filePath = storageRepository.getFullFilePath(entity.getId());
-    if (filePath == null) {
-      filePath = entity.getName();
-      log.warn(
-          "Could not get full path for file {}, using name only: {}", entity.getId(), filePath);
-    }
-
-    notificationService.notifyFileDeleted(user.getEmail(), user.getName(), filePath, userId);
-    log.info("File deleted: {} (path: {})", entity.getId(), filePath);
   }
 
   public List<StorageEntity> getFileList(GetFileListRequest request) {
@@ -255,12 +230,6 @@ public class FileService {
     return new StorageDto(entityOpt.get());
   }
 
-  public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request)
-      throws UserNotFoundException {
-    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
-    return storageRepository.getFilesByTags(userId, request.tags());
-  }
-
   public void changeFileMetadata(ChangeFileMetadataRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
@@ -270,7 +239,6 @@ public class FileService {
             .getFile(userId, fileId)
             .filter(f -> f.getUserId().equals(userId))
             .orElseThrow(() -> new StorageFileNotFoundException(fileId));
-
     String targetName = request.newName().orElse(entity.getName());
     UUID targetParentId =
         request.newParentId().isPresent()
@@ -316,38 +284,5 @@ public class FileService {
     uploadState.getETags().put(uploadState.getPartNum(), eTag);
     uploadState.addFileSize(part.length);
     uploadState.increaseTotalParts();
-  }
-
-  private void checkStorageAndNotify(UUID userId) {
-    userRepository
-        .getStorageUsage(userId)
-        .ifPresent(
-            usage -> {
-              double ratio = usage.getRatio();
-
-              log.info(
-                  "Storage check for user {}: used={}, limit={}, {}%",
-                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
-
-              if (ratio >= storageNotificationConfig.getFullThreshold()) {
-                userRepository
-                    .getUserById(userId)
-                    .ifPresent(
-                        user ->
-                            notificationService.notifyStorageFull(
-                                user.getEmail(), user.getName(), userId));
-              } else if (ratio >= storageNotificationConfig.getAlmostFullThreshold()) {
-                userRepository
-                    .getUserById(userId)
-                    .ifPresent(
-                        user ->
-                            notificationService.notifyStorageAlmostFull(
-                                user.getEmail(),
-                                user.getName(),
-                                usage.used(),
-                                usage.limit(),
-                                userId));
-              }
-            });
   }
 }

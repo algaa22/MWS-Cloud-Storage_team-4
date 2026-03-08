@@ -106,15 +106,4 @@ public class StorageRepository {
   public void addDirectory(StorageEntity entity) {
     metadataRepository.addFile(entity);
   }
-
-  public List<StorageEntity> getFilesByTags(UUID userId, List<String> tags) {
-    if (tags == null || tags.isEmpty()) {
-      return List.of();
-    }
-    return metadataRepository.getFilesByTags(userId, tags);
-  }
-
-  public String getFullFilePath(UUID fileId) {
-    return metadataRepository.getFullFilePath(fileId);
-  }
 }

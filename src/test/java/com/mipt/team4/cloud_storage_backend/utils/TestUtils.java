@@ -18,17 +18,4 @@ public class TestUtils {
         .withUserName("test_user")
         .withPassword("test_pass");
   }
-
-  public static PostgresConnection createConnection(PostgreSQLContainer<?> postgresContainer) {
-    DatabaseConfig databaseConfig =
-        new DatabaseConfig(
-            postgresContainer.getJdbcUrl(),
-            postgresContainer.getUsername(),
-            postgresContainer.getPassword());
-
-    PostgresConnection postgresConnection = new PostgresConnection(databaseConfig);
-    postgresConnection.connect();
-
-    return postgresConnection;
-  }
 }

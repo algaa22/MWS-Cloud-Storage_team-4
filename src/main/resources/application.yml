@@ -2,6 +2,26 @@ spring:
   application:
     name: cloud-storage-backend
 
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+
 netty:
   enable-logging: false
   enable-https: true
@@ -23,11 +43,6 @@ cors:
     allow-origin: "http://localhost:5173"
     allow-credentials: true
     max-age: 3600
-
-database:
-  url: ${DB_URL}
-  username: ${DB_USERNAME}
-  password: ${DB_PASSWORD}
 
 minio:
   url: ${MINIO_URL}

@@ -67,7 +67,7 @@ public class UserRepository {
   public boolean userExists(UUID id) {
     List<Boolean> result =
         postgres.executeQuery(
-            "SELECT EXISTS (SELECT 1 FROM files WHERE id = ?);",
+            "SELECT EXISTS (SELECT 1 FROM users WHERE id = ?);",
             List.of(id),
             rs -> (rs.getBoolean(1)));
     return result.getFirst();

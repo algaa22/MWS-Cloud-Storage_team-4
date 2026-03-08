@@ -1,6 +1,9 @@
 spring:
   application:
     name: cloud-storage-backend
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 netty:
   enable-logging: false

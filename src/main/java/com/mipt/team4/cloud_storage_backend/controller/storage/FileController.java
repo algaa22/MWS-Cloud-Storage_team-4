@@ -74,8 +74,8 @@ public class FileController {
   }
 
   public void restoreFile(SimpleFileOperationRequest request) {
-      request.validate(jwtService);
-      service.restoreFile(request);
+    request.validate(jwtService);
+    service.restoreFile(request);
   }
 
   public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {

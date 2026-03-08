@@ -94,16 +94,17 @@ public class FilesRequestHandler {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-    public void handleRestoreFileRequest(
-            ChannelHandlerContext ctx, HttpRequest request, String userToken) {
-        String fileId = RequestUtils.getRequiredQueryParam(request, "id");
+  public void handleRestoreFileRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+    String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 
-        SimpleFileOperationRequest restoreRequest = new SimpleFileOperationRequest(fileId, userToken, false);
+    SimpleFileOperationRequest restoreRequest =
+        new SimpleFileOperationRequest(fileId, userToken, false);
 
-        fileController.restoreFile(restoreRequest);
+    fileController.restoreFile(restoreRequest);
 
-        ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully restored");
-    }
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully restored");
+  }
 
   public void handleDeleteFileRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {

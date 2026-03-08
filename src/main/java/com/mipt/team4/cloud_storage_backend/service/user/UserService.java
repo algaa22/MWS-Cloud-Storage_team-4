@@ -163,7 +163,6 @@ public class UserService {
       entity.setUsername(updateUserInfoRequest.newName().get());
     }
 
-    // Обновляем в репозитории
     userRepository.updateInfo(
         id,
         updateUserInfoRequest.newName().orElse(entity.getUsername()),

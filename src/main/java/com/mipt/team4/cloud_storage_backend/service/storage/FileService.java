@@ -47,6 +47,7 @@ public class FileService {
 
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
+  private final FileErasureService erasureService;
   private final UserRepository userRepository;
   private final MinioConfig minioConfig;
 
@@ -210,8 +211,7 @@ public class FileService {
     Optional<StorageEntity> entityOpt = storageRepository.getFileIncludeDeleted(userId, fileId);
     StorageEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-    storageRepository.hardDeleteFile(entity);
-    userRepository.decreaseUsedStorage(userId, entity.getSize());
+    erasureService.hardDelete(entity);
   }
 
   public void softDeleteFile(SoftDeleteFileRequest request) {
@@ -227,7 +227,6 @@ public class FileService {
   @Transactional
   public void restoreFile(SimpleFileOperationRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
-
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     StorageEntity entity =

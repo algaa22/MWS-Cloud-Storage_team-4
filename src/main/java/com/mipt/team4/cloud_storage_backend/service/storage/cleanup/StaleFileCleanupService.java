@@ -1,11 +1,10 @@
-package com.mipt.team4.cloud_storage_backend.service.storage;
+package com.mipt.team4.cloud_storage_backend.service.storage.cleanup;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
-import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepositoryWrapper;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.service.storage.FileErasureService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,45 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FileCleanupService {
+public class StaleFileCleanupService {
   private final StorageRepositoryWrapper storageRepositoryWrapper;
   private final StorageJpaRepositoryAdapter metadataRepository;
-  private final StorageRepository storageRepository;
-  private final UserRepository userRepository;
+  private final FileErasureService erasureService;
   private final StorageConfig storageConfig;
-
-  /**
-   * Очистка файлов, которые были удалены пользователем (Soft Delete) более N дней назад.
-   * Выполняется раз в сутки (в 2 часа ночи).
-   */
-  @Scheduled(cron = "0 0 2 * * *")
-  public void cleanupTrashBin() {
-    int daysToKeep = storageConfig.trash().retentionDays();
-    LocalDateTime threshold = LocalDateTime.now().minusDays(daysToKeep);
-
-    List<StorageEntity> staleDeletedFiles = metadataRepository.getStaleDeletedFiles(threshold);
-
-    if (staleDeletedFiles.isEmpty()) {
-      return;
-    }
-
-    log.info("Trash Cleanup: Found {} items to be permanently removed", staleDeletedFiles.size());
-
-    for (StorageEntity entity : staleDeletedFiles) {
-      try {
-        storageRepository.hardDeleteFile(entity);
-
-        userRepository.decreaseUsedStorage(entity.getUserId(), entity.getSize());
-
-        log.info(
-            "Trash Cleanup: Permanently deleted file {} (owner: {})",
-            entity.getId(),
-            entity.getUserId());
-      } catch (Exception e) {
-        log.error("Trash Cleanup: Failed to delete file {}", entity.getId(), e);
-      }
-    }
-  }
 
   /**
    * Периодическая задача по поиску и обработке "протухших" (stale) файлов.
@@ -85,7 +50,7 @@ public class FileCleanupService {
       try {
         handleStaleFile(entity);
       } catch (Exception e) {
-        log.error("Failed to cleanup file {}", entity.getId(), e);
+        log.error("Stale Cleanup: Failed to cleanup file {}", entity.getId(), e);
       }
     }
   }
@@ -108,17 +73,18 @@ public class FileCleanupService {
   private void handleStaleFile(StorageEntity entity) {
     switch (entity.getOperationType()) {
       case UPLOAD -> {
-        storageRepository.hardDeleteFile(entity);
-        log.info("Cleanup: Deleted stale upload for file {}", entity.getId());
+        erasureService.hardDelete(entity);
+        log.info("Stale cleanup: Deleted stale upload for file {}", entity.getId());
       }
       case DELETE -> {
-        storageRepository.hardDeleteFile(entity);
-        log.info("Cleanup: Retried deletion for file {}", entity.getId());
+        erasureService.hardDelete(entity);
+        log.info("Stale cleanup: Retried deletion for file {}", entity.getId());
       }
       case CHANGE_METADATA -> {
         storageRepositoryWrapper.resetToReady(entity);
         log.info(
-            "Cleanup: Forced rollback to stuck metadata operation for file {}", entity.getId());
+            "Stale cleanup: Forced rollback to stuck metadata operation for file {}",
+            entity.getId());
       }
       default ->
           throw new IllegalStateException(

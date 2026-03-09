@@ -62,22 +62,6 @@ public class NotificationClient {
     sendRequest(request);
   }
 
-  private void sendRequest(NotificationRequest request) {
-    try {
-      webClient
-          .post()
-          .uri("/api/notifications/send")
-          .bodyValue(request)
-          .retrieve()
-          .toBodilessEntity()
-          .block();
-      log.info("Notification sent successfully: {}", request.getType());
-    } catch (WebClientException e) {
-      log.error(
-          "Failed to send notification to {}: {}", request.getType(), request.getUserEmail(), e);
-    }
-  }
-
   public void notifyTariffPurchased(
       String email, String name, String tariffName, LocalDateTime endDate) {
     NotificationRequest request =
@@ -123,5 +107,21 @@ public class NotificationClient {
             .endDate(newEndDate.toString())
             .build();
     sendRequest(request);
+  }
+
+   private void sendRequest(NotificationRequest request) {
+    try {
+      webClient
+          .post()
+          .uri("/api/notifications/send")
+          .bodyValue(request)
+          .retrieve()
+          .toBodilessEntity()
+          .block();
+      log.info("Notification sent successfully: {}", request.getType());
+    } catch (WebClientException e) {
+      log.error(
+          "Failed to send notification to {}: {}", request.getType(), request.getUserEmail(), e);
+    }
   }
 }

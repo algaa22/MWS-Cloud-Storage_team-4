@@ -37,7 +37,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         () -> {
           try {
             HttpMethod method = request.method();
-            String uri = request.uri();
+            String uri = request.uri().split("\\?")[0];
 
             if (uri.startsWith("/api/files")) {
               handleFilesRequest(ctx, request, uri, method);

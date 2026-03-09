@@ -134,6 +134,8 @@ public class UsersRequestHandler {
   public void handlePurchaseTariff(ChannelHandlerContext ctx, HttpRequest request)
           throws HeaderNotFoundException, ValidationFailedException {
 
+    System.out.println("🔥🔥🔥 handlePurchaseTariff EXECUTING! 🔥🔥🔥");
+    System.out.println("Request URI: " + request.uri());
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String tariffPlanStr = RequestUtils.getRequiredQueryParam(request, "plan");
     String paymentToken = RequestUtils.getRequiredHeader(request, "X-Payment-Token");

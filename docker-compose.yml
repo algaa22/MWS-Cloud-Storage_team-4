@@ -1,4 +1,19 @@
 services:
+  notification-service:
+    build: ../MWS-Cloud-Storage_notification  # путь к проекту уведомлений
+    container_name: notification-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: alg.aaa.2212@gmail.com
+      SPRING_MAIL_PASSWORD: cjacjzbeswyplztj  # пароль от Gmail
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+    networks:
+      - cloud-network
+
   app:
     image: cloud-storage-app:latest
     container_name: cloud-storage-app
@@ -10,6 +25,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      notification-service:  # добавить зависимость
+        condition: service_started
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/cloud_storage_db
       DB_USERNAME: postgres
@@ -18,6 +35,9 @@ services:
       MINIO_URL: ${MINIO_URL}
       MINIO_USERNAME: ${MINIO_USERNAME}
       MINIO_PASSWORD: ${MINIO_PASSWORD}
+      NOTIFICATION_SERVICE_URL: http://notification-service:8082  # ВАЖНО!
+    networks:
+      - cloud-network
 
   postgres:
     image: postgres:15
@@ -35,6 +55,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - cloud-network
 
   minio:
     image: minio/minio:latest
@@ -53,7 +75,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - cloud-network
 
 volumes:
   postgres-data:
   minio-data:
+
+networks:
+  cloud-network:
+    driver: bridge

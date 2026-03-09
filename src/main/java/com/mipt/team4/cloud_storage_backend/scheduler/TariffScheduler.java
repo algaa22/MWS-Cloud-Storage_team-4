@@ -24,7 +24,7 @@ public class TariffScheduler {
     private final PaymentService paymentService;  // ДОБАВИТЬ
     private final TariffService tariffService;    // ДОБАВИТЬ (если нужен)
 
-    @Scheduled(cron = "0 0 9 * * *")
+    @Scheduled(cron = "0 */10 * * * *")
     public void checkTariffs() {
         log.info("Starting tariff check...");
 

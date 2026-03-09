@@ -8,7 +8,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteDir
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.MoveDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
@@ -24,7 +24,7 @@ public class DirectoryService {
 
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
-  private final FileMetadataRepository metadataRepository;
+  private final StorageJpaRepositoryAdapter metadataRepository;
   private final UserRepository userRepository;
 
   public UUID createDirectory(CreateDirectoryRequest request) {
@@ -100,7 +100,7 @@ public class DirectoryService {
     StorageEntity directoryEntity = getDirectoryOrThrow(userId, directoryId);
     long freedSize = metadataRepository.calculateTotalSizeOfTree(directoryId);
 
-    metadataRepository.deleteFile(directoryEntity);
+    metadataRepository.hardDeleteFile(directoryEntity);
 
     if (freedSize > 0) {
       userRepository.decreaseUsedStorage(userId, freedSize);

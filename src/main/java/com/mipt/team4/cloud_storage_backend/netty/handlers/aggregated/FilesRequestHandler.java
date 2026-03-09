@@ -9,6 +9,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFil
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SoftDeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
@@ -73,6 +74,37 @@ public class FilesRequestHandler {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
+  public void handleGetTrashFileListRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+
+    Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
+
+    List<StorageEntity> trashFiles =
+        fileController.getTrashFileList(new GetFileListRequest(userToken, false, false, parentId));
+
+    ObjectNode rootNode = mapper.createObjectNode();
+    ArrayNode filesArray = mapper.createArrayNode();
+
+    if (trashFiles != null) {
+      for (StorageEntity file : trashFiles) {
+        ObjectNode fileNode = mapper.createObjectNode();
+        fileNode.put("id", file.getId().toString());
+        fileNode.put("parentId", file.getParentId() != null ? file.getParentId().toString() : null);
+        fileNode.put("name", file.getName());
+        fileNode.put("size", file.getSize());
+        fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
+        fileNode.put("mimeType", file.getMimeType());
+        fileNode.put("visibility", file.getVisibility());
+        fileNode.put("updatedAt", file.getUpdatedAt().toString());
+        fileNode.put("isDirectory", file.isDirectory());
+        filesArray.add(fileNode);
+      }
+    }
+
+    rootNode.set("files", filesArray);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
+  }
+
   public void handleGetFileInfoRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
@@ -94,10 +126,30 @@ public class FilesRequestHandler {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
+  public void handleRestoreFileRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+    String fileId = RequestUtils.getRequiredQueryParam(request, "id");
+
+    SimpleFileOperationRequest restoreRequest = new SimpleFileOperationRequest(fileId, userToken);
+
+    fileController.restoreFile(restoreRequest);
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully restored");
+  }
+
   public void handleDeleteFileRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
-    fileController.deleteFile(new SimpleFileOperationRequest(fileId, userToken));
+
+    boolean permanent =
+        SafeParser.parseBoolean(
+            "Permanent delete", RequestUtils.getQueryParam(request, "permanent", "false"));
+
+    if (permanent) {
+      fileController.hardDeleteFile(new SimpleFileOperationRequest(fileId, userToken));
+    } else {
+      fileController.softDeleteFile(new SoftDeleteFileRequest(fileId, userToken));
+    }
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully deleted");
   }

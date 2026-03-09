@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Метаданные объекта хранения (файла или директории).
@@ -28,6 +29,7 @@ import lombok.*;
  */
 @Entity
 @Table(name = "files")
+@SQLRestriction("is_deleted = false")
 @Getter
 @Setter
 @Builder
@@ -52,7 +54,7 @@ public class StorageEntity {
 
   @Builder.Default private String visibility = FileVisibility.PRIVATE.toString();
 
-  @Column(name = "is_deleted")
+  @Column(name = "is_deleted", nullable = false)
   private boolean isDeleted = false;
 
   @Convert(converter = FileTagsConverter.class)
@@ -106,6 +108,9 @@ public class StorageEntity {
 
   @Column(name = "error_message", columnDefinition = "TEXT")
   private String errorMessage;
+
+  @Column(name = "deleted_at")
+  private LocalDateTime deletedAt;
 
   /** Генерирует уникальный детерминированный ключ для S3. */
   public String getS3Key() {

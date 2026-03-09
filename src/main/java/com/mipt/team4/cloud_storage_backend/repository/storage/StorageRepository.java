@@ -16,7 +16,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class StorageRepository {
-  private final FileMetadataRepository metadataRepository;
+  private final StorageJpaRepositoryAdapter metadataRepository;
   private final FileContentRepository contentRepository;
   private final StorageRepositoryWrapper wrapper;
 
@@ -67,15 +67,50 @@ public class StorageRepository {
     wrapper.wrapUpdate(entity, FileOperationType.CHANGE_METADATA, () -> null);
   }
 
-  public void deleteFile(StorageEntity entity) {
+  public void hardDeleteFile(StorageEntity entity) {
     wrapper.wrapUpdate(
         entity,
         FileOperationType.DELETE,
         () -> {
-          metadataRepository.deleteFile(entity);
+          if (entity.isDirectory()) {
+            List<StorageEntity> descendants =
+                metadataRepository.findAllFileDescendants(entity.getUserId(), entity.getId());
+
+            for (StorageEntity file : descendants) {
+              contentRepository.hardDeleteFile(file.getS3Key());
+            }
+          }
+
           contentRepository.hardDeleteFile(entity.getS3Key());
+          metadataRepository.hardDeleteFile(entity);
+
           return null;
         });
+  }
+
+  public void softDeleteFile(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.CHANGE_METADATA,
+        () -> {
+          metadataRepository.softDeleteFile(
+              entity.getUserId(), entity.getId(), entity.isDirectory());
+          return null;
+        });
+  }
+
+  public void restoreFile(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.CHANGE_METADATA,
+        () -> {
+          metadataRepository.restoreFile(entity.getUserId(), entity.getId(), entity.isDirectory());
+          return null;
+        });
+  }
+
+  public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
+    return metadataRepository.getTrashFileList(userId, parentId);
   }
 
   public InputStream downloadFile(StorageEntity entity) {
@@ -93,6 +128,14 @@ public class StorageRepository {
 
   public Optional<StorageEntity> getFile(UUID userId, UUID fileId) {
     return metadataRepository.getFile(userId, fileId);
+  }
+
+  public Optional<StorageEntity> getFileIncludeDeleted(UUID userId, UUID fileId) {
+    return metadataRepository.getFileIncludeDeleted(userId, fileId);
+  }
+
+  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
+    return metadataRepository.getDeletedById(userId, fileId);
   }
 
   public boolean fileExists(UUID userId, UUID parentId, String name) {

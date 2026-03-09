@@ -10,7 +10,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
-import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,11 +31,11 @@ import org.springframework.transaction.annotation.Transactional;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 @Transactional
-@Import({FileMetadataRepository.class, UserRepository.class})
+@Import({StorageJpaRepositoryAdapter.class, UserRepository.class})
 public class PostgresRepositoryTest extends BasePostgresTest {
   @MockitoBean private NettyServerManager nettyServerManager;
 
-  @Autowired private FileMetadataRepository fileMetadataRepository;
+  @Autowired private StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
   @Autowired private UserRepository userRepository;
   private StorageEntity commonFileEntity;
   private UUID testUserUuid;
@@ -75,7 +75,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .tags(List.of("some xml"))
             .build();
 
-    fileMetadataRepository.addFile(fileEntity);
+    storageJpaRepositoryAdapter.addFile(fileEntity);
 
     return fileEntity;
   }
@@ -83,7 +83,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @Test
   void fileExists_ShouldReturnTrue_WhenFileExists() {
     assertTrue(
-        fileMetadataRepository.fileExists(
+        storageJpaRepositoryAdapter.fileExists(
             commonFileEntity.getUserId(),
             commonFileEntity.getParentId(),
             commonFileEntity.getName()));
@@ -92,12 +92,14 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @Test
   void fileExists_ShouldReturnFalse_WhenFileNotFound() {
     assertFalse(
-        fileMetadataRepository.fileExists(commonFileEntity.getUserId(), null, "non-existent-file"));
+        storageJpaRepositoryAdapter.fileExists(
+            commonFileEntity.getUserId(), null, "non-existent-file"));
   }
 
   @Test
   void shouldReturnNull_WhenGetNonexistentFile() {
-    assertTrue(fileMetadataRepository.getFile(testUserUuid, null, "non-existent-path").isEmpty());
+    assertTrue(
+        storageJpaRepositoryAdapter.getFile(testUserUuid, null, "non-existent-path").isEmpty());
   }
 
   @Test
@@ -105,10 +107,12 @@ public class PostgresRepositoryTest extends BasePostgresTest {
       throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
     String uniqueName = "delete-me-" + UUID.randomUUID();
     StorageEntity testFileEntity = addTestFile(null, uniqueName);
-    assertTrue(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
+    assertTrue(
+        storageJpaRepositoryAdapter.fileExists(testFileEntity.getUserId(), null, uniqueName));
 
-    fileMetadataRepository.deleteFile(testFileEntity);
-    assertFalse(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
+    storageJpaRepositoryAdapter.hardDeleteFile(testFileEntity);
+    assertFalse(
+        storageJpaRepositoryAdapter.fileExists(testFileEntity.getUserId(), null, uniqueName));
   }
 
   @Test
@@ -121,12 +125,12 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .isDirectory(true)
             .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
             .build();
-    fileMetadataRepository.addFile(folder);
+    storageJpaRepositoryAdapter.addFile(folder);
 
     StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
 
-    assertTrue(fileMetadataRepository.isDescendant(folder.getId(), childFile.getId()));
+    assertTrue(storageJpaRepositoryAdapter.isDescendant(folder.getId(), childFile.getId()));
 
-    assertFalse(fileMetadataRepository.isDescendant(childFile.getId(), folder.getId()));
+    assertFalse(storageJpaRepositoryAdapter.isDescendant(childFile.getId(), folder.getId()));
   }
 }

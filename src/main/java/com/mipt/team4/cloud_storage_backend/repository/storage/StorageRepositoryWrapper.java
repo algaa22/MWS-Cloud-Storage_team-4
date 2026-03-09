@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
-  private final FileMetadataRepository metadataRepository;
+  private final StorageJpaRepositoryAdapter metadataRepository;
   private final StorageConfig storageConfig;
   private final RetryPolicy<Object> retryPolicy;
 
@@ -213,7 +213,7 @@ public class StorageRepositoryWrapper {
     switch (operationType) {
       case UPLOAD -> {
         try {
-          metadataRepository.deleteFile(entity);
+          metadataRepository.hardDeleteFile(entity);
         } catch (Exception e) {
           log.warn(
               "Failed to delete metadata after upload error. Ghost record may remain. File ID: {}",

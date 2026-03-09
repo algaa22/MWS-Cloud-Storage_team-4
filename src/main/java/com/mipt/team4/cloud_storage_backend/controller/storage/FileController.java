@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUp
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SoftDeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -58,9 +59,14 @@ public class FileController {
     return service.getFileInfo(request);
   }
 
-  public void deleteFile(SimpleFileOperationRequest request) {
+  public void hardDeleteFile(SimpleFileOperationRequest request) {
     request.validate(jwtService);
-    service.deleteFile(request);
+    service.hardDeleteFile(request);
+  }
+
+  public void softDeleteFile(SoftDeleteFileRequest request) {
+    request.validate(jwtService);
+    service.softDeleteFile(request);
   }
 
   public UUID uploadFile(FileUploadRequest request) {
@@ -71,6 +77,16 @@ public class FileController {
   public void changeFileMetadata(ChangeFileMetadataRequest request) {
     request.validate(jwtService);
     service.changeFileMetadata(request);
+  }
+
+  public void restoreFile(SimpleFileOperationRequest request) {
+    request.validate(jwtService);
+    service.restoreFile(request);
+  }
+
+  public List<StorageEntity> getTrashFileList(GetFileListRequest request) {
+    request.validate(jwtService);
+    return service.getTrashFileList(request);
   }
 
   public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {

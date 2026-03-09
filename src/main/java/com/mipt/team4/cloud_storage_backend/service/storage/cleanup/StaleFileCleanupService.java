@@ -1,16 +1,17 @@
-package com.mipt.team4.cloud_storage_backend.service.storage;
+package com.mipt.team4.cloud_storage_backend.service.storage.cleanup;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
-import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepositoryWrapper;
+import com.mipt.team4.cloud_storage_backend.service.storage.FileErasureService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Сервис автоматической очистки и восстановления консистентности хранилища.
@@ -21,10 +22,10 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FileCleanupService {
+public class StaleFileCleanupService {
   private final StorageRepositoryWrapper storageRepositoryWrapper;
-  private final FileMetadataRepository metadataRepository;
-  private final StorageRepository storageRepository;
+  private final StorageJpaRepositoryAdapter metadataRepository;
+  private final FileErasureService erasureService;
   private final StorageConfig storageConfig;
 
   /**
@@ -49,7 +50,7 @@ public class FileCleanupService {
       try {
         handleStaleFile(entity);
       } catch (Exception e) {
-        log.error("Failed to cleanup file {}", entity.getId(), e);
+        log.error("Stale Cleanup: Failed to cleanup file {}", entity.getId(), e);
       }
     }
   }
@@ -68,21 +69,22 @@ public class FileCleanupService {
    *
    * @param entity сущность, требующая очистки или восстановления.
    */
-  // TODO: @Transactional
+  @Transactional
   private void handleStaleFile(StorageEntity entity) {
     switch (entity.getOperationType()) {
       case UPLOAD -> {
-        storageRepository.deleteFile(entity);
-        log.info("Cleanup: Deleted stale upload for file {}", entity.getId());
+        erasureService.hardDelete(entity);
+        log.info("Stale cleanup: Deleted stale upload for file {}", entity.getId());
       }
       case DELETE -> {
-        storageRepository.deleteFile(entity);
-        log.info("Cleanup: Retried deletion for file {}", entity.getId());
+        erasureService.hardDelete(entity);
+        log.info("Stale cleanup: Retried deletion for file {}", entity.getId());
       }
       case CHANGE_METADATA -> {
         storageRepositoryWrapper.resetToReady(entity);
         log.info(
-            "Cleanup: Forced rollback to stuck metadata operation for file {}", entity.getId());
+            "Stale cleanup: Forced rollback to stuck metadata operation for file {}",
+            entity.getId());
       }
       default ->
           throw new IllegalStateException(

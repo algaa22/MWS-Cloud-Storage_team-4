@@ -31,7 +31,7 @@ public class TariffService {
   public void setupTrialPeriod(UUID userId) {
     Optional<UserEntity> userOpt = userRepository.getUserById(userId);
     if (userOpt.isEmpty()) {
-      throw new UserNotFoundException("User not found with id: " + userId);
+      throw new UserNotFoundException(userId);
     }
 
     LocalDateTime now = LocalDateTime.now();
@@ -49,7 +49,7 @@ public class TariffService {
 
     Optional<UserEntity> userOpt = userRepository.getUserById(userId);
     if (userOpt.isEmpty()) {
-      throw new UserNotFoundException("User not found with token: " + token);
+      throw new UserNotFoundException(token);
     }
 
     UserEntity user = userOpt.get();
@@ -73,10 +73,9 @@ public class TariffService {
 
       log.info("User {} purchased tariff: {}", userId, request.tariffPlan());
 
-    } catch (PaymentException e) {
+    } catch (Exception e) {
       log.error("Payment failed for user: {}", userId, e);
-      throw new TariffPurchaseException(
-          "Payment processing failed for tariff: " + request.tariffPlan(), e);
+      throw e;
     }
   }
 
@@ -140,6 +139,12 @@ public class TariffService {
     log.info("Payment method updated for user: {}", userId);
   }
 
+  public boolean hasAccess(SimpleUserRequest request) {
+    String token = request.token();
+    UUID userId = userSessionService.extractUserIdFromToken(token);
+    return hasAccess(userId);
+  }
+  
   public boolean hasAccess(UUID userId) {
     Optional<UserEntity> userOpt = userRepository.getUserById(userId);
     if (userOpt.isEmpty()) {
@@ -157,11 +162,5 @@ public class TariffService {
     }
 
     return true;
-  }
-
-  public boolean hasAccess(SimpleUserRequest request) {
-    String token = request.token();
-    UUID userId = userSessionService.extractUserIdFromToken(token);
-    return hasAccess(userId);
   }
 }

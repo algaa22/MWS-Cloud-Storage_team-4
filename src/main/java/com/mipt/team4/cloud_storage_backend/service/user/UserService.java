@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +35,7 @@ public class UserService {
   private final PasswordHasher passwordHasher;
   private final StorageConfig storageConfig;
 
+  @Transactional(readOnly = true)
   public UserDto getUserInfo(SimpleUserRequest getUserInfoRequest) {
     String token = getUserInfoRequest.token();
     UUID userId = userSessionService.extractUserIdFromToken(token);
@@ -56,6 +58,7 @@ public class UserService {
         userEntity.isActive());
   }
 
+  @Transactional
   public TokenPairDto registerUser(RegisterRequest registerRequest) {
     if (userRepository.getUserByEmail(registerRequest.email()).isPresent()) {
       throw new UserAlreadyExistsException(registerRequest.email());
@@ -79,6 +82,7 @@ public class UserService {
     return new TokenPairDto(session.token(), refreshToken.token());
   }
 
+  @Transactional
   public TokenPairDto loginUser(LoginRequest loginRequest) {
     Optional<UserEntity> userOpt = userRepository.getUserByEmail(loginRequest.email());
     if (userOpt.isEmpty()) {
@@ -91,26 +95,27 @@ public class UserService {
     }
 
     Optional<SessionDto> session = userSessionService.findSessionByEmail(user.getEmail());
-    SessionDto usedSession;
-    usedSession = session.orElseGet(() -> userSessionService.createSession(user));
+    SessionDto usedSession = session.orElseGet(() -> userSessionService.createSession(user));
     RefreshTokenDto refreshToken = refreshTokenService.create(user.getId());
 
     return new TokenPairDto(usedSession.token(), refreshToken.token());
   }
 
+  @Transactional
   public void logoutUser(SimpleUserRequest logoutRequest) {
     String token = logoutRequest.token();
 
     if (userSessionService.tokenExists(token)) {
       UUID userId = userSessionService.extractUserIdFromToken(token);
-      refreshTokenService.revokeAllForUser(userId);
 
+      refreshTokenService.revokeAllForUser(userId);
       userSessionService.blacklistToken(token);
     } else {
       throw new UserNotFoundException(token);
     }
   }
 
+  @Transactional()
   public TokenPairDto refreshTokens(RefreshTokenRequest refreshTokenRequest) {
     String refreshToken = refreshTokenRequest.refreshToken();
     RefreshTokenDto stored = refreshTokenService.validate(refreshToken);
@@ -138,8 +143,8 @@ public class UserService {
     return new TokenPairDto(newSession.token(), newRefreshToken.token());
   }
 
+  @Transactional
   public void updateUserInfo(UpdateUserInfoRequest updateUserInfoRequest) {
-
     UUID id = userSessionService.extractUserIdFromToken(updateUserInfoRequest.userToken());
     Optional<UserEntity> userOpt = userRepository.getUserById(id);
     UserEntity entity =
@@ -162,13 +167,5 @@ public class UserService {
     if (updateUserInfoRequest.newName().isPresent()) {
       entity.setUsername(updateUserInfoRequest.newName().get());
     }
-
-    userRepository.updateInfo(
-        id,
-        updateUserInfoRequest.newName().orElse(entity.getUsername()),
-        updateUserInfoRequest
-            .newPassword()
-            .map(passwordHasher::hash)
-            .orElse(entity.getPasswordHash()));
   }
 }

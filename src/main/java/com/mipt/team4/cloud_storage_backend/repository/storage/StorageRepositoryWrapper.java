@@ -26,8 +26,6 @@ public class StorageRepositoryWrapper {
   private final StorageConfig storageConfig;
   private final RetryPolicy<Object> retryPolicy;
 
-  // TODO: @Transactional
-
   /**
    * Выполняет обновление существующего файла.
    *
@@ -47,7 +45,7 @@ public class StorageRepositoryWrapper {
    *
    * <p>После выполнения операции переводит статус в {@code READY} и сохраняет все изменения в БД
    */
-  public <T> void wrapNewFileTask(
+  public <T> void wrapNewEntityTask(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     finalizeOperation(entity, operationType, operation);
   }
@@ -70,7 +68,6 @@ public class StorageRepositoryWrapper {
    * Работает с файлом, который уже находится в обработке ({@code PENDING}).
    *
    * <p>Для вызова требуется статус PENDING. <br>
-   * Блокирует строку в БД через {@code SELECT FOR UPDATE}.<br>
    * Статус файла в конце НЕ меняет. Подходит для промежуточных этапов вроде загрузки чанков.
    */
   public <T> T processStep(
@@ -123,7 +120,10 @@ public class StorageRepositoryWrapper {
   private <T> void finalizeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     executeOperation(entity, operationType, operation);
-    syncEntityWithDatabase(entity, FileStatus.READY);
+
+    if (operationType != FileOperationType.DELETE) {
+      syncEntityWithDatabase(entity, FileStatus.READY);
+    }
   }
 
   private void checkIfStatusIsReady(StorageEntity entity) {
@@ -211,9 +211,9 @@ public class StorageRepositoryWrapper {
       StorageEntity entity,
       FileOperationType operationType) {
     switch (operationType) {
-      case UPLOAD -> {
+      case CREATE -> {
         try {
-          metadataRepository.hardDeleteFile(entity);
+          metadataRepository.hardDelete(entity.getUserId(), entity.getId());
         } catch (Exception e) {
           log.warn(
               "Failed to delete metadata after upload error. Ghost record may remain. File ID: {}",
@@ -248,7 +248,7 @@ public class StorageRepositoryWrapper {
     }
 
     try {
-      metadataRepository.updateEntity(
+      metadataRepository.updateFile(
           entity); // TODO: в failsafe (мб postgres и minio отдельно ретраить failsafe'ом?)
     } catch (Exception e) {
       log.error("FATAL: Failed to update file entity {}", entity.getId(), e);

@@ -28,9 +28,32 @@ public class StorageJpaRepositoryAdapter {
     jpaRepository.upsertFile(fileEntity, tagsStr);
   }
 
-  public List<StorageEntity> getStaleFiles(LocalDateTime threshold) {
-    return jpaRepository.findByStatusInAndUpdatedAtBefore(
-        List.of(FileStatus.PENDING, FileStatus.ERROR), threshold);
+  @Transactional
+  public void softDelete(UUID userId, UUID fileId, boolean isDirectory) {
+    if (isDirectory) {
+      jpaRepository.softDeleteRecursive(userId, fileId);
+    } else {
+      jpaRepository.softDelete(userId, fileId);
+    }
+  }
+
+  @Transactional
+  public void hardDelete(UUID userId, UUID fileId) {
+    jpaRepository.deleteByUserIdAndId(userId, fileId);
+  }
+
+  @Transactional
+  public void restore(UUID userId, UUID fileId, boolean isDirectory) {
+    if (isDirectory) {
+      jpaRepository.restoreRecursive(userId, fileId);
+    } else {
+      jpaRepository.restore(userId, fileId);
+    }
+  }
+
+  @Transactional
+  public void updateFile(StorageEntity entity) {
+    jpaRepository.save(entity);
   }
 
   @Transactional(readOnly = true)
@@ -80,79 +103,64 @@ public class StorageJpaRepositoryAdapter {
     return query.getResultList();
   }
 
-  public Optional<StorageEntity> getFile(UUID fileId) {
-    return jpaRepository.findByIdAndStatus(fileId, FileStatus.READY);
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
+    return jpaRepository.findDeletedById(userId, fileId);
   }
 
-  public Optional<StorageEntity> getFile(UUID userId, UUID parentId, String name) {
-    return jpaRepository.findReadyFile(userId, parentId, name);
+  @Transactional(readOnly = true)
+  public List<StorageEntity> getStaleFiles(LocalDateTime threshold) {
+    return jpaRepository.findByStatusInAndUpdatedAtBefore(
+        List.of(FileStatus.PENDING, FileStatus.ERROR), threshold);
   }
 
-  public Optional<StorageEntity> getFile(UUID userId, UUID fileId) {
-    return jpaRepository.findByUserIdAndIdAndStatus(userId, fileId, FileStatus.READY);
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> get(UUID userId, UUID parentId, String name) {
+    return jpaRepository.findByUserIdAndIdAndName(userId, parentId, name);
   }
 
-  public Optional<StorageEntity> getFileIncludeDeleted(UUID userId, UUID fileId) {
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> get(UUID userId, UUID fileId) {
+    return jpaRepository.findByUserIdAndId(userId, fileId);
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
     return jpaRepository.findByIdIncludeDeleted(userId, fileId);
   }
 
-  @Transactional
-  public void softDeleteFile(UUID userId, UUID fileId, boolean isDirectory) {
-    if (isDirectory) {
-      jpaRepository.softDeleteRecursive(userId, fileId);
-    } else {
-      jpaRepository.softDelete(userId, fileId);
-    }
-  }
-
-  @Transactional
-  public void hardDeleteFile(StorageEntity entity) {
-    jpaRepository.deleteByUserIdAndId(entity.getUserId(), entity.getId());
-  }
-
-  @Transactional
-  public void restoreFile(UUID userId, UUID fileId, boolean recursive) {
-    if (recursive) {
-      jpaRepository.restoreRecursive(userId, fileId);
-    } else {
-      jpaRepository.restore(userId, fileId);
-    }
-  }
-
+  @Transactional(readOnly = true)
   public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
     return jpaRepository.findTrashByParentId(userId, parentId);
   }
 
-  public List<StorageEntity> getStaleDeletedFiles(LocalDateTime treshold) {
-    return jpaRepository.getStaleDeletedFiles(treshold);
+  @Transactional(readOnly = true)
+  public List<StorageEntity> getStaleDeletedFiles(LocalDateTime threshold) {
+    return jpaRepository.findStaleDeletedFiles(threshold);
   }
 
-  @Transactional
-  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
-    return jpaRepository.getDeletedById(userId, fileId);
+  @Transactional(readOnly = true)
+  public boolean exists(UUID userId, UUID parentId, String name) {
+    return exists(userId, parentId, name, true);
   }
 
-  public void updateEntity(StorageEntity entity) {
-    jpaRepository.save(entity);
-  }
-
-  public boolean fileExists(UUID userId, UUID parentId, String name) {
-    return fileExists(userId, parentId, name, true);
-  }
-
-  public boolean fileExists(UUID userId, UUID parentId, String name, boolean isOnlyReady) {
+  @Transactional(readOnly = true)
+  public boolean exists(UUID userId, UUID parentId, String name, boolean isOnlyReady) {
     return jpaRepository.existsFile(userId, parentId, name, isOnlyReady);
   }
 
+  @Transactional(readOnly = true)
   public boolean isDescendant(UUID sourceId, UUID targetParentId) {
     return jpaRepository.isDescendant(sourceId, targetParentId);
   }
 
+  @Transactional(readOnly = true)
   public long calculateTotalSizeOfTree(UUID directoryId) {
     return jpaRepository.calculateTotalSizeOfTree(directoryId);
   }
 
-  public List<StorageEntity> findAllFileDescendants(UUID userId, UUID id) {
+  @Transactional(readOnly = true)
+  public List<StorageEntity> findAllDescendants(UUID userId, UUID id) {
     return jpaRepository.findAllFilesDescendants(userId, id);
   }
 }

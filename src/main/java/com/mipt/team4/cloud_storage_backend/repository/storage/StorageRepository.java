@@ -20,10 +20,10 @@ public class StorageRepository {
   private final FileContentRepository contentRepository;
   private final StorageRepositoryWrapper wrapper;
 
-  public void addFile(StorageEntity entity, byte[] data) {
-    wrapper.wrapNewFileTask(
+  public void add(StorageEntity entity, byte[] data) {
+    wrapper.wrapNewEntityTask(
         entity,
-        FileOperationType.UPLOAD,
+        FileOperationType.CREATE,
         () -> {
           metadataRepository.addFile(entity);
           contentRepository.putObject(entity.getS3Key(), data);
@@ -35,7 +35,7 @@ public class StorageRepository {
   public String startMultipartUpload(StorageEntity entity) {
     return wrapper.initiateStep(
         entity,
-        FileOperationType.UPLOAD,
+        FileOperationType.CREATE,
         () -> {
           metadataRepository.addFile(entity);
           return contentRepository.startMultipartUpload(entity.getS3Key());
@@ -45,7 +45,7 @@ public class StorageRepository {
   public String uploadPart(StorageEntity entity, UploadPartRequest request) {
     return wrapper.processStep(
         entity,
-        FileOperationType.UPLOAD,
+        FileOperationType.CREATE,
         () ->
             contentRepository.uploadPart(
                 request.uploadId(), entity.getS3Key(), request.partIndex(), request.bytes()));
@@ -55,7 +55,7 @@ public class StorageRepository {
       StorageEntity entity, long fileSize, String uploadId, Map<Integer, String> eTags) {
     wrapper.completeStep(
         entity,
-        FileOperationType.UPLOAD,
+        FileOperationType.CREATE,
         () -> {
           entity.setSize(fileSize);
           contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
@@ -63,48 +63,53 @@ public class StorageRepository {
         });
   }
 
-  public void updateFile(StorageEntity entity) {
-    wrapper.wrapUpdate(entity, FileOperationType.CHANGE_METADATA, () -> null);
-  }
-
-  public void hardDeleteFile(StorageEntity entity) {
+  public void hardDelete(StorageEntity entity) {
     wrapper.wrapUpdate(
         entity,
         FileOperationType.DELETE,
         () -> {
           if (entity.isDirectory()) {
             List<StorageEntity> descendants =
-                metadataRepository.findAllFileDescendants(entity.getUserId(), entity.getId());
+                metadataRepository.findAllDescendants(entity.getUserId(), entity.getId());
 
             for (StorageEntity file : descendants) {
-              contentRepository.hardDeleteFile(file.getS3Key());
+              contentRepository.hardDelete(file.getS3Key());
             }
           }
 
-          contentRepository.hardDeleteFile(entity.getS3Key());
-          metadataRepository.hardDeleteFile(entity);
+          contentRepository.hardDelete(entity.getS3Key());
+          metadataRepository.hardDelete(entity.getUserId(), entity.getId());
 
           return null;
         });
   }
 
-  public void softDeleteFile(StorageEntity entity) {
+  public void softDeleteEntity(StorageEntity entity) {
     wrapper.wrapUpdate(
         entity,
         FileOperationType.CHANGE_METADATA,
         () -> {
-          metadataRepository.softDeleteFile(
-              entity.getUserId(), entity.getId(), entity.isDirectory());
+          metadataRepository.softDelete(entity.getUserId(), entity.getId(), entity.isDirectory());
           return null;
         });
   }
 
-  public void restoreFile(StorageEntity entity) {
+  public void restore(StorageEntity entity) {
     wrapper.wrapUpdate(
         entity,
         FileOperationType.CHANGE_METADATA,
         () -> {
-          metadataRepository.restoreFile(entity.getUserId(), entity.getId(), entity.isDirectory());
+          metadataRepository.restore(entity.getUserId(), entity.getId(), entity.isDirectory());
+          return null;
+        });
+  }
+
+  public void addDirectory(StorageEntity entity) {
+    wrapper.wrapNewEntityTask(
+        entity,
+        FileOperationType.CREATE,
+        () -> {
+          metadataRepository.addFile(entity);
           return null;
         });
   }
@@ -113,7 +118,7 @@ public class StorageRepository {
     return metadataRepository.getTrashFileList(userId, parentId);
   }
 
-  public InputStream downloadFile(StorageEntity entity) {
+  public InputStream download(StorageEntity entity) {
     if (entity.getStatus() != FileStatus.READY) {
       throw new IllegalStateException( // TODO: illegal state?
           "FATAL: Attempt to download non-ready file: " + entity.getId());
@@ -122,31 +127,23 @@ public class StorageRepository {
     return contentRepository.downloadObject(entity.getS3Key());
   }
 
-  public Optional<StorageEntity> getFile(UUID userId, UUID parentId, String name) {
-    return metadataRepository.getFile(userId, parentId, name);
+  public Optional<StorageEntity> get(UUID userId, UUID fileId) {
+    return metadataRepository.get(userId, fileId);
   }
 
-  public Optional<StorageEntity> getFile(UUID userId, UUID fileId) {
-    return metadataRepository.getFile(userId, fileId);
-  }
-
-  public Optional<StorageEntity> getFileIncludeDeleted(UUID userId, UUID fileId) {
-    return metadataRepository.getFileIncludeDeleted(userId, fileId);
+  public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
+    return metadataRepository.getIncludeDeleted(userId, fileId);
   }
 
   public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
     return metadataRepository.getDeletedById(userId, fileId);
   }
 
-  public boolean fileExists(UUID userId, UUID parentId, String name) {
-    return metadataRepository.fileExists(userId, parentId, name);
+  public boolean exists(UUID userId, UUID parentId, String name) {
+    return metadataRepository.exists(userId, parentId, name);
   }
 
   public List<StorageEntity> getFileList(FileListFilter filter) {
     return metadataRepository.getFileList(filter);
-  }
-
-  public void addDirectory(StorageEntity entity) {
-    metadataRepository.addFile(entity);
   }
 }

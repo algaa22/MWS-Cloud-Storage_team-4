@@ -85,7 +85,7 @@ public class FileOperationsITUtils {
       throws IOException, InterruptedException {
     HttpRequest request =
         itUtils
-            .createRequest(itUtils.fillQuery("/api/files?id=%s", targetFileId))
+            .createRequest(itUtils.fillQuery("/api/files?id=%s&permanent=true", targetFileId))
             .header("X-Auth-Token", userToken)
             .DELETE()
             .build();

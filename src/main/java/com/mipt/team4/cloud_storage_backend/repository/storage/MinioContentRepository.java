@@ -171,7 +171,7 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public void hardDeleteFile(String s3Key) {
+  public void hardDelete(String s3Key) {
     wrapper.execute(
         () -> {
           if (objectExists(s3Key)) {

@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.service.storage.cleanup;
+package com.mipt.team4.cloud_storage_backend.service.storage.schedulers;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Сервис автоматической очистки и восстановления консистентности хранилища.
@@ -22,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class StaleFileCleanupService {
+public class StaleFileCleanupScheduler {
   private final StorageRepositoryWrapper storageRepositoryWrapper;
   private final StorageJpaRepositoryAdapter metadataRepository;
   private final FileErasureService erasureService;
@@ -31,10 +30,10 @@ public class StaleFileCleanupService {
   /**
    * Периодическая задача по поиску и обработке "протухших" (stale) файлов.
    *
-   * <p>Выполняется по расписанию (cron). Файл считается stale, если его последнее обновление
+   * <p>Выполняется раз в сутки (в 1 час ночи). Файл считается stale, если его последнее обновление
    * ({@code updatedAt}) было произведено ранее, чем {@code now() - staleTimeThreshold}.
    */
-  @Scheduled(cron = "0 0 * * * *")
+  @Scheduled(cron = "0 0 1 * * *")
   public void cleanupStaleFiles() {
     int staleTime = storageConfig.stateMachine().fileStaleTimeMin();
     LocalDateTime threshold = LocalDateTime.now().minusMinutes(staleTime);
@@ -69,10 +68,9 @@ public class StaleFileCleanupService {
    *
    * @param entity сущность, требующая очистки или восстановления.
    */
-  @Transactional
   private void handleStaleFile(StorageEntity entity) {
     switch (entity.getOperationType()) {
-      case UPLOAD -> {
+      case CREATE -> {
         erasureService.hardDelete(entity);
         log.info("Stale cleanup: Deleted stale upload for file {}", entity.getId());
       }

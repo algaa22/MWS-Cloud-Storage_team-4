@@ -7,9 +7,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +27,6 @@ public class UserSessionService {
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
   private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
   private final Duration accessTokenDuration = Duration.ofMinutes(15);
-
   private final JwtService jwtService;
 
   public SessionDto createSession(UserEntity user) {
@@ -74,13 +71,7 @@ public class UserSessionService {
 
   private void cleanExpiredBlacklistedTokens() {
     LocalDateTime now = LocalDateTime.now();
-    Iterator<Entry<String, LocalDateTime>> iterator = blacklistedTokens.entrySet().iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<String, LocalDateTime> entry = iterator.next();
-      if (entry.getValue().isBefore(now)) {
-        iterator.remove();
-      }
-    }
+    blacklistedTokens.entrySet().removeIf(entry -> entry.getValue().isBefore(now));
   }
 
   public Optional<SessionDto> getSession(String token) {

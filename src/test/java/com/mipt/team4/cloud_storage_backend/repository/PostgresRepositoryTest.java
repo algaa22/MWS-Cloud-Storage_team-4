@@ -83,7 +83,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @Test
   void fileExists_ShouldReturnTrue_WhenFileExists() {
     assertTrue(
-        storageJpaRepositoryAdapter.fileExists(
+        storageJpaRepositoryAdapter.exists(
             commonFileEntity.getUserId(),
             commonFileEntity.getParentId(),
             commonFileEntity.getName()));
@@ -92,14 +92,13 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @Test
   void fileExists_ShouldReturnFalse_WhenFileNotFound() {
     assertFalse(
-        storageJpaRepositoryAdapter.fileExists(
+        storageJpaRepositoryAdapter.exists(
             commonFileEntity.getUserId(), null, "non-existent-file"));
   }
 
   @Test
   void shouldReturnNull_WhenGetNonexistentFile() {
-    assertTrue(
-        storageJpaRepositoryAdapter.getFile(testUserUuid, null, "non-existent-path").isEmpty());
+    assertTrue(storageJpaRepositoryAdapter.get(testUserUuid, null, "non-existent-path").isEmpty());
   }
 
   @Test
@@ -107,12 +106,10 @@ public class PostgresRepositoryTest extends BasePostgresTest {
       throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
     String uniqueName = "delete-me-" + UUID.randomUUID();
     StorageEntity testFileEntity = addTestFile(null, uniqueName);
-    assertTrue(
-        storageJpaRepositoryAdapter.fileExists(testFileEntity.getUserId(), null, uniqueName));
+    assertTrue(storageJpaRepositoryAdapter.exists(testFileEntity.getUserId(), null, uniqueName));
 
-    storageJpaRepositoryAdapter.hardDeleteFile(testFileEntity);
-    assertFalse(
-        storageJpaRepositoryAdapter.fileExists(testFileEntity.getUserId(), null, uniqueName));
+    storageJpaRepositoryAdapter.hardDelete(testFileEntity.getUserId(), testFileEntity.getId());
+    assertFalse(storageJpaRepositoryAdapter.exists(testFileEntity.getUserId(), null, uniqueName));
   }
 
   @Test

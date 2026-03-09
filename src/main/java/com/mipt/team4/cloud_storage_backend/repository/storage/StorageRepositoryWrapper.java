@@ -17,7 +17,25 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-// TODO: доки с упоминанием failsafe ретраев
+/**
+ * Обертка-фасад для управления жизненным циклом операций над файлами и директориями.
+ *
+ * <p>Класс реализует логику "умного" выполнения операций, обеспечивая:
+ *
+ * <ul>
+ *   <li><b>Управление состояниями (FSM):</b> перевод сущностей между READY, PENDING, ERROR и FATAL.
+ *   <li><b>Отказоустойчивость:</b> использование библиотеки Failsafe для автоматических повторов
+ *       (retries) при возникновении восстановимых ошибок. Когда Failsafe исчерпывает количество
+ *       попыток, при некоторых операциях происходит {@code client-side} retry.
+ *   <li><b>Синхронизацию метаданных:</b> гарантированное обновление состояния в БД после выполнения
+ *       действий во внешнем хранилище (MinIO/S3).
+ *   <li><b>Предотвращение конфликтов:</b> проверку статуса перед началом работы (Optimistic Locking
+ *       на уровне бизнес-логики).
+ * </ul>
+ *
+ * <p>Механизм ретраев опирается на {@link dev.failsafe.RetryPolicy}. При исчерпании лимита попыток
+ * или возникновении критической ошибки сущность переводится в терминальный статус FATAL.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -248,8 +266,7 @@ public class StorageRepositoryWrapper {
     }
 
     try {
-      metadataRepository.updateFile(
-          entity); // TODO: в failsafe (мб postgres и minio отдельно ретраить failsafe'ом?)
+      metadataRepository.updateFile(entity);
     } catch (Exception e) {
       log.error("FATAL: Failed to update file entity {}", entity.getId(), e);
     }

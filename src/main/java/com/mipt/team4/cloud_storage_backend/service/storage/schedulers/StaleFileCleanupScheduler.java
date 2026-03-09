@@ -70,7 +70,7 @@ public class StaleFileCleanupScheduler {
    */
   private void handleStaleFile(StorageEntity entity) {
     switch (entity.getOperationType()) {
-      case CREATE -> {
+      case UPLOAD -> {
         erasureService.hardDelete(entity);
         log.info("Stale cleanup: Deleted stale upload for file {}", entity.getId());
       }

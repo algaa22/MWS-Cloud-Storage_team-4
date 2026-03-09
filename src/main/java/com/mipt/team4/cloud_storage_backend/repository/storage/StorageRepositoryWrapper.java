@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
  *       (retries) при возникновении восстановимых ошибок. Когда Failsafe исчерпывает количество
  *       попыток, при некоторых операциях происходит {@code client-side} retry.
  *   <li><b>Синхронизацию метаданных:</b> гарантированное обновление состояния в БД после выполнения
- *       действий во внешнем хранилище (MinIO/S3).
+ *       действий во внешнем хранилище (S3).
  *   <li><b>Предотвращение конфликтов:</b> проверку статуса перед началом работы (Optimistic Locking
  *       на уровне бизнес-логики).
  * </ul>
@@ -224,23 +224,31 @@ public class StorageRepositoryWrapper {
     syncEntityWithDatabase(entity, FileStatus.READY);
   }
 
+  /**
+   * Реализует стратегию "ленивого восстановления" при возникновении мягких ошибок. *
+   *
+   * <p>Вместо немедленного удаления метаданных при сбое (что могло бы нарушить логику
+   * возобновляемых загрузок), метод просто делегирует управление исключениями вызывающей стороне. *
+   *
+   * <ul>
+   *   <li><b>UPLOAD:</b> Оставляет сущность в базе "как есть" (обычно в статусе PENDING или ERROR).
+   *       Это критически важно для Resumable Upload, позволяя клиенту продолжить загрузку. Очистка
+   *       реально заброшенных сессий ложится на {@code StaleFileCleanupService}. *
+   *   <li><b>CHANGE_METADATA:</b> Сбрасывает статус в READY и обнуляет счетчик ретраев. Это
+   *       разблокирует файл для последующих попыток редактирования пользователем.
+   * </ul>
+   *
+   * * @param exception Исходная ошибка хранилища.
+   *
+   * @param entity Сущность, на которой произошел сбой.
+   * @param operationType Тип операции, определяющий логику уведомления.
+   */
   private void initiateRetryStrategy(
       RecoverableStorageException exception,
       StorageEntity entity,
       FileOperationType operationType) {
     switch (operationType) {
-      case CREATE -> {
-        try {
-          metadataRepository.hardDelete(entity.getUserId(), entity.getId());
-        } catch (Exception e) {
-          log.warn(
-              "Failed to delete metadata after upload error. Ghost record may remain. File ID: {}",
-              entity.getId(),
-              e);
-        }
-
-        throw new UploadRetriableException(exception);
-      }
+      case UPLOAD -> throw new UploadRetriableException(exception);
       case CHANGE_METADATA -> {
         syncEntityWithDatabase(entity, FileStatus.READY, 0);
         throw new ChangeMetadataRetriableException(exception);

@@ -23,7 +23,7 @@ public class StorageRepository {
   public void add(StorageEntity entity, byte[] data) {
     wrapper.wrapNewEntityTask(
         entity,
-        FileOperationType.CREATE,
+        FileOperationType.UPLOAD,
         () -> {
           metadataRepository.addFile(entity);
           contentRepository.putObject(entity.getS3Key(), data);
@@ -35,7 +35,7 @@ public class StorageRepository {
   public String startMultipartUpload(StorageEntity entity) {
     return wrapper.initiateStep(
         entity,
-        FileOperationType.CREATE,
+        FileOperationType.UPLOAD,
         () -> {
           metadataRepository.addFile(entity);
           return contentRepository.startMultipartUpload(entity.getS3Key());
@@ -45,7 +45,7 @@ public class StorageRepository {
   public String uploadPart(StorageEntity entity, UploadPartRequest request) {
     return wrapper.processStep(
         entity,
-        FileOperationType.CREATE,
+        FileOperationType.UPLOAD,
         () ->
             contentRepository.uploadPart(
                 request.uploadId(), entity.getS3Key(), request.partIndex(), request.bytes()));
@@ -55,7 +55,7 @@ public class StorageRepository {
       StorageEntity entity, long fileSize, String uploadId, Map<Integer, String> eTags) {
     wrapper.completeStep(
         entity,
-        FileOperationType.CREATE,
+        FileOperationType.UPLOAD,
         () -> {
           entity.setSize(fileSize);
           contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
@@ -107,7 +107,7 @@ public class StorageRepository {
   public void addDirectory(StorageEntity entity) {
     wrapper.wrapNewEntityTask(
         entity,
-        FileOperationType.CREATE,
+        FileOperationType.UPLOAD,
         () -> {
           metadataRepository.addFile(entity);
           return null;

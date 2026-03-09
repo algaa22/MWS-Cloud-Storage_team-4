@@ -52,7 +52,9 @@ public class StorageEntity {
   @Column(name = "is_directory")
   private boolean isDirectory;
 
-  @Builder.Default private String visibility = FileVisibility.PRIVATE.toString();
+  @Builder.Default
+  @Column(name = "visibility")
+  private String visibility = FileVisibility.PRIVATE.toString();
 
   @Column(name = "is_deleted", nullable = false)
   private boolean isDeleted = false;
@@ -66,6 +68,7 @@ public class StorageEntity {
   @Column(nullable = false)
   private String name;
 
+  @Column(name = "size")
   private long size;
 
   /**

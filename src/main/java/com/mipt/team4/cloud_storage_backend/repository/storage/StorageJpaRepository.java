@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
-import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -15,28 +14,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID> {
-
-  Optional<StorageEntity> findByIdAndStatus(UUID id, FileStatus status);
-
-  Optional<StorageEntity> findByUserIdAndIdAndStatus(UUID userId, UUID id, FileStatus status);
-
-  List<StorageEntity> findByStatusInAndUpdatedAtBefore(
-      List<FileStatus> statuses, LocalDateTime threshold);
-
   @Query(nativeQuery = true, value = "SELECT * FROM files WHERE id = :id AND user_id = :userId")
   Optional<StorageEntity> findByIdIncludeDeleted(
       @Param("userId") UUID userId, @Param("id") UUID id);
-
-  @Query(
-      """
-        SELECT f FROM StorageEntity f
-        WHERE f.userId = :userId
-          AND f.name = :name
-          AND f.status = 'READY'
-          AND (f.parentId = :parentId OR (:parentId IS NULL AND f.parentId IS NULL))
-    """)
-  Optional<StorageEntity> findReadyFile(
-      @Param("userId") UUID userId, @Param("parentId") UUID parentId, @Param("name") String name);
 
   @Query(
       """
@@ -53,14 +33,12 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       @Param("onlyReady") boolean onlyReady);
 
   @Modifying
-  @Transactional
   @Query(
       "UPDATE StorageEntity s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP, s.updatedAt = CURRENT_TIMESTAMP "
           + "WHERE s.id = :id AND s.userId = :userId")
   void softDelete(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying
-  @Transactional
   @Query(
       nativeQuery = true,
       value =
@@ -77,14 +55,12 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   void softDeleteRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying
-  @Transactional
   @Query(
       "UPDATE StorageEntity s SET s.isDeleted = false, s.deletedAt = NULL, s.updatedAt = CURRENT_TIMESTAMP "
           + "WHERE s.id = :id AND s.userId = :userId")
   void restore(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying
-  @Transactional
   @Query(
       nativeQuery = true,
       value =
@@ -113,14 +89,10 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   List<StorageEntity> findTrashByParentId(
       @Param("userId") UUID userId, @Param("parentId") UUID parentId);
 
-  @Modifying
-  @Transactional
-  void deleteByUserIdAndId(UUID userId, UUID id);
-
   @Query(
       nativeQuery = true,
       value = "SELECT * FROM files WHERE id = :id AND user_id = :userId AND is_deleted = true")
-  Optional<StorageEntity> getDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
+  Optional<StorageEntity> findDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying
   @Query(
@@ -185,5 +157,15 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value = "SELECT * FROM files WHERE is_deleted = true AND deleted_at < :threshold")
-  List<StorageEntity> getStaleDeletedFiles(@Param("threshold") LocalDateTime threshold);
+  List<StorageEntity> findStaleDeletedFiles(@Param("threshold") LocalDateTime threshold);
+
+  @Modifying
+  void deleteByUserIdAndId(UUID userId, UUID id);
+
+  Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID fileId);
+
+  List<StorageEntity> findByStatusInAndUpdatedAtBefore(
+      List<FileStatus> statuses, LocalDateTime threshold);
+
+  Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 }

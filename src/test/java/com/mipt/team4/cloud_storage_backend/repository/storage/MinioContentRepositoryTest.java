@@ -66,7 +66,7 @@ class MinioContentRepositoryTest {
   public void shouldHardDeleteFile() throws InterruptedException {
     TestFileDto file = createTestFile();
 
-    repository.hardDeleteFile(file.s3Key);
+    repository.hardDelete(file.s3Key);
 
     boolean deleted = false;
     for (int i = 0; i < 10; i++) {

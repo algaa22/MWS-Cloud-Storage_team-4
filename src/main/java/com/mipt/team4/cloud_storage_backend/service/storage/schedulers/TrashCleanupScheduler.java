@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.service.storage.cleanup;
+package com.mipt.team4.cloud_storage_backend.service.storage.schedulers;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -29,7 +29,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class TrashCleanupService {
+public class TrashCleanupScheduler {
   private final StorageJpaRepositoryAdapter metadataRepository;
   private final FileErasureService erasureService;
   private final StorageConfig storageConfig;

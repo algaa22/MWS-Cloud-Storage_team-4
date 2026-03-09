@@ -11,7 +11,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenEntity, UUID> {
-
   Optional<RefreshTokenEntity> findByToken(String token);
 
   void deleteByUserId(UUID userId);

@@ -4,11 +4,12 @@ import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ResumeChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SoftDeleteFileRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -28,9 +29,9 @@ public class FileController {
   private final JwtService jwtService;
   private final StorageConfig storageConfig;
 
-  public void startChunkedUpload(ChunkedUploadRequest request) {
+  public void startChunkedUpload(StartChunkedUploadRequest request) {
     request.validate(jwtService);
-    service.startChunkedUploadSession(request);
+    service.startChunkedUpload(request);
   }
 
   public void processFileChunk(UploadChunkRequest request) {
@@ -44,8 +45,8 @@ public class FileController {
     return service.completeChunkedUpload(sessionId);
   }
 
-  public void resumeChunkedUpload(ChunkedUploadRequest request) {
-    request.validate(jwtService);
+  public void resumeChunkedUpload(ResumeChunkedUploadRequest request) {
+    request.validate();
     service.resumeChunkedUploadSession(request);
   }
 

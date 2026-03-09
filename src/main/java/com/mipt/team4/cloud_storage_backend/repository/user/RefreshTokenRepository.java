@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @RequiredArgsConstructor
 public class RefreshTokenRepository {
-
   private final RefreshTokenJpaRepository jpaRepository;
 
   @Transactional

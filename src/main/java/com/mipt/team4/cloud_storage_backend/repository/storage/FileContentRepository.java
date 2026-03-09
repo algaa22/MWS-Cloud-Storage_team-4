@@ -17,7 +17,7 @@ public interface FileContentRepository {
 
   void putObject(String s3Key, byte[] data);
 
-  void hardDeleteFile(String s3Key);
+  void hardDelete(String s3Key);
 
   boolean bucketExists(String bucketName);
 

@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import jakarta.persistence.EntityManager;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -12,12 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserRepository {
   private final UserJpaRepository jpaRepository;
+  private final EntityManager entityManager;
 
   public void addUser(UserEntity userEntity) {
-
     if (userEntity.getId() != null && jpaRepository.existsById(userEntity.getId())) {
       throw new UserAlreadyExistsException(userEntity.getId());
     }
+
     jpaRepository.saveAndFlush(userEntity);
   }
 
@@ -29,21 +31,6 @@ public class UserRepository {
     return jpaRepository.findById(id);
   }
 
-  public boolean userExists(UUID id) {
-    return jpaRepository.existsById(id);
-  }
-
-  @Transactional
-  public void updateInfo(UUID id, String newName, String newPasswordHash) {
-    jpaRepository
-        .findById(id)
-        .ifPresent(
-            user -> {
-              user.setUsername(newName);
-              user.setPasswordHash(newPasswordHash);
-            });
-  }
-
   @Transactional
   public void increaseUsedStorage(UUID id, long delta) {
     jpaRepository.updateUsedStorage(id, delta);
@@ -52,5 +39,10 @@ public class UserRepository {
   @Transactional
   public void decreaseUsedStorage(UUID id, long delta) {
     jpaRepository.updateUsedStorage(id, -delta);
+  }
+
+  @Transactional
+  public void syncAllUsersStorage() {
+    jpaRepository.syncAllUsersStorage();
   }
 }

@@ -16,49 +16,31 @@ public class TariffController {
     private final TariffService tariffService;
     private final JwtService jwtService;
 
-    /**
-     * Купить тариф (при регистрации автоматически TRIAL, этот метод для платных)
-     */
     public void purchaseTariff(TariffRequest request) {
         request.validate(jwtService);  // проверяем токен
         tariffService.purchaseTariff(request);
     }
 
-    /**
-     * Получить информацию о текущем тарифе
-     */
     public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
         request.validate(jwtService);
         return tariffService.getTariffInfo(request);
     }
 
-    /**
-     * Отключить автопродление
-     */
     public void disableAutoRenew(SimpleUserRequest request) {
         request.validate(jwtService);
         tariffService.disableAutoRenew(request);
     }
 
-    /**
-     * Включить автопродление
-     */
     public void enableAutoRenew(SimpleUserRequest request) {
         request.validate(jwtService);
         tariffService.enableAutoRenew(request);
     }
 
-    /**
-     * Обновить способ оплаты
-     */
     public void updatePaymentMethod(UpdateAutoRenewRequest request) {
         request.validate(jwtService);
         tariffService.updatePaymentMethod(request);
     }
 
-    /**
-     * Проверить доступ к файлам (для FileService)
-     */
     public boolean checkAccess(SimpleUserRequest request) {
         request.validate(jwtService);
         return tariffService.hasAccess(request);

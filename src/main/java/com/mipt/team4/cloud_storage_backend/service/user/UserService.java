@@ -33,6 +33,7 @@ public class UserService {
   private final RefreshTokenService refreshTokenService;
   private final PasswordHasher passwordHasher;
   private final StorageConfig storageConfig;
+  private final TariffService tariffService;
 
   public UserDto getUserInfo(SimpleUserRequest getUserInfoRequest) {
     String token = getUserInfoRequest.token();
@@ -76,6 +77,7 @@ public class UserService {
 
     SessionDto session = userSessionService.createSession(userEntity);
     RefreshTokenDto refreshToken = refreshTokenService.create(userEntity.getId());
+    tariffService.setupTrialPeriod(userEntity.getId());
 
     return new TokenPairDto(session.token(), refreshToken.token());
   }

@@ -21,18 +21,15 @@ public class TariffScheduler {
 
     private final UserRepository userRepository;
     private final NotificationClient notificationClient;
-    private final PaymentService paymentService;  // ДОБАВИТЬ
-    private final TariffService tariffService;    // ДОБАВИТЬ (если нужен)
+    private final PaymentService paymentService;
+    private final TariffService tariffService;
 
     @Scheduled(cron = "0 */10 * * * *")
     public void checkTariffs() {
-        log.info("Starting tariff check...");
-
         checkUsersWithTariffEndingSoon(7);
         checkUsersWithTariffEndingSoon(3);
+        checkUsersWithTariffEndingSoon(1);
         checkExpiredTariffs();
-
-        log.info("Tariff check completed");
     }
 
     private void checkUsersWithTariffEndingSoon(int days) {
@@ -87,7 +84,6 @@ public class TariffScheduler {
         userRepository.deactivateUser(user.getId());
 
         // TODO: сделать файлы недоступными
-        // fileService.disableAccess(user.getId());
 
         notificationClient.notifyTariffExpired(
                 user.getEmail(),

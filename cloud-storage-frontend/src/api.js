@@ -980,7 +980,7 @@ const uploadFileChunkedWithTags = async (token, file, path, onProgress, tagsStri
   });
 };
 
-export const getFileTags = async (token, path) => {
+export const getFileTags = async (token, fileId) => {
   console.log("=== GET FILE TAGS ===");
 
   if (!token) {
@@ -991,8 +991,7 @@ export const getFileTags = async (token, path) => {
     throw new Error("Путь к файлу не указан");
   }
 
-  const url = `${BASE}/files/info?path=${encodeURIComponent(path)}`;
-
+ const url = `${BASE}/files/info?id=${encodeURIComponent(fileId)}`;
   try {
     const response = await fetchWithTokenRefresh(url, {
       method: "GET",
@@ -1059,6 +1058,21 @@ export const getAllUserTags = async (token) => {
     console.error("Error collecting tags:", error);
     return [];
   }
+};
+
+export const moveFolder = async (token, folderId, updates) => {
+  let url = `${BASE}/directories?id=${encodeURIComponent(folderId)}`;
+
+  if (updates.newName) {
+    url += `&newName=${encodeURIComponent(updates.newName)}`;
+  }
+
+  if (updates.newParentId) {
+    url += `&newParentId=${encodeURIComponent(updates.newParentId)}`;
+  }
+
+  const res = await fetchWithTokenRefresh(url, { method: "POST" }, token);
+  return res.ok;
 };
 
 function formatBytes(bytes) {

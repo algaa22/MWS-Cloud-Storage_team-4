@@ -28,9 +28,6 @@ public class TariffService {
     private final NotificationClient notificationClient;
     private final PaymentService paymentService;
 
-    /**
-     * Установить пробный период при регистрации
-     */
     public void setupTrialPeriod(UUID userId) {
         Optional<UserEntity> userOpt = userRepository.getUserById(userId);
         if (userOpt.isEmpty()) {
@@ -52,11 +49,7 @@ public class TariffService {
         log.info("Trial period started for user: {}, ends at: {}", userId, endDate);
     }
 
-    /**
-     * Купить тариф
-     */
     public void purchaseTariff(TariffRequest request) {
-        // ИСПРАВЛЕНО: для record используем userToken() вместо getUserToken()
         String token = request.userToken();
         UUID userId = userSessionService.extractUserIdFromToken(token);
 
@@ -68,8 +61,6 @@ public class TariffService {
         UserEntity user = userOpt.get();
 
         try {
-            // ИСПРАВЛЕНО: tariffPlan() вместо getTariffPlan()
-            // ИСПРАВЛЕНО: paymentToken() вместо getPaymentToken()
             paymentService.processPayment(
                     userId,
                     request.tariffPlan(),
@@ -77,16 +68,14 @@ public class TariffService {
             );
 
             LocalDateTime now = LocalDateTime.now();
-            // ИСПРАВЛЕНО: tariffPlan().getDurationDays()
             LocalDateTime endDate = now.plusDays(request.tariffPlan().getDurationDays());
 
-            // ИСПРАВЛЕНО: все вызовы без "get"
             userRepository.updateTariff(
                     userId,
                     request.tariffPlan(),
                     now,
                     endDate,
-                    request.autoRenew(),  // ИСПРАВЛЕНО: autoRenew() вместо isAutoRenew()
+                    request.autoRenew(),
                     request.tariffPlan().getStorageLimit()
             );
 
@@ -105,9 +94,6 @@ public class TariffService {
         }
     }
 
-    /**
-     * Получить информацию о текущем тарифе
-     */
     public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
         String token = request.token();
         UUID userId = userSessionService.extractUserIdFromToken(token);
@@ -130,9 +116,6 @@ public class TariffService {
         );
     }
 
-    /**
-     * Отключить автопродление
-     */
     public void disableAutoRenew(SimpleUserRequest request) {
         String token = request.token();
         UUID userId = userSessionService.extractUserIdFromToken(token);
@@ -146,9 +129,6 @@ public class TariffService {
         log.info("Auto-renew disabled for user: {}", userId);
     }
 
-    /**
-     * Включить автопродление
-     */
     public void enableAutoRenew(SimpleUserRequest request) {
         String token = request.token();
         UUID userId = userSessionService.extractUserIdFromToken(token);
@@ -162,11 +142,7 @@ public class TariffService {
         log.info("Auto-renew enabled for user: {}", userId);
     }
 
-    /**
-     * Обновить способ оплаты
-     */
     public void updatePaymentMethod(UpdateAutoRenewRequest request) {
-        // ИСПРАВЛЕНО: для record используем userToken() вместо getUserToken()
         String token = request.userToken();
         UUID userId = userSessionService.extractUserIdFromToken(token);
 
@@ -175,14 +151,10 @@ public class TariffService {
             throw new UserNotFoundException("User not found with token: " + token);
         }
 
-        // ИСПРАВЛЕНО: paymentMethodId() вместо getPaymentMethodId()
         userRepository.updatePaymentMethod(userId, request.paymentMethodId());
         log.info("Payment method updated for user: {}", userId);
     }
 
-    /**
-     * Проверить доступ пользователя к файлам (для внутреннего использования)
-     */
     public boolean hasAccess(UUID userId) {
         Optional<UserEntity> userOpt = userRepository.getUserById(userId);
         if (userOpt.isEmpty()) {
@@ -203,9 +175,6 @@ public class TariffService {
         return true;
     }
 
-    /**
-     * Проверить доступ пользователя к файлам (для API)
-     */
     public boolean hasAccess(SimpleUserRequest request) {
         String token = request.token();
         UUID userId = userSessionService.extractUserIdFromToken(token);

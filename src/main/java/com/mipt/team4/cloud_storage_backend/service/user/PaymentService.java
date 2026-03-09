@@ -14,7 +14,6 @@ public class PaymentService {
         // TODO: интеграция с реальной платежной системой
         log.info("Processing payment for user {}: plan={}, token={}", userId, plan, paymentToken);
 
-        // Для тестов всегда успешно
         if (paymentToken == null || paymentToken.isBlank()) {
             throw new PaymentException("Invalid payment token");
         }
@@ -24,7 +23,6 @@ public class PaymentService {
         // TODO: автоматическое списание
         log.info("Auto-renewing tariff for user: {}", userId);
 
-        // Для тестов 90% успешно, 10% ошибок
         if (Math.random() < 0.1) {
             throw new PaymentException("Insufficient funds");
         }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
 import { getTariffInfo, purchaseTariff } from "../api";
+import PaymentModal from "./PaymentModal";
 
 export default function TariffsPage() {
   const { user, token } = useAuth();
@@ -11,28 +12,30 @@ export default function TariffsPage() {
   const [purchasing, setPurchasing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [selectedTariff, setSelectedTariff] = useState(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const tariffs = [
     {
       id: 'BASIC',
       name: 'Базовый',
-      price: '199 ₽/мес',
+      price: '99 ₽/мес',
       storage: '10 GB',
-      features: ['10 GB хранилища', 'До 5 пользователей', 'Поддержка 24/7']
+      features: ['10 GB хранилища', 'До 3 пользователей', 'Поддержка 24/7']
     },
     {
       id: 'WORK',
       name: 'Рабочий',
-      price: '499 ₽/мес',
+      price: '199 ₽/мес',
       storage: '50 GB',
-      features: ['50 GB хранилища', 'До 20 пользователей', 'Приоритетная поддержка']
+      features: ['50 GB хранилища', 'До 10 пользователей', 'Приоритетная поддержка']
     },
     {
       id: 'PREMIUM',
       name: 'Премиум',
-      price: '999 ₽/мес',
+      price: '349 ₽/мес',
       storage: '100 GB',
-      features: ['100 GB хранилища', 'Неограничено пользователей', 'VIP поддержка']
+      features: ['100 GB хранилища', 'До 30 пользователей', 'VIP поддержка']
     }
   ];
 
@@ -54,20 +57,26 @@ export default function TariffsPage() {
     }
   };
 
-  const handlePurchase = async (tariffId) => {
+  const handlePurchase = (tariffId) => {
+    const tariff = tariffs.find(t => t.id === tariffId);
+    setSelectedTariff(tariff);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleConfirmPayment = async (paymentMethod) => {
     setPurchasing(true);
     setError('');
     setSuccess('');
 
     try {
-      const selectedTariff = tariffs.find(t => t.id === tariffId);
-      const confirm = window.confirm(`Купить тариф "${selectedTariff.name}" за ${selectedTariff.price}?`);
+      console.log(`Оплата тарифа "${selectedTariff.name}" методом: ${paymentMethod}`);
 
-      if (confirm) {
-        await purchaseTariff(token, tariffId, 'test-payment-token');
-        await loadCurrentTariff();
-        setSuccess(`Тариф "${selectedTariff.name}" успешно приобретен!`);
-      }
+      await purchaseTariff(token, selectedTariff.id, 'test-payment-token');
+      await loadCurrentTariff();
+
+      setSuccess(`Тариф "${selectedTariff.name}" успешно приобретен!`);
+      setIsPaymentModalOpen(false);
+      setSelectedTariff(null);
     } catch (err) {
       setError('Ошибка при покупке тарифа');
       console.error(err);
@@ -85,7 +94,6 @@ export default function TariffsPage() {
   };
 
   const formatEndDate = (dateString) => {
-    // Если даты нет - считаем что это TRIAL (30 дней от сегодня)
     if (!dateString) {
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 30);
@@ -99,7 +107,6 @@ export default function TariffsPage() {
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
-        // Невалидная дата - тоже 30 дней
         const trialEndDate = new Date();
         trialEndDate.setDate(trialEndDate.getDate() + 30);
         return trialEndDate.toLocaleDateString('ru-RU', {
@@ -114,7 +121,6 @@ export default function TariffsPage() {
         year: 'numeric'
       });
     } catch {
-      // Ошибка парсинга - 30 дней
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 30);
       return trialEndDate.toLocaleDateString('ru-RU', {
@@ -130,6 +136,13 @@ export default function TariffsPage() {
     if (percentage < 75) return 'bg-yellow-500';
     if (percentage < 90) return 'bg-orange-500';
     return 'bg-red-500';
+  };
+
+  const calculatePercentage = () => {
+    if (!currentTariff) return 0;
+    const used = currentTariff.usedStorage || 0;
+    const limit = currentTariff.storageLimit || 10 * 1024 * 1024 * 1024;
+    return Math.round((used / limit) * 100);
   };
 
   return (
@@ -170,8 +183,8 @@ export default function TariffsPage() {
           </div>
         </div>
 
-        {/* Основной контент - без скролла, всё влезает */}
-        <div className="flex-1 flex items-center justify-center">
+        {/* Основной контент */}
+        <div className="flex-1 flex items-center justify-center overflow-y-auto py-4">
           <div className="w-full max-w-6xl">
             {/* Текущий тариф */}
             {currentTariff && (
@@ -203,13 +216,13 @@ export default function TariffsPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-white/80">Заполнено</span>
                       <span className="text-blue-300">
-                        {Math.round(((currentTariff.usedStorage || 0) / (currentTariff.storageLimit || 10 * 1024 * 1024 * 1024)) * 100)}%
+                        {calculatePercentage()}%
                       </span>
                     </div>
                     <div className="w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
                       <div
-                          className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(Math.round(((currentTariff.usedStorage || 0) / (currentTariff.storageLimit || 10 * 1024 * 1024 * 1024)) * 100))}`}
-                          style={{ width: `${Math.min(Math.round(((currentTariff.usedStorage || 0) / (currentTariff.storageLimit || 10 * 1024 * 1024 * 1024)) * 100), 100)}%` }}
+                          className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(calculatePercentage())}`}
+                          style={{ width: `${Math.min(calculatePercentage(), 100)}%` }}
                       />
                     </div>
                   </div>
@@ -226,6 +239,13 @@ export default function TariffsPage() {
             {success && (
                 <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-xl text-center">
                   {success}
+                </div>
+            )}
+
+            {/* Индикатор загрузки */}
+            {loading && (
+                <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500 rounded-xl text-center">
+                  Загрузка информации о тарифе...
                 </div>
             )}
 
@@ -264,7 +284,7 @@ export default function TariffsPage() {
                                 : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500'
                         }`}
                     >
-                      {purchasing ? (
+                      {purchasing && selectedTariff?.id === tariff.id ? (
                           <div className="flex items-center justify-center">
                             <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
                             <span>Обработка...</span>
@@ -280,6 +300,17 @@ export default function TariffsPage() {
             </div>
           </div>
         </div>
+
+        {/* Модальное окно оплаты */}
+        <PaymentModal
+            isOpen={isPaymentModalOpen}
+            onClose={() => {
+              setIsPaymentModalOpen(false);
+              setSelectedTariff(null);
+            }}
+            tariff={selectedTariff}
+            onConfirm={handleConfirmPayment}
+        />
       </div>
   );
 }

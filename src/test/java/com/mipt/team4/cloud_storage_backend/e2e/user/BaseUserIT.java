@@ -7,16 +7,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public abstract class BaseUserIT extends BaseIT {
-    protected String testEmail;
-    protected String testPassword;
-    @Autowired
-    private UserAuthUtils userAuthUtils;
+  protected String testEmail;
+  protected String testPassword;
+  @Autowired private UserAuthUtils userAuthUtils;
 
-    @BeforeEach
-    public void beforeEach() {
-        TestUserDto testUser = userAuthUtils.createRandomUser();
+  @BeforeEach
+  public void beforeEach() {
+    TestUserDto testUser = userAuthUtils.createRandomUser();
 
-        testEmail = testUser.email();
-        testPassword = testUser.password();
-    }
+    testEmail = testUser.email();
+    testPassword = testUser.password();
+  }
 }

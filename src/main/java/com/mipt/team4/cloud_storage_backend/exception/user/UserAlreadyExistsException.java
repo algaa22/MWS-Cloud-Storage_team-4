@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.exception.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import io.netty.handler.codec.http.HttpResponseStatus;
-
 import java.util.UUID;
 
 public class UserAlreadyExistsException extends BaseStorageException {

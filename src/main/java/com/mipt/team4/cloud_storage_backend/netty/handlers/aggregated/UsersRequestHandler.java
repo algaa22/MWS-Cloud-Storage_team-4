@@ -22,9 +22,7 @@ import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-
 import java.util.Optional;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -139,17 +137,14 @@ public class UsersRequestHandler {
     System.out.println("🔥🔥🔥 handlePurchaseTariff EXECUTING! 🔥🔥🔥");
     System.out.println("Request URI: " + request.uri());
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-    String tariffPlanStr = RequestUtils.getRequiredQueryParam(request, "plan");
+    TariffPlan tariffPlan = TariffPlan.valueOf(RequestUtils.getRequiredQueryParam(request, "plan"));
     String paymentToken = RequestUtils.getRequiredHeader(request, "X-Payment-Token");
     boolean autoRenew =
         SafeParser.parseBoolean(
             "Auto renew", RequestUtils.getQueryParam(request, "autoRenew", "true"));
 
-    TariffPlan plan = TariffPlan.valueOf(tariffPlanStr);
-
-    TariffRequest tariffRequest = new TariffRequest(userToken, plan, paymentToken, autoRenew);
-
-    tariffController.purchaseTariff(tariffRequest);
+    tariffController.purchaseTariff(
+        new PurchaseTariffRequest(userToken, tariffPlan, paymentToken, autoRenew));
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Tariff purchased successfully");
   }

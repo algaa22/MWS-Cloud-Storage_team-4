@@ -4,18 +4,16 @@ import com.mipt.team4.cloud_storage_backend.exception.user.PaymentException;
 import com.mipt.team4.cloud_storage_backend.exception.user.TariffPurchaseException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateAutoRenewRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
-
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,7 +43,7 @@ public class TariffService {
     log.info("Trial period started for user: {}, ends at: {}", userId, endDate);
   }
 
-  public void purchaseTariff(TariffRequest request) {
+  public void purchaseTariff(PurchaseTariffRequest request) {
     String token = request.userToken();
     UUID userId = userSessionService.extractUserIdFromToken(token);
 

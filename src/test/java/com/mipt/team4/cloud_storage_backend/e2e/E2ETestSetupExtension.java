@@ -8,26 +8,26 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 public class E2ETestSetupExtension implements BeforeAllCallback {
 
-    protected static final String INITIALIZED_KEY = "testcontainers.initialized";
-    protected static final PostgreSQLContainer<?> POSTGRES = TestUtils.createPostgresContainer();
-    protected static final MinIOContainer MINIO = TestUtils.createMinioContainer();
+  protected static final String INITIALIZED_KEY = "testcontainers.initialized";
+  protected static final PostgreSQLContainer<?> POSTGRES = TestUtils.createPostgresContainer();
+  protected static final MinIOContainer MINIO = TestUtils.createMinioContainer();
 
-    @Override
-    public void beforeAll(ExtensionContext context) {
-        context
-                .getRoot()
-                .getStore(ExtensionContext.Namespace.GLOBAL)
-                .getOrComputeIfAbsent(
-                        INITIALIZED_KEY,
-                        key -> {
-                            POSTGRES.start();
-                            MINIO.start();
+  @Override
+  public void beforeAll(ExtensionContext context) {
+    context
+        .getRoot()
+        .getStore(ExtensionContext.Namespace.GLOBAL)
+        .getOrComputeIfAbsent(
+            INITIALIZED_KEY,
+            key -> {
+              POSTGRES.start();
+              MINIO.start();
 
-                            return (AutoCloseable)
-                                    () -> {
-                                        MINIO.stop();
-                                        POSTGRES.stop();
-                                    };
-                        });
-    }
+              return (AutoCloseable)
+                  () -> {
+                    MINIO.stop();
+                    POSTGRES.stop();
+                  };
+            });
+  }
 }

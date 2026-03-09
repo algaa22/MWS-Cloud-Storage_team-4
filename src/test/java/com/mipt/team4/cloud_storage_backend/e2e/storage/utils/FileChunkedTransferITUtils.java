@@ -4,7 +4,6 @@ import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -12,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -28,95 +26,95 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class FileChunkedTransferITUtils {
-    private static final int MAX_CHUNK_SIZE = 8 * 1024;
+  private static final int MAX_CHUNK_SIZE = 8 * 1024;
 
-    private final ITUtils itUtils;
+  private final ITUtils itUtils;
 
-    private static List<byte[]> readChunksFromInputStream(InputStream inputStream)
-            throws IOException {
-        List<byte[]> chunks = new ArrayList<>();
-        byte[] buffer = new byte[MAX_CHUNK_SIZE];
-        int bytesRead;
+  private static List<byte[]> readChunksFromInputStream(InputStream inputStream)
+      throws IOException {
+    List<byte[]> chunks = new ArrayList<>();
+    byte[] buffer = new byte[MAX_CHUNK_SIZE];
+    int bytesRead;
 
-        while ((bytesRead = inputStream.read(buffer)) != -1) {
-            byte[] chunk = new byte[bytesRead];
-            System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+    while ((bytesRead = inputStream.read(buffer)) != -1) {
+      byte[] chunk = new byte[bytesRead];
+      System.arraycopy(buffer, 0, chunk, 0, bytesRead);
 
-            chunks.add(chunk);
-        }
-
-        return chunks;
+      chunks.add(chunk);
     }
 
-    public UploadResult sendUploadRequest(
-            CloseableHttpClient client,
-            String userToken,
-            String targetFileName,
-            String filePath,
-            String fileTags,
-            long fileSize)
-            throws IOException {
-        HttpPost request =
-                new HttpPost(
-                        itUtils.createUriString(
-                                itUtils.fillQuery("/api/files/upload?name=%s", targetFileName)));
+    return chunks;
+  }
 
-        InputStream fileStream = FileLoader.getInputStream(filePath);
-        InputStreamEntity entity =
-                new InputStreamEntity(fileStream, -1, ContentType.APPLICATION_OCTET_STREAM);
+  public UploadResult sendUploadRequest(
+      CloseableHttpClient client,
+      String userToken,
+      String targetFileName,
+      String filePath,
+      String fileTags,
+      long fileSize)
+      throws IOException {
+    HttpPost request =
+        new HttpPost(
+            itUtils.createUriString(
+                itUtils.fillQuery("/api/files/upload?name=%s", targetFileName)));
 
-        request.setEntity(entity);
-        request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
-        request.setHeader("X-Auth-Token", userToken);
-        request.setHeader("X-File-Tags", fileTags);
-        request.setHeader("X-File-Size", fileSize);
+    InputStream fileStream = FileLoader.getInputStream(filePath);
+    InputStreamEntity entity =
+        new InputStreamEntity(fileStream, -1, ContentType.APPLICATION_OCTET_STREAM);
 
-        return client.execute(request, UploadResult::from);
+    request.setEntity(entity);
+    request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
+    request.setHeader("X-Auth-Token", userToken);
+    request.setHeader("X-File-Tags", fileTags);
+    request.setHeader("X-File-Size", fileSize);
+
+    return client.execute(request, UploadResult::from);
+  }
+
+  public DownloadResult sendDownloadRequest(
+      CloseableHttpClient client, String userToken, UUID targetFileId) throws IOException {
+    HttpGet request =
+        new HttpGet(
+            itUtils.createUriString(itUtils.fillQuery("/api/files/download?id=%s", targetFileId)));
+
+    request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
+    request.setHeader("X-Auth-Token", userToken);
+
+    return client.execute(request, DownloadResult::from);
+  }
+
+  public boolean chunkMatchesOriginal(byte[] originalData, byte[] chunk, int offset) {
+    for (int i = 0; i < chunk.length; i++) {
+      if (originalData[offset + i] != chunk[i]) {
+        return false;
+      }
     }
 
-    public DownloadResult sendDownloadRequest(
-            CloseableHttpClient client, String userToken, UUID targetFileId) throws IOException {
-        HttpGet request =
-                new HttpGet(
-                        itUtils.createUriString(itUtils.fillQuery("/api/files/download?id=%s", targetFileId)));
+    return true;
+  }
 
-        request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
-        request.setHeader("X-Auth-Token", userToken);
+  public record UploadResult(int statusCode, String body) {
 
-        return client.execute(request, DownloadResult::from);
+    public static UploadResult from(ClassicHttpResponse response)
+        throws IOException, ParseException {
+      return new UploadResult(response.getCode(), EntityUtils.toString(response.getEntity()));
     }
+  }
 
-    public boolean chunkMatchesOriginal(byte[] originalData, byte[] chunk, int offset) {
-        for (int i = 0; i < chunk.length; i++) {
-            if (originalData[offset + i] != chunk[i]) {
-                return false;
-            }
-        }
+  public record DownloadResult(int statusCode, Map<String, String> headers, List<byte[]> chunks) {
 
-        return true;
+    public static DownloadResult from(ClassicHttpResponse response) throws IOException {
+      Map<String, String> headers = new HashMap<>();
+
+      for (Header header : response.getHeaders()) {
+        headers.put(header.getName(), header.getValue());
+      }
+
+      return new DownloadResult(
+          response.getCode(),
+          headers,
+          readChunksFromInputStream(response.getEntity().getContent()));
     }
-
-    public record UploadResult(int statusCode, String body) {
-
-        public static UploadResult from(ClassicHttpResponse response)
-                throws IOException, ParseException {
-            return new UploadResult(response.getCode(), EntityUtils.toString(response.getEntity()));
-        }
-    }
-
-    public record DownloadResult(int statusCode, Map<String, String> headers, List<byte[]> chunks) {
-
-        public static DownloadResult from(ClassicHttpResponse response) throws IOException {
-            Map<String, String> headers = new HashMap<>();
-
-            for (Header header : response.getHeaders()) {
-                headers.put(header.getName(), header.getValue());
-            }
-
-            return new DownloadResult(
-                    response.getCode(),
-                    headers,
-                    readChunksFromInputStream(response.getEntity().getContent()));
-        }
-    }
+  }
 }

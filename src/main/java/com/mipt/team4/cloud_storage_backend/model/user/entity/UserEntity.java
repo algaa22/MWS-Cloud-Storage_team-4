@@ -1,10 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.model.user.entity;
 
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
-
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

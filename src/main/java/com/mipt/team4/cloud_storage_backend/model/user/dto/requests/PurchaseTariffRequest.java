@@ -7,7 +7,7 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
-public record TariffRequest(
+public record PurchaseTariffRequest(
     String userToken, TariffPlan tariffPlan, String paymentToken, boolean autoRenew) {
   public void validate(JwtService jwtService) throws ValidationFailedException {
     ValidationResult result =

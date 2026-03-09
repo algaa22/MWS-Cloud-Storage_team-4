@@ -2,11 +2,9 @@ package com.mipt.team4.cloud_storage_backend.repository.user;
 
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
 import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 

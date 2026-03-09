@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Tag;
 @Tag("integration")
 public class DeleteFileDetailedIT extends BaseDetailedFileIT {
 
-    public DeleteFileDetailedIT() {
-        super("/api/files", HttpMethod.DELETE.name(), PathParam.EXISTENT_FILE);
-    }
+  public DeleteFileDetailedIT() {
+    super("/api/files", HttpMethod.DELETE.name(), PathParam.EXISTENT_FILE);
+  }
 }

@@ -8,11 +8,9 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
-
 import org.springframework.stereotype.Service;
 
 /**

@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.config.props;
 
 import java.time.Duration;
-
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "storage")

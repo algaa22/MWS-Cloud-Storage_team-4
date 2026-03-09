@@ -15,7 +15,6 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
-
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.function.Function;

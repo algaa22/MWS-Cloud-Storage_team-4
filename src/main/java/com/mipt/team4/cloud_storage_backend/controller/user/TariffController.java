@@ -1,8 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateAutoRenewRequest;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
@@ -16,7 +16,7 @@ public class TariffController {
   private final TariffService tariffService;
   private final JwtService jwtService;
 
-  public void purchaseTariff(TariffRequest request) {
+  public void purchaseTariff(PurchaseTariffRequest request) {
     request.validate(jwtService); // проверяем токен
     tariffService.purchaseTariff(request);
   }

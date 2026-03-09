@@ -13,11 +13,9 @@ import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnecti
 import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -26,119 +24,119 @@ import org.junit.jupiter.api.Test;
 @Tag("integration")
 public class PostgresRepositoryTest extends BasePostgresTest {
 
-    private static FileMetadataRepository fileMetadataRepository;
-    private static UserRepository userRepository;
-    private static PostgresConnection postgresConnection;
-    private static StorageEntity commonFileEntity;
-    private static UUID testUserUuid;
+  private static FileMetadataRepository fileMetadataRepository;
+  private static UserRepository userRepository;
+  private static PostgresConnection postgresConnection;
+  private static StorageEntity commonFileEntity;
+  private static UUID testUserUuid;
 
-    @BeforeAll
-    protected static void beforeAll() {
-        BasePostgresTest.beforeAll();
+  @BeforeAll
+  protected static void beforeAll() {
+    BasePostgresTest.beforeAll();
 
-        postgresConnection = TestUtils.createConnection(postgresContainer);
-        fileMetadataRepository = new FileMetadataRepository(postgresConnection);
-        userRepository = new UserRepository(postgresConnection);
+    postgresConnection = TestUtils.createConnection(postgresContainer);
+    fileMetadataRepository = new FileMetadataRepository(postgresConnection);
+    userRepository = new UserRepository(postgresConnection);
 
-        try {
-            testUserUuid = addTestUser();
-            commonFileEntity = addTestFile(null, "root-file.xml");
-        } catch (UserAlreadyExistsException | StorageFileAlreadyExistsException e) {
-            throw new RuntimeException(e);
-        }
+    try {
+      testUserUuid = addTestUser();
+      commonFileEntity = addTestFile(null, "root-file.xml");
+    } catch (UserAlreadyExistsException | StorageFileAlreadyExistsException e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @AfterAll
-    protected static void afterAll() {
-        BasePostgresTest.afterAll();
-        if (postgresConnection != null) {
-            postgresConnection.disconnect();
-        }
+  @AfterAll
+  protected static void afterAll() {
+    BasePostgresTest.afterAll();
+    if (postgresConnection != null) {
+      postgresConnection.disconnect();
     }
+  }
 
-    private static UUID addTestUser() throws UserAlreadyExistsException {
-        UUID uuid = UUID.randomUUID();
+  private static UUID addTestUser() throws UserAlreadyExistsException {
+    UUID uuid = UUID.randomUUID();
 
-        userRepository.addUser(
-                UserEntity.builder()
-                        .id(uuid)
-                        .name("name")
-                        .email("email")
-                        .passwordHash("password")
-                        .storageLimit((long) 1e10)
-                        .createdAt(LocalDateTime.now())
-                        .build());
+    userRepository.addUser(
+        UserEntity.builder()
+            .id(uuid)
+            .name("name")
+            .email("email")
+            .passwordHash("password")
+            .storageLimit((long) 1e10)
+            .createdAt(LocalDateTime.now())
+            .build());
 
-        return uuid;
-    }
+    return uuid;
+  }
 
-    private static StorageEntity addTestFile(UUID parentId, String name)
-            throws StorageFileAlreadyExistsException {
-        StorageEntity fileEntity =
-                StorageEntity.builder()
-                        .id(UUID.randomUUID())
-                        .userId(testUserUuid)
-                        .parentId(parentId)
-                        .name(name)
-                        .mimeType("application/xml")
-                        .size(42L)
-                        .isDirectory(false)
-                        .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
-                        .tags(List.of("some xml"))
-                        .build();
+  private static StorageEntity addTestFile(UUID parentId, String name)
+      throws StorageFileAlreadyExistsException {
+    StorageEntity fileEntity =
+        StorageEntity.builder()
+            .id(UUID.randomUUID())
+            .userId(testUserUuid)
+            .parentId(parentId)
+            .name(name)
+            .mimeType("application/xml")
+            .size(42L)
+            .isDirectory(false)
+            .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
+            .tags(List.of("some xml"))
+            .build();
 
-        fileMetadataRepository.addFile(fileEntity);
+    fileMetadataRepository.addFile(fileEntity);
 
-        return fileEntity;
-    }
+    return fileEntity;
+  }
 
-    @Test
-    void fileExists_ShouldReturnTrue_WhenFileExists() {
-        assertTrue(
-                fileMetadataRepository.fileExists(
-                        commonFileEntity.getUserId(),
-                        commonFileEntity.getParentId(),
-                        commonFileEntity.getName()));
-    }
+  @Test
+  void fileExists_ShouldReturnTrue_WhenFileExists() {
+    assertTrue(
+        fileMetadataRepository.fileExists(
+            commonFileEntity.getUserId(),
+            commonFileEntity.getParentId(),
+            commonFileEntity.getName()));
+  }
 
-    @Test
-    void fileExists_ShouldReturnFalse_WhenFileNotFound() {
-        assertFalse(
-                fileMetadataRepository.fileExists(commonFileEntity.getUserId(), null, "non-existent-file"));
-    }
+  @Test
+  void fileExists_ShouldReturnFalse_WhenFileNotFound() {
+    assertFalse(
+        fileMetadataRepository.fileExists(commonFileEntity.getUserId(), null, "non-existent-file"));
+  }
 
-    @Test
-    void shouldReturnNull_WhenGetNonexistentFile() {
-        assertTrue(fileMetadataRepository.getFile(testUserUuid, null, "non-existent-path").isEmpty());
-    }
+  @Test
+  void shouldReturnNull_WhenGetNonexistentFile() {
+    assertTrue(fileMetadataRepository.getFile(testUserUuid, null, "non-existent-path").isEmpty());
+  }
 
-    @Test
-    void shouldAddAndDeleteFile_WithSameId()
-            throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
-        String uniqueName = "delete-me-" + UUID.randomUUID();
-        StorageEntity testFileEntity = addTestFile(null, uniqueName);
-        assertTrue(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
+  @Test
+  void shouldAddAndDeleteFile_WithSameId()
+      throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
+    String uniqueName = "delete-me-" + UUID.randomUUID();
+    StorageEntity testFileEntity = addTestFile(null, uniqueName);
+    assertTrue(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
 
-        fileMetadataRepository.deleteFile(testFileEntity);
-        assertFalse(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
-    }
+    fileMetadataRepository.deleteFile(testFileEntity);
+    assertFalse(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
+  }
 
-    @Test
-    void hierarchyTest_ShouldDetectDescendant() throws StorageFileAlreadyExistsException {
-        StorageEntity folder =
-                StorageEntity.builder()
-                        .id(UUID.randomUUID())
-                        .userId(testUserUuid)
-                        .name("parent-folder")
-                        .isDirectory(true)
-                        .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
-                        .build();
-        fileMetadataRepository.addFile(folder);
+  @Test
+  void hierarchyTest_ShouldDetectDescendant() throws StorageFileAlreadyExistsException {
+    StorageEntity folder =
+        StorageEntity.builder()
+            .id(UUID.randomUUID())
+            .userId(testUserUuid)
+            .name("parent-folder")
+            .isDirectory(true)
+            .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
+            .build();
+    fileMetadataRepository.addFile(folder);
 
-        StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
+    StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
 
-        assertTrue(fileMetadataRepository.isDescendant(folder.getId(), childFile.getId()));
+    assertTrue(fileMetadataRepository.isDescendant(folder.getId(), childFile.getId()));
 
-        assertFalse(fileMetadataRepository.isDescendant(childFile.getId(), folder.getId()));
-    }
+    assertFalse(fileMetadataRepository.isDescendant(childFile.getId(), folder.getId()));
+  }
 }

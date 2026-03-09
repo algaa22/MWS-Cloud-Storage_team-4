@@ -51,10 +51,13 @@ public class FileMetadataRepository {
             fileEntity.getUpdatedAt(),
             fileEntity.getRetryCount(),
             fileEntity.getErrorMessage()));
-    for (String tag : fileEntity.getTags()) {
-      postgres.executeUpdate(
-          "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
-          List.of(fileEntity.getId(), tag));
+
+    if (fileEntity.getTags() != null) {
+      for (String tag : fileEntity.getTags()) {
+        postgres.executeUpdate(
+            "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
+            List.of(fileEntity.getId(), tag));
+      }
     }
   }
 
@@ -158,10 +161,12 @@ public class FileMetadataRepository {
             entity.getErrorMessage(),
             entity.getUserId(),
             entity.getId()));
-    for (String tag : entity.getTags()) {
-      postgres.executeUpdate(
-          "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
-          List.of(entity.getId(), tag));
+    if (entity.getTags() != null) {
+      for (String tag : entity.getTags()) {
+        postgres.executeUpdate(
+            "INSERT INTO file_tags(file_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
+            List.of(entity.getId(), tag));
+      }
     }
   }
 
@@ -287,38 +292,40 @@ public class FileMetadataRepository {
 
   public String getFullFilePath(UUID fileId) {
     String sql =
-        """
-        WITH RECURSIVE file_path AS (
-            SELECT
-                id,
-                name,
-                parent_id,
-                name as full_path,
-                1 as level
-            FROM files
-            WHERE id = ? AND is_deleted = false
-
-            UNION ALL
-
-            SELECT
-                f.id,
-                f.name,
-                f.parent_id,
-                f.name || '/' || fp.full_path,
-                fp.level + 1
-            FROM files f
-            INNER JOIN file_path fp ON f.id = fp.parent_id
-            WHERE f.is_deleted = false AND f.is_directory = true
-        )
-        SELECT full_path
-        FROM file_path
-        WHERE parent_id IS NULL  -- Дошли до корня
-        ORDER BY level DESC
-        LIMIT 1
-        """;
+            """
+            WITH RECURSIVE file_path AS (
+                -- non-recursive term
+                SELECT
+                    id,
+                    name,
+                    parent_id,
+                    name::varchar(500) as full_path,  -- <- каст
+                    1 as level
+                FROM files
+                WHERE id = ? AND is_deleted = false
+    
+                UNION ALL
+    
+                -- recursive term
+                SELECT
+                    f.id,
+                    f.name,
+                    f.parent_id,
+                    (f.name || '/' || fp.full_path)::varchar(500) as full_path, -- <- каст
+                    fp.level + 1
+                FROM files f
+                INNER JOIN file_path fp ON f.id = fp.parent_id
+                WHERE f.is_deleted = false AND f.is_directory = true
+            )
+            SELECT full_path
+            FROM file_path
+            WHERE parent_id IS NULL  -- Дошли до корня
+            ORDER BY level DESC
+            LIMIT 1
+            """;
 
     List<String> result =
-        postgres.executeQuery(sql, List.of(fileId), rs -> rs.getString("full_path"));
+            postgres.executeQuery(sql, List.of(fileId), rs -> rs.getString("full_path"));
 
     return result.isEmpty() ? null : result.getFirst();
   }

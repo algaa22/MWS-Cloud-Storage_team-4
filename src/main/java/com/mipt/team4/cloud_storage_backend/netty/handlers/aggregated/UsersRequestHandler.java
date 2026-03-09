@@ -132,21 +132,20 @@ public class UsersRequestHandler {
   }
 
   public void handlePurchaseTariff(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     System.out.println("🔥🔥🔥 handlePurchaseTariff EXECUTING! 🔥🔥🔥");
     System.out.println("Request URI: " + request.uri());
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String tariffPlanStr = RequestUtils.getRequiredQueryParam(request, "plan");
     String paymentToken = RequestUtils.getRequiredHeader(request, "X-Payment-Token");
-    boolean autoRenew = SafeParser.parseBoolean("Auto renew",
-            RequestUtils.getQueryParam(request, "autoRenew", "true"));
+    boolean autoRenew =
+        SafeParser.parseBoolean(
+            "Auto renew", RequestUtils.getQueryParam(request, "autoRenew", "true"));
 
     TariffPlan plan = TariffPlan.valueOf(tariffPlanStr);
 
-    TariffRequest tariffRequest = new TariffRequest(
-            userToken, plan, paymentToken, autoRenew
-    );
+    TariffRequest tariffRequest = new TariffRequest(userToken, plan, paymentToken, autoRenew);
 
     tariffController.purchaseTariff(tariffRequest);
 
@@ -154,7 +153,7 @@ public class UsersRequestHandler {
   }
 
   public void handleGetTariffInfo(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
@@ -175,7 +174,7 @@ public class UsersRequestHandler {
   }
 
   public void handleDisableAutoRenew(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
@@ -184,8 +183,9 @@ public class UsersRequestHandler {
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Auto-renew disabled");
   }
+
   public void handleEnableAutoRenew(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
@@ -196,7 +196,7 @@ public class UsersRequestHandler {
   }
 
   public void handleUpdatePaymentMethod(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String paymentMethodId = RequestUtils.getRequiredHeader(request, "X-Payment-Method-Id");
@@ -213,7 +213,7 @@ public class UsersRequestHandler {
     ObjectNode tariffsNode = mapper.createObjectNode();
 
     for (TariffPlan plan : TariffPlan.values()) {
-      if (!plan.isTrial()) { 
+      if (!plan.isTrial()) {
         ObjectNode planNode = mapper.createObjectNode();
         planNode.put("name", plan.name());
         planNode.put("storageLimit", plan.getStorageLimit());
@@ -226,5 +226,4 @@ public class UsersRequestHandler {
     rootNode.set("tariffs", tariffsNode);
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
-
 }

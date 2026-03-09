@@ -5,9 +5,9 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class TooSmallFilePartException extends BaseStorageException {
 
-    public TooSmallFilePartException(long minFilePartSize) {
-        super(
-                "File part must be at least " + minFilePartSize + " bytes in size",
-                HttpResponseStatus.BAD_REQUEST);
-    }
+  public TooSmallFilePartException(long minFilePartSize) {
+    super(
+        "File part must be at least " + minFilePartSize + " bytes in size",
+        HttpResponseStatus.BAD_REQUEST);
+  }
 }

@@ -8,9 +8,9 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.Optional;
 
 public record GetFileListRequest(
-        String userToken, boolean includeDirectories, boolean recursive, Optional<String> parentId) {
-    public void validate(JwtService jwtService) throws ValidationFailedException {
-        ValidationResult result = Validators.all(Validators.validToken(jwtService, userToken));
-        Validators.throwExceptionIfNotValid(result);
-    }
+    String userToken, boolean includeDirectories, boolean recursive, Optional<String> parentId) {
+  public void validate(JwtService jwtService) throws ValidationFailedException {
+    ValidationResult result = Validators.all(Validators.validToken(jwtService, userToken));
+    Validators.throwExceptionIfNotValid(result);
+  }
 }

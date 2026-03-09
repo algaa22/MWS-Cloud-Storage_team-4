@@ -42,144 +42,144 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class NettyServerManager {
-    private final AtomicBoolean stopping = new AtomicBoolean(false);
-    private final CountDownLatch startupLatch;
+  private final AtomicBoolean stopping = new AtomicBoolean(false);
+  private final CountDownLatch startupLatch;
 
-    private final MainChannelInitializer httpChannelInitializer;
-    private final MainChannelInitializer httpsChannelInitializer;
-    private final NettyConfig nettyConfig;
+  private final MainChannelInitializer httpChannelInitializer;
+  private final MainChannelInitializer httpsChannelInitializer;
+  private final NettyConfig nettyConfig;
 
-    private Channel httpServerChannel;
-    private Channel httpsServerChannel;
-    private EventLoopGroup bossGroup;
-    private EventLoopGroup workerGroup;
+  private Channel httpServerChannel;
+  private Channel httpsServerChannel;
+  private EventLoopGroup bossGroup;
+  private EventLoopGroup workerGroup;
 
-    public NettyServerManager(
-            MainChannelInitializer httpChannelInitializer,
-            MainChannelInitializer httpsChannelInitializer,
-            NettyConfig nettyConfig) {
-        this.httpChannelInitializer = httpChannelInitializer;
-        this.httpsChannelInitializer = httpsChannelInitializer;
-        this.nettyConfig = nettyConfig;
+  public NettyServerManager(
+      MainChannelInitializer httpChannelInitializer,
+      MainChannelInitializer httpsChannelInitializer,
+      NettyConfig nettyConfig) {
+    this.httpChannelInitializer = httpChannelInitializer;
+    this.httpsChannelInitializer = httpsChannelInitializer;
+    this.nettyConfig = nettyConfig;
 
-        int serversCount = nettyConfig.enableHttps() ? 2 : 1;
-        startupLatch = new CountDownLatch(serversCount);
+    int serversCount = nettyConfig.enableHttps() ? 2 : 1;
+    startupLatch = new CountDownLatch(serversCount);
+  }
+
+  public void start() {
+    bossGroup = createEventLoopGroup(nettyConfig.bossThreads());
+    workerGroup = createEventLoopGroup(nettyConfig.workerThreads());
+
+    try {
+      startServers();
+      addCloseListeners();
+    } catch (Exception e) {
+      stop();
+
+      throw new ServerStartException(e);
+    }
+  }
+
+  @PreDestroy
+  public void stop() {
+    if (!stopping.compareAndSet(false, true)) {
+      return;
     }
 
-    public void start() {
-        bossGroup = createEventLoopGroup(nettyConfig.bossThreads());
-        workerGroup = createEventLoopGroup(nettyConfig.workerThreads());
+    log.info("Stopping servers...");
 
-        try {
-            startServers();
-            addCloseListeners();
-        } catch (Exception e) {
-            stop();
+    closeServers();
+    shutdownThreads();
+  }
 
-            throw new ServerStartException(e);
-        }
+  private void startServers() throws InterruptedException {
+    httpServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTP);
+
+    if (nettyConfig.enableHttps()) {
+      httpsServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTPS);
+    }
+  }
+
+  private void addCloseListeners() {
+    Promise<Void> closePromise = bossGroup.next().newPromise();
+
+    if (httpsServerChannel != null) {
+      httpsServerChannel
+          .closeFuture()
+          .addListener(
+              f -> {
+                log.info("HTTPS server stopped");
+                closePromise.trySuccess(null);
+              });
     }
 
-    @PreDestroy
-    public void stop() {
-        if (!stopping.compareAndSet(false, true)) {
-            return;
-        }
+    httpServerChannel
+        .closeFuture()
+        .addListener(
+            f -> {
+              log.info("HTTP server stopped");
+              closePromise.trySuccess(null);
+            });
 
-        log.info("Stopping servers...");
+    log.info("Servers are running. Waiting for any channel to close...");
+  }
 
-        closeServers();
-        shutdownThreads();
+  private void closeServers() {
+    if (httpsServerChannel != null && httpsServerChannel.isOpen()) {
+      httpsServerChannel.close().syncUninterruptibly();
     }
 
-    private void startServers() throws InterruptedException {
-        httpServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTP);
-
-        if (nettyConfig.enableHttps()) {
-            httpsServerChannel = startServer(bossGroup, workerGroup, ServerProtocol.HTTPS);
-        }
+    if (httpServerChannel != null && httpServerChannel.isOpen()) {
+      httpServerChannel.close().syncUninterruptibly();
     }
+  }
 
-    private void addCloseListeners() {
-        Promise<Void> closePromise = bossGroup.next().newPromise();
+  private void shutdownThreads() {
+    int queryPeriod = nettyConfig.shutdown().queryPeriodSec();
+    int timeout = nettyConfig.shutdown().timeoutSec();
 
-        if (httpsServerChannel != null) {
-            httpsServerChannel
-                    .closeFuture()
-                    .addListener(
-                            f -> {
-                                log.info("HTTPS server stopped");
-                                closePromise.trySuccess(null);
-                            });
-        }
+    Future<?> bossShutdown = bossGroup.shutdownGracefully(queryPeriod, timeout, TimeUnit.SECONDS);
+    Future<?> workerShutdown =
+        workerGroup.shutdownGracefully(queryPeriod, timeout, TimeUnit.SECONDS);
 
-        httpServerChannel
-                .closeFuture()
-                .addListener(
-                        f -> {
-                            log.info("HTTP server stopped");
-                            closePromise.trySuccess(null);
-                        });
+    try {
+      workerShutdown.await(timeout + 1, TimeUnit.SECONDS);
+      bossShutdown.await(timeout + 1, TimeUnit.SECONDS);
 
-        log.info("Servers are running. Waiting for any channel to close...");
+      log.info("All threads finished shutdown");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+
+      log.error("Shutdown interrupted", e);
     }
+  }
 
-    private void closeServers() {
-        if (httpsServerChannel != null && httpsServerChannel.isOpen()) {
-            httpsServerChannel.close().syncUninterruptibly();
-        }
+  private Channel startServer(
+      EventLoopGroup bossGroup, EventLoopGroup workerGroup, ServerProtocol protocol)
+      throws InterruptedException {
+    ServerBootstrap bootstrap = new ServerBootstrap();
+    bootstrap
+        .group(bossGroup, workerGroup)
+        .channel(NioServerSocketChannel.class)
+        .option(ChannelOption.SO_REUSEADDR, true)
+        .childHandler(
+            protocol == ServerProtocol.HTTP ? httpChannelInitializer : httpsChannelInitializer);
 
-        if (httpServerChannel != null && httpServerChannel.isOpen()) {
-            httpServerChannel.close().syncUninterruptibly();
-        }
-    }
+    int port = protocol == ServerProtocol.HTTPS ? nettyConfig.httpsPort() : nettyConfig.httpPort();
+    Channel channel = bootstrap.bind(port).sync().channel();
 
-    private void shutdownThreads() {
-        int queryPeriod = nettyConfig.shutdown().queryPeriodSec();
-        int timeout = nettyConfig.shutdown().timeoutSec();
+    log.info("{} server starting on port {}...", protocol.name(), port);
+    startupLatch.countDown();
 
-        Future<?> bossShutdown = bossGroup.shutdownGracefully(queryPeriod, timeout, TimeUnit.SECONDS);
-        Future<?> workerShutdown =
-                workerGroup.shutdownGracefully(queryPeriod, timeout, TimeUnit.SECONDS);
+    return channel;
+  }
 
-        try {
-            workerShutdown.await(timeout + 1, TimeUnit.SECONDS);
-            bossShutdown.await(timeout + 1, TimeUnit.SECONDS);
+  private EventLoopGroup createEventLoopGroup(int numThreads) {
+    return new MultiThreadIoEventLoopGroup(numThreads, NioIoHandler.newFactory());
+  }
 
-            log.info("All threads finished shutdown");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-
-            log.error("Shutdown interrupted", e);
-        }
-    }
-
-    private Channel startServer(
-            EventLoopGroup bossGroup, EventLoopGroup workerGroup, ServerProtocol protocol)
-            throws InterruptedException {
-        ServerBootstrap bootstrap = new ServerBootstrap();
-        bootstrap
-                .group(bossGroup, workerGroup)
-                .channel(NioServerSocketChannel.class)
-                .option(ChannelOption.SO_REUSEADDR, true)
-                .childHandler(
-                        protocol == ServerProtocol.HTTP ? httpChannelInitializer : httpsChannelInitializer);
-
-        int port = protocol == ServerProtocol.HTTPS ? nettyConfig.httpsPort() : nettyConfig.httpPort();
-        Channel channel = bootstrap.bind(port).sync().channel();
-
-        log.info("{} server starting on port {}...", protocol.name(), port);
-        startupLatch.countDown();
-
-        return channel;
-    }
-
-    private EventLoopGroup createEventLoopGroup(int numThreads) {
-        return new MultiThreadIoEventLoopGroup(numThreads, NioIoHandler.newFactory());
-    }
-
-    public enum ServerProtocol {
-        HTTP,
-        HTTPS
-    }
+  public enum ServerProtocol {
+    HTTP,
+    HTTPS
+  }
 }

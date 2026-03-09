@@ -22,47 +22,47 @@ import org.springframework.stereotype.Component;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class DirectoriesRequestHandler {
-    private final DirectoryController directoryController;
+  private final DirectoryController directoryController;
 
-    public void handleCreateDirectoryRequest(
-            ChannelHandlerContext ctx, HttpRequest request, String userToken) {
-        String name = RequestUtils.getRequiredQueryParam(request, "name");
-        Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
+  public void handleCreateDirectoryRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+    String name = RequestUtils.getRequiredQueryParam(request, "name");
+    Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
 
-        UUID createdId =
-                directoryController.createDirectory(
-                        new CreateDirectoryRequest(userToken, parentId, name, UUID.randomUUID()));
+    UUID createdId =
+        directoryController.createDirectory(
+            new CreateDirectoryRequest(userToken, parentId, name, UUID.randomUUID()));
 
-        ResponseUtils.sendCreatedResponse(ctx, createdId, "Directory successfully created");
+    ResponseUtils.sendCreatedResponse(ctx, createdId, "Directory successfully created");
+  }
+
+  public void handleChangeDirectoryRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+    String directoryId = RequestUtils.getRequiredQueryParam(request, "id");
+    Optional<String> newName = RequestUtils.getQueryParam(request, "newName");
+    Optional<String> newParentId = RequestUtils.getQueryParam(request, "newParentId");
+
+    // TODO: убрать != null, объединить эти два метода и вынести в контроллер?
+    if (newName.isPresent()) {
+      directoryController.renameDirectory(
+          new RenameDirectoryRequest(userToken, directoryId, newName.get()));
     }
 
-    public void handleChangeDirectoryRequest(
-            ChannelHandlerContext ctx, HttpRequest request, String userToken) {
-        String directoryId = RequestUtils.getRequiredQueryParam(request, "id");
-        Optional<String> newName = RequestUtils.getQueryParam(request, "newName");
-        Optional<String> newParentId = RequestUtils.getQueryParam(request, "newParentId");
-
-        // TODO: убрать != null, объединить эти два метода и вынести в контроллер?
-        if (newName.isPresent()) {
-            directoryController.renameDirectory(
-                    new RenameDirectoryRequest(userToken, directoryId, newName.get()));
-        }
-
-        if (newParentId.isPresent()) {
-            directoryController.moveDirectory(
-                    new MoveDirectoryRequest(userToken, directoryId, newParentId.get()));
-        }
-
-        ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Directory successfully updated");
+    if (newParentId.isPresent()) {
+      directoryController.moveDirectory(
+          new MoveDirectoryRequest(userToken, directoryId, newParentId.get()));
     }
 
-    public void handleDeleteDirectoryRequest(
-            ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Directory successfully updated");
+  }
 
-        String directoryId = RequestUtils.getRequiredQueryParam(request, "id");
+  public void handleDeleteDirectoryRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
 
-        directoryController.deleteDirectory(new DeleteDirectoryRequest(userToken, directoryId));
+    String directoryId = RequestUtils.getRequiredQueryParam(request, "id");
 
-        ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Directory successfully deleted");
-    }
+    directoryController.deleteDirectory(new DeleteDirectoryRequest(userToken, directoryId));
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Directory successfully deleted");
+  }
 }

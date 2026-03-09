@@ -15,45 +15,45 @@ import io.netty.handler.timeout.IdleStateHandler;
 import org.springframework.beans.factory.ObjectProvider;
 
 public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
-    private final PipelineBuilder pipelineBuilder;
-    private final SslContextFactory sslContextFactory;
-    private final ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers;
+  private final PipelineBuilder pipelineBuilder;
+  private final SslContextFactory sslContextFactory;
+  private final ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers;
 
-    private final NettyConfig nettyConfig;
-    private final ServerProtocol protocol;
+  private final NettyConfig nettyConfig;
+  private final ServerProtocol protocol;
 
-    public MainChannelInitializer(
-            PipelineBuilder pipelineBuilder,
-            SslContextFactory sslContextFactory,
-            ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers,
-            NettyConfig nettyConfig,
-            ServerProtocol protocol) {
-        this.pipelineBuilder = pipelineBuilder;
-        this.sslContextFactory = sslContextFactory;
-        this.protocolNegotiationHandlers = protocolNegotiationHandlers;
-        this.nettyConfig = nettyConfig;
-        this.protocol = protocol;
+  public MainChannelInitializer(
+      PipelineBuilder pipelineBuilder,
+      SslContextFactory sslContextFactory,
+      ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers,
+      NettyConfig nettyConfig,
+      ServerProtocol protocol) {
+    this.pipelineBuilder = pipelineBuilder;
+    this.sslContextFactory = sslContextFactory;
+    this.protocolNegotiationHandlers = protocolNegotiationHandlers;
+    this.nettyConfig = nettyConfig;
+    this.protocol = protocol;
+  }
+
+  @Override
+  protected void initChannel(SocketChannel socketChannel) {
+    ChannelPipeline pipeline = socketChannel.pipeline();
+
+    if (nettyConfig.enableLogging()) {
+      pipeline.addFirst(PipelineHandlerNames.LOGGING, new LoggingHandler(LogLevel.INFO));
     }
 
-    @Override
-    protected void initChannel(SocketChannel socketChannel) {
-        ChannelPipeline pipeline = socketChannel.pipeline();
+    pipeline.addLast(
+        PipelineHandlerNames.IDLE_STATE, new IdleStateHandler(0, 0, nettyConfig.idleTimeoutSec()));
 
-        if (nettyConfig.enableLogging()) {
-            pipeline.addFirst(PipelineHandlerNames.LOGGING, new LoggingHandler(LogLevel.INFO));
-        }
-
-        pipeline.addLast(
-                PipelineHandlerNames.IDLE_STATE, new IdleStateHandler(0, 0, nettyConfig.idleTimeoutSec()));
-
-        if (protocol == ServerProtocol.HTTPS) {
-            pipeline.addLast(
-                    PipelineHandlerNames.SSL,
-                    sslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
-            pipeline.addLast(
-                    PipelineHandlerNames.PROTOCOL_NEGOTIATION, protocolNegotiationHandlers.getObject());
-        } else {
-            pipelineBuilder.buildHttp11Pipeline(pipeline);
-        }
+    if (protocol == ServerProtocol.HTTPS) {
+      pipeline.addLast(
+          PipelineHandlerNames.SSL,
+          sslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
+      pipeline.addLast(
+          PipelineHandlerNames.PROTOCOL_NEGOTIATION, protocolNegotiationHandlers.getObject());
+    } else {
+      pipelineBuilder.buildHttp11Pipeline(pipeline);
     }
+  }
 }

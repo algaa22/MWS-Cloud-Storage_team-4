@@ -13,36 +13,36 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 public class TariffController {
 
-    private final TariffService tariffService;
-    private final JwtService jwtService;
+  private final TariffService tariffService;
+  private final JwtService jwtService;
 
-    public void purchaseTariff(TariffRequest request) {
-        request.validate(jwtService); // проверяем токен
-        tariffService.purchaseTariff(request);
-    }
+  public void purchaseTariff(TariffRequest request) {
+    request.validate(jwtService); // проверяем токен
+    tariffService.purchaseTariff(request);
+  }
 
-    public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
-        request.validate(jwtService);
-        return tariffService.getTariffInfo(request);
-    }
+  public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
+    request.validate(jwtService);
+    return tariffService.getTariffInfo(request);
+  }
 
-    public void disableAutoRenew(SimpleUserRequest request) {
-        request.validate(jwtService);
-        tariffService.disableAutoRenew(request);
-    }
+  public void disableAutoRenew(SimpleUserRequest request) {
+    request.validate(jwtService);
+    tariffService.disableAutoRenew(request);
+  }
 
-    public void enableAutoRenew(SimpleUserRequest request) {
-        request.validate(jwtService);
-        tariffService.enableAutoRenew(request);
-    }
+  public void enableAutoRenew(SimpleUserRequest request) {
+    request.validate(jwtService);
+    tariffService.enableAutoRenew(request);
+  }
 
-    public void updatePaymentMethod(UpdateAutoRenewRequest request) {
-        request.validate(jwtService);
-        tariffService.updatePaymentMethod(request);
-    }
+  public void updatePaymentMethod(UpdateAutoRenewRequest request) {
+    request.validate(jwtService);
+    tariffService.updatePaymentMethod(request);
+  }
 
-    public boolean checkAccess(SimpleUserRequest request) {
-        request.validate(jwtService);
-        return tariffService.hasAccess(request);
-    }
+  public boolean checkAccess(SimpleUserRequest request) {
+    request.validate(jwtService);
+    return tariffService.hasAccess(request);
+  }
 }

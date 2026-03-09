@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class DbCheckConnectionException extends FatalStorageException {
 
-    public DbCheckConnectionException(SQLException cause) {
-        super("Failed to check connection", cause);
-    }
+  public DbCheckConnectionException(SQLException cause) {
+    super("Failed to check connection", cause);
+  }
 }

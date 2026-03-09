@@ -7,12 +7,12 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record DeleteDirectoryRequest(String userToken, String directoryId) {
 
-    public void validate(JwtService jwtService) throws ValidationFailedException {
-        ValidationResult result =
-                Validators.all(
-                        Validators.validToken(jwtService, userToken),
-                        Validators.isUuid("Directory ID", directoryId));
+  public void validate(JwtService jwtService) throws ValidationFailedException {
+    ValidationResult result =
+        Validators.all(
+            Validators.validToken(jwtService, userToken),
+            Validators.isUuid("Directory ID", directoryId));
 
-        Validators.throwExceptionIfNotValid(result);
-    }
+    Validators.throwExceptionIfNotValid(result);
+  }
 }

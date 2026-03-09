@@ -20,22 +20,18 @@ import lombok.Setter;
 @NoArgsConstructor(force = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class UserEntity {
-    @EqualsAndHashCode.Include
-    private final UUID id;
-    @Builder.Default
-    boolean isActive = true;
-    private String name;
-    private String email;
-    private String passwordHash;
-    private long storageLimit;
-    @Builder.Default
-    private long usedStorage = 0L;
-    private LocalDateTime createdAt;
-    private TariffPlan tariffPlan;
-    private LocalDateTime tariffStartDate;
-    private LocalDateTime tariffEndDate;
-    @Builder.Default
-    private boolean autoRenew = true;
-    private String paymentMethodId;
-    private LocalDateTime trialStartDate;
+  @EqualsAndHashCode.Include private final UUID id;
+  @Builder.Default boolean isActive = true;
+  private String name;
+  private String email;
+  private String passwordHash;
+  private long storageLimit;
+  @Builder.Default private long usedStorage = 0L;
+  private LocalDateTime createdAt;
+  private TariffPlan tariffPlan;
+  private LocalDateTime tariffStartDate;
+  private LocalDateTime tariffEndDate;
+  @Builder.Default private boolean autoRenew = true;
+  private String paymentMethodId;
+  private LocalDateTime trialStartDate;
 }

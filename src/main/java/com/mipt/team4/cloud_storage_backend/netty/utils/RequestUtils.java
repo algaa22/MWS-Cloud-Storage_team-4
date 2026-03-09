@@ -14,47 +14,47 @@ import java.util.Optional;
 
 public class RequestUtils {
 
-    public static String getRequiredQueryParam(HttpRequest request, String paramName) {
-        return getQueryParam(request, paramName)
-                .orElseThrow(() -> new QueryParameterNotFoundException(paramName));
+  public static String getRequiredQueryParam(HttpRequest request, String paramName) {
+    return getQueryParam(request, paramName)
+        .orElseThrow(() -> new QueryParameterNotFoundException(paramName));
+  }
+
+  public static String getQueryParam(HttpRequest request, String paramName, String defaultValue) {
+    return getQueryParam(request, paramName).orElse(defaultValue);
+  }
+
+  public static List<String> getQueryParamList(HttpRequest request, String paramName) {
+    String value = getQueryParam(request, paramName, null);
+    if (value == null || value.trim().isEmpty()) {
+      return List.of();
+    }
+    return Arrays.asList(value.split(","));
+  }
+
+  public static Optional<String> getQueryParam(HttpRequest request, String paramName) {
+    QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
+    Map<String, List<String>> parameters = queryDecoder.parameters();
+
+    if (parameters.containsKey(paramName) && !parameters.get(paramName).isEmpty()) {
+      String encodedValue = parameters.get(paramName).getFirst();
+      String decodedValue = URLDecoder.decode(encodedValue, StandardCharsets.UTF_8);
+
+      return Optional.of(decodedValue);
     }
 
-    public static String getQueryParam(HttpRequest request, String paramName, String defaultValue) {
-        return getQueryParam(request, paramName).orElse(defaultValue);
-    }
+    return Optional.empty();
+  }
 
-    public static List<String> getQueryParamList(HttpRequest request, String paramName) {
-        String value = getQueryParam(request, paramName, null);
-        if (value == null || value.trim().isEmpty()) {
-            return List.of();
-        }
-        return Arrays.asList(value.split(","));
-    }
+  public static String getRequiredHeader(HttpRequest request, String headerName) {
+    return getHeader(request, headerName)
+        .orElseThrow(() -> new HeaderNotFoundException(headerName));
+  }
 
-    public static Optional<String> getQueryParam(HttpRequest request, String paramName) {
-        QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
-        Map<String, List<String>> parameters = queryDecoder.parameters();
+  public static String getHeader(HttpRequest request, String headerName, String defaultValue) {
+    return getHeader(request, headerName).orElse(defaultValue);
+  }
 
-        if (parameters.containsKey(paramName) && !parameters.get(paramName).isEmpty()) {
-            String encodedValue = parameters.get(paramName).getFirst();
-            String decodedValue = URLDecoder.decode(encodedValue, StandardCharsets.UTF_8);
-
-            return Optional.of(decodedValue);
-        }
-
-        return Optional.empty();
-    }
-
-    public static String getRequiredHeader(HttpRequest request, String headerName) {
-        return getHeader(request, headerName)
-                .orElseThrow(() -> new HeaderNotFoundException(headerName));
-    }
-
-    public static String getHeader(HttpRequest request, String headerName, String defaultValue) {
-        return getHeader(request, headerName).orElse(defaultValue);
-    }
-
-    public static Optional<String> getHeader(HttpRequest request, String headerName) {
-        return Optional.ofNullable(request.headers().get(headerName));
-    }
+  public static Optional<String> getHeader(HttpRequest request, String headerName) {
+    return Optional.ofNullable(request.headers().get(headerName));
+  }
 }

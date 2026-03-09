@@ -14,62 +14,62 @@ import lombok.Getter;
 @Getter
 public class ChunkedUploadState {
 
-    private final List<byte[]> chunks = new ArrayList<>();
-    // TODO: сессия не удаляется, если completeMultipartUpload не вызван
-    // TODO: нужны ли все поля session?
-    private final ChunkedUploadRequest request;
-    private final Map<Integer, String> eTags = new HashMap<>();
-    private final StorageEntity entity;
-    private boolean stopped = false;
-    private long fileSize = 0;
-    private int totalParts = 0;
-    private int partSize = 0;
-    private int partNum = 0;
-    private String uploadId;
+  private final List<byte[]> chunks = new ArrayList<>();
+  // TODO: сессия не удаляется, если completeMultipartUpload не вызван
+  // TODO: нужны ли все поля session?
+  private final ChunkedUploadRequest request;
+  private final Map<Integer, String> eTags = new HashMap<>();
+  private final StorageEntity entity;
+  private boolean stopped = false;
+  private long fileSize = 0;
+  private int totalParts = 0;
+  private int partSize = 0;
+  private int partNum = 0;
+  private String uploadId;
 
-    ChunkedUploadState(ChunkedUploadRequest request, StorageEntity entity) {
-        this.request = request;
-        this.entity = entity;
+  ChunkedUploadState(ChunkedUploadRequest request, StorageEntity entity) {
+    this.request = request;
+    this.entity = entity;
+  }
+
+  String getOrCreateUploadId(StorageRepository repo) {
+    if (uploadId == null) {
+      uploadId = repo.startMultipartUpload(entity);
     }
 
-    String getOrCreateUploadId(StorageRepository repo) {
-        if (uploadId == null) {
-            uploadId = repo.startMultipartUpload(entity);
-        }
+    return uploadId;
+  }
 
-        return uploadId;
-    }
+  public void increaseTotalParts() {
+    totalParts++;
+  }
 
-    public void increaseTotalParts() {
-        totalParts++;
-    }
+  public void addFileSize(long amount) {
+    fileSize += amount;
+  }
 
-    public void addFileSize(long amount) {
-        fileSize += amount;
-    }
+  public void addPartSize(int amount) {
+    partSize += amount;
+  }
 
-    public void addPartSize(int amount) {
-        partSize += amount;
-    }
+  public void increasePartNum() {
+    partNum++;
+  }
 
-    public void increasePartNum() {
-        partNum++;
-    }
+  public void resetPartSize() {
+    partSize = 0;
+  }
 
-    public void resetPartSize() {
-        partSize = 0;
-    }
+  public void stop() {
+    stopped = true;
+  }
 
-    public void stop() {
-        stopped = true;
-    }
+  public void resume() {
+    stopped = false;
+  }
 
-    public void resume() {
-        stopped = false;
-    }
-
-    public void clear() {
-        chunks.clear();
-        eTags.clear();
-    }
+  public void clear() {
+    chunks.clear();
+    eTags.clear();
+  }
 }

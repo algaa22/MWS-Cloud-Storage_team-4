@@ -23,34 +23,34 @@ import org.springframework.stereotype.Component;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class ChunkedDownloadHandler {
-    private final FileController fileController;
-    private final StorageConfig storageConfig;
+  private final FileController fileController;
+  private final StorageConfig storageConfig;
 
-    // TODO: refactor
-    public void start(ChannelHandlerContext ctx, HttpRequest request) {
-        String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-        String fileId = RequestUtils.getRequiredQueryParam(request, "id");
+  // TODO: refactor
+  public void start(ChannelHandlerContext ctx, HttpRequest request) {
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    String fileId = RequestUtils.getRequiredQueryParam(request, "id");
 
-        FileDownloadResponse fileDownload =
-                fileController.downloadFile(new SimpleFileOperationRequest(fileId, userToken));
+    FileDownloadResponse fileDownload =
+        fileController.downloadFile(new SimpleFileOperationRequest(fileId, userToken));
 
-        HttpResponse response =
-                new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+    HttpResponse response =
+        new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
 
-        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileDownload.size());
-        String contentType =
-                fileDownload.mimeType() != null ? fileDownload.mimeType() : "application/octet-stream";
-        response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
-        response.headers().set("X-File-Size", fileDownload.size());
+    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileDownload.size());
+    String contentType =
+        fileDownload.mimeType() != null ? fileDownload.mimeType() : "application/octet-stream";
+    response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
+    response.headers().set("X-File-Size", fileDownload.size());
 
-        ResponseUtils.write(ctx, response);
+    ResponseUtils.write(ctx, response);
 
-        ChunkedInput<HttpContent> chunkedInput =
-                new CustomChunkedInput(
-                        fileDownload.stream(),
-                        storageConfig.rest().fileDownloadChunkSize(),
-                        fileDownload.size());
+    ChunkedInput<HttpContent> chunkedInput =
+        new CustomChunkedInput(
+            fileDownload.stream(),
+            storageConfig.rest().fileDownloadChunkSize(),
+            fileDownload.size());
 
-        ResponseUtils.send(ctx, chunkedInput).addListener(ChannelFutureListener.CLOSE);
-    }
+    ResponseUtils.send(ctx, chunkedInput).addListener(ChannelFutureListener.CLOSE);
+  }
 }

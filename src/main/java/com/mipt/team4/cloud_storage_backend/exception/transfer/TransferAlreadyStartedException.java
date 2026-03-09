@@ -5,7 +5,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class TransferAlreadyStartedException extends BaseStorageException {
 
-    public TransferAlreadyStartedException() {
-        super("Previous request not completed", HttpResponseStatus.CONFLICT);
-    }
+  public TransferAlreadyStartedException() {
+    super("Previous request not completed", HttpResponseStatus.CONFLICT);
+  }
 }

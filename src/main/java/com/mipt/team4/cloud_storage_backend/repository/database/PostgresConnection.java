@@ -25,92 +25,92 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class PostgresConnection implements DatabaseConnection {
-    private final DatabaseConfig databaseConfig;
+  private final DatabaseConfig databaseConfig;
 
-    private Connection connection;
+  private Connection connection;
 
-    @PostConstruct
-    public void init() {
-        connect();
+  @PostConstruct
+  public void init() {
+    connect();
+  }
+
+  @Override
+  public void connect() {
+    try {
+      Class.forName("org.postgresql.Driver");
+    } catch (ClassNotFoundException e) {
+      throw new JdbcNotFoundException(e);
     }
 
-    @Override
-    public void connect() {
-        try {
-            Class.forName("org.postgresql.Driver");
-        } catch (ClassNotFoundException e) {
-            throw new JdbcNotFoundException(e);
-        }
-
-        if (isConnected()) {
-            return;
-        }
-
-        try {
-            connection =
-                    DriverManager.getConnection(
-                            databaseConfig.url(), databaseConfig.username(), databaseConfig.password());
-        } catch (SQLException e) {
-            throw new DbCreateConnectionException(e);
-        }
-
-        createTables();
+    if (isConnected()) {
+      return;
     }
 
-    public boolean isConnected() {
-        try {
-            return connection != null && !connection.isClosed();
-        } catch (SQLException e) {
-            throw new DbCheckConnectionException(e);
-        }
+    try {
+      connection =
+          DriverManager.getConnection(
+              databaseConfig.url(), databaseConfig.username(), databaseConfig.password());
+    } catch (SQLException e) {
+      throw new DbCreateConnectionException(e);
     }
 
-    @Override
-    public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) {
-        try (PreparedStatement statement = connection.prepareStatement(query)) {
-            setParameters(statement, params);
+    createTables();
+  }
 
-            ResultSet resultSet = statement.executeQuery();
-            List<T> results = new ArrayList<>();
-
-            while (resultSet.next()) {
-                results.add(mapper.map(resultSet));
-            }
-
-            return results;
-        } catch (SQLException e) {
-            throw new DbExecuteQueryException(query, e);
-        }
+  public boolean isConnected() {
+    try {
+      return connection != null && !connection.isClosed();
+    } catch (SQLException e) {
+      throw new DbCheckConnectionException(e);
     }
+  }
 
-    public int executeUpdate(String query, List<Object> params) {
-        try (PreparedStatement statement = connection.prepareStatement(query)) {
-            setParameters(statement, params);
+  @Override
+  public <T> List<T> executeQuery(String query, List<Object> params, ResultSetMapper<T> mapper) {
+    try (PreparedStatement statement = connection.prepareStatement(query)) {
+      setParameters(statement, params);
 
-            return statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new DbExecuteUpdateException(query, e);
-        }
+      ResultSet resultSet = statement.executeQuery();
+      List<T> results = new ArrayList<>();
+
+      while (resultSet.next()) {
+        results.add(mapper.map(resultSet));
+      }
+
+      return results;
+    } catch (SQLException e) {
+      throw new DbExecuteQueryException(query, e);
     }
+  }
 
-    private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {
-        if (params != null) {
-            for (int i = 0; i < params.size(); i++) {
-                statement.setObject(i + 1, params.get(i));
-            }
-        }
+  public int executeUpdate(String query, List<Object> params) {
+    try (PreparedStatement statement = connection.prepareStatement(query)) {
+      setParameters(statement, params);
+
+      return statement.executeUpdate();
+    } catch (SQLException e) {
+      throw new DbExecuteUpdateException(query, e);
     }
+  }
 
-    private void createTables() {
-        createUsersTable();
-        createFilesTable();
-        createRefreshTokensTable();
-        createFileTagsTable();
+  private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {
+    if (params != null) {
+      for (int i = 0; i < params.size(); i++) {
+        statement.setObject(i + 1, params.get(i));
+      }
     }
+  }
 
-    private void createFilesTable() {
-        String createFilesSql =
-                """
+  private void createTables() {
+    createUsersTable();
+    createFilesTable();
+    createRefreshTokensTable();
+    createFileTagsTable();
+  }
+
+  private void createFilesTable() {
+    String createFilesSql =
+        """
                             CREATE TABLE IF NOT EXISTS files (
                                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -121,31 +121,31 @@ public class PostgresConnection implements DatabaseConnection {
                                 visibility VARCHAR(20) DEFAULT 'private',
                                 is_deleted BOOLEAN DEFAULT false,
                                 is_directory BOOLEAN DEFAULT false,
-                        
+
                                 status VARCHAR(20) NOT NULL DEFAULT 'READY',
                                 operation_type VARCHAR(30),
                                 started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                                 retry_count INT DEFAULT 0,
                                 error_message TEXT,
-                        
+
                                 CONSTRAINT check_no_self_reference CHECK (id != parent_id)
                             );
-                        
+
                             CREATE UNIQUE INDEX IF NOT EXISTS idx_files_upsert
                             ON files (user_id, name, (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000')));
                         """;
 
-        try {
-            executeUpdate(createFilesSql, List.of());
-        } catch (DbExecuteUpdateException e) {
-            throw new DbCreateTableException("files", e);
-        }
+    try {
+      executeUpdate(createFilesSql, List.of());
+    } catch (DbExecuteUpdateException e) {
+      throw new DbCreateTableException("files", e);
     }
+  }
 
-    private void createUsersTable() {
-        String createUsersSql =
-                """
+  private void createUsersTable() {
+    String createUsersSql =
+        """
                             CREATE TABLE IF NOT EXISTS users (
                                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                                 email VARCHAR(255) UNIQUE NOT NULL,
@@ -161,20 +161,20 @@ public class PostgresConnection implements DatabaseConnection {
                                 auto_renew BOOLEAN DEFAULT true,
                                 payment_method_id VARCHAR(255),
                                 trial_start_date TIMESTAMP
-                        
+
                             )
                         """;
 
-        try {
-            executeUpdate(createUsersSql, List.of());
-        } catch (DbExecuteUpdateException e) {
-            throw new DbCreateTableException("users", e);
-        }
+    try {
+      executeUpdate(createUsersSql, List.of());
+    } catch (DbExecuteUpdateException e) {
+      throw new DbCreateTableException("users", e);
     }
+  }
 
-    private void createRefreshTokensTable() {
-        String request =
-                """
+  private void createRefreshTokensTable() {
+    String request =
+        """
                             CREATE TABLE IF NOT EXISTS refresh_tokens (
                                 id UUID PRIMARY KEY,
                                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -185,16 +185,16 @@ public class PostgresConnection implements DatabaseConnection {
                             );
                         """;
 
-        try {
-            executeUpdate(request, List.of());
-        } catch (DbExecuteUpdateException e) {
-            throw new DbCreateTableException("refresh_tokens", e);
-        }
+    try {
+      executeUpdate(request, List.of());
+    } catch (DbExecuteUpdateException e) {
+      throw new DbCreateTableException("refresh_tokens", e);
     }
+  }
 
-    private void createFileTagsTable() {
-        String sql =
-                """
+  private void createFileTagsTable() {
+    String sql =
+        """
                         CREATE TABLE IF NOT EXISTS file_tags (
                             file_id UUID REFERENCES files(id) ON DELETE CASCADE,
                             tag TEXT NOT NULL,
@@ -202,34 +202,34 @@ public class PostgresConnection implements DatabaseConnection {
                         )
                         """;
 
-        try {
-            executeUpdate(sql, List.of());
-        } catch (DbExecuteUpdateException e) {
-            throw new DbCreateTableException("file_tags", e);
-        }
-
-        createFileTagsIndexes();
+    try {
+      executeUpdate(sql, List.of());
+    } catch (DbExecuteUpdateException e) {
+      throw new DbCreateTableException("file_tags", e);
     }
 
-    private void createFileTagsIndexes() {
+    createFileTagsIndexes();
+  }
 
-        executeUpdate(
-                "CREATE INDEX IF NOT EXISTS idx_file_tags_tag_file ON file_tags(tag, file_id);", List.of());
+  private void createFileTagsIndexes() {
+
+    executeUpdate(
+        "CREATE INDEX IF NOT EXISTS idx_file_tags_tag_file ON file_tags(tag, file_id);", List.of());
+  }
+
+  @PreDestroy
+  @Override
+  public void disconnect() {
+    try {
+      connection.close();
+    } catch (SQLException e) {
+      throw new DbCloseConnectionException(e);
     }
+  }
 
-    @PreDestroy
-    @Override
-    public void disconnect() {
-        try {
-            connection.close();
-        } catch (SQLException e) {
-            throw new DbCloseConnectionException(e);
-        }
-    }
+  @FunctionalInterface
+  public interface ResultSetMapper<T> {
 
-    @FunctionalInterface
-    public interface ResultSetMapper<T> {
-
-        T map(ResultSet resultSet) throws SQLException;
-    }
+    T map(ResultSet resultSet) throws SQLException;
+  }
 }

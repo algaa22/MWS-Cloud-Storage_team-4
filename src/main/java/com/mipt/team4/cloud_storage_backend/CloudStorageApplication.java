@@ -13,14 +13,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class CloudStorageApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(CloudStorageApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(CloudStorageApplication.class, args);
+  }
 
-    @Bean
-    public CommandLineRunner run(NettyServerManager server) {
-        return args -> {
-            server.start();
-        };
-    }
+  @Bean
+  public CommandLineRunner run(NettyServerManager server) {
+    return args -> {
+      server.start();
+    };
+  }
 }

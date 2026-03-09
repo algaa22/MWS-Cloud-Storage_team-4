@@ -12,40 +12,40 @@ import lombok.Builder;
 
 @Builder
 public record StorageDto(
-        UUID storageId,
-        UUID userId,
-        UUID parentId,
-        String name,
-        String type,
-        String visibility,
-        long size,
-        boolean isDeleted,
-        List<String> tags,
-        boolean isDirectory,
-        FileStatus status,
-        FileOperationType operationType,
-        LocalDateTime startedAt,
-        LocalDateTime updatedAt,
-        String errorMessage,
-        int retryCount) {
+    UUID storageId,
+    UUID userId,
+    UUID parentId,
+    String name,
+    String type,
+    String visibility,
+    long size,
+    boolean isDeleted,
+    List<String> tags,
+    boolean isDirectory,
+    FileStatus status,
+    FileOperationType operationType,
+    LocalDateTime startedAt,
+    LocalDateTime updatedAt,
+    String errorMessage,
+    int retryCount) {
 
-    public StorageDto(StorageEntity entity) {
-        this(
-                entity.getId(),
-                entity.getUserId(),
-                entity.getParentId(),
-                entity.getName(),
-                entity.getMimeType(),
-                entity.getVisibility(),
-                entity.getSize(),
-                entity.isDeleted(),
-                entity.getTags(),
-                entity.isDirectory(),
-                entity.getStatus(),
-                entity.getOperationType(),
-                entity.getStartedAt(),
-                entity.getUpdatedAt(),
-                entity.getErrorMessage(),
-                entity.getRetryCount());
-    }
+  public StorageDto(StorageEntity entity) {
+    this(
+        entity.getId(),
+        entity.getUserId(),
+        entity.getParentId(),
+        entity.getName(),
+        entity.getMimeType(),
+        entity.getVisibility(),
+        entity.getSize(),
+        entity.isDeleted(),
+        entity.getTags(),
+        entity.isDirectory(),
+        entity.getStatus(),
+        entity.getOperationType(),
+        entity.getStartedAt(),
+        entity.getUpdatedAt(),
+        entity.getErrorMessage(),
+        entity.getRetryCount());
+  }
 }

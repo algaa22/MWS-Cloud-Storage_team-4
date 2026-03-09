@@ -6,21 +6,21 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public record ValidationError(String field, String message, String code) {
 
-    public ValidationError(String field, String message) {
-        this(field, message, null);
+  public ValidationError(String field, String message) {
+    this(field, message, null);
+  }
+
+  public JsonNode toJson() {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode node = mapper.createObjectNode();
+
+    node.put("field", field);
+    node.put("message", message);
+
+    if (code != null) {
+      node.put("code", code);
     }
 
-    public JsonNode toJson() {
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode node = mapper.createObjectNode();
-
-        node.put("field", field);
-        node.put("message", message);
-
-        if (code != null) {
-            node.put("code", code);
-        }
-
-        return node;
-    }
+    return node;
+  }
 }

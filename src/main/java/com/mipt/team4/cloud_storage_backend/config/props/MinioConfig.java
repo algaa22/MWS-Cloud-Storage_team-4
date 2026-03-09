@@ -4,12 +4,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "minio")
 public record MinioConfig(
-        long minFilePartSize,
-        String url,
-        String username,
-        String password,
-        String region,
-        UserDataBucket userDataBucket) {
-    public record UserDataBucket(String name) {
-    }
+    long minFilePartSize,
+    String url,
+    String username,
+    String password,
+    String region,
+    UserDataBucket userDataBucket) {
+  public record UserDataBucket(String name) {}
 }

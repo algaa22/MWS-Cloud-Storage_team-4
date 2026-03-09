@@ -5,21 +5,21 @@ import java.util.Map;
 
 public interface FileContentRepository {
 
-    InputStream downloadObject(String s3key);
+  InputStream downloadObject(String s3key);
 
-    String startMultipartUpload(String s3Key);
+  String startMultipartUpload(String s3Key);
 
-    String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes);
+  String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes);
 
-    void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags);
+  void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags);
 
-    void createBucket(String bucketName);
+  void createBucket(String bucketName);
 
-    void putObject(String s3Key, byte[] data);
+  void putObject(String s3Key, byte[] data);
 
-    void hardDeleteFile(String s3Key);
+  void hardDeleteFile(String s3Key);
 
-    boolean bucketExists(String bucketName);
+  boolean bucketExists(String bucketName);
 
-    boolean objectExists(String s3Key);
+  boolean objectExists(String s3Key);
 }

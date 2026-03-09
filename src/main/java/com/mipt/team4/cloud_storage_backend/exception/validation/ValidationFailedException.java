@@ -14,36 +14,36 @@ import lombok.Getter;
 
 @Getter
 public class ValidationFailedException extends BaseStorageException {
-    private final List<ValidationError> errors;
+  private final List<ValidationError> errors;
 
-    public ValidationFailedException(ValidationResult result) {
-        this(result.getErrors());
+  public ValidationFailedException(ValidationResult result) {
+    this(result.getErrors());
+  }
+
+  public ValidationFailedException(List<ValidationError> errors) {
+    super(toJsonString(errors), HttpResponseStatus.BAD_REQUEST);
+
+    this.errors = errors;
+  }
+
+  public ValidationFailedException(ValidationError error) {
+    super(toJsonString(List.of(error)), HttpResponseStatus.BAD_REQUEST);
+
+    this.errors = List.of(error);
+  }
+
+  private static String toJsonString(List<ValidationError> errors) {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode root = mapper.createObjectNode();
+    root.put("error", "Validation failed");
+
+    ArrayNode details = mapper.createArrayNode();
+    for (ValidationError error : errors) {
+      details.add(error.toJson());
     }
 
-    public ValidationFailedException(List<ValidationError> errors) {
-        super(toJsonString(errors), HttpResponseStatus.BAD_REQUEST);
+    root.set("details", details);
 
-        this.errors = errors;
-    }
-
-    public ValidationFailedException(ValidationError error) {
-        super(toJsonString(List.of(error)), HttpResponseStatus.BAD_REQUEST);
-
-        this.errors = List.of(error);
-    }
-
-    private static String toJsonString(List<ValidationError> errors) {
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode root = mapper.createObjectNode();
-        root.put("error", "Validation failed");
-
-        ArrayNode details = mapper.createArrayNode();
-        for (ValidationError error : errors) {
-            details.add(error.toJson());
-        }
-
-        root.set("details", details);
-
-        return root.toString();
-    }
+    return root.toString();
+  }
 }

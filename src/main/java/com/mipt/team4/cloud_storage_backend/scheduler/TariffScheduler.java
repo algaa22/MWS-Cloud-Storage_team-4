@@ -20,66 +20,66 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class TariffScheduler {
 
-    private final UserRepository userRepository;
-    private final NotificationClient notificationClient;
-    private final PaymentService paymentService;
-    private final TariffService tariffService;
+  private final UserRepository userRepository;
+  private final NotificationClient notificationClient;
+  private final PaymentService paymentService;
+  private final TariffService tariffService;
 
-    @Scheduled(cron = "0 */10 * * * *")
-    public void checkTariffs() {
-        checkUsersWithTariffEndingSoon(7);
-        checkUsersWithTariffEndingSoon(3);
-        checkUsersWithTariffEndingSoon(1);
-        checkExpiredTariffs();
+  @Scheduled(cron = "0 */10 * * * *")
+  public void checkTariffs() {
+    checkUsersWithTariffEndingSoon(7);
+    checkUsersWithTariffEndingSoon(3);
+    checkUsersWithTariffEndingSoon(1);
+    checkExpiredTariffs();
+  }
+
+  private void checkUsersWithTariffEndingSoon(int days) {
+    LocalDateTime from = LocalDateTime.now().plusDays(days);
+    LocalDateTime to = from.plusDays(1);
+
+    List<UserEntity> users = userRepository.findUsersWithTariffEndingBetween(from, to);
+
+    for (UserEntity user : users) {
+      notificationClient.notifyTariffEndingSoon(
+          user.getEmail(), user.getName(), days, user.getTariffEndDate());
+      log.info("Notified user {}: tariff ends in {} days", user.getId(), days);
     }
+  }
 
-    private void checkUsersWithTariffEndingSoon(int days) {
-        LocalDateTime from = LocalDateTime.now().plusDays(days);
-        LocalDateTime to = from.plusDays(1);
+  private void checkExpiredTariffs() {
+    List<UserEntity> expiredUsers = userRepository.findUsersWithExpiredTariff(LocalDateTime.now());
 
-        List<UserEntity> users = userRepository.findUsersWithTariffEndingBetween(from, to);
-
-        for (UserEntity user : users) {
-            notificationClient.notifyTariffEndingSoon(
-                    user.getEmail(), user.getName(), days, user.getTariffEndDate());
-            log.info("Notified user {}: tariff ends in {} days", user.getId(), days);
-        }
+    for (UserEntity user : expiredUsers) {
+      if (user.isAutoRenew()) {
+        handleAutoRenew(user);
+      } else {
+        deactivateUser(user);
+      }
     }
+  }
 
-    private void checkExpiredTariffs() {
-        List<UserEntity> expiredUsers = userRepository.findUsersWithExpiredTariff(LocalDateTime.now());
+  private void handleAutoRenew(UserEntity user) {
+    try {
+      paymentService.autoRenewTariff(user.getId());
 
-        for (UserEntity user : expiredUsers) {
-            if (user.isAutoRenew()) {
-                handleAutoRenew(user);
-            } else {
-                deactivateUser(user);
-            }
-        }
+      LocalDateTime newEndDate = LocalDateTime.now().plusDays(30);
+      userRepository.updateTariffEndDate(user.getId(), newEndDate);
+
+      notificationClient.notifyTariffRenewed(user.getEmail(), user.getName(), newEndDate);
+
+    } catch (PaymentException e) {
+      log.error("Auto-renew failed for user: {}", user.getId(), e);
+      deactivateUser(user);
     }
+  }
 
-    private void handleAutoRenew(UserEntity user) {
-        try {
-            paymentService.autoRenewTariff(user.getId());
+  private void deactivateUser(UserEntity user) {
+    userRepository.deactivateUser(user.getId());
 
-            LocalDateTime newEndDate = LocalDateTime.now().plusDays(30);
-            userRepository.updateTariffEndDate(user.getId(), newEndDate);
+    // TODO: сделать файлы недоступными
 
-            notificationClient.notifyTariffRenewed(user.getEmail(), user.getName(), newEndDate);
+    notificationClient.notifyTariffExpired(user.getEmail(), user.getName());
 
-        } catch (PaymentException e) {
-            log.error("Auto-renew failed for user: {}", user.getId(), e);
-            deactivateUser(user);
-        }
-    }
-
-    private void deactivateUser(UserEntity user) {
-        userRepository.deactivateUser(user.getId());
-
-        // TODO: сделать файлы недоступными
-
-        notificationClient.notifyTariffExpired(user.getEmail(), user.getName());
-
-        log.info("User {} deactivated due to expired tariff", user.getId());
-    }
+    log.info("User {} deactivated due to expired tariff", user.getId());
+  }
 }

@@ -6,12 +6,12 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record RenameDirectoryRequest(String userToken, String directoryId, String newName) {
-    public void validate(JwtService jwtService) throws ValidationFailedException {
-        ValidationResult result =
-                Validators.all(
-                        Validators.validToken(jwtService, userToken),
-                        Validators.isUuid("Directory ID", directoryId),
-                        Validators.validFileName("New directory name", newName));
-        Validators.throwExceptionIfNotValid(result);
-    }
+  public void validate(JwtService jwtService) throws ValidationFailedException {
+    ValidationResult result =
+        Validators.all(
+            Validators.validToken(jwtService, userToken),
+            Validators.isUuid("Directory ID", directoryId),
+            Validators.validFileName("New directory name", newName));
+    Validators.throwExceptionIfNotValid(result);
+  }
 }

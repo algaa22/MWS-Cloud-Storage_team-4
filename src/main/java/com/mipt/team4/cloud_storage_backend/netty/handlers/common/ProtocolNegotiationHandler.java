@@ -15,29 +15,29 @@ import org.springframework.stereotype.Component;
 @Component
 @Scope("prototype")
 public class ProtocolNegotiationHandler extends ApplicationProtocolNegotiationHandler {
-    private final Http2StreamInitializer http2StreamInitializer;
-    private final PipelineBuilder pipelineBuilder;
+  private final Http2StreamInitializer http2StreamInitializer;
+  private final PipelineBuilder pipelineBuilder;
 
-    public ProtocolNegotiationHandler(
-            Http2StreamInitializer http2StreamInitializer, PipelineBuilder pipelineBuilder) {
-        super(ApplicationProtocolNames.HTTP_1_1);
-        this.http2StreamInitializer = http2StreamInitializer;
-        this.pipelineBuilder = pipelineBuilder;
+  public ProtocolNegotiationHandler(
+      Http2StreamInitializer http2StreamInitializer, PipelineBuilder pipelineBuilder) {
+    super(ApplicationProtocolNames.HTTP_1_1);
+    this.http2StreamInitializer = http2StreamInitializer;
+    this.pipelineBuilder = pipelineBuilder;
+  }
+
+  @Override
+  protected void configurePipeline(ChannelHandlerContext ctx, String protocol) {
+    ChannelPipeline pipeline = ctx.pipeline();
+
+    if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
+      pipeline.addLast(
+          PipelineHandlerNames.HTTP2_FRAME, Http2FrameCodecBuilder.forServer().build());
+      pipeline.addLast(
+          PipelineHandlerNames.HTTP2_MULTIPLEX, new Http2MultiplexHandler(http2StreamInitializer));
+    } else if (ApplicationProtocolNames.HTTP_1_1.equals(protocol)) {
+      pipelineBuilder.buildHttp11Pipeline(pipeline);
+    } else {
+      ctx.channel().close();
     }
-
-    @Override
-    protected void configurePipeline(ChannelHandlerContext ctx, String protocol) {
-        ChannelPipeline pipeline = ctx.pipeline();
-
-        if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
-            pipeline.addLast(
-                    PipelineHandlerNames.HTTP2_FRAME, Http2FrameCodecBuilder.forServer().build());
-            pipeline.addLast(
-                    PipelineHandlerNames.HTTP2_MULTIPLEX, new Http2MultiplexHandler(http2StreamInitializer));
-        } else if (ApplicationProtocolNames.HTTP_1_1.equals(protocol)) {
-            pipelineBuilder.buildHttp11Pipeline(pipeline);
-        } else {
-            ctx.channel().close();
-        }
-    }
+  }
 }

@@ -4,12 +4,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record UserDto(
-        UUID id,
-        String name,
-        String email,
-        String password,
-        long storageLimit,
-        long usedStorage,
-        LocalDateTime createdAt,
-        boolean isActive) {
-}
+    UUID id,
+    String name,
+    String email,
+    String password,
+    long storageLimit,
+    long usedStorage,
+    LocalDateTime createdAt,
+    boolean isActive) {}

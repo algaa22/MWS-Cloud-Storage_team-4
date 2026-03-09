@@ -36,165 +36,165 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class ChunkedUploadHandler {
-    private final FileController fileController;
+  private final FileController fileController;
 
-    // TODO: ненужные поля (кроме isInProgress)
-    private boolean isInProgress = false;
-    private List<String> currentFileTags;
-    private String currentSessionId;
-    private String currentUserToken;
-    private String currentName;
-    private Optional<String> currentParentId;
+  // TODO: ненужные поля (кроме isInProgress)
+  private boolean isInProgress = false;
+  private List<String> currentFileTags;
+  private String currentSessionId;
+  private String currentUserToken;
+  private String currentName;
+  private Optional<String> currentParentId;
 
-    public void start(HttpRequest request) {
-        if (isInProgress) {
-            throw new TransferAlreadyStartedException();
-        }
-
-        parseStartUploadRequestMetadata(request);
-
-        fileController.startChunkedUpload(
-                new ChunkedUploadRequest(
-                        currentSessionId, currentUserToken, currentParentId, currentName, currentFileTags));
-
-        isInProgress = true;
-
-        if (log.isDebugEnabled()) {
-            log.debug(
-                    "Started chunked upload. Session: {}, name: {}, parentId: {}",
-                    currentSessionId,
-                    currentName,
-                    currentParentId);
-        }
+  public void start(HttpRequest request) {
+    if (isInProgress) {
+      throw new TransferAlreadyStartedException();
     }
 
-    public void handleChunk(ChannelHandlerContext ctx, HttpContent content) {
-        if (!isInProgress) {
-            throw new TransferNotStartedYetException();
-        }
-        // TODO: не слишком ли большой чанк?
-        ByteBuf chunkData = content.content();
-        int chunkSize = chunkData.readableBytes();
+    parseStartUploadRequestMetadata(request);
 
-        byte[] chunkBytes = new byte[chunkSize];
-        chunkData.getBytes(chunkData.readerIndex(), chunkBytes);
+    fileController.startChunkedUpload(
+        new ChunkedUploadRequest(
+            currentSessionId, currentUserToken, currentParentId, currentName, currentFileTags));
 
-        try {
-            fileController.processFileChunk(
-                    new UploadChunkRequest(currentSessionId, currentName, currentParentId, chunkBytes));
-        } catch (ProcessUploadRetriableException exception) {
-            sendNeedProcessRetryResponse(ctx, exception);
-            return;
-        }
+    isInProgress = true;
 
-        if (log.isDebugEnabled()) {
-            log.debug("Processed chunk for session: {}. Size: {} bytes", currentSessionId, chunkSize);
-        }
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Started chunked upload. Session: {}, name: {}, parentId: {}",
+          currentSessionId,
+          currentName,
+          currentParentId);
+    }
+  }
+
+  public void handleChunk(ChannelHandlerContext ctx, HttpContent content) {
+    if (!isInProgress) {
+      throw new TransferNotStartedYetException();
+    }
+    // TODO: не слишком ли большой чанк?
+    ByteBuf chunkData = content.content();
+    int chunkSize = chunkData.readableBytes();
+
+    byte[] chunkBytes = new byte[chunkSize];
+    chunkData.getBytes(chunkData.readerIndex(), chunkBytes);
+
+    try {
+      fileController.processFileChunk(
+          new UploadChunkRequest(currentSessionId, currentName, currentParentId, chunkBytes));
+    } catch (ProcessUploadRetriableException exception) {
+      sendNeedProcessRetryResponse(ctx, exception);
+      return;
     }
 
-    public void complete(ChannelHandlerContext ctx, LastHttpContent content) {
-        if (!isInProgress) {
-            throw new TransferNotStartedYetException();
-        }
+    if (log.isDebugEnabled()) {
+      log.debug("Processed chunk for session: {}. Size: {} bytes", currentSessionId, chunkSize);
+    }
+  }
 
-        if (content.content().readableBytes() > 0) {
-            handleChunk(ctx, content);
-        }
-
-        ChunkedUploadFileResult result;
-
-        try {
-            result = fileController.completeChunkedUpload(currentSessionId);
-        } catch (CompleteUploadRetriableException exception) {
-            sendNeedCompleteRetryResponse(ctx, exception);
-            return;
-        }
-
-        sendSuccessResponse(ctx, result);
-        cleanup();
-
-        if (log.isDebugEnabled()) {
-            log.debug(
-                    "Completed chunk upload. Session: {}, name: {}, parent: {}",
-                    currentSessionId,
-                    currentName,
-                    currentParentId);
-        }
+  public void complete(ChannelHandlerContext ctx, LastHttpContent content) {
+    if (!isInProgress) {
+      throw new TransferNotStartedYetException();
     }
 
-    public void resume(HttpRequest request) {
-        if (isInProgress) {
-            throw new UploadNotStoppedException();
-        }
-
-        parseRequestMetadata(request);
-        isInProgress = true;
-
-        fileController.resumeChunkedUpload(
-                new ChunkedUploadRequest(
-                        currentSessionId, currentUserToken, currentParentId, currentName, currentFileTags));
-
-        if (log.isDebugEnabled()) {
-            log.debug(
-                    "Resumed chunked upload. Session: {}, user: {}, name: {}, parentId: {}",
-                    currentSessionId,
-                    currentUserToken,
-                    currentName,
-                    currentParentId);
-        }
+    if (content.content().readableBytes() > 0) {
+      handleChunk(ctx, content);
     }
 
-    public void cleanup() {
-        isInProgress = false;
-        currentSessionId = null;
-        currentUserToken = null;
-        currentName = null;
-        currentFileTags = null;
-        currentParentId = Optional.empty();
+    ChunkedUploadFileResult result;
+
+    try {
+      result = fileController.completeChunkedUpload(currentSessionId);
+    } catch (CompleteUploadRetriableException exception) {
+      sendNeedCompleteRetryResponse(ctx, exception);
+      return;
     }
 
-    private void parseStartUploadRequestMetadata(HttpRequest request)
-            throws QueryParameterNotFoundException, HeaderNotFoundException {
-        parseRequestMetadata(request);
+    sendSuccessResponse(ctx, result);
+    cleanup();
 
-        currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Completed chunk upload. Session: {}, name: {}, parent: {}",
+          currentSessionId,
+          currentName,
+          currentParentId);
+    }
+  }
+
+  public void resume(HttpRequest request) {
+    if (isInProgress) {
+      throw new UploadNotStoppedException();
     }
 
-    private void parseRequestMetadata(HttpRequest request) {
-        currentSessionId = UUID.randomUUID().toString();
-        currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-        currentName = RequestUtils.getRequiredQueryParam(request, "name");
-        currentParentId = RequestUtils.getQueryParam(request, "parentId");
-        currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
+    parseRequestMetadata(request);
+    isInProgress = true;
+
+    fileController.resumeChunkedUpload(
+        new ChunkedUploadRequest(
+            currentSessionId, currentUserToken, currentParentId, currentName, currentFileTags));
+
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Resumed chunked upload. Session: {}, user: {}, name: {}, parentId: {}",
+          currentSessionId,
+          currentUserToken,
+          currentName,
+          currentParentId);
     }
+  }
 
-    private void sendSuccessResponse(ChannelHandlerContext ctx, ChunkedUploadFileResult result) {
-        ObjectNode json = ResponseUtils.createJsonNode(true, "File uploaded successfully");
+  public void cleanup() {
+    isInProgress = false;
+    currentSessionId = null;
+    currentUserToken = null;
+    currentName = null;
+    currentFileTags = null;
+    currentParentId = Optional.empty();
+  }
 
-        json.put("id", result.fileId().toString());
-        json.put("fileSize", result.fileSize());
-        json.put("totalParts", result.totalParts());
+  private void parseStartUploadRequestMetadata(HttpRequest request)
+      throws QueryParameterNotFoundException, HeaderNotFoundException {
+    parseRequestMetadata(request);
 
-        ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, json);
-    }
+    currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
+  }
 
-    private void sendNeedProcessRetryResponse(
-            ChannelHandlerContext ctx, ProcessUploadRetriableException exception) {
-        ObjectNode json = ResponseUtils.createJsonNode(false, exception.getMessage());
+  private void parseRequestMetadata(HttpRequest request) {
+    currentSessionId = UUID.randomUUID().toString();
+    currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    currentName = RequestUtils.getRequiredQueryParam(request, "name");
+    currentParentId = RequestUtils.getQueryParam(request, "parentId");
+    currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
+  }
 
-        json.put("action", "RESUME_CONTINUE");
-        json.put("currentFileSize", exception.getCurrentFileSize());
-        json.put("partNum", exception.getPartNum());
+  private void sendSuccessResponse(ChannelHandlerContext ctx, ChunkedUploadFileResult result) {
+    ObjectNode json = ResponseUtils.createJsonNode(true, "File uploaded successfully");
 
-        ResponseUtils.sendJson(ctx, exception.getStatus(), json);
-    }
+    json.put("id", result.fileId().toString());
+    json.put("fileSize", result.fileSize());
+    json.put("totalParts", result.totalParts());
 
-    private void sendNeedCompleteRetryResponse(
-            ChannelHandlerContext ctx, CompleteUploadRetriableException exception) {
-        ObjectNode json = ResponseUtils.createJsonNode(false, exception.getMessage());
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, json);
+  }
 
-        json.put("action", "RESUME_FINALIZE");
+  private void sendNeedProcessRetryResponse(
+      ChannelHandlerContext ctx, ProcessUploadRetriableException exception) {
+    ObjectNode json = ResponseUtils.createJsonNode(false, exception.getMessage());
 
-        ResponseUtils.sendJson(ctx, exception.getStatus(), json);
-    }
+    json.put("action", "RESUME_CONTINUE");
+    json.put("currentFileSize", exception.getCurrentFileSize());
+    json.put("partNum", exception.getPartNum());
+
+    ResponseUtils.sendJson(ctx, exception.getStatus(), json);
+  }
+
+  private void sendNeedCompleteRetryResponse(
+      ChannelHandlerContext ctx, CompleteUploadRetriableException exception) {
+    ObjectNode json = ResponseUtils.createJsonNode(false, exception.getMessage());
+
+    json.put("action", "RESUME_FINALIZE");
+
+    ResponseUtils.sendJson(ctx, exception.getStatus(), json);
+  }
 }

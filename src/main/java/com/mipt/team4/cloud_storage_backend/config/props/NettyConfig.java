@@ -4,19 +4,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "netty")
 public record NettyConfig(
-        boolean enableLogging,
-        boolean enableHttps,
-        int httpPort,
-        int httpsPort,
-        int bossThreads,
-        int workerThreads,
-        int idleTimeoutSec,
-        Start start,
-        Shutdown shutdown) {
+    boolean enableLogging,
+    boolean enableHttps,
+    int httpPort,
+    int httpsPort,
+    int bossThreads,
+    int workerThreads,
+    int idleTimeoutSec,
+    Start start,
+    Shutdown shutdown) {
 
-    public record Start(int timeoutSec) {
-    }
+  public record Start(int timeoutSec) {}
 
-    public record Shutdown(int timeoutSec, int queryPeriodSec) {
-    }
+  public record Shutdown(int timeoutSec, int queryPeriodSec) {}
 }

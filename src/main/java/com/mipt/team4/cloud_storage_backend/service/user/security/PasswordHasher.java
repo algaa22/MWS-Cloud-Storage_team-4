@@ -6,11 +6,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class PasswordHasher {
 
-    public String hash(String password) {
-        return BCrypt.hashpw(password, BCrypt.gensalt());
-    }
+  public String hash(String password) {
+    return BCrypt.hashpw(password, BCrypt.gensalt());
+  }
 
-    public boolean verify(String password, String hash) {
-        return BCrypt.checkpw(password, hash);
-    }
+  public boolean verify(String password, String hash) {
+    return BCrypt.checkpw(password, hash);
+  }
 }

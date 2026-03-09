@@ -9,15 +9,15 @@ import java.util.Optional;
 import java.util.UUID;
 
 public record CreateDirectoryRequest(
-        String userToken, Optional<String> parentId, String name, UUID directoryId) {
+    String userToken, Optional<String> parentId, String name, UUID directoryId) {
 
-    public void validate(JwtService jwtService) throws ValidationFailedException {
-        ValidationResult result =
-                Validators.all(
-                        Validators.validFileName("Directory name", name),
-                        Validators.validToken(jwtService, userToken),
-                        Validators.notNull("Directory fileId", directoryId));
+  public void validate(JwtService jwtService) throws ValidationFailedException {
+    ValidationResult result =
+        Validators.all(
+            Validators.validFileName("Directory name", name),
+            Validators.validToken(jwtService, userToken),
+            Validators.notNull("Directory fileId", directoryId));
 
-        Validators.throwExceptionIfNotValid(result);
-    }
+    Validators.throwExceptionIfNotValid(result);
+  }
 }

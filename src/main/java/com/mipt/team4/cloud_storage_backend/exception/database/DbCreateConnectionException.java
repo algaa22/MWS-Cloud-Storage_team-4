@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class DbCreateConnectionException extends FatalStorageException {
 
-    public DbCreateConnectionException(SQLException cause) {
-        super("Failed to connect to the database", cause);
-    }
+  public DbCreateConnectionException(SQLException cause) {
+    super("Failed to connect to the database", cause);
+  }
 }

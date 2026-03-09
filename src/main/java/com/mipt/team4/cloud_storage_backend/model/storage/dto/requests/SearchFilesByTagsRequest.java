@@ -9,14 +9,14 @@ import java.util.List;
 
 public record SearchFilesByTagsRequest(String userToken, List<String> tags) {
 
-    public void validate(JwtService jwtService) throws ValidationFailedException {
-        ValidationResult result =
-                Validators.all(
-                        Validators.validToken(jwtService, userToken),
-                        Validators.notNull("Tags", tags),
-                        Validators.validate(
-                                tags != null && !tags.isEmpty(), "Tags list must not be empty", null));
+  public void validate(JwtService jwtService) throws ValidationFailedException {
+    ValidationResult result =
+        Validators.all(
+            Validators.validToken(jwtService, userToken),
+            Validators.notNull("Tags", tags),
+            Validators.validate(
+                tags != null && !tags.isEmpty(), "Tags list must not be empty", null));
 
-        Validators.throwExceptionIfNotValid(result);
-    }
+    Validators.throwExceptionIfNotValid(result);
+  }
 }

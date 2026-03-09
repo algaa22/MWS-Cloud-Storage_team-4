@@ -25,64 +25,64 @@ import org.springframework.stereotype.Controller;
 @Controller
 @RequiredArgsConstructor
 public class FileController {
-    // TODO: постоянный validate()
-    private final FileService service;
-    private final JwtService jwtService;
-    private final StorageConfig storageConfig;
+  // TODO: постоянный validate()
+  private final FileService service;
+  private final JwtService jwtService;
+  private final StorageConfig storageConfig;
 
-    public void startChunkedUpload(ChunkedUploadRequest request) {
-        request.validate(jwtService);
-        service.startChunkedUploadSession(request);
-    }
+  public void startChunkedUpload(ChunkedUploadRequest request) {
+    request.validate(jwtService);
+    service.startChunkedUploadSession(request);
+  }
 
-    public void processFileChunk(UploadChunkRequest request) {
-        request.validate(storageConfig.rest().maxFileChunkSize());
-        service.uploadChunk(request);
-    }
+  public void processFileChunk(UploadChunkRequest request) {
+    request.validate(storageConfig.rest().maxFileChunkSize());
+    service.uploadChunk(request);
+  }
 
-    public ChunkedUploadFileResult completeChunkedUpload(String sessionId) {
-        Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId)); // TODO: в DTO
+  public ChunkedUploadFileResult completeChunkedUpload(String sessionId) {
+    Validators.throwExceptionIfNotValid(Validators.isUuid("Session ID", sessionId)); // TODO: в DTO
 
-        return service.completeChunkedUpload(sessionId);
-    }
+    return service.completeChunkedUpload(sessionId);
+  }
 
-    public void resumeChunkedUpload(ChunkedUploadRequest request) {
-        request.validate(jwtService);
-        service.resumeChunkedUploadSession(request);
-    }
+  public void resumeChunkedUpload(ChunkedUploadRequest request) {
+    request.validate(jwtService);
+    service.resumeChunkedUploadSession(request);
+  }
 
-    public List<StorageEntity> getFileList(GetFileListRequest request) {
-        request.validate(jwtService);
-        return service.getFileList(request);
-    }
+  public List<StorageEntity> getFileList(GetFileListRequest request) {
+    request.validate(jwtService);
+    return service.getFileList(request);
+  }
 
-    public StorageDto getFileInfo(SimpleFileOperationRequest request) {
-        request.validate(jwtService);
-        return service.getFileInfo(request);
-    }
+  public StorageDto getFileInfo(SimpleFileOperationRequest request) {
+    request.validate(jwtService);
+    return service.getFileInfo(request);
+  }
 
-    public void deleteFile(SimpleFileOperationRequest request) {
-        request.validate(jwtService);
-        service.deleteFile(request);
-    }
+  public void deleteFile(SimpleFileOperationRequest request) {
+    request.validate(jwtService);
+    service.deleteFile(request);
+  }
 
-    public UUID uploadFile(FileUploadRequest request) {
-        request.validate(jwtService);
-        return service.uploadFile(request);
-    }
+  public UUID uploadFile(FileUploadRequest request) {
+    request.validate(jwtService);
+    return service.uploadFile(request);
+  }
 
-    public void changeFileMetadata(ChangeFileMetadataRequest request) {
-        request.validate(jwtService);
-        service.changeFileMetadata(request);
-    }
+  public void changeFileMetadata(ChangeFileMetadataRequest request) {
+    request.validate(jwtService);
+    service.changeFileMetadata(request);
+  }
 
-    public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
-        request.validate(jwtService);
-        return service.downloadFile(request);
-    }
+  public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
+    request.validate(jwtService);
+    return service.downloadFile(request);
+  }
 
-    public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request) {
-        request.validate(jwtService);
-        return service.searchFilesByTags(request);
-    }
+  public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request) {
+    request.validate(jwtService);
+    return service.searchFilesByTags(request);
+  }
 }

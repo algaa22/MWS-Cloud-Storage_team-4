@@ -6,9 +6,9 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record RefreshTokenRequest(String refreshToken) {
 
-    public void validate() throws ValidationFailedException {
-        ValidationResult result = Validators.all(Validators.notBlank("Refresh token", refreshToken));
+  public void validate() throws ValidationFailedException {
+    ValidationResult result = Validators.all(Validators.notBlank("Refresh token", refreshToken));
 
-        Validators.throwExceptionIfNotValid(result);
-    }
+    Validators.throwExceptionIfNotValid(result);
+  }
 }

@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class DbCloseConnectionException extends FatalStorageException {
 
-    public DbCloseConnectionException(SQLException cause) {
-        super("Failed to close connection", cause);
-    }
+  public DbCloseConnectionException(SQLException cause) {
+    super("Failed to close connection", cause);
+  }
 }

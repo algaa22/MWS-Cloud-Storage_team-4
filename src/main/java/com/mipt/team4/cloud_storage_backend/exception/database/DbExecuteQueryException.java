@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class DbExecuteQueryException extends FatalStorageException {
 
-    public DbExecuteQueryException(String query, SQLException cause) {
-        super("Failed to execute query: " + query, cause);
-    }
+  public DbExecuteQueryException(String query, SQLException cause) {
+    super("Failed to execute query: " + query, cause);
+  }
 }

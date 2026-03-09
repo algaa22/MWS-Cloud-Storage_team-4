@@ -5,7 +5,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class InvalidEmailOrPassword extends BaseStorageException {
 
-    public InvalidEmailOrPassword() {
-        super("No such user", HttpResponseStatus.NOT_FOUND);
-    }
+  public InvalidEmailOrPassword() {
+    super("No such user", HttpResponseStatus.NOT_FOUND);
+  }
 }

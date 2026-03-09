@@ -16,46 +16,46 @@ import org.springframework.stereotype.Component;
 @Scope("prototype")
 @Slf4j
 public class FinalErrorHandler extends ChannelDuplexHandler {
-    private static final AttributeKey<Boolean> IGNORABLE_ERROR_LOGGED =
-            AttributeKey.valueOf("ignorable_error_logged");
+  private static final AttributeKey<Boolean> IGNORABLE_ERROR_LOGGED =
+      AttributeKey.valueOf("ignorable_error_logged");
 
-    @Override
-    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-        ResponseUtils.write(ctx, msg)
-                .addListener(
-                        future -> {
-                            if (!future.isSuccess()) {
-                                exceptionCaught(ctx, future.cause());
-                            }
-                        });
+  @Override
+  public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
+    ResponseUtils.write(ctx, msg)
+        .addListener(
+            future -> {
+              if (!future.isSuccess()) {
+                exceptionCaught(ctx, future.cause());
+              }
+            });
+  }
+
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+    SocketAddress remoteAddress = ctx.channel().remoteAddress();
+
+    if (isIgnorableException(cause)) {
+      if (!ctx.channel().hasAttr(IGNORABLE_ERROR_LOGGED)) {
+        log.debug("Connection closed by client: {}", remoteAddress, cause);
+        ctx.channel().attr(IGNORABLE_ERROR_LOGGED).set(true);
+      }
+    } else {
+      log.error("Unhandled exception in channel: {}", remoteAddress, cause);
     }
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        SocketAddress remoteAddress = ctx.channel().remoteAddress();
-
-        if (isIgnorableException(cause)) {
-            if (!ctx.channel().hasAttr(IGNORABLE_ERROR_LOGGED)) {
-                log.debug("Connection closed by client: {}", remoteAddress, cause);
-                ctx.channel().attr(IGNORABLE_ERROR_LOGGED).set(true);
-            }
-        } else {
-            log.error("Unhandled exception in channel: {}", remoteAddress, cause);
-        }
-
-        if (ctx.channel().isActive() && ctx.channel().isOpen()) {
-            ResponseUtils.sendInternalServerErrorAndClose(ctx);
-        } else {
-            ctx.close();
-        }
+    if (ctx.channel().isActive() && ctx.channel().isOpen()) {
+      ResponseUtils.sendInternalServerErrorAndClose(ctx);
+    } else {
+      ctx.close();
     }
+  }
 
-    private boolean isIgnorableException(Throwable cause) {
-        String message = cause.getMessage();
+  private boolean isIgnorableException(Throwable cause) {
+    String message = cause.getMessage();
 
-        return message != null
-                && (message.contains("Connection reset")
-                || message.contains("Broken pipe")
-                || message.contains("Connection refused"));
-    }
+    return message != null
+        && (message.contains("Connection reset")
+            || message.contains("Broken pipe")
+            || message.contains("Connection refused"));
+  }
 }

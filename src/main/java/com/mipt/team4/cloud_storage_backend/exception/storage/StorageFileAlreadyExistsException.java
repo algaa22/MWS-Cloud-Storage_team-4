@@ -7,9 +7,9 @@ import java.util.UUID;
 
 public class StorageFileAlreadyExistsException extends BaseStorageException {
 
-    public StorageFileAlreadyExistsException(UUID parentId, String name) {
-        super(
-                "File already exists: parent_id=" + parentId + "; name=" + name,
-                HttpResponseStatus.CONFLICT);
-    }
+  public StorageFileAlreadyExistsException(UUID parentId, String name) {
+    super(
+        "File already exists: parent_id=" + parentId + "; name=" + name,
+        HttpResponseStatus.CONFLICT);
+  }
 }

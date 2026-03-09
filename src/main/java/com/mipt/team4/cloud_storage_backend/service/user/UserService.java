@@ -30,150 +30,150 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class UserService {
-    private final UserRepository userRepository;
-    private final UserSessionService userSessionService;
-    private final RefreshTokenService refreshTokenService;
-    private final PasswordHasher passwordHasher;
-    private final StorageConfig storageConfig;
-    private final TariffService tariffService;
+  private final UserRepository userRepository;
+  private final UserSessionService userSessionService;
+  private final RefreshTokenService refreshTokenService;
+  private final PasswordHasher passwordHasher;
+  private final StorageConfig storageConfig;
+  private final TariffService tariffService;
 
-    public UserDto getUserInfo(SimpleUserRequest getUserInfoRequest) {
-        String token = getUserInfoRequest.token();
-        UUID userId = userSessionService.extractUserIdFromToken(token);
-        Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+  public UserDto getUserInfo(SimpleUserRequest getUserInfoRequest) {
+    String token = getUserInfoRequest.token();
+    UUID userId = userSessionService.extractUserIdFromToken(token);
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
 
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException(token);
-        }
-
-        UserEntity userEntity = userOpt.get();
-
-        return new UserDto(
-                null,
-                userEntity.getName(),
-                userEntity.getEmail(),
-                null,
-                userEntity.getStorageLimit(),
-                userEntity.getUsedStorage(),
-                null,
-                userEntity.isActive());
+    if (userOpt.isEmpty()) {
+      throw new UserNotFoundException(token);
     }
 
-    public TokenPairDto registerUser(RegisterRequest registerRequest) {
-        if (userRepository.getUserByEmail(registerRequest.email()).isPresent()) {
-            throw new UserAlreadyExistsException(registerRequest.email());
-        }
+    UserEntity userEntity = userOpt.get();
 
-        String hash = passwordHasher.hash(registerRequest.password());
-        UserEntity userEntity =
-                UserEntity.builder()
-                        .id(UUID.randomUUID())
-                        .name(registerRequest.userName())
-                        .email(registerRequest.email())
-                        .passwordHash(hash)
-                        .storageLimit(storageConfig.quotas().defaultStorageLimit())
-                        .createdAt(LocalDateTime.now())
-                        .build();
+    return new UserDto(
+        null,
+        userEntity.getName(),
+        userEntity.getEmail(),
+        null,
+        userEntity.getStorageLimit(),
+        userEntity.getUsedStorage(),
+        null,
+        userEntity.isActive());
+  }
 
-        userRepository.addUser(userEntity);
-
-        SessionDto session = userSessionService.createSession(userEntity);
-        RefreshTokenDto refreshToken = refreshTokenService.create(userEntity.getId());
-        tariffService.setupTrialPeriod(userEntity.getId());
-
-        return new TokenPairDto(session.token(), refreshToken.token());
+  public TokenPairDto registerUser(RegisterRequest registerRequest) {
+    if (userRepository.getUserByEmail(registerRequest.email()).isPresent()) {
+      throw new UserAlreadyExistsException(registerRequest.email());
     }
 
-    public TokenPairDto loginUser(LoginRequest loginRequest) {
-        Optional<UserEntity> userOpt = userRepository.getUserByEmail(loginRequest.email());
-        if (userOpt.isEmpty()) {
-            throw new InvalidEmailOrPassword();
-        }
+    String hash = passwordHasher.hash(registerRequest.password());
+    UserEntity userEntity =
+        UserEntity.builder()
+            .id(UUID.randomUUID())
+            .name(registerRequest.userName())
+            .email(registerRequest.email())
+            .passwordHash(hash)
+            .storageLimit(storageConfig.quotas().defaultStorageLimit())
+            .createdAt(LocalDateTime.now())
+            .build();
 
-        UserEntity user = userOpt.get();
-        if (!passwordHasher.verify(loginRequest.password(), user.getPasswordHash())) {
-            throw new WrongPasswordException();
-        }
+    userRepository.addUser(userEntity);
 
-        Optional<SessionDto> session = userSessionService.findSessionByEmail(user.getEmail());
-        SessionDto usedSession;
-        usedSession = session.orElseGet(() -> userSessionService.createSession(user));
-        RefreshTokenDto refreshToken = refreshTokenService.create(user.getId());
+    SessionDto session = userSessionService.createSession(userEntity);
+    RefreshTokenDto refreshToken = refreshTokenService.create(userEntity.getId());
+    tariffService.setupTrialPeriod(userEntity.getId());
 
-        return new TokenPairDto(usedSession.token(), refreshToken.token());
+    return new TokenPairDto(session.token(), refreshToken.token());
+  }
+
+  public TokenPairDto loginUser(LoginRequest loginRequest) {
+    Optional<UserEntity> userOpt = userRepository.getUserByEmail(loginRequest.email());
+    if (userOpt.isEmpty()) {
+      throw new InvalidEmailOrPassword();
     }
 
-    public void logoutUser(SimpleUserRequest logoutRequest) {
-        String token = logoutRequest.token();
-
-        if (userSessionService.tokenExists(token)) {
-            UUID userId = userSessionService.extractUserIdFromToken(token);
-            refreshTokenService.revokeAllForUser(userId);
-
-            userSessionService.blacklistToken(token);
-        } else {
-            throw new UserNotFoundException(token);
-        }
+    UserEntity user = userOpt.get();
+    if (!passwordHasher.verify(loginRequest.password(), user.getPasswordHash())) {
+      throw new WrongPasswordException();
     }
 
-    public TokenPairDto refreshTokens(RefreshTokenRequest refreshTokenRequest) {
-        String refreshToken = refreshTokenRequest.refreshToken();
-        RefreshTokenDto stored = refreshTokenService.validate(refreshToken);
+    Optional<SessionDto> session = userSessionService.findSessionByEmail(user.getEmail());
+    SessionDto usedSession;
+    usedSession = session.orElseGet(() -> userSessionService.createSession(user));
+    RefreshTokenDto refreshToken = refreshTokenService.create(user.getId());
 
-        if (stored == null) {
-            throw new InvalidSessionException("Refresh token invalid or expired");
-        }
+    return new TokenPairDto(usedSession.token(), refreshToken.token());
+  }
 
-        UUID userId = stored.userId();
-        Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+  public void logoutUser(SimpleUserRequest logoutRequest) {
+    String token = logoutRequest.token();
 
-        if (userOpt.isEmpty()) {
-            refreshTokenService.revoke(refreshToken);
-            throw new InvalidSessionException("User not found for refresh token");
-        }
+    if (userSessionService.tokenExists(token)) {
+      UUID userId = userSessionService.extractUserIdFromToken(token);
+      refreshTokenService.revokeAllForUser(userId);
 
-        UserEntity user = userOpt.get();
+      userSessionService.blacklistToken(token);
+    } else {
+      throw new UserNotFoundException(token);
+    }
+  }
 
-        userSessionService.revokeAllUserSessions(userId);
-        SessionDto newSession = userSessionService.createSession(user);
+  public TokenPairDto refreshTokens(RefreshTokenRequest refreshTokenRequest) {
+    String refreshToken = refreshTokenRequest.refreshToken();
+    RefreshTokenDto stored = refreshTokenService.validate(refreshToken);
 
-        RefreshTokenDto newRefreshToken = refreshTokenService.create(userId);
-        refreshTokenService.revoke(refreshToken);
-
-        return new TokenPairDto(newSession.token(), newRefreshToken.token());
+    if (stored == null) {
+      throw new InvalidSessionException("Refresh token invalid or expired");
     }
 
-    public void updateUserInfo(UpdateUserInfoRequest updateUserInfoRequest) {
+    UUID userId = stored.userId();
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
 
-        UUID id = userSessionService.extractUserIdFromToken(updateUserInfoRequest.userToken());
-        Optional<UserEntity> userOpt = userRepository.getUserById(id);
-        UserEntity entity =
-                userOpt.orElseThrow(() -> new UserNotFoundException(updateUserInfoRequest.userToken()));
-
-        if (updateUserInfoRequest.oldPassword().isPresent()) {
-            String oldPassword = updateUserInfoRequest.oldPassword().get();
-            String currentPasswordHash = entity.getPasswordHash();
-
-            if (!passwordHasher.verify(oldPassword, currentPasswordHash)) {
-                throw new WrongPasswordException();
-            }
-        }
-
-        if (updateUserInfoRequest.newPassword().isPresent()) {
-            String newPasswordHash = passwordHasher.hash(updateUserInfoRequest.newPassword().get());
-            entity.setPasswordHash(newPasswordHash);
-        }
-
-        if (updateUserInfoRequest.newName().isPresent()) {
-            entity.setName(updateUserInfoRequest.newName().get());
-        }
-
-        userRepository.updateInfo(
-                id,
-                updateUserInfoRequest.newName().orElse(entity.getName()),
-                updateUserInfoRequest
-                        .newPassword()
-                        .map(passwordHasher::hash)
-                        .orElse(entity.getPasswordHash()));
+    if (userOpt.isEmpty()) {
+      refreshTokenService.revoke(refreshToken);
+      throw new InvalidSessionException("User not found for refresh token");
     }
+
+    UserEntity user = userOpt.get();
+
+    userSessionService.revokeAllUserSessions(userId);
+    SessionDto newSession = userSessionService.createSession(user);
+
+    RefreshTokenDto newRefreshToken = refreshTokenService.create(userId);
+    refreshTokenService.revoke(refreshToken);
+
+    return new TokenPairDto(newSession.token(), newRefreshToken.token());
+  }
+
+  public void updateUserInfo(UpdateUserInfoRequest updateUserInfoRequest) {
+
+    UUID id = userSessionService.extractUserIdFromToken(updateUserInfoRequest.userToken());
+    Optional<UserEntity> userOpt = userRepository.getUserById(id);
+    UserEntity entity =
+        userOpt.orElseThrow(() -> new UserNotFoundException(updateUserInfoRequest.userToken()));
+
+    if (updateUserInfoRequest.oldPassword().isPresent()) {
+      String oldPassword = updateUserInfoRequest.oldPassword().get();
+      String currentPasswordHash = entity.getPasswordHash();
+
+      if (!passwordHasher.verify(oldPassword, currentPasswordHash)) {
+        throw new WrongPasswordException();
+      }
+    }
+
+    if (updateUserInfoRequest.newPassword().isPresent()) {
+      String newPasswordHash = passwordHasher.hash(updateUserInfoRequest.newPassword().get());
+      entity.setPasswordHash(newPasswordHash);
+    }
+
+    if (updateUserInfoRequest.newName().isPresent()) {
+      entity.setName(updateUserInfoRequest.newName().get());
+    }
+
+    userRepository.updateInfo(
+        id,
+        updateUserInfoRequest.newName().orElse(entity.getName()),
+        updateUserInfoRequest
+            .newPassword()
+            .map(passwordHasher::hash)
+            .orElse(entity.getPasswordHash()));
+  }
 }

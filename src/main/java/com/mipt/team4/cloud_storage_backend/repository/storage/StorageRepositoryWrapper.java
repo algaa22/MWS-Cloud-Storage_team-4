@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
-  private final FileMetadataRepository metadataRepository;
+  private final StorageJpaRepositoryAdapter metadataRepository;
   private final StorageConfig storageConfig;
   private final RetryPolicy<Object> retryPolicy;
 

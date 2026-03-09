@@ -54,12 +54,32 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
 
   @Modifying
   @Transactional
-  @Query("UPDATE StorageEntity s SET s.isDeleted = true WHERE s.id = :id AND s.userId = :userId")
+  @Query(
+      "UPDATE StorageEntity s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP, s.updatedAt = CURRENT_TIMESTAMP "
+          + "WHERE s.id = :id AND s.userId = :userId")
   void softDelete(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying
+  @Transactional
   @Query(
-      "UPDATE StorageEntity s SET s.isDeleted = false, s.updatedAt = CURRENT_TIMESTAMP "
+      nativeQuery = true,
+      value =
+          """
+        WITH RECURSIVE folder_tree AS (
+            SELECT id FROM files WHERE id = :id AND user_id = :userId
+            UNION ALL
+            SELECT f.id FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
+        )
+        UPDATE files
+        SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id IN (SELECT id FROM folder_tree)
+    """)
+  void softDeleteRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
+
+  @Modifying
+  @Transactional
+  @Query(
+      "UPDATE StorageEntity s SET s.isDeleted = false, s.deletedAt = NULL, s.updatedAt = CURRENT_TIMESTAMP "
           + "WHERE s.id = :id AND s.userId = :userId")
   void restore(@Param("userId") UUID userId, @Param("id") UUID id);
 
@@ -70,20 +90,28 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       value =
           """
         WITH RECURSIVE folder_tree AS (
-            SELECT id FROM files
-            WHERE id = :id AND user_id = :userId
-
+            SELECT id FROM files WHERE id = :id AND user_id = :userId
             UNION ALL
-
-            SELECT f.id FROM files f
-            INNER JOIN folder_tree ft ON f.parent_id = ft.id
+            SELECT f.id FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
         )
         UPDATE files
-        SET is_deleted = false,
-            updated_at = CURRENT_TIMESTAMP
+        SET is_deleted = false, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
         WHERE id IN (SELECT id FROM folder_tree)
     """)
   void restoreRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
+
+  @Query(
+      nativeQuery = true,
+      value =
+          """
+    SELECT * FROM files
+    WHERE user_id = :userId
+      AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
+      AND is_deleted = true
+    ORDER BY is_directory DESC, name ASC
+""")
+  List<StorageEntity> findTrashByParentId(
+      @Param("userId") UUID userId, @Param("parentId") UUID parentId);
 
   @Modifying
   @Transactional
@@ -140,4 +168,22 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
     SELECT COALESCE(SUM(size), 0) FROM folder_tree
 """)
   long calculateTotalSizeOfTree(@Param("directoryId") UUID directoryId);
+
+  @Query(
+      nativeQuery = true,
+      value =
+          """
+    WITH RECURSIVE folder_tree AS (
+        SELECT * FROM files WHERE id = :id AND user_id = :userId
+        UNION ALL
+        SELECT f.* FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
+    )
+    SELECT * FROM folder_tree WHERE is_directory = false
+""")
+  List<StorageEntity> findAllFilesDescendants(@Param("userId") UUID userId, @Param("id") UUID id);
+
+  @Query(
+      nativeQuery = true,
+      value = "SELECT * FROM files WHERE is_deleted = true AND deleted_at < :threshold")
+  List<StorageEntity> getStaleDeletedFiles(@Param("threshold") LocalDateTime threshold);
 }

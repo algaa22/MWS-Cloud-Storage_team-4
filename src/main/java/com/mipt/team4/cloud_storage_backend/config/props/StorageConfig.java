@@ -5,7 +5,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "storage")
 public record StorageConfig(
-    Rest rest, Auth auth, Quotas quotas, StateMachine stateMachine, FailsafeRetry failsafeRetry) {
+    Rest rest,
+    Auth auth,
+    Quotas quotas,
+    StateMachine stateMachine,
+    FailsafeRetry failsafeRetry,
+    Trash trash) {
   public record Rest(
       int maxAggregatedContentLength,
       long maxFileSize,
@@ -22,4 +27,6 @@ public record StorageConfig(
 
   public record FailsafeRetry(
       int maxAttempts, double delayFactor, Duration firstDelay, Duration maxDelay, double jitter) {}
+
+  public record Trash(int retentionDays) {}
 }

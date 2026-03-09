@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
-public class FileMetadataRepository {
+public class StorageJpaRepositoryAdapter {
   private final StorageJpaRepository jpaRepository;
   private final EntityManager entityManager;
 
@@ -97,10 +97,15 @@ public class FileMetadataRepository {
   }
 
   @Transactional
-  public void softDeleteFile(UUID userId, UUID fileId) {
-    jpaRepository.softDelete(userId, fileId);
+  public void softDeleteFile(UUID userId, UUID fileId, boolean isDirectory) {
+    if (isDirectory) {
+      jpaRepository.softDeleteRecursive(userId, fileId);
+    } else {
+      jpaRepository.softDelete(userId, fileId);
+    }
   }
 
+  @Transactional
   public void hardDeleteFile(StorageEntity entity) {
     jpaRepository.deleteByUserIdAndId(entity.getUserId(), entity.getId());
   }
@@ -112,6 +117,14 @@ public class FileMetadataRepository {
     } else {
       jpaRepository.restore(userId, fileId);
     }
+  }
+
+  public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
+    return jpaRepository.findTrashByParentId(userId, parentId);
+  }
+
+  public List<StorageEntity> getStaleDeletedFiles(LocalDateTime treshold) {
+    return jpaRepository.getStaleDeletedFiles(treshold);
   }
 
   @Transactional
@@ -137,5 +150,9 @@ public class FileMetadataRepository {
 
   public long calculateTotalSizeOfTree(UUID directoryId) {
     return jpaRepository.calculateTotalSizeOfTree(directoryId);
+  }
+
+  public List<StorageEntity> findAllFileDescendants(UUID userId, UUID id) {
+    return jpaRepository.findAllFilesDescendants(userId, id);
   }
 }

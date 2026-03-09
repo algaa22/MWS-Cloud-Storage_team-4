@@ -81,3 +81,6 @@ storage:
     first-delay: 200ms
     max-delay: 1s
     jitter: 0.1
+
+  trash:
+    retention-days: 30

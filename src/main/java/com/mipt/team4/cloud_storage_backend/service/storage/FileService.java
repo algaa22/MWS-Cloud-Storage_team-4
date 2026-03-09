@@ -18,6 +18,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListF
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SoftDeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
@@ -59,7 +60,7 @@ public class FileService {
       throw new StorageFileAlreadyExistsException(parentId, name);
     }
 
-    Optional<StorageEntity> fileEntity = storageRepository.getFile(userId, parentId, name);
+    Optional<StorageEntity> fileEntity = storageRepository.getFileIncludeDeleted(userId, parentId);
     if (fileEntity.isPresent()) {
       throw new StorageFileAlreadyExistsException(parentId, name);
     }
@@ -162,7 +163,9 @@ public class FileService {
     String fileName = request.name();
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
 
-    if (storageRepository.fileExists(userId, parentId, fileName)) {
+    Optional<StorageEntity> file = storageRepository.getFileIncludeDeleted(userId, fileId);
+
+    if (file.isPresent()) {
       throw new StorageFileAlreadyExistsException(parentId, fileName);
     }
 
@@ -200,21 +203,33 @@ public class FileService {
         entityOpt.get().getMimeType(), storageRepository.downloadFile(entity), entity.getSize());
   }
 
-  public void deleteFile(SimpleFileOperationRequest request) {
+  public void hardDeleteFile(SimpleFileOperationRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     Optional<StorageEntity> entityOpt = storageRepository.getFileIncludeDeleted(userId, fileId);
     StorageEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-    storageRepository.deleteFile(entity, request.permanent());
-    if (request.permanent()) {
-      userRepository.decreaseUsedStorage(userId, entity.getSize());
-    }
+    storageRepository.hardDeleteFile(entity);
+    userRepository.decreaseUsedStorage(userId, entity.getSize());
+  }
+
+  public void softDeleteFile(SoftDeleteFileRequest request) {
+    UUID fileId = UUID.fromString(request.fileId());
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+
+    Optional<StorageEntity> entityOpt = storageRepository.getFileIncludeDeleted(userId, fileId);
+    StorageEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
+    storageRepository.softDeleteFile(entity);
   }
 
   @Transactional
-  public void restoreFile(UUID userId, UUID fileId) {
+  public void restoreFile(SimpleFileOperationRequest request) {
+    UUID fileId = UUID.fromString(request.fileId());
+
+    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+
     StorageEntity entity =
         storageRepository
             .getDeletedById(userId, fileId)
@@ -227,13 +242,11 @@ public class FileService {
     storageRepository.restoreFile(entity);
   }
 
-  @Transactional
-  public void restoreFile(SimpleFileOperationRequest request) {
-    UUID fileId = UUID.fromString(request.fileId());
-
+  public List<StorageEntity> getTrashFileList(GetFileListRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+    UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
 
-    restoreFile(userId, fileId);
+    return storageRepository.getTrashFileList(userId, parentId);
   }
 
   public List<StorageEntity> getFileList(GetFileListRequest request) {
@@ -263,7 +276,6 @@ public class FileService {
     StorageEntity entity =
         storageRepository
             .getFile(userId, fileId)
-            .filter(f -> f.getUserId().equals(userId))
             .orElseThrow(() -> new StorageFileNotFoundException(fileId));
     String targetName = request.newName().orElse(entity.getName());
     UUID targetParentId =

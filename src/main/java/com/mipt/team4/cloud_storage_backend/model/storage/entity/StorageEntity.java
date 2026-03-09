@@ -109,6 +109,9 @@ public class StorageEntity {
   @Column(name = "error_message", columnDefinition = "TEXT")
   private String errorMessage;
 
+  @Column(name = "deleted_at")
+  private LocalDateTime deletedAt;
+
   /** Генерирует уникальный детерминированный ключ для S3. */
   public String getS3Key() {
     return StoragePaths.getS3Key(userId, id);

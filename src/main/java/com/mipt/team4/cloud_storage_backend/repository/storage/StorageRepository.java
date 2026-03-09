@@ -16,7 +16,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class StorageRepository {
-  private final FileMetadataRepository metadataRepository;
+  private final StorageJpaRepositoryAdapter metadataRepository;
   private final FileContentRepository contentRepository;
   private final StorageRepositoryWrapper wrapper;
 
@@ -67,25 +67,36 @@ public class StorageRepository {
     wrapper.wrapUpdate(entity, FileOperationType.CHANGE_METADATA, () -> null);
   }
 
-  public void deleteFile(StorageEntity entity, boolean permanent) {
-    if (permanent) {
-      wrapper.wrapUpdate(
-          entity,
-          FileOperationType.DELETE,
-          () -> {
-            metadataRepository.hardDeleteFile(entity);
-            contentRepository.hardDeleteFile(entity.getS3Key());
-            return null;
-          });
-    } else {
-      wrapper.wrapUpdate(
-          entity,
-          FileOperationType.CHANGE_METADATA,
-          () -> {
-            metadataRepository.softDeleteFile(entity.getUserId(), entity.getId());
-            return null;
-          });
-    }
+  public void hardDeleteFile(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.DELETE,
+        () -> {
+          if (entity.isDirectory()) {
+            List<StorageEntity> descendants =
+                metadataRepository.findAllFileDescendants(entity.getUserId(), entity.getId());
+
+            for (StorageEntity file : descendants) {
+              contentRepository.hardDeleteFile(file.getS3Key());
+            }
+          }
+
+          contentRepository.hardDeleteFile(entity.getS3Key());
+          metadataRepository.hardDeleteFile(entity);
+
+          return null;
+        });
+  }
+
+  public void softDeleteFile(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.CHANGE_METADATA,
+        () -> {
+          metadataRepository.softDeleteFile(
+              entity.getUserId(), entity.getId(), entity.isDirectory());
+          return null;
+        });
   }
 
   public void restoreFile(StorageEntity entity) {
@@ -96,6 +107,10 @@ public class StorageRepository {
           metadataRepository.restoreFile(entity.getUserId(), entity.getId(), entity.isDirectory());
           return null;
         });
+  }
+
+  public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
+    return metadataRepository.getTrashFileList(userId, parentId);
   }
 
   public InputStream downloadFile(StorageEntity entity) {

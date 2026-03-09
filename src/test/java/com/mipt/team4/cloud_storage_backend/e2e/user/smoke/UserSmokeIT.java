@@ -9,8 +9,10 @@ import com.mipt.team4.cloud_storage_backend.e2e.user.BaseUserIT;
 import com.mipt.team4.cloud_storage_backend.e2e.user.utils.UserAuthUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.user.utils.UserITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
+
 import java.io.IOException;
 import java.net.http.HttpResponse;
+
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,132 +20,135 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 @Tag("smoke")
 public class UserSmokeIT extends BaseUserIT {
-  @Autowired private UserAuthUtils userAuthUtils;
-  @Autowired private UserITUtils userITUtils;
-  @Autowired private ITUtils itUtils;
+    @Autowired
+    private UserAuthUtils userAuthUtils;
+    @Autowired
+    private UserITUtils userITUtils;
+    @Autowired
+    private ITUtils itUtils;
 
-  @Test
-  public void shouldRegisterUser() throws IOException, InterruptedException {
-    HttpResponse<String> response =
-        userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "TestUser");
+    @Test
+    public void shouldRegisterUser() throws IOException, InterruptedException {
+        HttpResponse<String> response =
+                userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "TestUser");
 
-    assertEquals(HttpStatus.SC_CREATED, response.statusCode());
+        assertEquals(HttpStatus.SC_CREATED, response.statusCode());
 
-    JsonNode root = itUtils.getRootNodeFromResponse(response);
-    assertNotNull(root.get("AccessToken"));
-    assertNotNull(root.get("RefreshToken"));
-  }
+        JsonNode root = itUtils.getRootNodeFromResponse(response);
+        assertNotNull(root.get("AccessToken"));
+        assertNotNull(root.get("RefreshToken"));
+    }
 
-  @Test
-  public void shouldNotRegisterUserTwice() throws IOException, InterruptedException {
-    userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "User1");
-
-    HttpResponse<String> response =
+    @Test
+    public void shouldNotRegisterUserTwice() throws IOException, InterruptedException {
         userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "User1");
 
-    assertEquals(HttpStatus.SC_CONFLICT, response.statusCode());
-  }
+        HttpResponse<String> response =
+                userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "User1");
 
-  @Test
-  public void shouldLoginUser() throws IOException, InterruptedException {
-    userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "UserLogin");
+        assertEquals(HttpStatus.SC_CONFLICT, response.statusCode());
+    }
 
-    HttpResponse<String> response = userITUtils.sendLoginRequest(client, testEmail, testPassword);
+    @Test
+    public void shouldLoginUser() throws IOException, InterruptedException {
+        userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "UserLogin");
 
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
+        HttpResponse<String> response = userITUtils.sendLoginRequest(client, testEmail, testPassword);
 
-    JsonNode root = itUtils.getRootNodeFromResponse(response);
-    assertNotNull(root.get("AccessToken"));
-    assertNotNull(root.get("RefreshToken"));
-  }
+        assertEquals(HttpStatus.SC_OK, response.statusCode());
 
-  @Test
-  public void shouldNotLoginWithWrongPassword() throws IOException, InterruptedException {
-    userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "UserLoginError");
+        JsonNode root = itUtils.getRootNodeFromResponse(response);
+        assertNotNull(root.get("AccessToken"));
+        assertNotNull(root.get("RefreshToken"));
+    }
 
-    HttpResponse<String> response =
-        userITUtils.sendLoginRequest(client, testEmail, "wrong_password");
+    @Test
+    public void shouldNotLoginWithWrongPassword() throws IOException, InterruptedException {
+        userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "UserLoginError");
 
-    assertEquals(HttpStatus.SC_NOT_FOUND, response.statusCode());
-  }
+        HttpResponse<String> response =
+                userITUtils.sendLoginRequest(client, testEmail, "wrong_password");
 
-  @Test
-  public void shouldRefreshToken() throws IOException, InterruptedException {
-    HttpResponse<String> registerResponse =
-        userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "RefreshUser");
+        assertEquals(HttpStatus.SC_NOT_FOUND, response.statusCode());
+    }
 
-    JsonNode registerRoot = itUtils.getRootNodeFromResponse(registerResponse);
-    String oldRefreshToken = registerRoot.get("RefreshToken").asText();
+    @Test
+    public void shouldRefreshToken() throws IOException, InterruptedException {
+        HttpResponse<String> registerResponse =
+                userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "RefreshUser");
 
-    HttpResponse<String> refreshResponse =
-        userITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
+        JsonNode registerRoot = itUtils.getRootNodeFromResponse(registerResponse);
+        String oldRefreshToken = registerRoot.get("RefreshToken").asText();
 
-    assertEquals(HttpStatus.SC_OK, refreshResponse.statusCode());
+        HttpResponse<String> refreshResponse =
+                userITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
 
-    JsonNode refreshRoot = itUtils.getRootNodeFromResponse(refreshResponse);
-    assertNotNull(refreshRoot.get("AccessToken"));
-    assertNotNull(refreshRoot.get("RefreshToken"));
+        assertEquals(HttpStatus.SC_OK, refreshResponse.statusCode());
 
-    String oldAccessToken = registerRoot.get("AccessToken").asText();
-    String newAccessToken = refreshRoot.get("AccessToken").asText();
-    String newRefreshToken = refreshRoot.get("RefreshToken").asText();
+        JsonNode refreshRoot = itUtils.getRootNodeFromResponse(refreshResponse);
+        assertNotNull(refreshRoot.get("AccessToken"));
+        assertNotNull(refreshRoot.get("RefreshToken"));
 
-    assertNotEquals(oldAccessToken, newAccessToken);
-    assertNotEquals(oldRefreshToken, newRefreshToken);
-  }
+        String oldAccessToken = registerRoot.get("AccessToken").asText();
+        String newAccessToken = refreshRoot.get("AccessToken").asText();
+        String newRefreshToken = refreshRoot.get("RefreshToken").asText();
 
-  // TODO: update user info
+        assertNotEquals(oldAccessToken, newAccessToken);
+        assertNotEquals(oldRefreshToken, newRefreshToken);
+    }
 
-  // TODO: проверка на ответ
-  @Test
-  public void shouldGetUserInfo() throws IOException, InterruptedException {
-    HttpResponse<String> register =
-        userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "User1");
+    // TODO: update user info
 
-    String accessToken = userITUtils.extractAccessToken(register);
+    // TODO: проверка на ответ
+    @Test
+    public void shouldGetUserInfo() throws IOException, InterruptedException {
+        HttpResponse<String> register =
+                userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "User1");
 
-    HttpResponse<String> response = userITUtils.sendUserInfoRequest(client, accessToken);
+        String accessToken = userITUtils.extractAccessToken(register);
 
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
-  }
+        HttpResponse<String> response = userITUtils.sendUserInfoRequest(client, accessToken);
 
-  @Test
-  public void shouldLogoutUser() throws IOException, InterruptedException {
-    HttpResponse<String> register =
-        userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "LogoutUser");
+        assertEquals(HttpStatus.SC_OK, response.statusCode());
+    }
 
-    String accessToken = userITUtils.extractAccessToken(register);
+    @Test
+    public void shouldLogoutUser() throws IOException, InterruptedException {
+        HttpResponse<String> register =
+                userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "LogoutUser");
 
-    HttpResponse<String> logoutResponse = userITUtils.sendLogoutRequest(client, accessToken);
+        String accessToken = userITUtils.extractAccessToken(register);
 
-    assertEquals(HttpStatus.SC_OK, logoutResponse.statusCode());
+        HttpResponse<String> logoutResponse = userITUtils.sendLogoutRequest(client, accessToken);
 
-    HttpResponse<String> infoResponse = userITUtils.sendUserInfoRequest(client, accessToken);
-    assertEquals(HttpStatus.SC_NOT_FOUND, infoResponse.statusCode());
-  }
+        assertEquals(HttpStatus.SC_OK, logoutResponse.statusCode());
 
-  @Test
-  public void shouldNotRefreshWithInvalidToken() throws IOException, InterruptedException {
-    HttpResponse<String> response =
-        userITUtils.sendRefreshTokenRequest(client, "invalid-refresh-token");
+        HttpResponse<String> infoResponse = userITUtils.sendUserInfoRequest(client, accessToken);
+        assertEquals(HttpStatus.SC_NOT_FOUND, infoResponse.statusCode());
+    }
 
-    assertEquals(HttpStatus.SC_UNAUTHORIZED, response.statusCode());
-  }
+    @Test
+    public void shouldNotRefreshWithInvalidToken() throws IOException, InterruptedException {
+        HttpResponse<String> response =
+                userITUtils.sendRefreshTokenRequest(client, "invalid-refresh-token");
 
-  @Test
-  public void shouldNotRefreshWithUsedToken() throws IOException, InterruptedException {
-    HttpResponse<String> registerResponse =
-        userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "UsedTokenUser");
+        assertEquals(HttpStatus.SC_UNAUTHORIZED, response.statusCode());
+    }
 
-    JsonNode registerRoot = itUtils.getRootNodeFromResponse(registerResponse);
-    String oldRefreshToken = registerRoot.get("RefreshToken").asText();
+    @Test
+    public void shouldNotRefreshWithUsedToken() throws IOException, InterruptedException {
+        HttpResponse<String> registerResponse =
+                userAuthUtils.sendRegisterTestUserRequest(client, testEmail, testPassword, "UsedTokenUser");
 
-    HttpResponse<String> firstRefresh =
-        userITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
-    assertEquals(HttpStatus.SC_OK, firstRefresh.statusCode());
+        JsonNode registerRoot = itUtils.getRootNodeFromResponse(registerResponse);
+        String oldRefreshToken = registerRoot.get("RefreshToken").asText();
 
-    HttpResponse<String> secondRefresh =
-        userITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
-    assertEquals(HttpStatus.SC_UNAUTHORIZED, secondRefresh.statusCode());
-  }
+        HttpResponse<String> firstRefresh =
+                userITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
+        assertEquals(HttpStatus.SC_OK, firstRefresh.statusCode());
+
+        HttpResponse<String> secondRefresh =
+                userITUtils.sendRefreshTokenRequest(client, oldRefreshToken);
+        assertEquals(HttpStatus.SC_UNAUTHORIZED, secondRefresh.statusCode());
+    }
 }

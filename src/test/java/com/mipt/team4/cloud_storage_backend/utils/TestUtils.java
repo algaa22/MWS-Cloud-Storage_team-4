@@ -6,29 +6,29 @@ import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 public class TestUtils {
-  public static PostgreSQLContainer<?> createPostgresContainer() {
-    return new PostgreSQLContainer<>("postgres:18.0")
-        .withDatabaseName("test_db")
-        .withUsername("test_user")
-        .withPassword("test_pass");
-  }
+    public static PostgreSQLContainer<?> createPostgresContainer() {
+        return new PostgreSQLContainer<>("postgres:18.0")
+                .withDatabaseName("test_db")
+                .withUsername("test_user")
+                .withPassword("test_pass");
+    }
 
-  public static MinIOContainer createMinioContainer() {
-    return new MinIOContainer("minio/minio:latest")
-        .withUserName("test_user")
-        .withPassword("test_pass");
-  }
+    public static MinIOContainer createMinioContainer() {
+        return new MinIOContainer("minio/minio:latest")
+                .withUserName("test_user")
+                .withPassword("test_pass");
+    }
 
-  public static PostgresConnection createConnection(PostgreSQLContainer<?> postgresContainer) {
-    DatabaseConfig databaseConfig =
-        new DatabaseConfig(
-            postgresContainer.getJdbcUrl(),
-            postgresContainer.getUsername(),
-            postgresContainer.getPassword());
+    public static PostgresConnection createConnection(PostgreSQLContainer<?> postgresContainer) {
+        DatabaseConfig databaseConfig =
+                new DatabaseConfig(
+                        postgresContainer.getJdbcUrl(),
+                        postgresContainer.getUsername(),
+                        postgresContainer.getPassword());
 
-    PostgresConnection postgresConnection = new PostgresConnection(databaseConfig);
-    postgresConnection.connect();
+        PostgresConnection postgresConnection = new PostgresConnection(databaseConfig);
+        postgresConnection.connect();
 
-    return postgresConnection;
-  }
+        return postgresConnection;
+    }
 }

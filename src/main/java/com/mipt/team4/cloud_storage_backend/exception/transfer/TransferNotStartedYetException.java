@@ -5,7 +5,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class TransferNotStartedYetException extends BaseStorageException {
 
-  public TransferNotStartedYetException() {
-    super("HttpContent received without active HttpRequest", HttpResponseStatus.BAD_REQUEST);
-  }
+    public TransferNotStartedYetException() {
+        super("HttpContent received without active HttpRequest", HttpResponseStatus.BAD_REQUEST);
+    }
 }

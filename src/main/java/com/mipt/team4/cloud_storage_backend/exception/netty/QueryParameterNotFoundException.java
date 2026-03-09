@@ -5,7 +5,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class QueryParameterNotFoundException extends BaseStorageException {
 
-  public QueryParameterNotFoundException(String paramName) {
-    super("Missing required parameter: " + paramName, HttpResponseStatus.BAD_REQUEST);
-  }
+    public QueryParameterNotFoundException(String paramName) {
+        super("Missing required parameter: " + paramName, HttpResponseStatus.BAD_REQUEST);
+    }
 }

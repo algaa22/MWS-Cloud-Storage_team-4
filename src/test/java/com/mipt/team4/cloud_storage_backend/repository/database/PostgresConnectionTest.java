@@ -10,43 +10,43 @@ import org.junit.jupiter.api.Test;
 @Tag("integration")
 final class PostgresConnectionTest extends BasePostgresTest {
 
-  @Test
-  public void isConnected_WhenConnected_ReturnsTrue() {
-    PostgresConnection postgresConnection = TestUtils.createConnection(postgresContainer);
+    @Test
+    public void isConnected_WhenConnected_ReturnsTrue() {
+        PostgresConnection postgresConnection = TestUtils.createConnection(postgresContainer);
 
-    assertTrue(postgresConnection.isConnected());
+        assertTrue(postgresConnection.isConnected());
 
-    postgresConnection.disconnect();
-  }
+        postgresConnection.disconnect();
+    }
 
-  @Test
-  public void isConnected_WhenDisconnected_ReturnsTrue() {
-    PostgresConnection postgresConnection = TestUtils.createConnection(postgresContainer);
-    postgresConnection.disconnect();
+    @Test
+    public void isConnected_WhenDisconnected_ReturnsTrue() {
+        PostgresConnection postgresConnection = TestUtils.createConnection(postgresContainer);
+        postgresConnection.disconnect();
 
-    assertFalse(postgresConnection.isConnected());
-  }
+        assertFalse(postgresConnection.isConnected());
+    }
 
-  @Test
-  public void isConnected_WhenMultipleConnected_ReturnsTrue() {
-    PostgresConnection postgresConnection1 = TestUtils.createConnection(postgresContainer);
-    PostgresConnection postgresConnection2 = TestUtils.createConnection(postgresContainer);
+    @Test
+    public void isConnected_WhenMultipleConnected_ReturnsTrue() {
+        PostgresConnection postgresConnection1 = TestUtils.createConnection(postgresContainer);
+        PostgresConnection postgresConnection2 = TestUtils.createConnection(postgresContainer);
 
-    assertTrue(postgresConnection1.isConnected());
-    assertTrue(postgresConnection2.isConnected());
+        assertTrue(postgresConnection1.isConnected());
+        assertTrue(postgresConnection2.isConnected());
 
-    postgresConnection1.disconnect();
-    postgresConnection2.disconnect();
-  }
+        postgresConnection1.disconnect();
+        postgresConnection2.disconnect();
+    }
 
-  @Test
-  public void isConnected_WhenOtherDisconnected_ReturnsTrue() {
-    PostgresConnection postgresConnection1 = TestUtils.createConnection(postgresContainer);
-    PostgresConnection postgresConnection2 = TestUtils.createConnection(postgresContainer);
-    postgresConnection1.disconnect();
+    @Test
+    public void isConnected_WhenOtherDisconnected_ReturnsTrue() {
+        PostgresConnection postgresConnection1 = TestUtils.createConnection(postgresContainer);
+        PostgresConnection postgresConnection2 = TestUtils.createConnection(postgresContainer);
+        postgresConnection1.disconnect();
 
-    assertTrue(postgresConnection2.isConnected());
+        assertTrue(postgresConnection2.isConnected());
 
-    postgresConnection2.disconnect();
-  }
+        postgresConnection2.disconnect();
+    }
 }

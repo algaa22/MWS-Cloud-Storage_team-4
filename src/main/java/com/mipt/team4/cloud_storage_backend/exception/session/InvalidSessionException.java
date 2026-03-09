@@ -5,7 +5,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class InvalidSessionException extends BaseStorageException {
 
-  public InvalidSessionException(String message) {
-    super(message, HttpResponseStatus.UNAUTHORIZED);
-  }
+    public InvalidSessionException(String message) {
+        super(message, HttpResponseStatus.UNAUTHORIZED);
+    }
 }

@@ -5,21 +5,21 @@ import java.util.List;
 
 public class FileTagsMapper {
 
-  private static final String SEPARATOR = "/";
+    private static final String SEPARATOR = "/";
 
-  public static List<String> toList(String tags) {
-    if (tags == null) {
-      return null;
+    public static List<String> toList(String tags) {
+        if (tags == null) {
+            return null;
+        }
+
+        return Arrays.stream(tags.split(SEPARATOR)).filter(tag -> !tag.trim().isEmpty()).toList();
     }
 
-    return Arrays.stream(tags.split(SEPARATOR)).filter(tag -> !tag.trim().isEmpty()).toList();
-  }
+    public static String toString(List<String> tags) {
+        if (tags == null) {
+            return null;
+        }
 
-  public static String toString(List<String> tags) {
-    if (tags == null) {
-      return null;
+        return String.join(SEPARATOR, tags);
     }
-
-    return String.join(SEPARATOR, tags);
-  }
 }

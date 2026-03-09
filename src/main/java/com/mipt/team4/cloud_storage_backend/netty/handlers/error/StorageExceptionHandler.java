@@ -14,19 +14,19 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class StorageExceptionHandler extends ChannelInboundHandlerAdapter {
 
-  @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-    if (cause instanceof BaseStorageException storageException) {
-      if (cause instanceof FatalStorageException) {
-        log.error("A fatal error has been caught", cause);
-        ResponseUtils.sendInternalServerErrorAndClose(ctx);
-        return;
-      }
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        if (cause instanceof BaseStorageException storageException) {
+            if (cause instanceof FatalStorageException) {
+                log.error("A fatal error has been caught", cause);
+                ResponseUtils.sendInternalServerErrorAndClose(ctx);
+                return;
+            }
 
-      ResponseUtils.sendError(ctx, storageException.getStatus(), storageException.getMessage());
-      return;
+            ResponseUtils.sendError(ctx, storageException.getStatus(), storageException.getMessage());
+            return;
+        }
+
+        super.exceptionCaught(ctx, cause);
     }
-
-    super.exceptionCaught(ctx, cause);
-  }
 }

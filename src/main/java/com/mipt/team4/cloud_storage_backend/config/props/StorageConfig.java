@@ -1,25 +1,31 @@
 package com.mipt.team4.cloud_storage_backend.config.props;
 
 import java.time.Duration;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "storage")
 public record StorageConfig(
-    Rest rest, Auth auth, Quotas quotas, StateMachine stateMachine, FailsafeRetry failsafeRetry) {
-  public record Rest(
-      int maxAggregatedContentLength,
-      long maxFileSize,
-      long maxFileChunkSize,
-      int fileDownloadChunkSize) {}
+        Rest rest, Auth auth, Quotas quotas, StateMachine stateMachine, FailsafeRetry failsafeRetry) {
+    public record Rest(
+            int maxAggregatedContentLength,
+            long maxFileSize,
+            long maxFileChunkSize,
+            int fileDownloadChunkSize) {
+    }
 
-  public record Auth(
-      String jwtSecretKey, long accessTokenExpirationSec, long refreshTokenExpirationSec) {}
+    public record Auth(
+            String jwtSecretKey, long accessTokenExpirationSec, long refreshTokenExpirationSec) {
+    }
 
-  public record Quotas(long defaultStorageLimit) {}
+    public record Quotas(long defaultStorageLimit) {
+    }
 
-  public record StateMachine(
-      int maxRetryCount, int fileStaleTimeMin, int fileThrottledUpdateIntervalSec) {}
+    public record StateMachine(
+            int maxRetryCount, int fileStaleTimeMin, int fileThrottledUpdateIntervalSec) {
+    }
 
-  public record FailsafeRetry(
-      int maxAttempts, double delayFactor, Duration firstDelay, Duration maxDelay, double jitter) {}
+    public record FailsafeRetry(
+            int maxAttempts, double delayFactor, Duration firstDelay, Duration maxDelay, double jitter) {
+    }
 }

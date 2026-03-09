@@ -10,55 +10,57 @@ import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.Serv
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
 import dev.failsafe.RetryPolicy;
+
 import java.security.SecureRandom;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ApplicationConfig {
-  @Bean
-  public SecureRandom secureRandom() {
-    return new SecureRandom();
-  }
+    @Bean
+    public SecureRandom secureRandom() {
+        return new SecureRandom();
+    }
 
-  @Bean
-  public MainChannelInitializer httpChannelInitializer(
-      PipelineBuilder pipelineBuilder,
-      SslContextFactory sslContextFactory,
-      ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
-      NettyConfig nettyConfig) {
-    return new MainChannelInitializer(
-        pipelineBuilder,
-        sslContextFactory,
-        protocolNegotiationHandler,
-        nettyConfig,
-        ServerProtocol.HTTP);
-  }
+    @Bean
+    public MainChannelInitializer httpChannelInitializer(
+            PipelineBuilder pipelineBuilder,
+            SslContextFactory sslContextFactory,
+            ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
+            NettyConfig nettyConfig) {
+        return new MainChannelInitializer(
+                pipelineBuilder,
+                sslContextFactory,
+                protocolNegotiationHandler,
+                nettyConfig,
+                ServerProtocol.HTTP);
+    }
 
-  @Bean
-  public MainChannelInitializer httpsChannelInitializer(
-      PipelineBuilder pipelineBuilder,
-      SslContextFactory sslContextFactory,
-      ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
-      NettyConfig nettyConfig) {
-    return new MainChannelInitializer(
-        pipelineBuilder,
-        sslContextFactory,
-        protocolNegotiationHandler,
-        nettyConfig,
-        ServerProtocol.HTTPS);
-  }
+    @Bean
+    public MainChannelInitializer httpsChannelInitializer(
+            PipelineBuilder pipelineBuilder,
+            SslContextFactory sslContextFactory,
+            ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandler,
+            NettyConfig nettyConfig) {
+        return new MainChannelInitializer(
+                pipelineBuilder,
+                sslContextFactory,
+                protocolNegotiationHandler,
+                nettyConfig,
+                ServerProtocol.HTTPS);
+    }
 
-  @Bean
-  public RetryPolicy<Object> retryPolicy(StorageConfig config) {
-    FailsafeRetry retry = config.failsafeRetry();
+    @Bean
+    public RetryPolicy<Object> retryPolicy(StorageConfig config) {
+        FailsafeRetry retry = config.failsafeRetry();
 
-    return RetryPolicy.builder()
-        .handle(RecoverableStorageException.class)
-        .withBackoff(retry.firstDelay(), retry.maxDelay(), retry.delayFactor())
-        .withMaxRetries(retry.maxAttempts())
-        .withJitter(retry.jitter())
-        .build();
-  }
+        return RetryPolicy.builder()
+                .handle(RecoverableStorageException.class)
+                .withBackoff(retry.firstDelay(), retry.maxDelay(), retry.delayFactor())
+                .withMaxRetries(retry.maxAttempts())
+                .withJitter(retry.jitter())
+                .build();
+    }
 }

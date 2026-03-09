@@ -12,15 +12,15 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class Http2StreamInitializer extends ChannelInitializer<Channel> {
-  private final PipelineBuilder pipelineBuilder;
+    private final PipelineBuilder pipelineBuilder;
 
-  @Override
-  protected void initChannel(Channel channel) {
-    ChannelPipeline pipeline = channel.pipeline();
+    @Override
+    protected void initChannel(Channel channel) {
+        ChannelPipeline pipeline = channel.pipeline();
 
-    pipeline.addLast(
-        PipelineHandlerNames.HTTP2_STREAM_FRAME_TO_OBJECT,
-        new Http2StreamFrameToHttpObjectCodec(true));
-    pipelineBuilder.finalizeHttpPipeline(pipeline);
-  }
+        pipeline.addLast(
+                PipelineHandlerNames.HTTP2_STREAM_FRAME_TO_OBJECT,
+                new Http2StreamFrameToHttpObjectCodec(true));
+        pipelineBuilder.finalizeHttpPipeline(pipeline);
+    }
 }

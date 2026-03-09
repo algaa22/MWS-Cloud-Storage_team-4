@@ -5,12 +5,12 @@ import java.util.List;
 
 public interface DatabaseConnection {
 
-  void connect() throws SQLException;
+    void connect() throws SQLException;
 
-  <T> List<T> executeQuery(
-      String query, List<Object> params, PostgresConnection.ResultSetMapper<T> mapper);
+    <T> List<T> executeQuery(
+            String query, List<Object> params, PostgresConnection.ResultSetMapper<T> mapper);
 
-  int executeUpdate(String query, List<Object> params);
+    int executeUpdate(String query, List<Object> params);
 
-  void disconnect() throws SQLException;
+    void disconnect() throws SQLException;
 }

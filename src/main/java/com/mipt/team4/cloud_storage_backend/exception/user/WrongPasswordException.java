@@ -5,7 +5,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class WrongPasswordException extends BaseStorageException {
 
-  public WrongPasswordException() {
-    super("Password incorrect", HttpResponseStatus.NOT_FOUND);
-  }
+    public WrongPasswordException() {
+        super("Password incorrect", HttpResponseStatus.NOT_FOUND);
+    }
 }

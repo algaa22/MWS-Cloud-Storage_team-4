@@ -16,36 +16,36 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 public class UserController {
 
-  private final UserService service;
-  private final JwtService jwtService;
+    private final UserService service;
+    private final JwtService jwtService;
 
-  public TokenPairDto registerUser(RegisterRequest request) {
-    request.validate();
-    return service.registerUser(request);
-  }
+    public TokenPairDto registerUser(RegisterRequest request) {
+        request.validate();
+        return service.registerUser(request);
+    }
 
-  public TokenPairDto loginUser(LoginRequest request) {
-    request.validate();
-    return service.loginUser(request);
-  }
+    public TokenPairDto loginUser(LoginRequest request) {
+        request.validate();
+        return service.loginUser(request);
+    }
 
-  public void logoutUser(SimpleUserRequest request) {
-    request.validate(jwtService);
-    service.logoutUser(request);
-  }
+    public void logoutUser(SimpleUserRequest request) {
+        request.validate(jwtService);
+        service.logoutUser(request);
+    }
 
-  public TokenPairDto refresh(RefreshTokenRequest request) {
-    request.validate();
-    return service.refreshTokens(request);
-  }
+    public TokenPairDto refresh(RefreshTokenRequest request) {
+        request.validate();
+        return service.refreshTokens(request);
+    }
 
-  public UserDto getUserInfo(SimpleUserRequest request) {
-    request.validate(jwtService);
-    return service.getUserInfo(request);
-  }
+    public UserDto getUserInfo(SimpleUserRequest request) {
+        request.validate(jwtService);
+        return service.getUserInfo(request);
+    }
 
-  public void updateUserInfo(UpdateUserInfoRequest request) {
-    request.validate(jwtService);
-    service.updateUserInfo(request);
-  }
+    public void updateUserInfo(UpdateUserInfoRequest request) {
+        request.validate(jwtService);
+        service.updateUserInfo(request);
+    }
 }

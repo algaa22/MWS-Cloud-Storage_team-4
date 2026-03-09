@@ -8,9 +8,11 @@ import io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
+
 import java.io.InputStream;
 import java.security.KeyStore;
 import javax.net.ssl.KeyManagerFactory;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -18,30 +20,30 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class SslContextFactory {
 
-  public SslContext createFromResources() {
-    try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) { // TODO: hardcoding
-      log.info("Loading SSL from PKCS12 file");
+    public SslContext createFromResources() {
+        try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) { // TODO: hardcoding
+            log.info("Loading SSL from PKCS12 file");
 
-      KeyStore keyStore = KeyStore.getInstance("PKCS12");
-      keyStore.load(p12Stream, "password".toCharArray()); // TODO: "password"?
+            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            keyStore.load(p12Stream, "password".toCharArray()); // TODO: "password"?
 
-      KeyManagerFactory kmf =
-          KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-      kmf.init(keyStore, "password".toCharArray());
+            KeyManagerFactory kmf =
+                    KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(keyStore, "password".toCharArray());
 
-      return SslContextBuilder.forServer(kmf)
-          .sslProvider(SslProvider.OPENSSL_REFCNT)
-          .ciphers(null, IdentityCipherSuiteFilter.INSTANCE)
-          .applicationProtocolConfig(
-              new ApplicationProtocolConfig(
-                  ApplicationProtocolConfig.Protocol.ALPN,
-                  ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
-                  ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
-                  ApplicationProtocolNames.HTTP_2,
-                  ApplicationProtocolNames.HTTP_1_1))
-          .build();
-    } catch (Exception e) {
-      throw new SslLoadingException(e);
+            return SslContextBuilder.forServer(kmf)
+                    .sslProvider(SslProvider.OPENSSL_REFCNT)
+                    .ciphers(null, IdentityCipherSuiteFilter.INSTANCE)
+                    .applicationProtocolConfig(
+                            new ApplicationProtocolConfig(
+                                    ApplicationProtocolConfig.Protocol.ALPN,
+                                    ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+                                    ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
+                                    ApplicationProtocolNames.HTTP_2,
+                                    ApplicationProtocolNames.HTTP_1_1))
+                    .build();
+        } catch (Exception e) {
+            throw new SslLoadingException(e);
+        }
     }
-  }
 }

@@ -11,12 +11,14 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransfe
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
+
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,144 +26,146 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 @Tag("smoke")
 public class FileSmokeIT extends BaseStorageIT {
-  @Autowired private FileChunkedTransferITUtils chunkedITUtils;
-  @Autowired private FileOperationsITUtils fileOperationsITUtils;
+    @Autowired
+    private FileChunkedTransferITUtils chunkedITUtils;
+    @Autowired
+    private FileOperationsITUtils fileOperationsITUtils;
 
-  @Test
-  public void shouldSimpleUploadAndDownloadFile() throws IOException, InterruptedException {
-    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
-    checkDownloadFile(fileId, TestFiles.SMALL_FILE.getData());
-  }
-
-  // TODO: тест на удаление файла во время скачивания/загрузки
-  // TODO: проверки на content-type?
-
-  @Test
-  public void shouldChunkedUploadAndDownloadFile() throws IOException {
-    byte[] fileData = TestFiles.BIG_FILE.getData();
-
-    FileChunkedTransferITUtils.UploadResult uploadResult =
-        chunkedITUtils.sendUploadRequest(
-            apacheClient,
-            currentUserToken,
-            DEFAULT_FILE_TARGET_NAME,
-            TestConstants.BIG_FILE_LOCAL_PATH,
-            "",
-            fileData.length);
-    UUID fileId = itUtils.extractIdFromBody(uploadResult.body());
-
-    assertEquals(HttpStatus.SC_CREATED, uploadResult.statusCode());
-    checkDownloadFile(fileId, fileData);
-  }
-
-  @Test
-  public void shouldGetFileNamesList() throws IOException, InterruptedException {
-    List<String> fileNames = new ArrayList<>();
-
-    for (int i = 0; i < 10; i++) {
-      String targetFileName = "file" + i + ".txt";
-      fileNames.add(targetFileName);
-
-      simpleUploadFile(targetFileName);
+    @Test
+    public void shouldSimpleUploadAndDownloadFile() throws IOException, InterruptedException {
+        UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
+        checkDownloadFile(fileId, TestFiles.SMALL_FILE.getData());
     }
 
-    assertTrue(
-        fileOperationsITUtils.fileListContainsFileNames(
-            client, currentUserToken, fileNames, false, true, null));
-  }
+    // TODO: тест на удаление файла во время скачивания/загрузки
+    // TODO: проверки на content-type?
 
-  @Test
-  public void shouldGetFileInfo() throws IOException, InterruptedException {
-    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME, "1,2,3");
+    @Test
+    public void shouldChunkedUploadAndDownloadFile() throws IOException {
+        byte[] fileData = TestFiles.BIG_FILE.getData();
 
-    HttpResponse<String> response =
-        fileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, fileId);
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
+        FileChunkedTransferITUtils.UploadResult uploadResult =
+                chunkedITUtils.sendUploadRequest(
+                        apacheClient,
+                        currentUserToken,
+                        DEFAULT_FILE_TARGET_NAME,
+                        TestConstants.BIG_FILE_LOCAL_PATH,
+                        "",
+                        fileData.length);
+        UUID fileId = itUtils.extractIdFromBody(uploadResult.body());
 
-    byte[] testFile = TestFiles.SMALL_FILE.getData();
-
-    JsonNode rootNode = itUtils.getRootNodeFromResponse(response);
-    assertEquals(DEFAULT_FILE_TARGET_NAME, rootNode.get("Name").asText());
-    assertEquals("private", rootNode.get("Visibility").asText());
-    assertEquals("1,2,3", rootNode.get("Tags").asText());
-    assertEquals(testFile.length, rootNode.get("Size").asLong());
-    assertFalse(rootNode.get("Type").asText().isEmpty());
-    assertFalse(rootNode.get("IsDeleted").asBoolean());
-  }
-
-  @Test
-  public void shouldDeleteFile() throws IOException, InterruptedException {
-    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
-
-    HttpResponse<String> deletedResponse =
-        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId);
-    assertEquals(HttpStatus.SC_OK, deletedResponse.statusCode());
-
-    assertFileNotFound(currentUserToken, fileId);
-  }
-
-  @Test
-  public void shouldChangeFilePath() throws IOException, InterruptedException {
-    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
-    final String NEW_FILE_NAME = "new_file";
-
-    HttpResponse<String> changeFileResponse =
-        fileOperationsITUtils.sendChangeFilePathRequest(
-            client, currentUserToken, fileId, NEW_FILE_NAME);
-    assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
-
-    assertFileInfoMatches(fileId, NEW_FILE_NAME, null, null);
-  }
-
-  @Test
-  public void shouldChangeFileVisibility() throws IOException, InterruptedException {
-    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
-
-    HttpResponse<String> changeFileResponse =
-        fileOperationsITUtils.sendChangeFileVisibilityRequest(
-            client, currentUserToken, fileId, "public");
-    assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
-
-    assertFileInfoMatches(fileId, null, "public", null);
-  }
-
-  @Test
-  public void shouldChangeFileTags() throws IOException, InterruptedException {
-    UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
-
-    HttpResponse<String> changeFileResponse =
-        fileOperationsITUtils.sendChangeFileTagsRequest(client, currentUserToken, fileId, "1,2,3");
-    assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
-
-    assertFileInfoMatches(fileId, null, null, "1,2,3");
-  }
-
-  private void checkDownloadFile(UUID fileId, byte[] originalFileData) throws IOException {
-    FileChunkedTransferITUtils.DownloadResult downloadResult =
-        chunkedITUtils.sendDownloadRequest(BaseIT.apacheClient, currentUserToken, fileId);
-    assertEquals(HttpStatus.SC_OK, downloadResult.statusCode());
-
-    assertDownloadResponseValid(downloadResult, originalFileData.length);
-    assertDownloadedChunksMatchOriginalFile(downloadResult, originalFileData);
-  }
-
-  private void assertDownloadResponseValid(
-      FileChunkedTransferITUtils.DownloadResult downloadResult, int fileSize) {
-    Map<String, String> headers = downloadResult.headers();
-    String receivedFileSize = headers.get("X-File-Size");
-
-    assertEquals(String.valueOf(fileSize), receivedFileSize);
-  }
-
-  private void assertDownloadedChunksMatchOriginalFile(
-      FileChunkedTransferITUtils.DownloadResult downloadResult, byte[] fileData) {
-    int offset = 0;
-
-    for (byte[] chunk : downloadResult.chunks()) {
-      assertTrue(offset + chunk.length <= fileData.length);
-      assertTrue(chunkedITUtils.chunkMatchesOriginal(fileData, chunk, offset));
-
-      offset += chunk.length;
+        assertEquals(HttpStatus.SC_CREATED, uploadResult.statusCode());
+        checkDownloadFile(fileId, fileData);
     }
-  }
+
+    @Test
+    public void shouldGetFileNamesList() throws IOException, InterruptedException {
+        List<String> fileNames = new ArrayList<>();
+
+        for (int i = 0; i < 10; i++) {
+            String targetFileName = "file" + i + ".txt";
+            fileNames.add(targetFileName);
+
+            simpleUploadFile(targetFileName);
+        }
+
+        assertTrue(
+                fileOperationsITUtils.fileListContainsFileNames(
+                        client, currentUserToken, fileNames, false, true, null));
+    }
+
+    @Test
+    public void shouldGetFileInfo() throws IOException, InterruptedException {
+        UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME, "1,2,3");
+
+        HttpResponse<String> response =
+                fileOperationsITUtils.sendGetFileInfoRequest(client, currentUserToken, fileId);
+        assertEquals(HttpStatus.SC_OK, response.statusCode());
+
+        byte[] testFile = TestFiles.SMALL_FILE.getData();
+
+        JsonNode rootNode = itUtils.getRootNodeFromResponse(response);
+        assertEquals(DEFAULT_FILE_TARGET_NAME, rootNode.get("Name").asText());
+        assertEquals("private", rootNode.get("Visibility").asText());
+        assertEquals("1,2,3", rootNode.get("Tags").asText());
+        assertEquals(testFile.length, rootNode.get("Size").asLong());
+        assertFalse(rootNode.get("Type").asText().isEmpty());
+        assertFalse(rootNode.get("IsDeleted").asBoolean());
+    }
+
+    @Test
+    public void shouldDeleteFile() throws IOException, InterruptedException {
+        UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
+
+        HttpResponse<String> deletedResponse =
+                fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId);
+        assertEquals(HttpStatus.SC_OK, deletedResponse.statusCode());
+
+        assertFileNotFound(currentUserToken, fileId);
+    }
+
+    @Test
+    public void shouldChangeFilePath() throws IOException, InterruptedException {
+        UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
+        final String NEW_FILE_NAME = "new_file";
+
+        HttpResponse<String> changeFileResponse =
+                fileOperationsITUtils.sendChangeFilePathRequest(
+                        client, currentUserToken, fileId, NEW_FILE_NAME);
+        assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
+
+        assertFileInfoMatches(fileId, NEW_FILE_NAME, null, null);
+    }
+
+    @Test
+    public void shouldChangeFileVisibility() throws IOException, InterruptedException {
+        UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
+
+        HttpResponse<String> changeFileResponse =
+                fileOperationsITUtils.sendChangeFileVisibilityRequest(
+                        client, currentUserToken, fileId, "public");
+        assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
+
+        assertFileInfoMatches(fileId, null, "public", null);
+    }
+
+    @Test
+    public void shouldChangeFileTags() throws IOException, InterruptedException {
+        UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
+
+        HttpResponse<String> changeFileResponse =
+                fileOperationsITUtils.sendChangeFileTagsRequest(client, currentUserToken, fileId, "1,2,3");
+        assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
+
+        assertFileInfoMatches(fileId, null, null, "1,2,3");
+    }
+
+    private void checkDownloadFile(UUID fileId, byte[] originalFileData) throws IOException {
+        FileChunkedTransferITUtils.DownloadResult downloadResult =
+                chunkedITUtils.sendDownloadRequest(BaseIT.apacheClient, currentUserToken, fileId);
+        assertEquals(HttpStatus.SC_OK, downloadResult.statusCode());
+
+        assertDownloadResponseValid(downloadResult, originalFileData.length);
+        assertDownloadedChunksMatchOriginalFile(downloadResult, originalFileData);
+    }
+
+    private void assertDownloadResponseValid(
+            FileChunkedTransferITUtils.DownloadResult downloadResult, int fileSize) {
+        Map<String, String> headers = downloadResult.headers();
+        String receivedFileSize = headers.get("X-File-Size");
+
+        assertEquals(String.valueOf(fileSize), receivedFileSize);
+    }
+
+    private void assertDownloadedChunksMatchOriginalFile(
+            FileChunkedTransferITUtils.DownloadResult downloadResult, byte[] fileData) {
+        int offset = 0;
+
+        for (byte[] chunk : downloadResult.chunks()) {
+            assertTrue(offset + chunk.length <= fileData.length);
+            assertTrue(chunkedITUtils.chunkMatchesOriginal(fileData, chunk, offset));
+
+            offset += chunk.length;
+        }
+    }
 }

@@ -8,6 +8,6 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app.storage.notification")
 public class StorageNotificationConfig {
-  private double fullThreshold = 0.95;
-  private double almostFullThreshold = 0.75;
+    private double fullThreshold = 0.95;
+    private double almostFullThreshold = 0.75;
 }

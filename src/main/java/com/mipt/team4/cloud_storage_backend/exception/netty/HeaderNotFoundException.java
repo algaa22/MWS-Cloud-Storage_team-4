@@ -5,7 +5,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class HeaderNotFoundException extends BaseStorageException {
 
-  public HeaderNotFoundException(String headerName) {
-    super("Missing required header: " + headerName, HttpResponseStatus.BAD_REQUEST);
-  }
+    public HeaderNotFoundException(String headerName) {
+        super("Missing required header: " + headerName, HttpResponseStatus.BAD_REQUEST);
+    }
 }

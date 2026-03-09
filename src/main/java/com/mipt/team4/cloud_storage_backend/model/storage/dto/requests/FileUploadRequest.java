@@ -4,19 +4,20 @@ import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFaile
 import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+
 import java.util.List;
 import java.util.Optional;
 
 public record FileUploadRequest(
-    Optional<String> parentId, String name, String userToken, List<String> tags, byte[] data) {
+        Optional<String> parentId, String name, String userToken, List<String> tags, byte[] data) {
 
-  public void validate(JwtService jwtService) throws ValidationFailedException {
-    ValidationResult result =
-        Validators.all(
-            Validators.validFileName("File name", name),
-            Validators.validToken(jwtService, userToken),
-            Validators.mustBePositive("File size", data.length));
+    public void validate(JwtService jwtService) throws ValidationFailedException {
+        ValidationResult result =
+                Validators.all(
+                        Validators.validFileName("File name", name),
+                        Validators.validToken(jwtService, userToken),
+                        Validators.mustBePositive("File size", data.length));
 
-    Validators.throwExceptionIfNotValid(result);
-  }
+        Validators.throwExceptionIfNotValid(result);
+    }
 }

@@ -5,15 +5,15 @@ import lombok.Getter;
 
 @Getter
 public abstract class BaseStorageException extends RuntimeException {
-  private final HttpResponseStatus status;
+    private final HttpResponseStatus status;
 
-  public BaseStorageException(String message, Throwable cause, HttpResponseStatus status) {
-    super(message, cause);
-    this.status = status;
-  }
+    public BaseStorageException(String message, Throwable cause, HttpResponseStatus status) {
+        super(message, cause);
+        this.status = status;
+    }
 
-  public BaseStorageException(String message, HttpResponseStatus status) {
-    super(message);
-    this.status = status;
-  }
+    public BaseStorageException(String message, HttpResponseStatus status) {
+        super(message);
+        this.status = status;
+    }
 }

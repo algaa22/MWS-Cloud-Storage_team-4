@@ -15,23 +15,23 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class PipelineBuilder {
-  private final ObjectProvider<HttpTrafficStrategySelector> strategySelectors;
-  private final ObjectProvider<StorageExceptionHandler> storageExceptionHandlers;
-  private final ObjectProvider<FinalErrorHandler> globalErrorHandlers;
-  private final ObjectProvider<IdleTimeoutHandler> idleTimeoutHandlers;
-  private final ObjectProvider<CorsHandler> corsHandler;
+    private final ObjectProvider<HttpTrafficStrategySelector> strategySelectors;
+    private final ObjectProvider<StorageExceptionHandler> storageExceptionHandlers;
+    private final ObjectProvider<FinalErrorHandler> globalErrorHandlers;
+    private final ObjectProvider<IdleTimeoutHandler> idleTimeoutHandlers;
+    private final ObjectProvider<CorsHandler> corsHandler;
 
-  public void buildHttp11Pipeline(ChannelPipeline pipeline) {
-    pipeline.addLast(PipelineHandlerNames.HTTP_SERVER_CODEC, new HttpServerCodec());
-    finalizeHttpPipeline(pipeline);
-  }
+    public void buildHttp11Pipeline(ChannelPipeline pipeline) {
+        pipeline.addLast(PipelineHandlerNames.HTTP_SERVER_CODEC, new HttpServerCodec());
+        finalizeHttpPipeline(pipeline);
+    }
 
-  public void finalizeHttpPipeline(ChannelPipeline pipeline) {
-    pipeline.addLast(PipelineHandlerNames.CORS, corsHandler.getObject());
-    pipeline.addLast(PipelineHandlerNames.TRAFFIC_STRATEGY_SELECTOR, strategySelectors.getObject());
+    public void finalizeHttpPipeline(ChannelPipeline pipeline) {
+        pipeline.addLast(PipelineHandlerNames.CORS, corsHandler.getObject());
+        pipeline.addLast(PipelineHandlerNames.TRAFFIC_STRATEGY_SELECTOR, strategySelectors.getObject());
 
-    pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, storageExceptionHandlers.getObject());
-    pipeline.addLast(PipelineHandlerNames.GLOBAL_ERROR, globalErrorHandlers.getObject());
-    pipeline.addLast(PipelineHandlerNames.IDLE_TIMEOUT, idleTimeoutHandlers.getObject());
-  }
+        pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, storageExceptionHandlers.getObject());
+        pipeline.addLast(PipelineHandlerNames.GLOBAL_ERROR, globalErrorHandlers.getObject());
+        pipeline.addLast(PipelineHandlerNames.IDLE_TIMEOUT, idleTimeoutHandlers.getObject());
+    }
 }

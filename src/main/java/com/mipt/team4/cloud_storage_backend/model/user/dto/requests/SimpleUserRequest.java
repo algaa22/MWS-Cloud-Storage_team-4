@@ -7,9 +7,9 @@ import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 
 public record SimpleUserRequest(String token) {
 
-  public void validate(JwtService jwtService) throws ValidationFailedException {
-    ValidationResult result = Validators.all(Validators.validToken(jwtService, token));
+    public void validate(JwtService jwtService) throws ValidationFailedException {
+        ValidationResult result = Validators.all(Validators.validToken(jwtService, token));
 
-    Validators.throwExceptionIfNotValid(result);
-  }
+        Validators.throwExceptionIfNotValid(result);
+    }
 }

@@ -4,4 +4,5 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record RefreshTokenDto(
-    UUID id, UUID userId, String token, LocalDateTime expiresAt, boolean revoked) {}
+        UUID id, UUID userId, String token, LocalDateTime expiresAt, boolean revoked) {
+}

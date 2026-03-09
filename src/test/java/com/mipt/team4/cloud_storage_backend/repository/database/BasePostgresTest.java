@@ -9,26 +9,26 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 public abstract class BasePostgresTest {
 
-  protected static PostgreSQLContainer<?> postgresContainer;
+    protected static PostgreSQLContainer<?> postgresContainer;
 
-  // TODO: два раза создается контейнер (еще в E2E) - норм?
+    // TODO: два раза создается контейнер (еще в E2E) - норм?
 
-  @BeforeAll
-  protected static void beforeAll() {
-    postgresContainer = TestUtils.createPostgresContainer();
-    postgresContainer.start();
-  }
+    @BeforeAll
+    protected static void beforeAll() {
+        postgresContainer = TestUtils.createPostgresContainer();
+        postgresContainer.start();
+    }
 
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    // TODO: дублирование configureProperties()
-    registry.add("database.url", postgresContainer::getJdbcUrl);
-    registry.add("database.username", postgresContainer::getUsername);
-    registry.add("database.password", postgresContainer::getPassword);
-  }
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        // TODO: дублирование configureProperties()
+        registry.add("database.url", postgresContainer::getJdbcUrl);
+        registry.add("database.username", postgresContainer::getUsername);
+        registry.add("database.password", postgresContainer::getPassword);
+    }
 
-  @AfterAll
-  protected static void afterAll() {
-    postgresContainer.stop();
-  }
+    @AfterAll
+    protected static void afterAll() {
+        postgresContainer.stop();
+    }
 }

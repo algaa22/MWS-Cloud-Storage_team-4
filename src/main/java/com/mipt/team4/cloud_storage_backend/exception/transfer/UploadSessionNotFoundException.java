@@ -7,14 +7,14 @@ import lombok.Getter;
 
 @Getter
 public class UploadSessionNotFoundException extends BaseStorageException {
-  RecoverableStorageException recoverableCause;
+    RecoverableStorageException recoverableCause;
 
-  public UploadSessionNotFoundException(RecoverableStorageException cause) {
-    super("Upload session not found", cause, HttpResponseStatus.NOT_FOUND);
-    this.recoverableCause = cause;
-  }
+    public UploadSessionNotFoundException(RecoverableStorageException cause) {
+        super("Upload session not found", cause, HttpResponseStatus.NOT_FOUND);
+        this.recoverableCause = cause;
+    }
 
-  public UploadSessionNotFoundException() {
-    super("Upload session not found", HttpResponseStatus.NOT_FOUND);
-  }
+    public UploadSessionNotFoundException() {
+        super("Upload session not found", HttpResponseStatus.NOT_FOUND);
+    }
 }

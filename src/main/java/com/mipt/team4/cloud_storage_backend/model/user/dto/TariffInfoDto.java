@@ -11,5 +11,6 @@ public record TariffInfoDto(
     LocalDateTime startDate,
     LocalDateTime endDate,
     boolean autoRenew,
-    boolean isActive
+    boolean isActive,
+    int daysLeft
 ) {}

@@ -388,13 +388,14 @@ export const getTariffInfo = async (token) => {
   }
 };
 
-export const purchaseTariff = async (token, plan, paymentToken = 'test') => {
+export const purchaseTariff = async (token, plan, paymentToken = 'test', autoRenew = true) => {
   console.log("=== PURCHASE TARIFF ===");
   console.log("Plan:", plan);
+  console.log("Auto-renew:", autoRenew);
   console.log("Token (first 20 chars):", token?.substring(0, 20) + "...");
   console.log("Payment token:", paymentToken);
 
-  const url = `${BASE}/users/tariff/purchase?plan=${plan}&autoRenew=true`;
+  const url = `${BASE}/users/tariff/purchase?plan=${plan}&autoRenew=${autoRenew}`;
   console.log("Full URL:", url);
 
   try {
@@ -426,6 +427,32 @@ export const purchaseTariff = async (token, plan, paymentToken = 'test') => {
 
   } catch (error) {
     console.error("🔥 Error purchasing tariff:", error);
+    throw error;
+  }
+};
+
+export const setAutoRenew = async (token, enabled) => {
+  console.log(`=== ${enabled ? 'ENABLE' : 'DISABLE'} AUTO RENEW ===`);
+
+  const url = `${BASE}/users/tariff/set-auto-renew?enabled=${enabled}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "X-Auth-Token": token
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to ${enabled ? 'enable' : 'disable'} auto-renew: ${response.status} ${errorText}`);
+    }
+
+    console.log(`Auto-renew ${enabled ? 'enabled' : 'disabled'} successfully`);
+    return true;
+  } catch (error) {
+    console.error(`Error ${enabled ? 'enabling' : 'disabling'} auto-renew:`, error);
     throw error;
   }
 };

@@ -63,15 +63,15 @@ export default function TariffsPage() {
     setIsPaymentModalOpen(true);
   };
 
-  const handleConfirmPayment = async (paymentMethod) => {
+  const handleConfirmPayment = async (paymentMethod, autoRenew) => {
     setPurchasing(true);
     setError('');
     setSuccess('');
 
     try {
-      console.log(`Оплата тарифа "${selectedTariff.name}" методом: ${paymentMethod}`);
+      console.log(`Оплата тарифа "${selectedTariff.name}" методом: ${paymentMethod}, автопродление: ${autoRenew ? 'вкл' : 'выкл'}`);
 
-      await purchaseTariff(token, selectedTariff.id, 'test-payment-token');
+      await purchaseTariff(token, selectedTariff.id, 'test-payment-token', autoRenew);
       await loadCurrentTariff();
 
       setSuccess(`Тариф "${selectedTariff.name}" успешно приобретен!`);
@@ -188,45 +188,64 @@ export default function TariffsPage() {
           <div className="w-full max-w-6xl">
             {/* Текущий тариф */}
             {currentTariff && (
-                <div className="mb-8 bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                  <h2 className="text-xl font-semibold mb-4">Текущий тариф</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white/10 rounded-xl p-4">
-                      <div className="text-sm text-white/60 mb-1">Тариф</div>
-                      <div className="text-2xl font-bold text-yellow-300">{currentTariff.tariffPlan || 'TRIAL'}</div>
-                    </div>
-                    <div className="bg-white/10 rounded-xl p-4">
-                      <div className="text-sm text-white/60 mb-1">Использовано</div>
-                      <div className="text-2xl font-bold text-blue-300">{formatBytes(currentTariff.usedStorage || 0)}</div>
-                    </div>
-                    <div className="bg-white/10 rounded-xl p-4">
-                      <div className="text-sm text-white/60 mb-1">Лимит</div>
-                      <div className="text-2xl font-bold text-green-300">{formatBytes(currentTariff.storageLimit || 10 * 1024 * 1024 * 1024)}</div>
-                    </div>
-                    <div className="bg-white/10 rounded-xl p-4">
-                      <div className="text-sm text-white/60 mb-1">Действует до</div>
-                      <div className="text-lg font-bold text-white">
-                        {formatEndDate(currentTariff.endDate)}
-                      </div>
-                    </div>
+              <div className="mb-8 bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                <h2 className="text-xl font-semibold mb-4">Текущий тариф</h2>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-white/10 rounded-xl p-4">
+                    <div className="text-sm text-white/60 mb-1">Тариф</div>
+                    <div className="text-2xl font-bold text-yellow-300">{currentTariff.tariffPlan || 'TRIAL'}</div>
                   </div>
-
-                  {/* Прогресс-бар */}
-                  <div className="mt-4">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-white/80">Заполнено</span>
-                      <span className="text-blue-300">
-                        {calculatePercentage()}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
-                      <div
-                          className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(calculatePercentage())}`}
-                          style={{ width: `${Math.min(calculatePercentage(), 100)}%` }}
-                      />
+                  <div className="bg-white/10 rounded-xl p-4">
+                    <div className="text-sm text-white/60 mb-1">Использовано</div>
+                    <div className="text-2xl font-bold text-blue-300">{formatBytes(currentTariff.usedStorage || 0)}</div>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-4">
+                    <div className="text-sm text-white/60 mb-1">Лимит</div>
+                    <div className="text-2xl font-bold text-green-300">{formatBytes(currentTariff.storageLimit || 10 * 1024 * 1024 * 1024)}</div>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-4">
+                    <div className="text-sm text-white/60 mb-1">Действует до</div>
+                    <div className="text-lg font-bold text-white">
+                      {formatEndDate(currentTariff.endDate)}
                     </div>
                   </div>
                 </div>
+
+                {/* Прогресс-бар */}
+                <div className="mt-4">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-white/80">Заполнено</span>
+                    <span className="text-blue-300">
+                      {calculatePercentage()}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
+                    <div
+                        className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(calculatePercentage())}`}
+                        style={{ width: `${Math.min(calculatePercentage(), 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Статус автопродления (только для платных тарифов) */}
+                {currentTariff.tariffPlan !== 'TRIAL' && (
+                  <div className="mt-4 flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span className="text-white/70">Автопродление</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      currentTariff.autoRenew
+                        ? 'bg-green-600/30 text-green-300 border border-green-500/30'
+                        : 'bg-gray-600/30 text-gray-300 border border-gray-500/30'
+                    }`}>
+                      {currentTariff.autoRenew ? 'Включено' : 'Отключено'}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Сообщения об ошибках/успехе */}

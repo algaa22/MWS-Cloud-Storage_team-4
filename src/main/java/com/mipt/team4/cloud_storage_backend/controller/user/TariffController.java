@@ -17,7 +17,7 @@ public class TariffController {
   private final JwtService jwtService;
 
   public void purchaseTariff(PurchaseTariffRequest request) {
-    request.validate(jwtService); // проверяем токен
+    request.validate(jwtService);
     tariffService.purchaseTariff(request);
   }
 

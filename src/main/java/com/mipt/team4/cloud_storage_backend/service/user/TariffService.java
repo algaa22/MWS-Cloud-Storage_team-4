@@ -89,7 +89,8 @@ public class TariffService {
     }
 
     UserEntity user = userOpt.get();
-
+    int daysLeft = user.getTariffEndDate() != null ? (int) java.time.Duration.between(LocalDateTime.now(), user.getTariffEndDate()).toDays() : 0;
+    
     return new TariffInfoDto(
         user.getTariffPlan() != null ? user.getTariffPlan() : TariffPlan.TRIAL,
         user.getStorageLimit(),
@@ -97,7 +98,8 @@ public class TariffService {
         user.getTariffStartDate(),
         user.getTariffEndDate(),
         user.isAutoRenew(),
-        user.isActive());
+        user.isActive(),
+        daysLeft);
   }
 
   public void disableAutoRenew(SimpleUserRequest request) {

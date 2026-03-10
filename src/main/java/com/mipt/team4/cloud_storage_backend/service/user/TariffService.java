@@ -5,7 +5,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.TariffPurchaseExcepti
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateAutoRenewRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
@@ -13,6 +13,7 @@ import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,7 +46,7 @@ public class TariffService {
         log.info("Trial period started for user: {}, ends at: {}", userId, endDate);
     }
 
-    public void purchaseTariff(TariffRequest request) {
+    public void purchaseTariff(PurchaseTariffRequest request) {
         String token = request.userToken();
         UUID userId = userSessionService.extractUserIdFromToken(token);
 
@@ -93,14 +94,24 @@ public class TariffService {
 
         UserEntity user = userOpt.get();
 
+        TariffPlan tariffPlan = user.getTariffPlan() != null ? user.getTariffPlan() : TariffPlan.TRIAL;
+        LocalDateTime endDate = user.getTariffEndDate();
+
+        int daysLeft = 0;
+        if (endDate != null && endDate.isAfter(LocalDateTime.now())) {
+            daysLeft = (int) ChronoUnit.DAYS.between(LocalDateTime.now(), endDate);
+        }
+
         return new TariffInfoDto(
-                user.getTariffPlan() != null ? user.getTariffPlan() : TariffPlan.TRIAL,
+                tariffPlan,
                 user.getStorageLimit(),
                 user.getUsedStorage(),
                 user.getTariffStartDate(),
-                user.getTariffEndDate(),
+                endDate,
                 user.isAutoRenew(),
-                user.isActive());
+                user.isActive(),
+                daysLeft
+        );
     }
 
     public void setAutoRenew(SimpleUserRequest request, boolean enabled) {

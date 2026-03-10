@@ -146,7 +146,7 @@ public class UsersRequestHandler {
 
         TariffPlan plan = TariffPlan.valueOf(tariffPlanStr);
 
-        TariffRequest tariffRequest = new TariffRequest(userToken, plan, paymentToken, autoRenew);
+        PurchaseTariffRequest tariffRequest = new PurchaseTariffRequest(userToken, plan, paymentToken, autoRenew);
 
         tariffController.purchaseTariff(tariffRequest);
 
@@ -162,14 +162,14 @@ public class UsersRequestHandler {
         TariffInfoDto info = tariffController.getTariffInfo(userRequest);
 
         ObjectNode rootNode = mapper.createObjectNode();
-        rootNode.put("tariffPlan", info.getTariffPlan().name());
-        rootNode.put("storageLimit", info.getStorageLimit());
-        rootNode.put("usedStorage", info.getUsedStorage());
-        rootNode.put("startDate", info.getStartDate() != null ? info.getStartDate().toString() : null);
-        rootNode.put("endDate", info.getEndDate() != null ? info.getEndDate().toString() : null);
-        rootNode.put("autoRenew", info.isAutoRenew());
+        rootNode.put("tariffPlan", info.tariffPlan().name());
+        rootNode.put("storageLimit", info.storageLimit());
+        rootNode.put("usedStorage", info.usedStorage());
+        rootNode.put("startDate", info.startDate() != null ? info.startDate().toString() : null);
+        rootNode.put("endDate", info.endDate() != null ? info.endDate().toString() : null);
+        rootNode.put("autoRenew", info.autoRenew());
         rootNode.put("isActive", info.isActive());
-        rootNode.put("daysLeft", info.getDaysLeft());
+        rootNode.put("daysLeft", info.daysLeft());
 
         ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
     }

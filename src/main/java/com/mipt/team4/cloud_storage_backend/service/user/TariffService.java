@@ -26,142 +26,143 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TariffService {
 
-    private final UserRepository userRepository;
-    private final UserSessionService userSessionService;
-    private final NotificationClient notificationClient;
-    private final PaymentService paymentService;
+  private final UserRepository userRepository;
+  private final UserSessionService userSessionService;
+  private final NotificationClient notificationClient;
+  private final PaymentService paymentService;
 
-    public void setupTrialPeriod(UUID userId) {
-        Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException("User not found with id: " + userId);
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endDate = now.plusDays(TariffPlan.TRIAL.getDurationDays());
-
-        userRepository.updateTariff(
-                userId, TariffPlan.TRIAL, now, endDate, false, TariffPlan.TRIAL.getStorageLimit());
-
-        log.info("Trial period started for user: {}, ends at: {}", userId, endDate);
+  public void setupTrialPeriod(UUID userId) {
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+    if (userOpt.isEmpty()) {
+      throw new UserNotFoundException("User not found with id: " + userId);
     }
 
-    public void purchaseTariff(PurchaseTariffRequest request) {
-        String token = request.userToken();
-        UUID userId = userSessionService.extractUserIdFromToken(token);
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime endDate = now.plusDays(TariffPlan.TRIAL.getDurationDays());
 
-        Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException("User not found with token: " + token);
-        }
+    userRepository.updateTariff(
+        userId, TariffPlan.TRIAL, now, endDate, false, TariffPlan.TRIAL.getStorageLimit());
 
-        UserEntity user = userOpt.get();
+    log.info("Trial period started for user: {}, ends at: {}", userId, endDate);
+  }
 
-        try {
-            paymentService.processPayment(userId, request.tariffPlan(), request.paymentToken());
+  public void purchaseTariff(PurchaseTariffRequest request) {
+    String token = request.userToken();
+    UUID userId = userSessionService.extractUserIdFromToken(token);
 
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime endDate = now.plusDays(request.tariffPlan().getDurationDays());
-
-            userRepository.updateTariff(
-                    userId,
-                    request.tariffPlan(),
-                    now,
-                    endDate,
-                    request.autoRenew(),
-                    request.tariffPlan().getStorageLimit());
-
-            notificationClient.notifyTariffPurchased(
-                    user.getEmail(), user.getName(), request.tariffPlan().name(), endDate);
-
-            log.info("User {} purchased tariff: {}", userId, request.tariffPlan());
-
-        } catch (PaymentException e) {
-            log.error("Payment failed for user: {}", userId, e);
-            throw new TariffPurchaseException(
-                    "Payment processing failed for tariff: " + request.tariffPlan(), e);
-        }
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+    if (userOpt.isEmpty()) {
+      throw new UserNotFoundException("User not found with token: " + token);
     }
 
-    public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
-        String token = request.token();
-        UUID userId = userSessionService.extractUserIdFromToken(token);
+    UserEntity user = userOpt.get();
 
-        Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException("User not found with token: " + token);
-        }
+    try {
+      paymentService.processPayment(userId, request.tariffPlan(), request.paymentToken());
 
-        UserEntity user = userOpt.get();
+      LocalDateTime now = LocalDateTime.now();
+      LocalDateTime endDate = now.plusDays(request.tariffPlan().getDurationDays());
 
-        TariffPlan tariffPlan = user.getTariffPlan() != null ? user.getTariffPlan() : TariffPlan.TRIAL;
-        LocalDateTime endDate = user.getTariffEndDate();
+      userRepository.updateTariff(
+          userId,
+          request.tariffPlan(),
+          now,
+          endDate,
+          request.autoRenew(),
+          request.tariffPlan().getStorageLimit());
+      if (request.paymentMethod() != null) {
+        userRepository.updatePaymentMethod(userId, request.paymentMethod());
+      }
+      notificationClient.notifyTariffPurchased(
+          user.getEmail(), user.getName(), request.tariffPlan().name(), endDate);
 
-        int daysLeft = 0;
-        if (endDate != null && endDate.isAfter(LocalDateTime.now())) {
-            daysLeft = (int) ChronoUnit.DAYS.between(LocalDateTime.now(), endDate);
-        }
+      log.info("User {} purchased tariff: {}", userId, request.tariffPlan());
 
-        return new TariffInfoDto(
-                tariffPlan,
-                user.getStorageLimit(),
-                user.getUsedStorage(),
-                user.getTariffStartDate(),
-                endDate,
-                user.isAutoRenew(),
-                user.isActive(),
-                daysLeft
-        );
+    } catch (PaymentException e) {
+      log.error("Payment failed for user: {}", userId, e);
+      throw new TariffPurchaseException(
+          "Payment processing failed for tariff: " + request.tariffPlan(), e);
+    }
+  }
+
+  public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
+    String token = request.token();
+    UUID userId = userSessionService.extractUserIdFromToken(token);
+
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+    if (userOpt.isEmpty()) {
+      throw new UserNotFoundException("User not found with token: " + token);
     }
 
-    public void setAutoRenew(SimpleUserRequest request, boolean enabled) {
-        String token = request.token();
-        UUID userId = userSessionService.extractUserIdFromToken(token);
+    UserEntity user = userOpt.get();
 
-        Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException("User not found with token: " + token);
-        }
+    TariffPlan tariffPlan = user.getTariffPlan() != null ? user.getTariffPlan() : TariffPlan.TRIAL;
+    LocalDateTime endDate = user.getTariffEndDate();
 
-        userRepository.updateAutoRenew(userId, enabled);
-        log.info("Auto-renew {} for user: {}", enabled ? "enabled" : "disabled", userId);
+    int daysLeft = 0;
+    if (endDate != null && endDate.isAfter(LocalDateTime.now())) {
+      daysLeft = (int) ChronoUnit.DAYS.between(LocalDateTime.now(), endDate);
     }
 
-    public void updatePaymentMethod(UpdateAutoRenewRequest request) {
-        String token = request.userToken();
-        UUID userId = userSessionService.extractUserIdFromToken(token);
+    return new TariffInfoDto(
+        tariffPlan,
+        user.getStorageLimit(),
+        user.getUsedStorage(),
+        user.getTariffStartDate(),
+        endDate,
+        user.isAutoRenew(),
+        user.isActive(),
+        daysLeft);
+  }
 
-        Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException("User not found with token: " + token);
-        }
+  public void setAutoRenew(SimpleUserRequest request, boolean enabled) {
+    String token = request.token();
+    UUID userId = userSessionService.extractUserIdFromToken(token);
 
-        userRepository.updatePaymentMethod(userId, request.paymentMethodId());
-        log.info("Payment method updated for user: {}", userId);
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+    if (userOpt.isEmpty()) {
+      throw new UserNotFoundException("User not found with token: " + token);
     }
 
-    public boolean hasAccess(UUID userId) {
-        Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-        if (userOpt.isEmpty()) {
-            return false;
-        }
+    userRepository.updateAutoRenew(userId, enabled);
+    log.info("Auto-renew {} for user: {}", enabled ? "enabled" : "disabled", userId);
+  }
 
-        UserEntity user = userOpt.get();
+  public void updatePaymentMethod(UpdateAutoRenewRequest request) {
+    String token = request.userToken();
+    UUID userId = userSessionService.extractUserIdFromToken(token);
 
-        if (!user.isActive()) {
-            return false;
-        }
-
-        if (user.getTariffEndDate() != null && user.getTariffEndDate().isBefore(LocalDateTime.now())) {
-            return false;
-        }
-
-        return true;
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+    if (userOpt.isEmpty()) {
+      throw new UserNotFoundException("User not found with token: " + token);
     }
 
-    public boolean hasAccess(SimpleUserRequest request) {
-        String token = request.token();
-        UUID userId = userSessionService.extractUserIdFromToken(token);
-        return hasAccess(userId);
+    userRepository.updatePaymentMethod(userId, request.paymentMethodId());
+    log.info("Payment method updated for user: {}", userId);
+  }
+
+  public boolean hasAccess(UUID userId) {
+    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
+    if (userOpt.isEmpty()) {
+      return false;
     }
+
+    UserEntity user = userOpt.get();
+
+    if (!user.isActive()) {
+      return false;
+    }
+
+    if (user.getTariffEndDate() != null && user.getTariffEndDate().isBefore(LocalDateTime.now())) {
+      return false;
+    }
+
+    return true;
+  }
+
+  public boolean hasAccess(SimpleUserRequest request) {
+    String token = request.token();
+    UUID userId = userSessionService.extractUserIdFromToken(token);
+    return hasAccess(userId);
+  }
 }

@@ -127,9 +127,6 @@ public class TariffScheduler {
 
         userRepository.deactivateUser(user.getId());
 
-        // TODO: сделать файлы недоступными
-        // fileService.makeAllFilesInaccessible(user.getId());
-
         try {
             notificationClient.notifyTariffExpired(user.getEmail(), user.getName());
         } catch (Exception e) {

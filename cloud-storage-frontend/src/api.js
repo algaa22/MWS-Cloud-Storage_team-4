@@ -408,7 +408,8 @@ export const purchaseTariff = async (token, plan, paymentToken = 'test', autoRen
       method: "POST",
       headers: {
         "X-Auth-Token": token,
-        "X-Payment-Token": paymentToken
+        "X-Payment-Token": paymentToken,
+        "X-Payment-Method": paymentMethod
       }
     });
 

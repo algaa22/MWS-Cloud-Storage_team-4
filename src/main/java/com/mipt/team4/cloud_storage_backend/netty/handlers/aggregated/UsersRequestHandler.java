@@ -33,188 +33,189 @@ import org.springframework.stereotype.Component;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class UsersRequestHandler {
-    private final UserController userController;
-    private final TariffController tariffController;
-    private final ObjectMapper mapper = new ObjectMapper();
+  private final UserController userController;
+  private final TariffController tariffController;
+  private final ObjectMapper mapper = new ObjectMapper();
 
-    public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException, ValidationFailedException, UserAlreadyExistsException {
-        TokenPairDto tokenPair =
-                userController.registerUser(
-                        new RegisterRequest(
-                                RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
-                                RequestUtils.getRequiredHeader(request, "X-Auth-Password"),
-                                RequestUtils.getRequiredHeader(request, "X-Auth-Username")));
+  public void handleRegisterRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, ValidationFailedException, UserAlreadyExistsException {
+    TokenPairDto tokenPair =
+        userController.registerUser(
+            new RegisterRequest(
+                RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
+                RequestUtils.getRequiredHeader(request, "X-Auth-Password"),
+                RequestUtils.getRequiredHeader(request, "X-Auth-Username")));
 
-        sendTokens(ctx, HttpResponseStatus.CREATED, tokenPair);
+    sendTokens(ctx, HttpResponseStatus.CREATED, tokenPair);
+  }
+
+  public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException,
+          ValidationFailedException,
+          InvalidEmailOrPassword,
+          WrongPasswordException {
+    TokenPairDto tokenPair;
+
+    tokenPair =
+        userController.loginUser(
+            new LoginRequest(
+                RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
+                RequestUtils.getRequiredHeader(request, "X-Auth-Password")));
+
+    sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
+  }
+
+  public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException,
+          UserNotFoundException,
+          InvalidSessionException,
+          ValidationFailedException {
+    userController.logoutUser(
+        new SimpleUserRequest(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
+  }
+
+  public void handleGetUserRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, UserNotFoundException, ValidationFailedException {
+    UserDto userInfo =
+        userController.getUserInfo(
+            new SimpleUserRequest(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
+
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode rootNode = mapper.createObjectNode();
+
+    rootNode.put("Name", userInfo.name());
+    rootNode.put("Email", userInfo.email());
+    rootNode.put("StorageLimit", userInfo.storageLimit());
+    rootNode.put("UsedStorage", userInfo.usedStorage());
+    rootNode.put("IsActive", userInfo.isActive());
+
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
+  }
+
+  public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException,
+          UserNotFoundException,
+          ValidationFailedException,
+          WrongPasswordException {
+    Optional<String> newUsername = RequestUtils.getHeader(request, "X-New-Username");
+    Optional<String> oldUserPassword = RequestUtils.getHeader(request, "X-Old-Password");
+    Optional<String> newUserPassword = RequestUtils.getHeader(request, "X-New-Password");
+
+    userController.updateUserInfo(
+        new UpdateUserInfoRequest(
+            RequestUtils.getRequiredHeader(request, "X-Auth-Token"),
+            oldUserPassword,
+            newUserPassword,
+            newUsername));
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "User info successfully changed");
+  }
+
+  public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, InvalidSessionException, ValidationFailedException {
+    TokenPairDto tokenPair =
+        userController.refresh(
+            new RefreshTokenRequest(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
+
+    sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
+  }
+
+  private void sendTokens(
+      ChannelHandlerContext ctx, HttpResponseStatus status, TokenPairDto tokenPair) {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode rootNode = mapper.createObjectNode();
+
+    rootNode.put("AccessToken", tokenPair.accessToken());
+    rootNode.put("RefreshToken", tokenPair.refreshToken());
+
+    ResponseUtils.sendJson(ctx, status, rootNode);
+  }
+
+  public void handlePurchaseTariff(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, ValidationFailedException {
+
+    System.out.println("Request URI: " + request.uri());
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    String tariffPlanStr = RequestUtils.getRequiredQueryParam(request, "plan");
+    String paymentToken = RequestUtils.getRequiredHeader(request, "X-Payment-Token");
+    boolean autoRenew =
+        SafeParser.parseBoolean(
+            "Auto renew", RequestUtils.getQueryParam(request, "autoRenew", "true"));
+    String paymentMethod = RequestUtils.getHeader(request, "X-Payment-Method").orElse("card");
+    TariffPlan plan = TariffPlan.valueOf(tariffPlanStr);
+
+    PurchaseTariffRequest tariffRequest =
+        new PurchaseTariffRequest(userToken, plan, paymentToken, autoRenew, paymentMethod);
+
+    tariffController.purchaseTariff(tariffRequest);
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Tariff purchased successfully");
+  }
+
+  public void handleGetTariffInfo(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, ValidationFailedException {
+
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
+
+    TariffInfoDto info = tariffController.getTariffInfo(userRequest);
+
+    ObjectNode rootNode = mapper.createObjectNode();
+    rootNode.put("tariffPlan", info.tariffPlan().name());
+    rootNode.put("storageLimit", info.storageLimit());
+    rootNode.put("usedStorage", info.usedStorage());
+    rootNode.put("startDate", info.startDate() != null ? info.startDate().toString() : null);
+    rootNode.put("endDate", info.endDate() != null ? info.endDate().toString() : null);
+    rootNode.put("autoRenew", info.autoRenew());
+    rootNode.put("isActive", info.isActive());
+    rootNode.put("daysLeft", info.daysLeft());
+
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
+  }
+
+  public void handleSetAutoRenew(ChannelHandlerContext ctx, HttpRequest request, boolean enabled)
+      throws HeaderNotFoundException, ValidationFailedException {
+
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
+
+    tariffController.setAutoRenew(userRequest, enabled);
+
+    String message = enabled ? "Auto-renew enabled" : "Auto-renew disabled";
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, message);
+  }
+
+  public void handleUpdatePaymentMethod(ChannelHandlerContext ctx, HttpRequest request)
+      throws HeaderNotFoundException, ValidationFailedException {
+
+    String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
+    String paymentMethodId = RequestUtils.getRequiredHeader(request, "X-Payment-Method-Id");
+
+    UpdateAutoRenewRequest updateRequest = new UpdateAutoRenewRequest(userToken, paymentMethodId);
+
+    tariffController.updatePaymentMethod(updateRequest);
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Payment method updated");
+  }
+
+  public void handleGetAvailableTariffs(ChannelHandlerContext ctx, HttpRequest request) {
+    ObjectNode rootNode = mapper.createObjectNode();
+    ObjectNode tariffsNode = mapper.createObjectNode();
+
+    for (TariffPlan plan : TariffPlan.values()) {
+      if (!plan.isTrial()) {
+        ObjectNode planNode = mapper.createObjectNode();
+        planNode.put("name", plan.name());
+        planNode.put("storageLimit", plan.getStorageLimit());
+        planNode.put("priceRub", plan.getPriceRub());
+        planNode.put("durationDays", plan.getDurationDays());
+        tariffsNode.set(plan.name(), planNode);
+      }
     }
 
-    public void handleLoginRequest(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException,
-            ValidationFailedException,
-            InvalidEmailOrPassword,
-            WrongPasswordException {
-        TokenPairDto tokenPair;
-
-        tokenPair =
-                userController.loginUser(
-                        new LoginRequest(
-                                RequestUtils.getRequiredHeader(request, "X-Auth-Email"),
-                                RequestUtils.getRequiredHeader(request, "X-Auth-Password")));
-
-        sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
-    }
-
-    public void handleLogoutRequest(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException,
-            UserNotFoundException,
-            InvalidSessionException,
-            ValidationFailedException {
-        userController.logoutUser(
-                new SimpleUserRequest(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
-
-        ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "You have been successfully signed out.");
-    }
-
-    public void handleGetUserRequest(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException, UserNotFoundException, ValidationFailedException {
-        UserDto userInfo =
-                userController.getUserInfo(
-                        new SimpleUserRequest(RequestUtils.getRequiredHeader(request, "X-Auth-Token")));
-
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode rootNode = mapper.createObjectNode();
-
-        rootNode.put("Name", userInfo.name());
-        rootNode.put("Email", userInfo.email());
-        rootNode.put("StorageLimit", userInfo.storageLimit());
-        rootNode.put("UsedStorage", userInfo.usedStorage());
-        rootNode.put("IsActive", userInfo.isActive());
-
-        ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
-    }
-
-    public void handleUpdateUserRequest(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException,
-            UserNotFoundException,
-            ValidationFailedException,
-            WrongPasswordException {
-        Optional<String> newUsername = RequestUtils.getHeader(request, "X-New-Username");
-        Optional<String> oldUserPassword = RequestUtils.getHeader(request, "X-Old-Password");
-        Optional<String> newUserPassword = RequestUtils.getHeader(request, "X-New-Password");
-
-        userController.updateUserInfo(
-                new UpdateUserInfoRequest(
-                        RequestUtils.getRequiredHeader(request, "X-Auth-Token"),
-                        oldUserPassword,
-                        newUserPassword,
-                        newUsername));
-
-        ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "User info successfully changed");
-    }
-
-    public void handleRefreshTokenRequest(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException, InvalidSessionException, ValidationFailedException {
-        TokenPairDto tokenPair =
-                userController.refresh(
-                        new RefreshTokenRequest(RequestUtils.getRequiredHeader(request, "X-Refresh-Token")));
-
-        sendTokens(ctx, HttpResponseStatus.OK, tokenPair);
-    }
-
-    private void sendTokens(
-            ChannelHandlerContext ctx, HttpResponseStatus status, TokenPairDto tokenPair) {
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode rootNode = mapper.createObjectNode();
-
-        rootNode.put("AccessToken", tokenPair.accessToken());
-        rootNode.put("RefreshToken", tokenPair.refreshToken());
-
-        ResponseUtils.sendJson(ctx, status, rootNode);
-    }
-
-    public void handlePurchaseTariff(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException, ValidationFailedException {
-
-        System.out.println("Request URI: " + request.uri());
-        String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-        String tariffPlanStr = RequestUtils.getRequiredQueryParam(request, "plan");
-        String paymentToken = RequestUtils.getRequiredHeader(request, "X-Payment-Token");
-        boolean autoRenew =
-                SafeParser.parseBoolean(
-                        "Auto renew", RequestUtils.getQueryParam(request, "autoRenew", "true"));
-
-        TariffPlan plan = TariffPlan.valueOf(tariffPlanStr);
-
-        PurchaseTariffRequest tariffRequest = new PurchaseTariffRequest(userToken, plan, paymentToken, autoRenew);
-
-        tariffController.purchaseTariff(tariffRequest);
-
-        ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Tariff purchased successfully");
-    }
-
-    public void handleGetTariffInfo(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException, ValidationFailedException {
-
-        String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-        SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
-
-        TariffInfoDto info = tariffController.getTariffInfo(userRequest);
-
-        ObjectNode rootNode = mapper.createObjectNode();
-        rootNode.put("tariffPlan", info.tariffPlan().name());
-        rootNode.put("storageLimit", info.storageLimit());
-        rootNode.put("usedStorage", info.usedStorage());
-        rootNode.put("startDate", info.startDate() != null ? info.startDate().toString() : null);
-        rootNode.put("endDate", info.endDate() != null ? info.endDate().toString() : null);
-        rootNode.put("autoRenew", info.autoRenew());
-        rootNode.put("isActive", info.isActive());
-        rootNode.put("daysLeft", info.daysLeft());
-
-        ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
-    }
-
-    public void handleSetAutoRenew(ChannelHandlerContext ctx, HttpRequest request, boolean enabled)
-            throws HeaderNotFoundException, ValidationFailedException {
-
-        String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-        SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
-
-        tariffController.setAutoRenew(userRequest, enabled);
-
-        String message = enabled ? "Auto-renew enabled" : "Auto-renew disabled";
-        ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, message);
-    }
-
-    public void handleUpdatePaymentMethod(ChannelHandlerContext ctx, HttpRequest request)
-            throws HeaderNotFoundException, ValidationFailedException {
-
-        String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
-        String paymentMethodId = RequestUtils.getRequiredHeader(request, "X-Payment-Method-Id");
-
-        UpdateAutoRenewRequest updateRequest = new UpdateAutoRenewRequest(userToken, paymentMethodId);
-
-        tariffController.updatePaymentMethod(updateRequest);
-
-        ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Payment method updated");
-    }
-
-    public void handleGetAvailableTariffs(ChannelHandlerContext ctx, HttpRequest request) {
-        ObjectNode rootNode = mapper.createObjectNode();
-        ObjectNode tariffsNode = mapper.createObjectNode();
-
-        for (TariffPlan plan : TariffPlan.values()) {
-            if (!plan.isTrial()) {
-                ObjectNode planNode = mapper.createObjectNode();
-                planNode.put("name", plan.name());
-                planNode.put("storageLimit", plan.getStorageLimit());
-                planNode.put("priceRub", plan.getPriceRub());
-                planNode.put("durationDays", plan.getDurationDays());
-                tariffsNode.set(plan.name(), planNode);
-            }
-        }
-
-        rootNode.set("tariffs", tariffsNode);
-        ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
-    }
+    rootNode.set("tariffs", tariffsNode);
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
+  }
 }

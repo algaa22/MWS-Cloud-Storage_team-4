@@ -11,6 +11,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadNotStoppedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
@@ -30,6 +31,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
@@ -55,11 +57,17 @@ public class FileService {
   private final UserRepository userRepository;
   private final MinioConfig minioConfig;
   private final NotificationClient notificationClient;
+  private final TariffService tariffService;
   private final StorageNotificationConfig storageNotificationConfig;
 
   public void startChunkedUploadSession(ChunkedUploadRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
+
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+    }
+
     String uploadSessionId = request.sessionId();
     String name = request.name();
 
@@ -167,6 +175,10 @@ public class FileService {
     UUID fileId = UUID.randomUUID();
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+    }
+
     String fileName = request.name();
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
 
@@ -201,6 +213,10 @@ public class FileService {
   public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+    }
 
     Optional<StorageEntity> entityOpt = storageRepository.getFile(userId, fileId);
     StorageEntity entity = entityOpt.orElseThrow(() -> new StorageFileNotFoundException(fileId));

@@ -19,7 +19,6 @@ public class PaymentService {
   private final UserRepository userRepository;
 
   public void processPayment(UUID userId, TariffPlan plan, String paymentToken) {
-    // TODO: интеграция с реальной платежной системой
     log.info("Processing payment for user {}: plan={}, token={}", userId, plan, paymentToken);
 
     if (paymentToken == null || paymentToken.isBlank()) {
@@ -30,7 +29,9 @@ public class PaymentService {
 
   public void autoRenewTariff(UUID userId) {
     log.info("Starting auto-renew for user: {}", userId);
-    UserEntity user = userRepository.getUserById(userId)
+    UserEntity user =
+        userRepository
+            .getUserById(userId)
             .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
     if (!user.isAutoRenew()) {
       log.info("Auto-renew is disabled for user: {}", userId);
@@ -49,15 +50,21 @@ public class PaymentService {
     }
 
     try {
-      //TODO: заменить на реальный платежный шлюз)
-      log.info("Charging user {} for tariff {} using payment method: {}",
-              userId, currentPlan, paymentMethodId);
+      // TODO: заменить на реальный платежный шлюз)
+      log.info(
+          "Charging user {} for tariff {} using payment method: {}",
+          userId,
+          currentPlan,
+          paymentMethodId);
       if (Math.random() < 0.1) {
         throw new PaymentException("Payment gateway error: insufficient funds");
       }
 
-      log.info("Auto-renew successful for user: {}, plan: {}, payment method: {}",
-              userId, currentPlan, paymentMethodId);
+      log.info(
+          "Auto-renew successful for user: {}, plan: {}, payment method: {}",
+          userId,
+          currentPlan,
+          paymentMethodId);
 
     } catch (Exception e) {
       log.error("Auto-renew failed for user: {}", userId, e);

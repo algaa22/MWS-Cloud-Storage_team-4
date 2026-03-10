@@ -388,46 +388,39 @@ export const getTariffInfo = async (token) => {
   }
 };
 
-export const purchaseTariff = async (token, plan, paymentToken = 'test', autoRenew = true) => {
+export const purchaseTariff = async (token, plan, paymentToken = 'test', autoRenew = true, paymentMethod = null) => {
   console.log("=== PURCHASE TARIFF ===");
   console.log("Plan:", plan);
   console.log("Auto-renew:", autoRenew);
-  console.log("Token (first 20 chars):", token?.substring(0, 20) + "...");
-  console.log("Payment token:", paymentToken);
+  console.log("Payment method:", paymentMethod);
 
   const url = `${BASE}/users/tariff/purchase?plan=${plan}&autoRenew=${autoRenew}`;
-  console.log("Full URL:", url);
+
+  const headers = {
+    "X-Auth-Token": token,
+    "X-Payment-Token": paymentToken
+  };
+
+  if (paymentMethod) {
+    headers["X-Payment-Method"] = paymentMethod;
+  }
 
   try {
-    console.log("Sending request with headers:", {
-      "X-Auth-Token": token?.substring(0, 20) + "...",
-      "X-Payment-Token": paymentToken
-    });
-
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "X-Auth-Token": token,
-        "X-Payment-Token": paymentToken,
-        "X-Payment-Method": paymentMethod
-      }
+      headers: headers
     });
-
-    console.log("Response status:", response.status, response.statusText);
-    console.log("Response headers:", [...response.headers.entries()]);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Error response body:", errorText);
       throw new Error(`Purchase failed: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
     console.log("Purchase successful:", data);
     return data;
-
   } catch (error) {
-    console.error("🔥 Error purchasing tariff:", error);
+    console.error("Error purchasing tariff:", error);
     throw error;
   }
 };

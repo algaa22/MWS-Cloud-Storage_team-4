@@ -46,7 +46,8 @@ public class CorsHandler extends ChannelDuplexHandler {
           "X-File-Path",
           "X-File-New-Visibility",
           "X-File-New-Tags",
-          "X-Payment-Token");
+          "X-Payment-Token",
+          "X-Payment-Method");
 
   private static final String EXPOSE_HEADERS =
       String.join(", ", "X-File-Name", "X-File-Size", "X-File-Path");

@@ -21,118 +21,109 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class TariffScheduler {
 
-    private final UserRepository userRepository;
-    private final NotificationClient notificationClient;
-    private final PaymentService paymentService;
-    private final TariffService tariffService;
-    private final TariffNotificationConfig notificationConfig;
+  private final UserRepository userRepository;
+  private final NotificationClient notificationClient;
+  private final PaymentService paymentService;
+  private final TariffNotificationConfig notificationConfig;
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void checkTariffs() {
-        if (!notificationConfig.isEnabled()) {
-            log.debug("Tariff notifications are disabled");
-            return;
-        }
-
-        log.info("Starting scheduled tariff check");
-
-        List<Integer> notificationDays = notificationConfig.getDaysBeforeExpiry();
-
-        for (int days : notificationDays) {
-            checkUsersWithTariffEndingSoon(days);
-        }
-
-        checkExpiredTariffs();
-
-        log.info("Scheduled tariff check completed");
+  @Scheduled(cron = "0 0 4 * * *")
+  public void checkTariffs() {
+    if (!notificationConfig.isEnabled()) {
+      log.debug("Tariff notifications are disabled");
+      return;
     }
 
-    private void checkUsersWithTariffEndingSoon(int days) {
-        LocalDateTime from = LocalDateTime.now().plusDays(days);
-        LocalDateTime to = from.plusDays(1);
+    log.info("Starting scheduled tariff check");
 
-        List<UserEntity> users = userRepository.findUsersWithTariffEndingBetween(from, to);
+    List<Integer> notificationDays = notificationConfig.getDaysBeforeExpiry();
 
-        if (users.isEmpty()) {
-            log.debug("No users with tariff ending in {} days", days);
-            return;
-        }
-
-        log.info("Found {} users with tariff ending in {} days", users.size(), days);
-
-        for (UserEntity user : users) {
-            try {
-                notificationClient.notifyTariffEndingSoon(
-                        user.getEmail(),
-                        user.getName(),
-                        days,
-                        user.getTariffEndDate());
-                log.info("Notified user {}: tariff ends in {} days", user.getId(), days);
-            } catch (Exception e) {
-                log.error("Failed to notify user {} about tariff ending in {} days",
-                        user.getId(), days, e);
-            }
-        }
+    for (int days : notificationDays) {
+      checkUsersWithTariffEndingSoon(days);
     }
 
-    private void checkExpiredTariffs() {
-        List<UserEntity> expiredUsers = userRepository.findUsersWithExpiredTariff(LocalDateTime.now());
+    checkExpiredTariffs();
 
-        if (expiredUsers.isEmpty()) {
-            log.debug("No users with expired tariffs");
-            return;
-        }
+    log.info("Scheduled tariff check completed");
+  }
 
-        log.info("Found {} users with expired tariffs", expiredUsers.size());
+  private void checkUsersWithTariffEndingSoon(int days) {
+    LocalDateTime from = LocalDateTime.now().plusDays(days);
+    LocalDateTime to = from.plusDays(1);
 
-        for (UserEntity user : expiredUsers) {
-            try {
-                if (user.isAutoRenew()) {
-                    handleAutoRenew(user);
-                } else {
-                    deactivateUser(user);
-                }
-            } catch (Exception e) {
-                log.error("Failed to process expired tariff for user {}", user.getId(), e);
-            }
-        }
+    List<UserEntity> users = userRepository.findUsersWithTariffEndingBetween(from, to);
+
+    if (users.isEmpty()) {
+      log.debug("No users with tariff ending in {} days", days);
+      return;
     }
 
-    private void handleAutoRenew(UserEntity user) {
-        log.info("Processing auto-renew for user: {}", user.getId());
+    log.info("Found {} users with tariff ending in {} days", users.size(), days);
 
-        try {
-            paymentService.autoRenewTariff(user.getId());
+    for (UserEntity user : users) {
+      try {
+        notificationClient.notifyTariffEndingSoon(
+            user.getEmail(), user.getName(), days, user.getTariffEndDate());
+        log.info("Notified user {}: tariff ends in {} days", user.getId(), days);
+      } catch (Exception e) {
+        log.error("Failed to notify user {} about tariff ending in {} days", user.getId(), days, e);
+      }
+    }
+  }
 
-            LocalDateTime newEndDate = LocalDateTime.now()
-                    .plusDays(user.getTariffPlan().getDurationDays());
-            userRepository.updateTariffEndDate(user.getId(), newEndDate);
+  private void checkExpiredTariffs() {
+    List<UserEntity> expiredUsers = userRepository.findUsersWithExpiredTariff(LocalDateTime.now());
 
-            notificationClient.notifyTariffRenewed(
-                    user.getEmail(),
-                    user.getName(),
-                    newEndDate);
-
-            log.info("Auto-renew successful for user: {}, new end date: {}",
-                    user.getId(), newEndDate);
-
-        } catch (PaymentException e) {
-            log.error("Auto-renew failed for user: {}", user.getId(), e);
-            deactivateUser(user);
-        }
+    if (expiredUsers.isEmpty()) {
+      log.debug("No users with expired tariffs");
+      return;
     }
 
-    private void deactivateUser(UserEntity user) {
-        log.info("Deactivating user {} due to expired tariff", user.getId());
+    log.info("Found {} users with expired tariffs", expiredUsers.size());
 
-        userRepository.deactivateUser(user.getId());
-
-        try {
-            notificationClient.notifyTariffExpired(user.getEmail(), user.getName());
-        } catch (Exception e) {
-            log.error("Failed to send expiration notification to user {}", user.getId(), e);
+    for (UserEntity user : expiredUsers) {
+      try {
+        if (user.isAutoRenew()) {
+          handleAutoRenew(user);
+        } else {
+          deactivateUser(user);
         }
-
-        log.info("User {} deactivated due to expired tariff", user.getId());
+      } catch (Exception e) {
+        log.error("Failed to process expired tariff for user {}", user.getId(), e);
+      }
     }
+  }
+
+  private void handleAutoRenew(UserEntity user) {
+    log.info("Processing auto-renew for user: {}", user.getId());
+
+    try {
+      paymentService.autoRenewTariff(user.getId());
+
+      LocalDateTime newEndDate =
+          LocalDateTime.now().plusDays(user.getTariffPlan().getDurationDays());
+      userRepository.updateTariffEndDate(user.getId(), newEndDate);
+
+      notificationClient.notifyTariffRenewed(user.getEmail(), user.getName(), newEndDate);
+
+      log.info("Auto-renew successful for user: {}, new end date: {}", user.getId(), newEndDate);
+
+    } catch (PaymentException e) {
+      log.error("Auto-renew failed for user: {}", user.getId(), e);
+      deactivateUser(user);
+    }
+  }
+
+  private void deactivateUser(UserEntity user) {
+    log.info("Deactivating user {} due to expired tariff", user.getId());
+
+    userRepository.deactivateUser(user.getId());
+
+    try {
+      notificationClient.notifyTariffExpired(user.getEmail(), user.getName());
+    } catch (Exception e) {
+      log.error("Failed to send expiration notification to user {}", user.getId(), e);
+    }
+
+    log.info("User {} deactivated due to expired tariff", user.getId());
+  }
 }

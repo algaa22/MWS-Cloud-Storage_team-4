@@ -8,7 +8,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteDir
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.MoveDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
@@ -17,22 +17,23 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class DirectoryService {
-
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
-  private final FileMetadataRepository metadataRepository;
+  private final StorageJpaRepositoryAdapter metadataRepository;
   private final UserRepository userRepository;
 
+  @Transactional
   public UUID createDirectory(CreateDirectoryRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
     String name = request.name();
 
-    if (storageRepository.fileExists(userId, parentId, name)) {
+    if (storageRepository.exists(userId, parentId, name)) {
       throw new StorageFileAlreadyExistsException(parentId, name);
     }
 
@@ -55,6 +56,7 @@ public class DirectoryService {
     return directoryId;
   }
 
+  @Transactional
   public void renameDirectory(RenameDirectoryRequest request) {
     String newName = request.newName();
     UUID directoryId = UUID.fromString(request.directoryId());
@@ -62,14 +64,15 @@ public class DirectoryService {
 
     StorageEntity dirEntity = getDirectoryOrThrow(userId, directoryId);
 
-    if (metadataRepository.fileExists(userId, dirEntity.getParentId(), newName)) {
+    if (metadataRepository.exists(userId, dirEntity.getParentId(), newName)) {
       throw new StorageFileAlreadyExistsException(dirEntity.getParentId(), newName);
     }
 
     dirEntity.setName(newName);
-    metadataRepository.updateEntity(dirEntity);
+    metadataRepository.updateFile(dirEntity);
   }
 
+  @Transactional
   public void moveDirectory(MoveDirectoryRequest request) {
     UUID newParentId = UUID.fromString(request.newParentId());
     UUID directoryId = UUID.fromString(request.directoryId());
@@ -85,14 +88,14 @@ public class DirectoryService {
       throw new StorageDirectoryCycleException("Cannot move directory into its own sub-directory");
     }
 
-    if (metadataRepository.fileExists(userId, newParentId, dir.getName())) {
+    if (metadataRepository.exists(userId, newParentId, dir.getName())) {
       throw new StorageFileAlreadyExistsException(newParentId, dir.getName());
     }
 
     dir.setParentId(newParentId);
-    metadataRepository.updateEntity(dir);
   }
 
+  @Transactional
   public void deleteDirectory(DeleteDirectoryRequest request) {
     UUID directoryId = UUID.fromString(request.directoryId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
@@ -100,7 +103,7 @@ public class DirectoryService {
     StorageEntity directoryEntity = getDirectoryOrThrow(userId, directoryId);
     long freedSize = metadataRepository.calculateTotalSizeOfTree(directoryId);
 
-    metadataRepository.deleteFile(directoryEntity);
+    metadataRepository.hardDelete(directoryEntity.getUserId(), directoryEntity.getId());
 
     if (freedSize > 0) {
       userRepository.decreaseUsedStorage(userId, freedSize);
@@ -109,7 +112,7 @@ public class DirectoryService {
 
   private StorageEntity getDirectoryOrThrow(UUID userId, UUID directoryId) {
     return metadataRepository
-        .getFile(userId, directoryId)
+        .get(userId, directoryId)
         .orElseThrow(() -> new StorageFileNotFoundException(directoryId));
   }
 }

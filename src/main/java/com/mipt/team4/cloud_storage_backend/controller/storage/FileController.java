@@ -4,11 +4,12 @@ import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SearchFilesByTagsRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ResumeChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SoftDeleteFileRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -28,9 +29,9 @@ public class FileController {
   private final JwtService jwtService;
   private final StorageConfig storageConfig;
 
-  public void startChunkedUpload(ChunkedUploadRequest request) {
+  public void startChunkedUpload(StartChunkedUploadRequest request) {
     request.validate(jwtService);
-    service.startChunkedUploadSession(request);
+    service.startChunkedUpload(request);
   }
 
   public void processFileChunk(UploadChunkRequest request) {
@@ -44,8 +45,8 @@ public class FileController {
     return service.completeChunkedUpload(sessionId);
   }
 
-  public void resumeChunkedUpload(ChunkedUploadRequest request) {
-    request.validate(jwtService);
+  public void resumeChunkedUpload(ResumeChunkedUploadRequest request) {
+    request.validate();
     service.resumeChunkedUploadSession(request);
   }
 
@@ -59,9 +60,14 @@ public class FileController {
     return service.getFileInfo(request);
   }
 
-  public void deleteFile(SimpleFileOperationRequest request) {
+  public void hardDeleteFile(SimpleFileOperationRequest request) {
     request.validate(jwtService);
-    service.deleteFile(request);
+    service.hardDeleteFile(request);
+  }
+
+  public void softDeleteFile(SoftDeleteFileRequest request) {
+    request.validate(jwtService);
+    service.softDeleteFile(request);
   }
 
   public UUID uploadFile(FileUploadRequest request) {
@@ -74,13 +80,18 @@ public class FileController {
     service.changeFileMetadata(request);
   }
 
+  public void restoreFile(SimpleFileOperationRequest request) {
+    request.validate(jwtService);
+    service.restoreFile(request);
+  }
+
+  public List<StorageEntity> getTrashFileList(GetFileListRequest request) {
+    request.validate(jwtService);
+    return service.getTrashFileList(request);
+  }
+
   public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
     request.validate(jwtService);
     return service.downloadFile(request);
-  }
-
-  public List<StorageEntity> searchFilesByTags(SearchFilesByTagsRequest request) {
-    request.validate(jwtService);
-    return service.searchFilesByTags(request);
   }
 }

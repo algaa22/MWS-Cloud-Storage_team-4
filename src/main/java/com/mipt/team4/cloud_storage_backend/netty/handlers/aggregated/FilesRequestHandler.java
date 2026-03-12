@@ -8,12 +8,11 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SearchFilesByTagsRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SoftDeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
-import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
@@ -25,22 +24,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 @Scope("prototype")
 @RequiredArgsConstructor
 public class FilesRequestHandler {
   private final FileController fileController;
   private final ObjectMapper mapper = new ObjectMapper();
-  private final StorageRepository storageRepository;
 
   public void handleGetFileListRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
-
     boolean includeDirectories =
         SafeParser.parseBoolean(
             "Include directories",
@@ -49,40 +44,59 @@ public class FilesRequestHandler {
         SafeParser.parseBoolean(
             "Recursive", RequestUtils.getQueryParam(request, "recursive", "false"));
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
-    List<String> tags = RequestUtils.getQueryParamList(request, "tags");
 
-    List<StorageEntity> files;
-
-    if (tags != null && !tags.isEmpty()) {
-      SearchFilesByTagsRequest searchRequest = new SearchFilesByTagsRequest(userToken, tags);
-      files = fileController.searchFilesByTags(searchRequest);
-    } else {
-      files =
-          fileController.getFileList(
-              new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
-    }
+    List<StorageEntity> files =
+        fileController.getFileList(
+            new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
 
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();
 
     if (files != null) {
-      for (StorageEntity file : files) {
+      for (StorageEntity file :
+          files) { // TODO: entity в контроллере? put по dto через функции jackson
         ObjectNode fileNode = mapper.createObjectNode();
-        String fullPath = getFullPath(file);
-
         fileNode.put("id", file.getId().toString());
-        fileNode.put("path", fullPath);
+        fileNode.put("parentId", String.valueOf(file.getParentId()));
+        fileNode.put("name", file.getName());
+        fileNode.put("size", file.getSize());
+        fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
+        fileNode.put("mimeType", file.getMimeType());
+        fileNode.put("visibility", file.getVisibility());
+        fileNode.put("updatedAt", file.getUpdatedAt().toString());
+        fileNode.put("isDirectory", file.isDirectory());
+        filesArray.add(fileNode);
+      }
+    }
+
+    rootNode.set("files", filesArray);
+
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
+  }
+
+  public void handleGetTrashFileListRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+
+    Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
+
+    List<StorageEntity> trashFiles =
+        fileController.getTrashFileList(new GetFileListRequest(userToken, false, false, parentId));
+
+    ObjectNode rootNode = mapper.createObjectNode();
+    ArrayNode filesArray = mapper.createArrayNode();
+
+    if (trashFiles != null) {
+      for (StorageEntity file : trashFiles) {
+        ObjectNode fileNode = mapper.createObjectNode();
+        fileNode.put("id", file.getId().toString());
         fileNode.put("parentId", file.getParentId() != null ? file.getParentId().toString() : null);
         fileNode.put("name", file.getName());
         fileNode.put("size", file.getSize());
         fileNode.put("tags", FileTagsMapper.toString(file.getTags()));
-        fileNode.put("mimeType", file.getMimeType() != null ? file.getMimeType() : "");
+        fileNode.put("mimeType", file.getMimeType());
         fileNode.put("visibility", file.getVisibility());
-        fileNode.put(
-            "updatedAt", file.getUpdatedAt() != null ? file.getUpdatedAt().toString() : null);
+        fileNode.put("updatedAt", file.getUpdatedAt().toString());
         fileNode.put("isDirectory", file.isDirectory());
-        fileNode.put("type", file.isDirectory() ? "folder" : "file");
-
         filesArray.add(fileNode);
       }
     }
@@ -112,10 +126,30 @@ public class FilesRequestHandler {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
+  public void handleRestoreFileRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String userToken) {
+    String fileId = RequestUtils.getRequiredQueryParam(request, "id");
+
+    SimpleFileOperationRequest restoreRequest = new SimpleFileOperationRequest(fileId, userToken);
+
+    fileController.restoreFile(restoreRequest);
+
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully restored");
+  }
+
   public void handleDeleteFileRequest(
       ChannelHandlerContext ctx, HttpRequest request, String userToken) {
     String fileId = RequestUtils.getRequiredQueryParam(request, "id");
-    fileController.deleteFile(new SimpleFileOperationRequest(fileId, userToken));
+
+    boolean permanent =
+        SafeParser.parseBoolean(
+            "Permanent delete", RequestUtils.getQueryParam(request, "permanent", "false"));
+
+    if (permanent) {
+      fileController.hardDeleteFile(new SimpleFileOperationRequest(fileId, userToken));
+    } else {
+      fileController.softDeleteFile(new SoftDeleteFileRequest(fileId, userToken));
+    }
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully deleted");
   }
@@ -159,22 +193,5 @@ public class FilesRequestHandler {
             new FileUploadRequest(parentId, fileName, userToken, fileTags, fileData));
 
     ResponseUtils.sendCreatedResponse(ctx, createdId, "File successfully uploaded");
-  }
-
-  private String getFullPath(StorageEntity file) {
-    if (file == null) {
-      return "";
-    }
-
-    try {
-      String path = storageRepository.getFullFilePath(file.getId());
-      if (path != null) {
-        return "/" + path;
-      }
-    } catch (Exception e) {
-      log.warn("Could not get full path for file {}: {}", file.getId(), e.getMessage());
-    }
-
-    return "/" + file.getName();
   }
 }

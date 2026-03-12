@@ -24,9 +24,10 @@ public class BaseIT {
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("database.url", E2ETestSetupExtension.POSTGRES::getJdbcUrl);
-    registry.add("database.username", E2ETestSetupExtension.POSTGRES::getUsername);
-    registry.add("database.password", E2ETestSetupExtension.POSTGRES::getPassword);
+    registry.add("spring.datasource.url", E2ETestSetupExtension.POSTGRES::getJdbcUrl);
+    registry.add("spring.datasource.username", E2ETestSetupExtension.POSTGRES::getUsername);
+    registry.add("spring.datasource.password", E2ETestSetupExtension.POSTGRES::getPassword);
+
     registry.add("minio.url", E2ETestSetupExtension.MINIO::getS3URL);
     registry.add("minio.username", E2ETestSetupExtension.MINIO::getUserName);
     registry.add("minio.password", E2ETestSetupExtension.MINIO::getPassword);

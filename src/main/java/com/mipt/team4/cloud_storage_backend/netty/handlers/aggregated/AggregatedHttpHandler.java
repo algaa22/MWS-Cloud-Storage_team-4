@@ -19,80 +19,86 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
 
-    private final DirectoriesRequestHandler directoriesRequestHandler;
-    private final FilesRequestHandler filesRequestHandler;
-    private final UsersRequestHandler usersRequestHandler;
+  private final DirectoriesRequestHandler directoriesRequestHandler;
+  private final FilesRequestHandler filesRequestHandler;
+  private final UsersRequestHandler usersRequestHandler;
 
-    @Override
-    protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
-        if (!(msg instanceof FullHttpRequest request)) {
-            throw new NotHttpRequestException();
-        }
-
-        ReferenceCountUtil.retain(msg);
-        startVirtualProcessor(ctx, request);
+  @Override
+  protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
+    if (!(msg instanceof FullHttpRequest request)) {
+      throw new NotHttpRequestException();
     }
 
-    private void startVirtualProcessor(ChannelHandlerContext ctx, FullHttpRequest request) {
-        Thread.startVirtualThread(
-                () -> {
-                    try {
-                        HttpMethod method = request.method();
-                        String uri = request.uri().split("\\?")[0];
+    ReferenceCountUtil.retain(msg);
+    startVirtualProcessor(ctx, request);
+  }
 
-                        if (uri.startsWith("/api/files")) {
-                            handleFilesRequest(ctx, request, uri, method);
-                        } else if (uri.startsWith("/api/directories")) {
-                            handleDirectoriesRequest(ctx, request, uri, method);
-                        } else if (uri.startsWith("/api/users")) {
-                            handleUsersRequest(ctx, request, uri, method);
-                        } else {
-                            ResponseUtils.sendMethodNotSupported(ctx, uri, method);
-                        }
-                    } catch (Exception e) {
-                        ctx.executor().execute(() -> ctx.fireExceptionCaught(e));
-                    } finally {
-                        ReferenceCountUtil.release(request);
-                    }
-                });
-    }
+  private void startVirtualProcessor(ChannelHandlerContext ctx, FullHttpRequest request) {
+    Thread.startVirtualThread( // TODO: interrupted exception
+        () -> {
+          try {
+            HttpMethod method = request.method();
+            String uri = request.uri();
 
-    private void handleFilesRequest(
-            ChannelHandlerContext ctx, FullHttpRequest request, String uri, HttpMethod method) {
-        String userToken = extractUserTokenFromRequest(request);
-
-        if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
-            filesRequestHandler.handleGetFileListRequest(ctx, request, userToken);
-        } else {
-            if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET)) {
-                filesRequestHandler.handleGetFileInfoRequest(ctx, request, userToken);
+            if (uri.startsWith("/api/files")) {
+              handleFilesRequest(ctx, request, uri, method);
+            } else if (uri.startsWith("/api/directories")) {
+              handleDirectoriesRequest(ctx, request, uri, method);
+            } else if (uri.startsWith("/api/users")) {
+              handleUsersRequest(ctx, request, uri, method);
             } else {
-                switch (method.name()) {
-                    case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, request, userToken);
-                    case "POST" -> filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
-                    case "PUT" -> filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, userToken);
-                    default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
-                }
+              ResponseUtils.sendMethodNotSupported(ctx, uri, method);
             }
-        }
-    }
+          } catch (Exception e) {
+            ctx.executor().execute(() -> ctx.fireExceptionCaught(e));
+          } finally {
+            ReferenceCountUtil.release(request);
+          }
+        });
+  }
 
-    private void handleDirectoriesRequest(
-            ChannelHandlerContext ctx, HttpRequest request, String uri, HttpMethod method) {
-        String userToken = extractUserTokenFromRequest(request);
+  private void handleFilesRequest(
+      ChannelHandlerContext ctx, FullHttpRequest request, String uri, HttpMethod method) {
+    String userToken = extractUserTokenFromRequest(request);
 
-        if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST)) {
-            directoriesRequestHandler.handleChangeDirectoryRequest(ctx, request, userToken);
-        } else {
-            if (uri.startsWith("/api/directories") && method.equals(HttpMethod.PUT)) {
-                directoriesRequestHandler.handleCreateDirectoryRequest(ctx, request, userToken);
-            } else if (method.equals(HttpMethod.DELETE)) {
-                directoriesRequestHandler.handleDeleteDirectoryRequest(ctx, request, userToken);
-            } else {
-                ResponseUtils.sendMethodNotSupported(ctx, uri, method);
-            }
+    if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
+      filesRequestHandler.handleUploadFileRequest(ctx, request, userToken);
+    } else if (uri.startsWith("/api/files/restore") && method.equals(HttpMethod.PUT)) {
+      filesRequestHandler.handleRestoreFileRequest(ctx, request, userToken);
+    } else if (uri.startsWith("/api/files/list") && method.equals(HttpMethod.GET)) {
+      filesRequestHandler.handleGetFileListRequest(ctx, request, userToken);
+    } else if (uri.startsWith("/api/files/trash") && method.equals(HttpMethod.GET)) {
+      filesRequestHandler.handleGetTrashFileListRequest(ctx, request, userToken);
+    } else {
+      if (uri.startsWith("/api/files/info") && method.equals(HttpMethod.GET)) {
+        filesRequestHandler.handleGetFileInfoRequest(ctx, request, userToken);
+      } else {
+        switch (method.name()) {
+          case "DELETE" -> filesRequestHandler.handleDeleteFileRequest(ctx, request, userToken);
+          case "PUT" ->
+              filesRequestHandler.handleChangeFileMetadataRequest(ctx, request, userToken);
+          default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
         }
+      }
     }
+  }
+
+  private void handleDirectoriesRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String uri, HttpMethod method) {
+    String userToken = extractUserTokenFromRequest(request);
+
+    if (uri.startsWith("/api/directories") && method.equals(HttpMethod.POST)) {
+      directoriesRequestHandler.handleChangeDirectoryRequest(ctx, request, userToken);
+    } else {
+      if (uri.startsWith("/api/directories") && method.equals(HttpMethod.PUT)) {
+        directoriesRequestHandler.handleCreateDirectoryRequest(ctx, request, userToken);
+      } else if (method.equals(HttpMethod.DELETE)) {
+        directoriesRequestHandler.handleDeleteDirectoryRequest(ctx, request, userToken);
+      } else {
+        ResponseUtils.sendMethodNotSupported(ctx, uri, method);
+      }
+    }
+  }
 
     private void handleUsersRequest(
             ChannelHandlerContext ctx, HttpRequest request, String uri, HttpMethod method) {
@@ -125,7 +131,7 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         }
     }
 
-    private String extractUserTokenFromRequest(HttpRequest request) {
-        return request.headers().get("X-Auth-Token", "");
-    }
+  private String extractUserTokenFromRequest(HttpRequest request) {
+    return request.headers().get("X-Auth-Token", "");
+  }
 }

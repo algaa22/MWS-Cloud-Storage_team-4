@@ -1,6 +1,9 @@
 spring:
   application:
     name: cloud-storage-backend
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 netty:
   enable-logging: false
@@ -66,3 +69,6 @@ storage:
     first-delay: 200ms
     max-delay: 1s
     jitter: 0.1
+
+  trash:
+    retention-days: 30

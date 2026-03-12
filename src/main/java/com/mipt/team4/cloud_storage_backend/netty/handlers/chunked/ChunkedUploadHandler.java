@@ -10,11 +10,13 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadySt
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadNotStoppedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ResumeChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
@@ -38,6 +40,7 @@ public class ChunkedUploadHandler {
 
   // TODO: ненужные поля (кроме isInProgress)
   private boolean isInProgress = false;
+  private int currentFileSize;
   private List<String> currentFileTags;
   private String currentSessionId;
   private String currentUserToken;
@@ -52,8 +55,13 @@ public class ChunkedUploadHandler {
     parseStartUploadRequestMetadata(request);
 
     fileController.startChunkedUpload(
-        new ChunkedUploadRequest(
-            currentSessionId, currentUserToken, currentParentId, currentName, currentFileTags));
+        new StartChunkedUploadRequest(
+            currentSessionId,
+            currentUserToken,
+            currentParentId,
+            currentName,
+            currentFileTags,
+            currentFileSize));
 
     isInProgress = true;
 
@@ -128,9 +136,7 @@ public class ChunkedUploadHandler {
     parseRequestMetadata(request);
     isInProgress = true;
 
-    fileController.resumeChunkedUpload(
-        new ChunkedUploadRequest(
-            currentSessionId, currentUserToken, currentParentId, currentName, currentFileTags));
+    fileController.resumeChunkedUpload(new ResumeChunkedUploadRequest(currentSessionId));
 
     if (log.isDebugEnabled()) {
       log.debug(
@@ -155,6 +161,8 @@ public class ChunkedUploadHandler {
       throws QueryParameterNotFoundException, HeaderNotFoundException {
     parseRequestMetadata(request);
 
+    currentFileSize =
+        SafeParser.parseInt("File size", RequestUtils.getRequiredHeader(request, "X-File-Size"));
     currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
   }
 
@@ -163,7 +171,6 @@ public class ChunkedUploadHandler {
     currentUserToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     currentName = RequestUtils.getRequiredQueryParam(request, "name");
     currentParentId = RequestUtils.getQueryParam(request, "parentId");
-    currentFileTags = FileTagsMapper.toList(RequestUtils.getRequiredHeader(request, "X-File-Tags"));
   }
 
   private void sendSuccessResponse(ChannelHandlerContext ctx, ChunkedUploadFileResult result) {

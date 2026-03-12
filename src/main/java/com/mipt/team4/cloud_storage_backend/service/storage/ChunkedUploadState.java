@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ public class ChunkedUploadState {
   private final List<byte[]> chunks = new ArrayList<>();
   // TODO: сессия не удаляется, если completeMultipartUpload не вызван
   // TODO: нужны ли все поля session?
-  private final ChunkedUploadRequest request;
+  private final StartChunkedUploadRequest request;
   private final Map<Integer, String> eTags = new HashMap<>();
   private final StorageEntity entity;
   private boolean stopped = false;
@@ -25,7 +25,7 @@ public class ChunkedUploadState {
   private int partNum = 0;
   private String uploadId;
 
-  ChunkedUploadState(ChunkedUploadRequest request, StorageEntity entity) {
+  ChunkedUploadState(StartChunkedUploadRequest request, StorageEntity entity) {
     this.request = request;
     this.entity = entity;
   }

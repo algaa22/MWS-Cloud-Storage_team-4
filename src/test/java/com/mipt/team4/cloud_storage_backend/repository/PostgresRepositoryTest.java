@@ -8,69 +8,59 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
-import com.mipt.team4.cloud_storage_backend.repository.database.PostgresConnection;
-import com.mipt.team4.cloud_storage_backend.repository.storage.FileMetadataRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
-import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
 
 @Tag("integration")
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles("test")
+@Transactional
+@Import({StorageJpaRepositoryAdapter.class, UserRepository.class})
 public class PostgresRepositoryTest extends BasePostgresTest {
+  @MockitoBean private NettyServerManager nettyServerManager;
 
-  private static FileMetadataRepository fileMetadataRepository;
-  private static UserRepository userRepository;
-  private static PostgresConnection postgresConnection;
-  private static StorageEntity commonFileEntity;
-  private static UUID testUserUuid;
+  @Autowired private StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
+  @Autowired private UserRepository userRepository;
+  private StorageEntity commonFileEntity;
+  private UUID testUserUuid;
 
-  @BeforeAll
-  protected static void beforeAll() {
-    BasePostgresTest.beforeAll();
-
-    postgresConnection = TestUtils.createConnection(postgresContainer);
-    fileMetadataRepository = new FileMetadataRepository(postgresConnection);
-    userRepository = new UserRepository(postgresConnection);
-
-    try {
-      testUserUuid = addTestUser();
-      commonFileEntity = addTestFile(null, "root-file.xml");
-    } catch (UserAlreadyExistsException | StorageFileAlreadyExistsException e) {
-      throw new RuntimeException(e);
-    }
+  @BeforeEach
+  void beforeEach() {
+    testUserUuid = addTestUser();
+    commonFileEntity = addTestFile(null, "root-file.xml");
   }
 
-  @AfterAll
-  protected static void afterAll() {
-    BasePostgresTest.afterAll();
-    if (postgresConnection != null) {
-      postgresConnection.disconnect();
-    }
-  }
-
-  private static UUID addTestUser() throws UserAlreadyExistsException {
-    UUID uuid = UUID.randomUUID();
-
-    userRepository.addUser(
+  private UUID addTestUser() throws UserAlreadyExistsException {
+    UserEntity user =
         UserEntity.builder()
-            .id(uuid)
-            .name("name")
-            .email("email")
+            .username("name")
+            .email("test-" + UUID.randomUUID() + "@email.com")
             .passwordHash("password")
-            .storageLimit((long) 1e10)
+            .storageLimit(10737418240L)
             .createdAt(LocalDateTime.now())
-            .build());
+            .build();
 
-    return uuid;
+    userRepository.addUser(user);
+    return user.getId();
   }
 
-  private static StorageEntity addTestFile(UUID parentId, String name)
+  private StorageEntity addTestFile(UUID parentId, String name)
       throws StorageFileAlreadyExistsException {
     StorageEntity fileEntity =
         StorageEntity.builder()
@@ -85,7 +75,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .tags(List.of("some xml"))
             .build();
 
-    fileMetadataRepository.addFile(fileEntity);
+    storageJpaRepositoryAdapter.addFile(fileEntity);
 
     return fileEntity;
   }
@@ -93,7 +83,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @Test
   void fileExists_ShouldReturnTrue_WhenFileExists() {
     assertTrue(
-        fileMetadataRepository.fileExists(
+        storageJpaRepositoryAdapter.exists(
             commonFileEntity.getUserId(),
             commonFileEntity.getParentId(),
             commonFileEntity.getName()));
@@ -102,12 +92,13 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   @Test
   void fileExists_ShouldReturnFalse_WhenFileNotFound() {
     assertFalse(
-        fileMetadataRepository.fileExists(commonFileEntity.getUserId(), null, "non-existent-file"));
+        storageJpaRepositoryAdapter.exists(
+            commonFileEntity.getUserId(), null, "non-existent-file"));
   }
 
   @Test
   void shouldReturnNull_WhenGetNonexistentFile() {
-    assertTrue(fileMetadataRepository.getFile(testUserUuid, null, "non-existent-path").isEmpty());
+    assertTrue(storageJpaRepositoryAdapter.get(testUserUuid, null, "non-existent-path").isEmpty());
   }
 
   @Test
@@ -115,10 +106,10 @@ public class PostgresRepositoryTest extends BasePostgresTest {
       throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
     String uniqueName = "delete-me-" + UUID.randomUUID();
     StorageEntity testFileEntity = addTestFile(null, uniqueName);
-    assertTrue(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
+    assertTrue(storageJpaRepositoryAdapter.exists(testFileEntity.getUserId(), null, uniqueName));
 
-    fileMetadataRepository.deleteFile(testFileEntity);
-    assertFalse(fileMetadataRepository.fileExists(testFileEntity.getUserId(), null, uniqueName));
+    storageJpaRepositoryAdapter.hardDelete(testFileEntity.getUserId(), testFileEntity.getId());
+    assertFalse(storageJpaRepositoryAdapter.exists(testFileEntity.getUserId(), null, uniqueName));
   }
 
   @Test
@@ -131,12 +122,12 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .isDirectory(true)
             .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
             .build();
-    fileMetadataRepository.addFile(folder);
+    storageJpaRepositoryAdapter.addFile(folder);
 
     StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
 
-    assertTrue(fileMetadataRepository.isDescendant(folder.getId(), childFile.getId()));
+    assertTrue(storageJpaRepositoryAdapter.isDescendant(folder.getId(), childFile.getId()));
 
-    assertFalse(fileMetadataRepository.isDescendant(childFile.getId(), folder.getId()));
+    assertFalse(storageJpaRepositoryAdapter.isDescendant(childFile.getId(), folder.getId()));
   }
 }

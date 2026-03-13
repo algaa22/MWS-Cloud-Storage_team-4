@@ -10,7 +10,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDir
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +25,7 @@ public class DirectoryService {
   private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
   private final StorageJpaRepositoryAdapter metadataRepository;
-  private final UserRepository userRepository;
+  private final UserJpaRepositoryAdapter userRepository;
 
   @Transactional
   public UUID createDirectory(CreateDirectoryRequest request) {

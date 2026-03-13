@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
 import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
@@ -30,7 +31,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
@@ -42,6 +43,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,13 +55,15 @@ public class FileService {
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
 
   private final UserSessionService userSessionService;
-  private final StorageRepository storageRepository;
   private final FileErasureService erasureService;
-  private final UserRepository userRepository;
-  private final MinioConfig minioConfig;
-  private final NotificationClient notificationClient;
   private final TariffService tariffService;
-  private final StorageNotificationConfig storageNotificationConfig;
+
+  private final StorageRepository storageRepository;
+  private final UserJpaRepositoryAdapter userRepository;
+
+  private final NotificationClient notificationClient;
+  private final NotificationConfig notificationConfig;
+  private final MinioConfig minioConfig;
 
   public void startChunkedUpload(StartChunkedUploadRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
@@ -219,7 +223,7 @@ public class FileService {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     if (!tariffService.hasAccess(userId)) {
-        throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
     }
     Optional<StorageEntity> fileEntity = storageRepository.get(userId, fileId);
     StorageEntity entity = fileEntity.orElseThrow(() -> new StorageFileNotFoundException(fileId));
@@ -235,14 +239,15 @@ public class FileService {
     Optional<StorageEntity> fileEntity = storageRepository.getIncludeDeleted(userId, fileId);
     StorageEntity entity = fileEntity.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-      UserEntity user =
-              userRepository
-                      .getUserById(userId)
-                      .orElseThrow(() -> new UserNotFoundException(request.userToken()));
+    UserEntity user =
+        userRepository
+            .getUserById(userId)
+            .orElseThrow(() -> new UserNotFoundException(request.userToken()));
 
-    notificationClient.notifyFileDeleted(user.getEmail(), user.getName(), filePath, userId);
-    log.info("File deleted: {} (path: {})", entity.getId(), filePath);
     erasureService.hardDelete(entity);
+
+    String fullPath = storageRepository.getFullFilePath(fileId);
+    notificationClient.notifyFileDeleted(user.getEmail(), user.getUsername(), fullPath, userId);
   }
 
   @Transactional
@@ -374,21 +379,21 @@ public class FileService {
                   "Storage check for user {}: used={}, limit={}, {}%",
                   userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
 
-              if (ratio >= storageNotificationConfig.getFullThreshold()) {
+              if (ratio >= notificationConfig.fullThreshold()) {
                 userRepository
                     .getUserById(userId)
                     .ifPresent(
                         user ->
                             notificationClient.notifyStorageFull(
-                                user.getEmail(), user.getName(), userId));
-              } else if (ratio >= storageNotificationConfig.getAlmostFullThreshold()) {
+                                user.getEmail(), user.getUsername(), userId));
+              } else if (ratio >= notificationConfig.almostFullThreshold()) {
                 userRepository
                     .getUserById(userId)
                     .ifPresent(
                         user ->
                             notificationClient.notifyStorageAlmostFull(
                                 user.getEmail(),
-                                user.getName(),
+                                user.getUsername(),
                                 usage.used(),
                                 usage.limit(),
                                 userId));

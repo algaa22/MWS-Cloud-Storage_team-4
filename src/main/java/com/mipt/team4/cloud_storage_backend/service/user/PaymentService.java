@@ -4,19 +4,18 @@ import com.mipt.team4.cloud_storage_backend.exception.user.PaymentException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
 
-  private final UserRepository userRepository;
+  private final UserJpaRepositoryAdapter userRepository;
 
   public void processPayment(UUID userId, TariffPlan plan, String paymentToken) {
     log.info("Processing payment for user {}: plan={}, token={}", userId, plan, paymentToken);

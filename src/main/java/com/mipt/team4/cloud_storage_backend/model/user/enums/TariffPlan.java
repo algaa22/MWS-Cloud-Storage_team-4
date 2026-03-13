@@ -1,5 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.model.user.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum TariffPlan {
   TRIAL(10L * 1024 * 1024 * 1024, 30, 0),
   BASIC(10L * 1024 * 1024 * 1024, 30, 99),
@@ -14,18 +17,6 @@ public enum TariffPlan {
     this.storageLimit = storageLimit;
     this.durationDays = durationDays;
     this.priceRub = priceRub;
-  }
-
-  public long getStorageLimit() {
-    return storageLimit;
-  }
-
-  public int getDurationDays() {
-    return durationDays;
-  }
-
-  public int getPriceRub() {
-    return priceRub;
   }
 
   public boolean isTrial() {

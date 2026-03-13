@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class FileErasureService {
   private final StorageRepository storageRepository;
-  private final UserRepository userRepository;
+  private final UserJpaRepositoryAdapter userRepository;
 
   @Transactional
   public void hardDelete(StorageEntity entity) {

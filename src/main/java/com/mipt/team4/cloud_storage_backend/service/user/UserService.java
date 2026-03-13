@@ -16,7 +16,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RegisterRequ
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateUserInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenService;
 import java.time.LocalDateTime;
@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UserService {
-  private final UserRepository userRepository;
+  private final UserJpaRepositoryAdapter userRepository;
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
   private final PasswordHasher passwordHasher;

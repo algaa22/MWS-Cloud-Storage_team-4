@@ -100,36 +100,39 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
     }
   }
 
-    private void handleUsersRequest(
-            ChannelHandlerContext ctx, HttpRequest request, String uri, HttpMethod method) {
-        if (method.equals(HttpMethod.POST)) {
-            switch (uri) {
-                case "/api/users/auth/login" -> usersRequestHandler.handleLoginRequest(ctx, request);
-                case "/api/users/auth/register" -> usersRequestHandler.handleRegisterRequest(ctx, request);
-                case "/api/users/auth/logout" -> usersRequestHandler.handleLogoutRequest(ctx, request);
-                case "/api/users/update" -> usersRequestHandler.handleUpdateUserRequest(ctx, request);
-                case "/api/users/auth/refresh" -> usersRequestHandler.handleRefreshTokenRequest(ctx, request);
-                case "/api/users/tariff/purchase" -> usersRequestHandler.handlePurchaseTariff(ctx, request);
-                case "/api/users/tariff/set-auto-renew" -> {
-                    boolean enabled = Boolean.parseBoolean(
-                            RequestUtils.getQueryParam(request, "enabled").orElse("true"));
-                    usersRequestHandler.handleSetAutoRenew(ctx, request, enabled);
-                }
-                case "/api/users/tariff/update-payment" -> usersRequestHandler.handleUpdatePaymentMethod(ctx, request);
-                default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
-            }
-        } else if (method.equals(HttpMethod.GET)) {
-            switch (uri) {
-                case "/api/users/info" -> usersRequestHandler.handleGetUserRequest(ctx, request);
-                case "/api/users/tariff/info" -> usersRequestHandler.handleGetTariffInfo(ctx, request);
-                case "/api/users/tariff/plans" -> usersRequestHandler.handleGetAvailableTariffs(ctx, request);
-
-                default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
-            }
-        } else {
-            ResponseUtils.sendMethodNotSupported(ctx, uri, method);
+  private void handleUsersRequest(
+      ChannelHandlerContext ctx, HttpRequest request, String uri, HttpMethod method) {
+    if (method.equals(HttpMethod.POST)) {
+      switch (uri) {
+        case "/api/users/auth/login" -> usersRequestHandler.handleLoginRequest(ctx, request);
+        case "/api/users/auth/register" -> usersRequestHandler.handleRegisterRequest(ctx, request);
+        case "/api/users/auth/logout" -> usersRequestHandler.handleLogoutRequest(ctx, request);
+        case "/api/users/update" -> usersRequestHandler.handleUpdateUserRequest(ctx, request);
+        case "/api/users/auth/refresh" ->
+            usersRequestHandler.handleRefreshTokenRequest(ctx, request);
+        case "/api/users/tariff/purchase" -> usersRequestHandler.handlePurchaseTariff(ctx, request);
+        case "/api/users/tariff/set-auto-renew" -> {
+          boolean enabled =
+              Boolean.parseBoolean(RequestUtils.getQueryParam(request, "enabled").orElse("true"));
+          usersRequestHandler.handleSetAutoRenew(ctx, request, enabled);
         }
+        case "/api/users/tariff/update-payment" ->
+            usersRequestHandler.handleUpdatePaymentMethod(ctx, request);
+        default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
+      }
+    } else if (method.equals(HttpMethod.GET)) {
+      switch (uri) {
+        case "/api/users/info" -> usersRequestHandler.handleGetUserRequest(ctx, request);
+        case "/api/users/tariff/info" -> usersRequestHandler.handleGetTariffInfo(ctx, request);
+        case "/api/users/tariff/plans" ->
+            usersRequestHandler.handleGetAvailableTariffs(ctx, request);
+
+        default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
+      }
+    } else {
+      ResponseUtils.sendMethodNotSupported(ctx, uri, method);
     }
+  }
 
   private String extractUserTokenFromRequest(HttpRequest request) {
     return request.headers().get("X-Auth-Token", "");

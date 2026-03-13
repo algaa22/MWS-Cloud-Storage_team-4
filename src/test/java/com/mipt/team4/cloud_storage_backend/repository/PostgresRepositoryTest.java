@@ -11,7 +11,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -31,12 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 @Transactional
-@Import({StorageJpaRepositoryAdapter.class, UserRepository.class})
+@Import({StorageJpaRepositoryAdapter.class, UserJpaRepositoryAdapter.class})
 public class PostgresRepositoryTest extends BasePostgresTest {
   @MockitoBean private NettyServerManager nettyServerManager;
 
   @Autowired private StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
-  @Autowired private UserRepository userRepository;
+  @Autowired private UserJpaRepositoryAdapter userRepository;
   private StorageEntity commonFileEntity;
   private UUID testUserUuid;
 

@@ -1,16 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.scheduler;
 
-import com.mipt.team4.cloud_storage_backend.config.props.TariffNotificationConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
 import com.mipt.team4.cloud_storage_backend.exception.user.PaymentException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.PaymentService;
-import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
-
 import java.time.LocalDateTime;
 import java.util.List;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,21 +18,16 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class TariffScheduler {
 
-  private final UserRepository userRepository;
+  private final UserJpaRepositoryAdapter userRepository;
   private final NotificationClient notificationClient;
   private final PaymentService paymentService;
-  private final TariffNotificationConfig notificationConfig;
+  private final NotificationConfig notificationConfig;
 
   @Scheduled(cron = "0 0 4 * * *")
   public void checkTariffs() {
-    if (!notificationConfig.isEnabled()) {
-      log.debug("Tariff notifications are disabled");
-      return;
-    }
-
     log.info("Starting scheduled tariff check");
 
-    List<Integer> notificationDays = notificationConfig.getDaysBeforeExpiry();
+    List<Integer> notificationDays = notificationConfig.tariff().daysBeforeExpiry();
 
     for (int days : notificationDays) {
       checkUsersWithTariffEndingSoon(days);
@@ -50,7 +42,7 @@ public class TariffScheduler {
     LocalDateTime from = LocalDateTime.now().plusDays(days);
     LocalDateTime to = from.plusDays(1);
 
-    List<UserEntity> users = userRepository.findUsersWithTariffEndingBetween(from, to);
+    List<UserEntity> users = userRepository.getUsersWithTariffEndingBetween(from, to);
 
     if (users.isEmpty()) {
       log.debug("No users with tariff ending in {} days", days);
@@ -62,7 +54,7 @@ public class TariffScheduler {
     for (UserEntity user : users) {
       try {
         notificationClient.notifyTariffEndingSoon(
-            user.getEmail(), user.getName(), days, user.getTariffEndDate());
+            user.getEmail(), user.getUsername(), days, user.getTariffEndDate());
         log.info("Notified user {}: tariff ends in {} days", user.getId(), days);
       } catch (Exception e) {
         log.error("Failed to notify user {} about tariff ending in {} days", user.getId(), days, e);
@@ -71,9 +63,9 @@ public class TariffScheduler {
   }
 
   private void checkExpiredTariffs() {
-    List<UserEntity> expiredUsers = userRepository.findUsersWithExpiredTariff(LocalDateTime.now());
+    List<UserEntity> expiredUsers = userRepository.getUsersWithExpiredTariff(LocalDateTime.now());
 
-    if (expiredUsers.isEmpty()) {
+    if (expiredUsers.isEmpty() && log.isDebugEnabled()) {
       log.debug("No users with expired tariffs");
       return;
     }
@@ -103,7 +95,7 @@ public class TariffScheduler {
           LocalDateTime.now().plusDays(user.getTariffPlan().getDurationDays());
       userRepository.updateTariffEndDate(user.getId(), newEndDate);
 
-      notificationClient.notifyTariffRenewed(user.getEmail(), user.getName(), newEndDate);
+      notificationClient.notifyTariffRenewed(user.getEmail(), user.getUsername(), newEndDate);
 
       log.info("Auto-renew successful for user: {}, new end date: {}", user.getId(), newEndDate);
 
@@ -119,7 +111,7 @@ public class TariffScheduler {
     userRepository.deactivateUser(user.getId());
 
     try {
-      notificationClient.notifyTariffExpired(user.getEmail(), user.getName());
+      notificationClient.notifyTariffExpired(user.getEmail(), user.getUsername());
     } catch (Exception e) {
       log.error("Failed to send expiration notification to user {}", user.getId(), e);
     }

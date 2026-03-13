@@ -22,9 +22,7 @@ import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-
 import java.util.Optional;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -136,7 +134,6 @@ public class UsersRequestHandler {
   public void handlePurchaseTariff(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException, ValidationFailedException {
 
-    System.out.println("Request URI: " + request.uri());
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String tariffPlanStr = RequestUtils.getRequiredQueryParam(request, "plan");
     String paymentToken = RequestUtils.getRequiredHeader(request, "X-Payment-Token");

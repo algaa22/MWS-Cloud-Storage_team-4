@@ -1,13 +1,15 @@
 package com.mipt.team4.cloud_storage_backend.model.user.entity;
 
+import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -56,8 +58,9 @@ public class UserEntity {
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
 
+  @Enumerated(EnumType.STRING)
   @Column(name = "tariffPlan")
-  private String tariffPlan;
+  private TariffPlan tariffPlan;
 
   @Column(name = "tariffStartDate")
   private LocalDateTime tariffStartDate;
@@ -67,7 +70,7 @@ public class UserEntity {
 
   @Builder.Default
   @Column(name = "autoRenew")
-  private boolean autoRenew;
+  private boolean autoRenew = true;
 
   @Column(name = "paymentMethodId")
   private String paymentMethodId;

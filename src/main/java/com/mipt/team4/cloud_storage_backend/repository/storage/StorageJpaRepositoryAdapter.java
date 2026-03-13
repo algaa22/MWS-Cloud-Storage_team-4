@@ -163,4 +163,15 @@ public class StorageJpaRepositoryAdapter {
   public List<StorageEntity> findAllDescendants(UUID userId, UUID id) {
     return jpaRepository.findAllFilesDescendants(userId, id);
   }
+
+  @Transactional(readOnly = true)
+  public String getFullFilePath(UUID fileId) {
+    List<String> nodes = jpaRepository.getFullPathNodes(fileId);
+
+    if (nodes.isEmpty()) {
+      return "";
+    }
+
+    return String.join("/", nodes);
+  }
 }

@@ -4,19 +4,17 @@ import com.mipt.team4.cloud_storage_backend.exception.user.PaymentException;
 import com.mipt.team4.cloud_storage_backend.exception.user.TariffPurchaseException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateAutoRenewRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
-
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +24,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TariffService {
 
-  private final UserRepository userRepository;
+  private final UserJpaRepositoryAdapter userRepository;
   private final UserSessionService userSessionService;
   private final NotificationClient notificationClient;
   private final PaymentService paymentService;
@@ -70,11 +68,13 @@ public class TariffService {
           endDate,
           request.autoRenew(),
           request.tariffPlan().getStorageLimit());
+
       if (request.paymentMethod() != null) {
         userRepository.updatePaymentMethod(userId, request.paymentMethod());
       }
+
       notificationClient.notifyTariffPurchased(
-          user.getEmail(), user.getName(), request.tariffPlan().name(), endDate);
+          user.getEmail(), user.getUsername(), request.tariffPlan().name(), endDate);
 
       log.info("User {} purchased tariff: {}", userId, request.tariffPlan());
 

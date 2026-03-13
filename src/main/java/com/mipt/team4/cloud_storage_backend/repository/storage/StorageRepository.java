@@ -146,4 +146,8 @@ public class StorageRepository {
   public List<StorageEntity> getFileList(FileListFilter filter) {
     return metadataRepository.getFileList(filter);
   }
+
+  public String getFullFilePath(UUID fileId) {
+    return metadataRepository.getFullFilePath(fileId);
+  }
 }

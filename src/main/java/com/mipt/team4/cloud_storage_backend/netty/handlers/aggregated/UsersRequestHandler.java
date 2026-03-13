@@ -172,9 +172,11 @@ public class UsersRequestHandler {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  public void handleSetAutoRenew(ChannelHandlerContext ctx, HttpRequest request, boolean enabled)
+  public void handleSetAutoRenew(ChannelHandlerContext ctx, HttpRequest request)
       throws HeaderNotFoundException, ValidationFailedException {
 
+    boolean enabled =
+        Boolean.parseBoolean(RequestUtils.getQueryParam(request, "enabled").orElse("true"));
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
 

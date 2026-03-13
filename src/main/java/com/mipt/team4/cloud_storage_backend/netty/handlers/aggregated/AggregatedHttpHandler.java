@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
-import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -111,11 +110,8 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         case "/api/users/auth/refresh" ->
             usersRequestHandler.handleRefreshTokenRequest(ctx, request);
         case "/api/users/tariff/purchase" -> usersRequestHandler.handlePurchaseTariff(ctx, request);
-        case "/api/users/tariff/set-auto-renew" -> {
-          boolean enabled =
-              Boolean.parseBoolean(RequestUtils.getQueryParam(request, "enabled").orElse("true"));
-          usersRequestHandler.handleSetAutoRenew(ctx, request, enabled);
-        }
+        case "/api/users/tariff/set-auto-renew" ->
+            usersRequestHandler.handleSetAutoRenew(ctx, request);
         case "/api/users/tariff/update-payment" ->
             usersRequestHandler.handleUpdatePaymentMethod(ctx, request);
         default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);

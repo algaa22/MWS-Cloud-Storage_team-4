@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.scheduler;
 
 import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
+import com.mipt.team4.cloud_storage_backend.exception.user.payment.PaymentException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
@@ -92,8 +93,8 @@ public class TariffScheduler {
 
       LocalDateTime newEndDate =
           LocalDateTime.now().plusDays(user.getTariffPlan().getDurationDays());
-      userRepository.updateTariffEndDate(user.getId(), newEndDate);
 
+      userRepository.updateTariffEndDate(user.getId(), newEndDate);
       notificationClient.notifyTariffRenewed(user.getEmail(), user.getUsername(), newEndDate);
 
       log.info("Auto-renew successful for user: {}, new end date: {}", user.getId(), newEndDate);
@@ -101,6 +102,7 @@ public class TariffScheduler {
     } catch (PaymentException e) {
       log.error("Auto-renew failed for user: {}", user.getId(), e);
       deactivateUser(user);
+      throw e;
     }
   }
 

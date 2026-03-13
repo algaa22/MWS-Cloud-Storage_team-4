@@ -14,6 +14,7 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotF
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
@@ -292,7 +293,8 @@ public class FileService {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     return storageRepository.getFileList(
-        new FileListFilter(userId, parentId, request.includeDirectories(), request.recursive()));
+        new FileListFilter(
+            userId, parentId, request.includeDirectories(), request.recursive(), request.tags()));
   }
 
   @Transactional(readOnly = true)
@@ -305,7 +307,7 @@ public class FileService {
       throw new StorageFileNotFoundException(fileId);
     }
 
-    return new StorageDto(fileEntity.get());
+    return new StorageDto(entityOpt.get());
   }
 
   @Transactional

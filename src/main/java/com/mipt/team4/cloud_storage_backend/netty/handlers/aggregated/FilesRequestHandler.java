@@ -44,6 +44,7 @@ public class FilesRequestHandler {
         SafeParser.parseBoolean(
             "Recursive", RequestUtils.getQueryParam(request, "recursive", "false"));
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
+    Optional<String> tags = RequestUtils.getQueryParam(request, "tags");
 
     List<StorageEntity> files =
         fileController.getFileList(
@@ -56,6 +57,7 @@ public class FilesRequestHandler {
       for (StorageEntity file :
           files) { // TODO: entity в контроллере? put по dto через функции jackson
         ObjectNode fileNode = mapper.createObjectNode();
+
         fileNode.put("id", file.getId().toString());
         fileNode.put("parentId", String.valueOf(file.getParentId()));
         fileNode.put("name", file.getName());

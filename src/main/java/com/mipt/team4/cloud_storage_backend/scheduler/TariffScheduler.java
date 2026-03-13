@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.scheduler;
 
 import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
-import com.mipt.team4.cloud_storage_backend.exception.user.PaymentException;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;

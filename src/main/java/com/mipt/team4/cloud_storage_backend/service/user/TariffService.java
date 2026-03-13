@@ -1,7 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
-import com.mipt.team4.cloud_storage_backend.exception.user.PaymentException;
-import com.mipt.team4.cloud_storage_backend.exception.user.TariffPurchaseException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
@@ -54,35 +52,27 @@ public class TariffService {
     }
 
     UserEntity user = userOpt.get();
+    paymentService.processPayment(userId, request.tariffPlan(), request.paymentToken());
 
-    try {
-      paymentService.processPayment(userId, request.tariffPlan(), request.paymentToken());
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime endDate = now.plusDays(request.tariffPlan().getDurationDays());
 
-      LocalDateTime now = LocalDateTime.now();
-      LocalDateTime endDate = now.plusDays(request.tariffPlan().getDurationDays());
+    userRepository.updateTariff(
+        userId,
+        request.tariffPlan(),
+        now,
+        endDate,
+        request.autoRenew(),
+        request.tariffPlan().getStorageLimit());
 
-      userRepository.updateTariff(
-          userId,
-          request.tariffPlan(),
-          now,
-          endDate,
-          request.autoRenew(),
-          request.tariffPlan().getStorageLimit());
-
-      if (request.paymentMethod() != null) {
-        userRepository.updatePaymentMethod(userId, request.paymentMethod());
-      }
-
-      notificationClient.notifyTariffPurchased(
-          user.getEmail(), user.getUsername(), request.tariffPlan().name(), endDate);
-
-      log.info("User {} purchased tariff: {}", userId, request.tariffPlan());
-
-    } catch (PaymentException e) {
-      log.error("Payment failed for user: {}", userId, e);
-      throw new TariffPurchaseException(
-          "Payment processing failed for tariff: " + request.tariffPlan(), e);
+    if (request.paymentMethod() != null) {
+      userRepository.updatePaymentMethod(userId, request.paymentMethod());
     }
+
+    notificationClient.notifyTariffPurchased(
+        user.getEmail(), user.getUsername(), request.tariffPlan().name(), endDate);
+
+    log.info("User {} purchased tariff: {}", userId, request.tariffPlan());
   }
 
   public TariffInfoDto getTariffInfo(SimpleUserRequest request) {

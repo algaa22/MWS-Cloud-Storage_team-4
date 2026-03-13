@@ -17,7 +17,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileR
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ResumeChunkedUploadRequest;
@@ -307,7 +306,7 @@ public class FileService {
       throw new StorageFileNotFoundException(fileId);
     }
 
-    return new StorageDto(entityOpt.get());
+    return new StorageDto(fileEntity.get());
   }
 
   @Transactional

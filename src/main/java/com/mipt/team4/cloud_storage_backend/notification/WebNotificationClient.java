@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientException;
 
 @Slf4j
 @Component
@@ -109,20 +108,19 @@ public class WebNotificationClient implements NotificationClient {
   }
 
   private void sendRequest(NotificationRequest request) {
-    try {
-      webClient
-          .post()
-          .uri("/api/notifications/send")
-          .bodyValue(request)
-          .retrieve()
-          .toBodilessEntity()
-          .subscribe(
-              response -> log.info("Notification {} sent", request.getType()),
-              error -> log.error("Failed to send notification {}", error.getMessage()));
-      log.info("Notification sent successfully: {}", request.getType());
-    } catch (WebClientException e) {
-      log.error(
-          "Failed to send notification to {}: {}", request.getType(), request.getUserEmail(), e);
-    }
+    webClient
+        .post()
+        .uri("/api/notifications/send")
+        .bodyValue(request)
+        .retrieve()
+        .toBodilessEntity()
+        .subscribe(
+            response -> {},
+            error ->
+                log.error(
+                    "Failed to send notification to {}: {}. Error: {}",
+                    request.getUserId(),
+                    request.getUserEmail(),
+                    error.getMessage()));
   }
 }

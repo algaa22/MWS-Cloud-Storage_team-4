@@ -48,7 +48,7 @@ public class FilesRequestHandler {
 
     List<StorageEntity> files =
         fileController.getFileList(
-            new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
+            new GetFileListRequest(userToken, includeDirectories, recursive, parentId, tags));
 
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();
@@ -82,7 +82,8 @@ public class FilesRequestHandler {
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
 
     List<StorageEntity> trashFiles =
-        fileController.getTrashFileList(new GetFileListRequest(userToken, false, false, parentId));
+        fileController.getTrashFileList(
+            new GetFileListRequest(userToken, false, false, parentId, Optional.empty()));
 
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();

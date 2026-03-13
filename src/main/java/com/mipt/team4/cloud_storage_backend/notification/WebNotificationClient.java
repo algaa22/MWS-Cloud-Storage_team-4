@@ -116,7 +116,9 @@ public class WebNotificationClient implements NotificationClient {
           .bodyValue(request)
           .retrieve()
           .toBodilessEntity()
-          .block();
+          .subscribe(
+              response -> log.info("Notification {} sent", request.getType()),
+              error -> log.error("Failed to send notification {}", error.getMessage()));
       log.info("Notification sent successfully: {}", request.getType());
     } catch (WebClientException e) {
       log.error(

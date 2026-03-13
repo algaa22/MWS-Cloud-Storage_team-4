@@ -102,24 +102,29 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         case "/api/users/auth/register" -> usersRequestHandler.handleRegisterRequest(ctx, request);
         case "/api/users/auth/logout" -> usersRequestHandler.handleLogoutRequest(ctx, request);
         case "/api/users/update" -> usersRequestHandler.handleUpdateUserRequest(ctx, request);
-        case "/api/users/auth/refresh" -> usersRequestHandler.handleRefreshTokenRequest(ctx, request);
+        case "/api/users/auth/refresh" ->
+            usersRequestHandler.handleRefreshTokenRequest(ctx, request);
         case "/api/users/tariff/purchase" -> usersRequestHandler.handlePurchaseTariff(ctx, request);
-        case "/api/users/tariff/disable-auto-renew" -> usersRequestHandler.handleDisableAutoRenew(ctx, request);
-        case "/api/users/tariff/enable-auto-renew" -> usersRequestHandler.handleEnableAutoRenew(ctx, request);
-        case "/api/users/tariff/update-payment" -> usersRequestHandler.handleUpdatePaymentMethod(ctx, request);
+        case "/api/users/tariff/disable-auto-renew" ->
+            usersRequestHandler.handleDisableAutoRenew(ctx, request);
+        case "/api/users/tariff/enable-auto-renew" ->
+            usersRequestHandler.handleEnableAutoRenew(ctx, request);
+        case "/api/users/tariff/update-payment" ->
+            usersRequestHandler.handleUpdatePaymentMethod(ctx, request);
         default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
       }
     } else if (method.equals(HttpMethod.GET)) {
-        switch (uri) {
-          case "/api/users/info" -> usersRequestHandler.handleGetUserRequest(ctx, request);
-          case "/api/users/tariff/info" -> usersRequestHandler.handleGetTariffInfo(ctx, request);
-          case "/api/users/tariff/plans" -> usersRequestHandler.handleGetAvailableTariffs(ctx, request);
+      switch (uri) {
+        case "/api/users/info" -> usersRequestHandler.handleGetUserRequest(ctx, request);
+        case "/api/users/tariff/info" -> usersRequestHandler.handleGetTariffInfo(ctx, request);
+        case "/api/users/tariff/plans" ->
+            usersRequestHandler.handleGetAvailableTariffs(ctx, request);
 
-          default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
-        }
-      } else {
-        ResponseUtils.sendMethodNotSupported(ctx, uri, method);
+        default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
       }
+    } else {
+      ResponseUtils.sendMethodNotSupported(ctx, uri, method);
+    }
   }
 
   private String extractUserTokenFromRequest(HttpRequest request) {

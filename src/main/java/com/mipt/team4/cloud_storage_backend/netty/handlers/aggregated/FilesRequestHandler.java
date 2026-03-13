@@ -8,7 +8,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SearchFilesByTagsRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
@@ -16,17 +15,14 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Scope;
@@ -52,18 +48,11 @@ public class FilesRequestHandler {
         SafeParser.parseBoolean(
             "Recursive", RequestUtils.getQueryParam(request, "recursive", "false"));
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
-    List<String> tags = RequestUtils.getQueryParamList(request, "tags");
+    Optional<String> tags = RequestUtils.getQueryParam(request, "tags");
 
-    List<StorageEntity> files;
-
-    if (tags != null && !tags.isEmpty()) {
-      SearchFilesByTagsRequest searchRequest = new SearchFilesByTagsRequest(userToken, tags);
-      files = fileController.searchFilesByTags(searchRequest);
-    } else {
-      files =
-          fileController.getFileList(
-              new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
-    }
+    List<StorageEntity> files =
+        fileController.getFileList(
+            new GetFileListRequest(userToken, includeDirectories, recursive, parentId, tags));
 
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();

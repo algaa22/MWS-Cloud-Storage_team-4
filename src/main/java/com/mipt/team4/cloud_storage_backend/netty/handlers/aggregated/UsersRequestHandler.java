@@ -132,30 +132,27 @@ public class UsersRequestHandler {
   }
 
   public void handlePurchaseTariff(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String tariffPlanStr = RequestUtils.getRequiredQueryParam(request, "plan");
     String paymentToken = RequestUtils.getRequiredHeader(request, "X-Payment-Token");
-    boolean autoRenew = SafeParser.parseBoolean("Auto renew",
-            RequestUtils.getQueryParam(request, "autoRenew", "true"));
+    boolean autoRenew =
+        SafeParser.parseBoolean(
+            "Auto renew", RequestUtils.getQueryParam(request, "autoRenew", "true"));
 
     TariffPlan plan = TariffPlan.valueOf(tariffPlanStr);
 
-    TariffRequest tariffRequest = new TariffRequest(
-            userToken, plan, paymentToken, autoRenew
-    );
+    TariffRequest tariffRequest = new TariffRequest(userToken, plan, paymentToken, autoRenew);
 
     tariffController.purchaseTariff(tariffRequest);
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Tariff purchased successfully");
   }
 
-  /**
-   * Получить информацию о текущем тарифе
-   */
+  /** Получить информацию о текущем тарифе */
   public void handleGetTariffInfo(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
@@ -175,11 +172,9 @@ public class UsersRequestHandler {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
 
-  /**
-   * Отключить автопродление
-   */
+  /** Отключить автопродление */
   public void handleDisableAutoRenew(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
@@ -189,11 +184,9 @@ public class UsersRequestHandler {
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Auto-renew disabled");
   }
 
-  /**
-   * Включить автопродление
-   */
+  /** Включить автопродление */
   public void handleEnableAutoRenew(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
@@ -203,11 +196,9 @@ public class UsersRequestHandler {
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Auto-renew enabled");
   }
 
-  /**
-   * Обновить способ оплаты
-   */
+  /** Обновить способ оплаты */
   public void handleUpdatePaymentMethod(ChannelHandlerContext ctx, HttpRequest request)
-          throws HeaderNotFoundException, ValidationFailedException {
+      throws HeaderNotFoundException, ValidationFailedException {
 
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     String paymentMethodId = RequestUtils.getRequiredHeader(request, "X-Payment-Method-Id");
@@ -219,15 +210,13 @@ public class UsersRequestHandler {
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Payment method updated");
   }
 
-  /**
-   * Получить список доступных тарифов
-   */
+  /** Получить список доступных тарифов */
   public void handleGetAvailableTariffs(ChannelHandlerContext ctx, HttpRequest request) {
     ObjectNode rootNode = mapper.createObjectNode();
     ObjectNode tariffsNode = mapper.createObjectNode();
 
     for (TariffPlan plan : TariffPlan.values()) {
-      if (!plan.isTrial()) {  // не показываем TRIAL в списке для покупки
+      if (!plan.isTrial()) { // не показываем TRIAL в списке для покупки
         ObjectNode planNode = mapper.createObjectNode();
         planNode.put("name", plan.name());
         planNode.put("storageLimit", plan.getStorageLimit());
@@ -240,5 +229,4 @@ public class UsersRequestHandler {
     rootNode.set("tariffs", tariffsNode);
     ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, rootNode);
   }
-
 }

@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -98,6 +98,11 @@ public class FileMetadataRepository {
 
     if (!filter.recursive()) {
       query += " AND status = 'READY'";
+    }
+
+    if (filter.tags().isPresent()) {
+      query += " AND tags = ?";
+      params.add(filter.tags().get());
     }
 
     query += " ORDER BY CASE WHEN is_directory THEN 1 ELSE 2 END, name ASC";

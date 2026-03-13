@@ -60,10 +60,8 @@ public class FilesRequestHandler {
     if (files != null) {
       for (StorageEntity file : files) {
         ObjectNode fileNode = mapper.createObjectNode();
-        String fullPath = getFullPath(file);
 
         fileNode.put("id", file.getId().toString());
-        fileNode.put("path", fullPath);
         fileNode.put("parentId", file.getParentId() != null ? file.getParentId().toString() : null);
         fileNode.put("name", file.getName());
         fileNode.put("size", file.getSize());
@@ -151,22 +149,5 @@ public class FilesRequestHandler {
             new FileUploadRequest(parentId, fileName, userToken, fileTags, fileData));
 
     ResponseUtils.sendCreatedResponse(ctx, createdId, "File successfully uploaded");
-  }
-
-  private String getFullPath(StorageEntity file) {
-    if (file == null) {
-      return "";
-    }
-
-    try {
-      String path = storageRepository.getFullFilePath(file.getId());
-      if (path != null) {
-        return "/" + path;
-      }
-    } catch (Exception e) {
-      log.warn("Could not get full path for file {}: {}", file.getId(), e.getMessage());
-    }
-
-    return "/" + file.getName();
   }
 }

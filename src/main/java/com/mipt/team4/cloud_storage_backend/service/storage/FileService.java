@@ -224,11 +224,6 @@ public class FileService {
             .orElseThrow(() -> new UserNotFoundException(request.userToken()));
 
     String filePath = storageRepository.getFullFilePath(entity.getId());
-    if (filePath == null) {
-      filePath = entity.getName();
-      log.warn(
-          "Could not get full path for file {}, using name only: {}", entity.getId(), filePath);
-    }
 
     notificationClient.notifyFileDeleted(user.getEmail(), user.getName(), filePath, userId);
     log.info("File deleted: {} (path: {})", entity.getId(), filePath);
@@ -318,10 +313,6 @@ public class FileService {
         .ifPresent(
             usage -> {
               double ratio = usage.getRatio();
-
-              log.info(
-                  "Storage check for user {}: used={}, limit={}, {}%",
-                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
 
               if (ratio >= storageNotificationConfig.getFullThreshold()) {
                 userRepository

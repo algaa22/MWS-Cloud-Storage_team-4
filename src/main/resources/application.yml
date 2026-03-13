@@ -84,3 +84,13 @@ storage:
 
   trash:
     retention-days: 30
+
+notification:
+  tariff:
+    days-before-expiry: [ 7, 3, 1 ]
+
+  full-threshold: 0.95
+  almost-full-threshold: 0.75
+
+  service:
+    url: http://localhost:8082

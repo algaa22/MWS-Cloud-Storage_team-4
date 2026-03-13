@@ -115,6 +115,9 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
     """)
   void upsertFile(@Param("f") StorageEntity file, @Param("tagsStr") String tagsStr);
 
+  @Modifying
+  void deleteByUserIdAndId(UUID userId, UUID id);
+
   @Query(
       nativeQuery = true,
       value =
@@ -159,8 +162,25 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       value = "SELECT * FROM files WHERE is_deleted = true AND deleted_at < :threshold")
   List<StorageEntity> findStaleDeletedFiles(@Param("threshold") LocalDateTime threshold);
 
-  @Modifying
-  void deleteByUserIdAndId(UUID userId, UUID id);
+  @Query(
+      value =
+          """
+      WITH RECURSIVE file_path AS (
+          SELECT id, parent_id, name, 1 as level
+          FROM files
+          WHERE id = :fileId AND is_deleted = false
+
+          UNION ALL
+
+          SELECT f.id, f.parent_id, f.name, fp.level + 1
+          FROM files f
+          JOIN file_path fp ON f.id = fp.parent_id
+          WHERE f.is_deleted = false
+      )
+      SELECT name FROM file_path ORDER BY level DESC
+      """,
+      nativeQuery = true)
+  List<String> getFullPathNodes(@Param("fileId") UUID fileId);
 
   Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID fileId);
 

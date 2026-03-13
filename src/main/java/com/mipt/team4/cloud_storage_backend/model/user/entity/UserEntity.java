@@ -1,7 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.model.user.entity;
 
+import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -54,6 +57,26 @@ public class UserEntity {
 
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "tariffPlan")
+  private TariffPlan tariffPlan;
+
+  @Column(name = "tariffStartDate")
+  private LocalDateTime tariffStartDate;
+
+  @Column(name = "tariffEndDate")
+  private LocalDateTime tariffEndDate;
+
+  @Builder.Default
+  @Column(name = "autoRenew")
+  private boolean autoRenew = true;
+
+  @Column(name = "paymentMethodId")
+  private String paymentMethodId;
+
+  @Column(name = "trialStartDate")
+  private LocalDateTime trialStartDate;
 
   @PrePersist
   protected void onCreate() {

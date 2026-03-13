@@ -361,6 +361,205 @@ export const getFiles = async (token, currentPath = "") => {
   }
 };
 
+export const getTariffInfo = async (token) => {
+  console.log("=== GET TARIFF INFO ===");
+
+  const url = `${BASE}/users/tariff/info`;
+
+  try {
+    const response = await fetchWithTokenRefresh(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      }
+    }, token);
+
+    if (!response.ok) {
+      throw new Error(`Failed to get tariff info: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Tariff info:", data);
+    return data;
+
+  } catch (error) {
+    console.error("Error getting tariff info:", error);
+    throw error;
+  }
+};
+
+export const purchaseTariff = async (token, plan, paymentToken = 'test', autoRenew = true, paymentMethod = null) => {
+  console.log("=== PURCHASE TARIFF ===");
+  console.log("Plan:", plan);
+  console.log("Auto-renew:", autoRenew);
+  console.log("Payment method:", paymentMethod);
+
+  const url = `${BASE}/users/tariff/purchase?plan=${plan}&autoRenew=${autoRenew}`;
+
+  const headers = {
+    "X-Auth-Token": token,
+    "X-Payment-Token": paymentToken
+  };
+
+  if (paymentMethod) {
+    headers["X-Payment-Method"] = paymentMethod;
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: headers
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Purchase failed: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("Purchase successful:", data);
+    return data;
+  } catch (error) {
+    console.error("Error purchasing tariff:", error);
+    throw error;
+  }
+};
+
+export const setAutoRenew = async (token, enabled) => {
+  console.log(`=== ${enabled ? 'ENABLE' : 'DISABLE'} AUTO RENEW ===`);
+
+  const url = `${BASE}/users/tariff/set-auto-renew?enabled=${enabled}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "X-Auth-Token": token
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to ${enabled ? 'enable' : 'disable'} auto-renew: ${response.status} ${errorText}`);
+    }
+
+    console.log(`Auto-renew ${enabled ? 'enabled' : 'disabled'} successfully`);
+    return true;
+  } catch (error) {
+    console.error(`Error ${enabled ? 'enabling' : 'disabling'} auto-renew:`, error);
+    throw error;
+  }
+};
+
+export const searchFilesByTags = async (token, tags) => {
+  console.log("=== SEARCH FILES BY TAGS ===");
+  console.log("Searching for tags:", tags);
+
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
+  const tagsString = Array.isArray(tags) ? tags.join(',') : tags;
+
+  const url = `${BASE}/files/list/byTags?path=`;
+
+  console.log("Request URL:", url);
+  console.log("Tags header:", tagsString);
+
+  try {
+    const response = await fetchWithTokenRefresh(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-File-Tags": tagsString
+      }
+    }, token);
+
+    console.log("Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Search failed: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("Search results:", data);
+
+    const files = data?.files || data || [];
+
+    const formattedResults = files.map((item, index) => {
+      const path = item.path || "";
+      let name = "Без имени";
+
+      if (item.name && item.name.trim() !== "") {
+        name = item.name;
+      } else if (path) {
+        const pathParts = path.split('/').filter(p => p && p !== '');
+        if (pathParts.length > 0) {
+          name = pathParts[pathParts.length - 1];
+        }
+      }
+
+      return {
+        name: name,
+        path: path,
+        type: item.type || "file",
+        size: item.size || 0,
+        id: item.id || path || Math.random().toString(),
+        fullPath: path,
+        tags: item.tags || [],
+        _raw: item
+      };
+    });
+
+    console.log("Formatted results:", formattedResults);
+    return formattedResults;
+
+  } catch (error) {
+    console.error("Error searching files by tags:", error);
+    throw error;
+  }
+};
+
+export const filterFilesByTags = async (token, tags) => {
+  console.log("=== FILTER FILES BY TAGS (CLIENT-SIDE) ===");
+
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
+  try {
+    const allFiles = await getFiles(token, "");
+    const matchedFiles = [];
+
+    for (const file of allFiles) {
+      if (file.type === "file") {
+        const fileTags = await getFileTags(token, file.fullPath);
+
+        const hasAllTags = tags.every(tag =>
+            fileTags.tags && fileTags.tags.includes(tag)
+        );
+
+        if (hasAllTags) {
+          matchedFiles.push(file);
+        }
+      }
+    }
+
+    console.log(`Found ${matchedFiles.length} files matching tags:`, tags);
+    return matchedFiles;
+
+  } catch (error) {
+    console.error("Error filtering files by tags:", error);
+    throw error;
+  }
+};
+
 export const downloadFile = async (token, path, filename, fileSize) => {
   console.log("downloadFile request (Streaming mode):", { path, filename, fileSize });
 
@@ -812,7 +1011,7 @@ const uploadFileChunkedWithTags = async (token, file, path, onProgress, tagsStri
   });
 };
 
-export const getFileTags = async (token, path) => {
+export const getFileTags = async (token, fileId) => {
   console.log("=== GET FILE TAGS ===");
 
   if (!token) {
@@ -823,8 +1022,7 @@ export const getFileTags = async (token, path) => {
     throw new Error("Путь к файлу не указан");
   }
 
-  const url = `${BASE}/files/info?path=${encodeURIComponent(path)}`;
-
+ const url = `${BASE}/files/info?id=${encodeURIComponent(fileId)}`;
   try {
     const response = await fetchWithTokenRefresh(url, {
       method: "GET",
@@ -891,6 +1089,21 @@ export const getAllUserTags = async (token) => {
     console.error("Error collecting tags:", error);
     return [];
   }
+};
+
+export const moveFolder = async (token, folderId, updates) => {
+  let url = `${BASE}/directories?id=${encodeURIComponent(folderId)}`;
+
+  if (updates.newName) {
+    url += `&newName=${encodeURIComponent(updates.newName)}`;
+  }
+
+  if (updates.newParentId) {
+    url += `&newParentId=${encodeURIComponent(updates.newParentId)}`;
+  }
+
+  const res = await fetchWithTokenRefresh(url, { method: "POST" }, token);
+  return res.ok;
 };
 
 function formatBytes(bytes) {

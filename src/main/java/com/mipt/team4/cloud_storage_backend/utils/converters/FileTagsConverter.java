@@ -1,5 +1,6 @@
-package com.mipt.team4.cloud_storage_backend.utils;
+package com.mipt.team4.cloud_storage_backend.utils.converters;
 
+import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import java.util.List;

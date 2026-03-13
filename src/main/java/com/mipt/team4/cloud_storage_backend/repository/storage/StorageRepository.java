@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
@@ -145,5 +145,9 @@ public class StorageRepository {
 
   public List<StorageEntity> getFileList(FileListFilter filter) {
     return metadataRepository.getFileList(filter);
+  }
+
+  public String getFullFilePath(UUID fileId) {
+    return metadataRepository.getFullFilePath(fileId);
   }
 }

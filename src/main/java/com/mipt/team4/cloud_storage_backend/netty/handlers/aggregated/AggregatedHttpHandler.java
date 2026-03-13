@@ -109,11 +109,21 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObjec
         case "/api/users/update" -> usersRequestHandler.handleUpdateUserRequest(ctx, request);
         case "/api/users/auth/refresh" ->
             usersRequestHandler.handleRefreshTokenRequest(ctx, request);
+        case "/api/users/tariff/purchase" -> usersRequestHandler.handlePurchaseTariff(ctx, request);
+        case "/api/users/tariff/set-auto-renew" ->
+            usersRequestHandler.handleSetAutoRenew(ctx, request);
+        case "/api/users/tariff/update-payment" ->
+            usersRequestHandler.handleUpdatePaymentMethod(ctx, request);
         default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
       }
     } else if (method.equals(HttpMethod.GET)) {
-      if (uri.equals("/api/users/info")) {
-        usersRequestHandler.handleGetUserRequest(ctx, request);
+      switch (uri) {
+        case "/api/users/info" -> usersRequestHandler.handleGetUserRequest(ctx, request);
+        case "/api/users/tariff/info" -> usersRequestHandler.handleGetTariffInfo(ctx, request);
+        case "/api/users/tariff/plans" ->
+            usersRequestHandler.handleGetAvailableTariffs(ctx, request);
+
+        default -> ResponseUtils.sendMethodNotSupported(ctx, uri, method);
       }
     } else {
       ResponseUtils.sendMethodNotSupported(ctx, uri, method);

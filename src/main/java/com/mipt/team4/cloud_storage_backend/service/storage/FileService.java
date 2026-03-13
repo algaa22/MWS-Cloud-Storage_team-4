@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
 import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
@@ -10,10 +11,12 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadNotStoppedException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ResumeChunkedUploadRequest;
@@ -25,8 +28,11 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPar
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
+import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
-import com.mipt.team4.cloud_storage_backend.repository.user.UserRepository;
+import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
+import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
@@ -37,9 +43,11 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileService {
@@ -47,14 +55,24 @@ public class FileService {
   private final Map<String, ChunkedUploadState> activeUploads = new ConcurrentHashMap<>();
 
   private final UserSessionService userSessionService;
-  private final StorageRepository storageRepository;
   private final FileErasureService erasureService;
-  private final UserRepository userRepository;
+  private final TariffService tariffService;
+
+  private final StorageRepository storageRepository;
+  private final UserJpaRepositoryAdapter userRepository;
+
+  private final NotificationClient notificationClient;
+  private final NotificationConfig notificationConfig;
   private final MinioConfig minioConfig;
 
   public void startChunkedUpload(StartChunkedUploadRequest request) {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
+
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+    }
+
     String uploadSessionId = request.sessionId();
     String name = request.name();
 
@@ -152,6 +170,7 @@ public class FileService {
       uploadState.stop();
       throw new CompleteUploadRetriableException(exception.getCause());
     }
+    checkStorageAndNotify(fileEntity.getUserId());
 
     activeUploads.remove(sessionId);
 
@@ -162,6 +181,11 @@ public class FileService {
   public UUID uploadFile(FileUploadRequest request) {
     UUID fileId = UUID.randomUUID();
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+    }
+
     UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
     String fileName = request.name();
 
@@ -191,13 +215,16 @@ public class FileService {
     userRepository.increaseUsedStorage(userId, data.length);
     storageRepository.add(entity, data);
 
+    checkStorageAndNotify(userId);
     return fileId;
   }
 
   public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
-
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+    }
     Optional<StorageEntity> fileEntity = storageRepository.get(userId, fileId);
     StorageEntity entity = fileEntity.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
@@ -212,7 +239,15 @@ public class FileService {
     Optional<StorageEntity> fileEntity = storageRepository.getIncludeDeleted(userId, fileId);
     StorageEntity entity = fileEntity.orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
+    UserEntity user =
+        userRepository
+            .getUserById(userId)
+            .orElseThrow(() -> new UserNotFoundException(request.userToken()));
+
     erasureService.hardDelete(entity);
+
+    String fullPath = storageRepository.getFullFilePath(fileId);
+    notificationClient.notifyFileDeleted(user.getEmail(), user.getUsername(), fullPath, userId);
   }
 
   @Transactional
@@ -257,7 +292,8 @@ public class FileService {
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     return storageRepository.getFileList(
-        new FileListFilter(userId, parentId, request.includeDirectories(), request.recursive()));
+        new FileListFilter(
+            userId, parentId, request.includeDirectories(), request.recursive(), request.tags()));
   }
 
   @Transactional(readOnly = true)
@@ -331,5 +367,38 @@ public class FileService {
     uploadState.getETags().put(uploadState.getPartNum(), eTag);
     uploadState.addFileSize(part.length);
     uploadState.increaseTotalParts();
+  }
+
+  private void checkStorageAndNotify(UUID userId) {
+    userRepository
+        .getStorageUsage(userId)
+        .ifPresent(
+            usage -> {
+              double ratio = usage.getRatio();
+
+              log.info(
+                  "Storage check for user {}: used={}, limit={}, {}%",
+                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
+
+              if (ratio >= notificationConfig.fullThreshold()) {
+                userRepository
+                    .getUserById(userId)
+                    .ifPresent(
+                        user ->
+                            notificationClient.notifyStorageFull(
+                                user.getEmail(), user.getUsername(), userId));
+              } else if (ratio >= notificationConfig.almostFullThreshold()) {
+                userRepository
+                    .getUserById(userId)
+                    .ifPresent(
+                        user ->
+                            notificationClient.notifyStorageAlmostFull(
+                                user.getEmail(),
+                                user.getUsername(),
+                                usage.used(),
+                                usage.limit(),
+                                userId));
+              }
+            });
   }
 }

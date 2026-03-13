@@ -44,10 +44,11 @@ public class FilesRequestHandler {
         SafeParser.parseBoolean(
             "Recursive", RequestUtils.getQueryParam(request, "recursive", "false"));
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
+    Optional<String> tags = RequestUtils.getQueryParam(request, "tags");
 
     List<StorageEntity> files =
         fileController.getFileList(
-            new GetFileListRequest(userToken, includeDirectories, recursive, parentId));
+            new GetFileListRequest(userToken, includeDirectories, recursive, parentId, tags));
 
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();
@@ -56,6 +57,7 @@ public class FilesRequestHandler {
       for (StorageEntity file :
           files) { // TODO: entity в контроллере? put по dto через функции jackson
         ObjectNode fileNode = mapper.createObjectNode();
+
         fileNode.put("id", file.getId().toString());
         fileNode.put("parentId", String.valueOf(file.getParentId()));
         fileNode.put("name", file.getName());
@@ -80,7 +82,8 @@ public class FilesRequestHandler {
     Optional<String> parentId = RequestUtils.getQueryParam(request, "parentId");
 
     List<StorageEntity> trashFiles =
-        fileController.getTrashFileList(new GetFileListRequest(userToken, false, false, parentId));
+        fileController.getTrashFileList(
+            new GetFileListRequest(userToken, false, false, parentId, Optional.empty()));
 
     ObjectNode rootNode = mapper.createObjectNode();
     ArrayNode filesArray = mapper.createArrayNode();

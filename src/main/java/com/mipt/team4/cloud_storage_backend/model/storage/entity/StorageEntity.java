@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
-import com.mipt.team4.cloud_storage_backend.utils.FileTagsConverter;
+import com.mipt.team4.cloud_storage_backend.utils.converters.FileTagsConverter;
 import com.mipt.team4.cloud_storage_backend.utils.validation.StoragePaths;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -56,6 +56,7 @@ public class StorageEntity {
   @Column(name = "visibility")
   private String visibility = FileVisibility.PRIVATE.toString();
 
+  @Builder.Default
   @Column(name = "is_deleted", nullable = false)
   private boolean isDeleted = false;
 

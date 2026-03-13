@@ -1,0 +1,14 @@
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS tariff_plan VARCHAR(20) DEFAULT 'TRIAL',
+    ADD COLUMN IF NOT EXISTS tariff_start_date TIMESTAMP WITH TIME ZONE,
+    ADD COLUMN IF NOT EXISTS tariff_end_date TIMESTAMP WITH TIME ZONE,
+    ADD COLUMN IF NOT EXISTS auto_renew BOOLEAN DEFAULT true,
+    ADD COLUMN IF NOT EXISTS payment_method_id VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS trial_start_date TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE users
+    ALTER COLUMN created_at SET DATA TYPE TIMESTAMP WITH TIME ZONE;
+
+CREATE INDEX IF NOT EXISTS idx_users_tariff_end
+    ON users (tariff_end_date)
+    WHERE is_active = true AND tariff_plan != 'FREE';

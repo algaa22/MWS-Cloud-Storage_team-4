@@ -94,11 +94,19 @@ public class StorageJpaRepositoryAdapter {
       sql.append(" AND status = 'READY'");
     }
 
-    sql.append(" ORDER BY CASE WHEN is_directory THEN 1 ELSE 2 END, name ASC");
+    if (filter.tags().isPresent()) {
+      sql.append(" AND tags = :tags");
+    }
 
     Query query = entityManager.createNativeQuery(sql.toString(), StorageEntity.class);
+    sql.append(" ORDER BY CASE WHEN is_directory THEN 1 ELSE 2 END, name ASC");
+
     query.setParameter("userId", filter.userId());
     query.setParameter("parentId", filter.parentId());
+
+    if (filter.tags().isPresent()) {
+      query.setParameter("tags", filter.tags().get());
+    }
 
     return query.getResultList();
   }

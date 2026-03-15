@@ -11,10 +11,10 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsExce
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.*;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
@@ -155,7 +155,7 @@ public class UsersRequestHandler {
     String userToken = RequestUtils.getRequiredHeader(request, "X-Auth-Token");
     SimpleUserRequest userRequest = new SimpleUserRequest(userToken);
 
-    TariffInfoDto info = tariffController.getTariffInfo(userRequest);
+    TariffInfoRequest info = tariffController.getTariffInfo(userRequest);
 
     ObjectNode rootNode = mapper.createObjectNode();
     rootNode.put("tariffPlan", info.tariffPlan().name());

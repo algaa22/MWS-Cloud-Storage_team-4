@@ -14,6 +14,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +30,7 @@ public class DtoAssembler {
   private final DtoMetadataCache metadataCache;
   private final ObjectMapper objectMapper;
 
-  public Object assemble(ChannelHandlerContext ctx, Class<?> dtoClass, FullHttpRequest request) {
+  public Object assemble(ChannelHandlerContext ctx, Class<?> dtoClass, HttpRequest request) {
     MappedParameter[] parameters = metadataCache.getParameters(dtoClass);
     Constructor<?> constructor = metadataCache.getConstructor(dtoClass);
     Object[] args = parseParameters(ctx, parameters, request);
@@ -42,9 +43,9 @@ public class DtoAssembler {
   }
 
   private Object[] parseParameters(
-      ChannelHandlerContext ctx, MappedParameter[] parameters, FullHttpRequest request) {
+      ChannelHandlerContext ctx, MappedParameter[] parameters, HttpRequest request) {
     QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
-    JsonNode rootNode = readJson(request.content());
+    JsonNode rootNode = readJson(request);
     Object[] args = new Object[parameters.length];
 
     for (int i = 0; i < parameters.length; i++) {
@@ -54,15 +55,21 @@ public class DtoAssembler {
           switch (param.source()) {
             case QUERY -> parseQuery(queryDecoder, param);
             case HEADER -> parseHeader(request, param);
-            case BODY -> parseBodyParam(rootNode, param);
             case AUTH -> getAuthAttribute(ctx);
+            case BODY -> parseBodyParam(rootNode, param);
           };
     }
 
     return args;
   }
 
-  private JsonNode readJson(ByteBuf content) {
+  private JsonNode readJson(HttpRequest request) {
+    if (!(request instanceof FullHttpRequest)) {
+      return null;
+    }
+
+    ByteBuf content = ((FullHttpRequest) request).content();
+
     if (content.isReadable()) {
       try (InputStream inputStream = new ByteBufInputStream(content)) {
         return objectMapper.readTree(inputStream);
@@ -81,7 +88,7 @@ public class DtoAssembler {
         value, param.type(), param.defaultValue(), param.required(), param.name());
   }
 
-  private Object parseHeader(FullHttpRequest request, MappedParameter param) {
+  private Object parseHeader(HttpRequest request, MappedParameter param) {
     String value = request.headers().get(param.name());
     return SafeParser.parse(
         value, param.type(), param.defaultValue(), param.required(), param.name());

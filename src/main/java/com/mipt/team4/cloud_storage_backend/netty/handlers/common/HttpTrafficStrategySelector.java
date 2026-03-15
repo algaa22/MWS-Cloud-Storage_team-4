@@ -56,7 +56,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlers;
-  private final ObjectProvider<AggregatedHttpHandler> aggregatedHttpHandlerProvider;
+  private final AggregatedHttpHandler aggregatedHttpHandlerProvider;
   private final StorageConfig storageConfig;
 
   private PipelineType previousPipeline = null;
@@ -117,9 +117,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
           PipelineHandlerNames.HTTP_OBJECT_AGGREGATOR,
           new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
       addHandlerToPipeline(
-          pipeline,
-          PipelineHandlerNames.AGGREGATED_HTTP,
-          aggregatedHttpHandlerProvider.getObject());
+          pipeline, PipelineHandlerNames.AGGREGATED_HTTP, aggregatedHttpHandlerProvider);
     }
   }
 

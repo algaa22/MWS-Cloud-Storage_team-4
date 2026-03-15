@@ -12,12 +12,11 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
-import org.springframework.beans.factory.ObjectProvider;
 
 public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   private final PipelineBuilder pipelineBuilder;
   private final SslContextFactory sslContextFactory;
-  private final ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers;
+  private final ProtocolNegotiationHandler protocolNegotiationHandlers;
 
   private final NettyConfig nettyConfig;
   private final ServerProtocol protocol;
@@ -25,7 +24,7 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   public MainChannelInitializer(
       PipelineBuilder pipelineBuilder,
       SslContextFactory sslContextFactory,
-      ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers,
+      ProtocolNegotiationHandler protocolNegotiationHandlers,
       NettyConfig nettyConfig,
       ServerProtocol protocol) {
     this.pipelineBuilder = pipelineBuilder;
@@ -50,8 +49,7 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
       pipeline.addLast(
           PipelineHandlerNames.SSL,
           sslContextFactory.createFromResources().newHandler(socketChannel.alloc()));
-      pipeline.addLast(
-          PipelineHandlerNames.PROTOCOL_NEGOTIATION, protocolNegotiationHandlers.getObject());
+      pipeline.addLast(PipelineHandlerNames.PROTOCOL_NEGOTIATION, protocolNegotiationHandlers);
     } else {
       pipelineBuilder.buildHttp11Pipeline(pipeline);
     }

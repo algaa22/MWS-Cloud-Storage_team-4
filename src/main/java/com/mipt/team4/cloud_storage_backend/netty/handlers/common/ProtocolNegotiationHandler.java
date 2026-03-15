@@ -3,17 +3,17 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 import com.mipt.team4.cloud_storage_backend.netty.channel.Http2StreamInitializer;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http2.Http2FrameCodecBuilder;
 import io.netty.handler.codec.http2.Http2MultiplexHandler;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
-@Scope("prototype")
+@Sharable
 public class ProtocolNegotiationHandler extends ApplicationProtocolNegotiationHandler {
   private final Http2StreamInitializer http2StreamInitializer;
   private final PipelineBuilder pipelineBuilder;

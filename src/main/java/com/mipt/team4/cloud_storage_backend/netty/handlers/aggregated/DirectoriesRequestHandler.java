@@ -13,11 +13,9 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
-@Scope("prototype")
 @RequiredArgsConstructor
 public class DirectoriesRequestHandler {
   private final DirectoryController directoryController;

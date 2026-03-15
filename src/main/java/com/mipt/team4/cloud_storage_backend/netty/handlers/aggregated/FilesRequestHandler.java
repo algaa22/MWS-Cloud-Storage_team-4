@@ -24,11 +24,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
-@Scope("prototype")
 @RequiredArgsConstructor
 public class FilesRequestHandler {
   private final FileController fileController;

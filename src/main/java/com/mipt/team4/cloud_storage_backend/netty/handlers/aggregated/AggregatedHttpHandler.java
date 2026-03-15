@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
 
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -10,11 +11,10 @@ import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.util.ReferenceCountUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
-@Scope("prototype")
+@Sharable
 @RequiredArgsConstructor
 public class AggregatedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
 

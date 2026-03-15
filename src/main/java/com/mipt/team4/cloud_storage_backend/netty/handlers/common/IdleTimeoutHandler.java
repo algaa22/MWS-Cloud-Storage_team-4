@@ -1,15 +1,15 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleStateEvent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@Scope("prototype")
+@Sharable
 public class IdleTimeoutHandler extends ChannelInboundHandlerAdapter {
 
   @Override

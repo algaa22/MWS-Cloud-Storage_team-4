@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDown
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
@@ -16,11 +17,10 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.stream.ChunkedInput;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
-@Scope("prototype")
+@Sharable
 @RequiredArgsConstructor
 public class ChunkedDownloadHandler {
   private final FileController fileController;

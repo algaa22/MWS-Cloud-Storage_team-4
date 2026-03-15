@@ -2,16 +2,16 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.error;
 
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.AttributeKey;
 import java.net.SocketAddress;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
-@Scope("prototype")
+@Sharable
 @Slf4j
 public class FinalErrorHandler extends ChannelDuplexHandler {
   private static final AttributeKey<Boolean> IGNORABLE_ERROR_LOGGED =

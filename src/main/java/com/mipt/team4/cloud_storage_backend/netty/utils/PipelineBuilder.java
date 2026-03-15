@@ -1,11 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.netty.utils;
 
 import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.auth.JwtAuthHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.FinalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.StorageExceptionHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.HttpTrafficStrategySelector;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.DtoToResponseEncoder;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpServerCodec;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,8 @@ public class PipelineBuilder {
   private final StorageExceptionHandler storageExceptionHandlers;
   private final FinalErrorHandler globalErrorHandlers;
   private final IdleTimeoutHandler idleTimeoutHandlers;
+  private final DtoToResponseEncoder dtoToResponseEncoder;
+  private final JwtAuthHandler jwtAuthHandler;
   private final CorsHandler corsHandler;
 
   public void buildHttp11Pipeline(ChannelPipeline pipeline) {
@@ -28,8 +32,10 @@ public class PipelineBuilder {
 
   public void finalizeHttpPipeline(ChannelPipeline pipeline) {
     pipeline.addLast(PipelineHandlerNames.CORS, corsHandler);
+    pipeline.addLast(PipelineHandlerNames.JWT_AUTH, jwtAuthHandler);
     pipeline.addLast(PipelineHandlerNames.TRAFFIC_STRATEGY_SELECTOR, strategySelectors.getObject());
 
+    pipeline.addLast(PipelineHandlerNames.DTO_TO_RESPONSE, dtoToResponseEncoder);
     pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, storageExceptionHandlers);
     pipeline.addLast(PipelineHandlerNames.GLOBAL_ERROR, globalErrorHandlers);
     pipeline.addLast(PipelineHandlerNames.IDLE_TIMEOUT, idleTimeoutHandlers);

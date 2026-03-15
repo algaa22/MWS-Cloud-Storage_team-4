@@ -13,8 +13,12 @@ public final class PipelineHandlerNames {
   public static final String HTTP2_FRAME = "http2FrameCodec";
   public static final String HTTP_SERVER_CODEC = "httpServerCodec";
   public static final String HTTP2_STREAM_FRAME_TO_OBJECT = "http2StreamFrameToHttpObjectCodec";
+  public static final String REQUEST_TO_DTO = "requestToDtoDecoder";
+  public static final String DTO_TO_RESPONSE = "dtoToResponseEncoder";
 
   public static final String CORS = "corsHandler";
+  public static final String JWT_AUTH = "jwtAuthHandler";
+  public static final String GLOBAL_VALIDATION = "globalValidationHandler";
   public static final String PROTOCOL_NEGOTIATION = "protocolNegotiationHandler";
   public static final String TRAFFIC_STRATEGY_SELECTOR = "trafficStrategySelector";
 
@@ -23,8 +27,6 @@ public final class PipelineHandlerNames {
 
   public static final String AGGREGATED_HTTP = "aggregatedHttpHandler";
   public static final String CHUNKED_HTTP = "chunkedHttpHandler";
-  public static final String CHUNKED_UPLOAD = "chunkedUploadHandler";
-  public static final String CHUNKED_DOWNLOAD = "chunkedDownloadHandler";
 
   public static final String STORAGE_EXCEPTION = "storageExceptionHandler";
   public static final String GLOBAL_ERROR = "globalErrorHandler";

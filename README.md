@@ -185,7 +185,7 @@ graph TD
 | `/list` | `GET` | `parentId*`, `recursive*`, `includeDirectories*`, `tags*` | —                          | Список объектов в директории                 |
 | `/info` | `GET` | `id`                                                      | —                          | Детальные метаданные файла                   |
 | `/` | `PUT` | `id`, `newName*`, `newParentId*`                          | `X-File-New-Visibility*`   | Изменение метаданных                         |
-| `/` | `DELETE` | `id`                                                      | —                          | Удаление файла                               |
+| `/` | `DELETE` | `id`, `permanent*`                                         | —                          | Удаление файла (soft/hard)                   |
 | `/download` | `GET` | `id`                                                      | —                          | Чанковое скачивание                          |
 | `/upload` | `POST` | `name`, `parentId*`                                       | `X-File-Tags`, `X-File-Size` | Обычная загрузка или старт чанковой загрузки |
 | `/upload/resume` | `POST` | `name`, `parentId*`                                       |                            | Возобновление прерванной чанковой загрузки   |

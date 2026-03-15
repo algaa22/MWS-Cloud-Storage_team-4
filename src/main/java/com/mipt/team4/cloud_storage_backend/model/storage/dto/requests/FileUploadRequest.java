@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationPatterns;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestBodyParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestHeader;
@@ -19,16 +19,16 @@ public record FileUploadRequest(
     @UserId UUID userId,
     @NotBlank
         @Pattern(
-            regexp = ValidationConstants.FILE_NAME_REGEXP,
-            message = ValidationConstants.FILE_NAME_ERROR)
+            regexp = ValidationPatterns.FILE_NAME_REGEXP,
+            message = ValidationPatterns.FILE_NAME_ERROR)
         @QueryParam("name")
         String name,
     @QueryParam(value = "parentId", required = false) UUID parentId,
     @RequestHeader(value = "X-File-Tags", required = false)
         List<
                 @Pattern(
-                    regexp = ValidationConstants.SINGLE_TAG_REGEXP,
-                    message = ValidationConstants.SINGLE_TAG_ERROR)
+                    regexp = ValidationPatterns.SINGLE_TAG_REGEXP,
+                    message = ValidationPatterns.SINGLE_TAG_ERROR)
                 String>
             tags,
     @Positive @RequestHeader("X-File-Size") long size,

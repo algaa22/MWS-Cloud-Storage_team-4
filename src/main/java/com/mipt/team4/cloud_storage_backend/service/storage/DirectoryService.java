@@ -5,7 +5,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CreateDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteDirectoryRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDirectoryRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UpdateDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
@@ -56,7 +56,7 @@ public class DirectoryService {
   }
 
   @Transactional
-  public void renameDirectory(RenameDirectoryRequest request) {
+  public void renameDirectory(UpdateDirectoryRequest request) {
     String newName = request.newName();
     UUID directoryId = UUID.fromString(request.directoryId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
@@ -72,7 +72,7 @@ public class DirectoryService {
   }
 
   @Transactional
-  public void moveDirectory(MoveDirectoryRequest request) {
+  public void moveDirectory(UpdateDirectoryRequest request) {
     UUID newParentId = UUID.fromString(request.newParentId());
     UUID directoryId = UUID.fromString(request.directoryId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());

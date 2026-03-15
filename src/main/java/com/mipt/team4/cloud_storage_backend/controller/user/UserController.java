@@ -1,51 +1,47 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
-import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.UserDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.LoginRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RefreshTokenRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RegisterRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateUserInfoRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.*;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.TokenPairResponse;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.UserInfoResponse;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
-import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
 @Controller
 @RequiredArgsConstructor
 public class UserController {
+  private final UserService userService;
 
-  private final UserService service;
-  private final AccessTokenService accessTokenService;
-
-  public TokenPairDto registerUser(RegisterRequest request) {
-    request.validate();
-    return service.registerUser(request);
+  public void register(ChannelHandlerContext ctx, RegisterRequest request) {
+    TokenPairResponse tokens = userService.registerUser(request);
+    ctx.writeAndFlush(tokens);
   }
 
-  public TokenPairDto loginUser(LoginRequest request) {
-    request.validate();
-    return service.loginUser(request);
+  public void login(ChannelHandlerContext ctx, LoginRequest request) {
+    TokenPairResponse tokens = userService.loginUser(request);
+    ctx.writeAndFlush(tokens);
   }
 
-  public void logoutUser(SimpleUserRequest request) {
-    request.validate(accessTokenService);
-    service.logoutUser(request);
+  public void logout(ChannelHandlerContext ctx, LogoutRequest request) {
+    userService.logoutUser(request);
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "Successfully signed out");
   }
 
-  public TokenPairDto refresh(RefreshTokenRequest request) {
-    request.validate();
-    return service.refreshTokens(request);
+  public void getUserInfo(ChannelHandlerContext ctx, UserInfoRequest request) {
+    UserInfoResponse userInfo = userService.getUserInfo(request);
+    ctx.writeAndFlush(userInfo);
   }
 
-  public UserDto getUserInfo(SimpleUserRequest request) {
-    request.validate(accessTokenService);
-    return service.getUserInfo(request);
+  public void updateUser(ChannelHandlerContext ctx, UpdateUserInfoRequest request) {
+    userService.updateUserInfo(request);
+    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "User info updated");
   }
 
-  public void updateUserInfo(UpdateUserInfoRequest request) {
-    request.validate(accessTokenService);
-    service.updateUserInfo(request);
+  public void refreshToken(ChannelHandlerContext ctx, RefreshTokenRequest request) {
+    TokenPairResponse tokens = userService.refreshTokens(request);
+    ctx.writeAndFlush(tokens);
   }
 }

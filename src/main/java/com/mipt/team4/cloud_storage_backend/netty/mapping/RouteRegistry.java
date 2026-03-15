@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.mapping;
 
-import com.mipt.team4.cloud_storage_backend.exception.mapping.ScanRouteException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ScanRouteException;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
 import jakarta.annotation.PostConstruct;
 import java.util.Map;

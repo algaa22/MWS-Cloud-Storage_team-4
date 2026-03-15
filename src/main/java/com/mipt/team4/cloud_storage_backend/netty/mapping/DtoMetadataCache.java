@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.mapping;
 
-import com.mipt.team4.cloud_storage_backend.exception.mapping.DtoIsNotRecordException;
-import com.mipt.team4.cloud_storage_backend.exception.mapping.NoConstructorFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.DtoIsNotRecordException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.NoConstructorFoundException;
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.Comparator;

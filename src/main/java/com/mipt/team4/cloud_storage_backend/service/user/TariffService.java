@@ -3,7 +3,8 @@ package com.mipt.team4.cloud_storage_backend.service.user;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenewRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdatePaymentMethodRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
@@ -75,7 +76,7 @@ public class TariffService {
     log.info("User {} purchased tariff: {}", userId, request.tariffPlan());
   }
 
-  public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
+  public TariffInfoDto getTariffInfo(TariffInfoRequest request) {
     String token = request.token();
     UUID userId = userSessionService.extractUserIdFromToken(token);
 
@@ -105,7 +106,8 @@ public class TariffService {
         daysLeft);
   }
 
-  public void setAutoRenew(SimpleUserRequest request, boolean enabled) {
+  public void setAutoRenew(SetAutoRenewRequest request) {
+    boolean enabled = request.enabled();
     String token = request.token();
     UUID userId = userSessionService.extractUserIdFromToken(token);
 

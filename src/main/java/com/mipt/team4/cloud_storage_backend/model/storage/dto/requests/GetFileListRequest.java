@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationPatterns;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.UserId;
@@ -19,7 +19,7 @@ public record GetFileListRequest(
     @QueryParam(value = "tags", required = false)
         List<
                 @Pattern(
-                    regexp = ValidationConstants.SINGLE_TAG_REGEXP,
-                    message = ValidationConstants.SINGLE_TAG_ERROR)
+                    regexp = ValidationPatterns.SINGLE_TAG_REGEXP,
+                    message = ValidationPatterns.SINGLE_TAG_ERROR)
                 String>
             tags) {}

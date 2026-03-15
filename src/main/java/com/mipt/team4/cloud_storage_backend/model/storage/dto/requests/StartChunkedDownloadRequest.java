@@ -7,8 +7,6 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.UserId;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
-@RequestMapping(method = "DELETE", path = ApiEndpoints.FILES_PREFIX) // Путь /api/files/
-public record DeleteFileRequest(
-    @UserId UUID userId,
-    @QueryParam(value = "permanent", defaultValue = "false") boolean permanent,
-    @NotNull @QueryParam("id") UUID fileId) {}
+@RequestMapping(method = "GET", path = ApiEndpoints.FILES_DOWNLOAD)
+public record StartChunkedDownloadRequest(
+    @UserId UUID userId, @NotNull @QueryParam("id") UUID fileId) {}

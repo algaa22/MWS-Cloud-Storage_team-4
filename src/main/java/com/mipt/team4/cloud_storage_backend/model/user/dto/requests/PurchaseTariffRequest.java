@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.model.user.dto.requests;
 
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationPatterns;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestHeader;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
@@ -18,8 +18,8 @@ public record PurchaseTariffRequest(
     @NotNull @QueryParam("plan") TariffPlan plan,
     @NotBlank
         @Pattern(
-            regexp = ValidationConstants.PAYMENT_TOKEN_REGEXP,
-            message = ValidationConstants.PAYMENT_TOKEN_ERROR)
+            regexp = ValidationPatterns.PAYMENT_TOKEN_REGEXP,
+            message = ValidationPatterns.PAYMENT_TOKEN_ERROR)
         @RequestHeader("X-Payment-Token")
         String paymentToken,
     @QueryParam(value = "autoRenew", defaultValue = "true") boolean autoRenew,

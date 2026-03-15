@@ -16,12 +16,15 @@ import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDe
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ResumeChunkedUploadDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedDownloadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -217,7 +220,7 @@ public class FileService {
     return fileId;
   }
 
-  public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
+  public FileDownloadResponse downloadFile(StartChunkedDownloadRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
     if (!tariffService.hasAccess(userId)) {
@@ -230,7 +233,7 @@ public class FileService {
         fileEntity.get().getMimeType(), storageRepository.download(entity), entity.getSize());
   }
 
-  public void hardDeleteFile(SimpleFileOperationRequest request) {
+  public void hardDeleteFile(DeleteFileRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
@@ -249,7 +252,7 @@ public class FileService {
   }
 
   @Transactional
-  public void softDeleteFile(SoftDeleteFileRequest request) {
+  public void softDeleteFile(DeleteFileRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
@@ -260,7 +263,7 @@ public class FileService {
   }
 
   @Transactional
-  public void restoreFile(SimpleFileOperationRequest request) {
+  public void restoreFile(RestoreFileRequest request) {
     UUID fileId = UUID.fromString(request.fileId());
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
@@ -295,8 +298,8 @@ public class FileService {
   }
 
   @Transactional(readOnly = true)
-  public StorageDto getFileInfo(SimpleFileOperationRequest request) {
-    UUID fileId = UUID.fromString(request.fileId());
+  public StorageEntity getFileInfo(FileInfoRequest request) {
+    UUID fileId = request.fileId();
     UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
 
     Optional<StorageEntity> fileEntity = storageRepository.get(userId, fileId);
@@ -304,7 +307,7 @@ public class FileService {
       throw new StorageFileNotFoundException(fileId);
     }
 
-    return new StorageDto(fileEntity.get());
+    return fileEntity.get();
   }
 
   @Transactional

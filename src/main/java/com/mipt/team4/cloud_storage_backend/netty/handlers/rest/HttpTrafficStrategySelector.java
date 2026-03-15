@@ -4,10 +4,6 @@ import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.aggregated.AggregatedHttpHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.chunked.ChunkedHttpHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.validation.GlobalValidationHandler;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.RequestToDtoDecoder;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.channel.ChannelHandler;
@@ -59,8 +55,6 @@ import org.springframework.stereotype.Component;
 public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlers;
   private final AggregatedHttpHandler aggregatedHttpHandlerProvider;
-  private final GlobalValidationHandler globalValidationHandler;
-  private final RequestToDtoDecoder requestToDtoDecoder;
   private final StorageConfig storageConfig;
 
   private PipelineType previousPipeline = null;
@@ -120,9 +114,6 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
           pipeline,
           PipelineHandlerNames.HTTP_OBJECT_AGGREGATOR,
           new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
-      addHandlerToPipeline(pipeline, PipelineHandlerNames.REQUEST_TO_DTO, requestToDtoDecoder);
-      addHandlerToPipeline(
-          pipeline, PipelineHandlerNames.GLOBAL_VALIDATION, globalValidationHandler);
       addHandlerToPipeline(
           pipeline, PipelineHandlerNames.AGGREGATED_HTTP, aggregatedHttpHandlerProvider);
     }

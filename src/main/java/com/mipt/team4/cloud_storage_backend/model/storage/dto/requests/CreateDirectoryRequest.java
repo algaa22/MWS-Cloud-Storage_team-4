@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationPatterns;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.UserId;
@@ -14,8 +14,8 @@ public record CreateDirectoryRequest(
     @UserId UUID userId,
     @NotBlank
         @Pattern(
-            regexp = ValidationConstants.FILE_NAME_REGEXP,
-            message = ValidationConstants.FILE_NAME_ERROR)
+            regexp = ValidationPatterns.FILE_NAME_REGEXP,
+            message = ValidationPatterns.FILE_NAME_ERROR)
         @QueryParam("name")
         String name,
     @QueryParam(value = "parentId", required = false) UUID parentId) {}

@@ -1,6 +1,7 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.rest.chunked;
 
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.ChunkedUploadHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -26,7 +27,9 @@ import org.springframework.stereotype.Component;
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
   private static final HttpObject POISON_PILL = new DefaultHttpContent(Unpooled.EMPTY_BUFFER);
   private final ChunkedUploadHandler chunkedUpload;
-  private final ChunkedDownloadHandler chunkedDownload;
+  private final com.mipt.team4.cloud_storage_backend.netty.handlers.rest.chunked
+          .ChunkedDownloadHandler
+      chunkedDownload;
   private final BlockingQueue<HttpObject> httpObjectsQueue = new LinkedBlockingQueue<>();
   private boolean threadStarted = false;
 

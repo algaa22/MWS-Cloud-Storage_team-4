@@ -25,6 +25,10 @@ public class RouteRegistry {
     return routes.get(mapToRouteKey(method, path));
   }
 
+  public boolean isRegisteredDto(Class<?> clazz) {
+    return routes.containsValue(clazz);
+  }
+
   private void scanAndRegisterRoutes() {
     ClassPathScanningCandidateComponentProvider scanner =
         new ClassPathScanningCandidateComponentProvider(false);

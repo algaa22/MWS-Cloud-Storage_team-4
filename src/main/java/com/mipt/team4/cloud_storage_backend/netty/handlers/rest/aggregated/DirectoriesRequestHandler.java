@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.rest.aggregated;
 
 import com.mipt.team4.cloud_storage_backend.controller.storage.DirectoryController;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CreateDirectoryRequest;

@@ -6,7 +6,9 @@ import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
 import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import lombok.Data;
 
+@Data
 public record PurchaseTariffRequest(
     String userToken,
     TariffPlan tariffPlan,

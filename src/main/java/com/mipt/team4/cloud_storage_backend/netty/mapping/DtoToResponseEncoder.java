@@ -30,20 +30,23 @@ public class DtoToResponseEncoder extends MessageToMessageEncoder<Object> {
   private final ObjectMapper objectMapper;
 
   @Override
-  protected void encode(
-      ChannelHandlerContext channelHandlerContext, Object message, List<Object> out) {
+  protected void encode(ChannelHandlerContext channelHandlerContext, Object msg, List<Object> out) {
     FullHttpResponse response =
         new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.buffer());
 
-    Class<?> clazz = message.getClass();
+    Class<?> clazz = msg.getClass();
     MappedParameter[] parameters = metadataCache.getParameters(clazz);
     Map<String, Object> bodyMap = new HashMap<>();
 
     for (MappedParameter param : parameters) {
-      Object value = getFieldValue(message, param.name());
+      Object value = getFieldValue(msg, param.name());
 
       if (value == null) {
-        continue;
+        if (param.defaultValue() != null && !param.defaultValue().isBlank()) {
+          value = param.defaultValue();
+        } else {
+          continue;
+        }
       }
 
       switch (param.source()) {

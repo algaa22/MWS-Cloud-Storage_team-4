@@ -1,11 +1,9 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.aggregated.AggregatedHttpHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.chunked.ChunkedHttpHandler;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.channel.ChannelHandler;

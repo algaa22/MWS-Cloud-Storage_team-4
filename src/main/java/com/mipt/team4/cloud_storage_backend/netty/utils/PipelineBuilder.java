@@ -2,10 +2,10 @@ package com.mipt.team4.cloud_storage_backend.netty.utils;
 
 import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpTrafficStrategySelector;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.FinalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.StorageExceptionHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.HttpTrafficStrategySelector;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpServerCodec;
 import lombok.RequiredArgsConstructor;

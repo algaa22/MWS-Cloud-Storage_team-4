@@ -1,9 +1,10 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.rest.chunked;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.CustomChunkedInput;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelFutureListener;

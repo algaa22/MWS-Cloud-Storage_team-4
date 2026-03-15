@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.chunked;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.rest.chunked;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mipt.team4.cloud_storage_backend.controller.storage.FileController;

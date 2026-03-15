@@ -1,51 +1,63 @@
 package com.mipt.team4.cloud_storage_backend.service.user.security;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenClaimsDto;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import java.security.Key;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * Сервис генерации и верификации JSON Web Tokens (JWT).
+ * Сервис управления жизненным циклом Access-токенов (JWT). *
  *
- * <p>Использует алгоритм <b>HMAC-SHA256</b>. В токены инкапсулируются метаданные пользователя (ID,
- * Email) и технические атрибуты (jti, tokenType) для предотвращения атак типа "Replay Attack" и
- * разграничения прав доступа.
+ * <p>Отвечает за генерацию и валидацию короткоживущих токенов доступа. Использует алгоритм
+ * HMAC-SHA256 для обеспечения целостности данных.
  */
 @Service
-public class JwtService {
-  // TODO: неиспользующиеся методы для рефреш-токенов
+public class AccessTokenService {
   private final long accessTokenExpirationSec;
-  private final long refreshTokenExpirationSec;
-  private final String jwtSecretKey;
+  private final Key signingKey;
 
-  public JwtService(StorageConfig storageConfig) {
-    this.jwtSecretKey = storageConfig.auth().jwtSecretKey();
+  public AccessTokenService(StorageConfig storageConfig) {
+    String jwtSecretKey = storageConfig.auth().jwtSecretKey();
     this.accessTokenExpirationSec = storageConfig.auth().accessTokenExpirationSec();
-    this.refreshTokenExpirationSec = storageConfig.auth().refreshTokenExpirationSec();
+    this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey));
+  }
+
+  public String generateAccessToken(UserEntity user) {
+    return generateToken(user, accessTokenExpirationSec);
   }
 
   public boolean isTokenValid(String token) {
     try {
-      Jwts.parserBuilder()
-          .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
-          .build()
-          .parseClaimsJws(token);
+      Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token);
       return true;
     } catch (JwtException | IllegalArgumentException e) {
       return false;
     }
   }
 
-  public String generateAccessToken(UserEntity user) {
-    return generateToken(user, accessTokenExpirationSec);
+  public TokenClaimsDto extractTokenClaims(String token) {
+    try {
+      Claims claims =
+          Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody();
+
+      return new TokenClaimsDto(UUID.fromString(claims.getSubject()), true);
+    } catch (JwtException | IllegalArgumentException e) {
+      return new TokenClaimsDto(null, false);
+    }
+  }
+
+  public LocalDateTime getAccessTokenExpiredDateTime() {
+    return LocalDateTime.now().plusSeconds(accessTokenExpirationSec);
   }
 
   /**
@@ -65,18 +77,10 @@ public class JwtService {
 
     return Jwts.builder()
         .setSubject(user.getId().toString())
-        .claim("email", user.getEmail())
-        .claim("role", "USER")
-        .claim("tokenType", expirationSec == accessTokenExpirationSec ? "access" : "refresh")
         .claim("jti", UUID.randomUUID())
         .setIssuedAt(now)
         .setExpiration(expiryDate)
-        .signWith(
-            Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)), SignatureAlgorithm.HS256)
+        .signWith(signingKey, SignatureAlgorithm.HS256)
         .compact();
-  }
-
-  public LocalDateTime getAccessTokenExpiredDateTime() {
-    return LocalDateTime.now().plusSeconds(accessTokenExpirationSec);
   }
 }

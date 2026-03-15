@@ -8,7 +8,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RegisterRequ
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateUserInfoRequest;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Controller;
 public class UserController {
 
   private final UserService service;
-  private final JwtService jwtService;
+  private final AccessTokenService accessTokenService;
 
   public TokenPairDto registerUser(RegisterRequest request) {
     request.validate();
@@ -30,7 +30,7 @@ public class UserController {
   }
 
   public void logoutUser(SimpleUserRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     service.logoutUser(request);
   }
 
@@ -40,12 +40,12 @@ public class UserController {
   }
 
   public UserDto getUserInfo(SimpleUserRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     return service.getUserInfo(request);
   }
 
   public void updateUserInfo(UpdateUserInfoRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     service.updateUserInfo(request);
   }
 }

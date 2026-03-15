@@ -10,23 +10,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * Менеджер активных пользовательских сессий и механизмов отзыва токенов.
+ * Сервис управления долгоживущими Refresh-токенами.
  *
- * <p>Данная реализация использует In-Memory хранилище (ConcurrentHashMap). Для обеспечения
- * безопасности при выходе (logout) используется механизм <b>Blacklisting</b>: токены помечаются как
- * недействительные до момента их естественного истечения.
+ * <p>Использует стратегию <b>Opaque Tokens</b>: токены представляют собой криптографически стойкие
+ * случайные строки, состояние которых (срок действия, признак отзыва) хранится в базе данных. Это
+ * позволяет мгновенно аннулировать сессии пользователей (например, при логауте или смене пароля).
  */
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
   private final RefreshTokenRepository repository;
   private final SecureRandom random;
-
-  private String generateToken() {
-    byte[] bytes = new byte[64];
-    random.nextBytes(bytes);
-    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-  }
 
   public RefreshTokenDto create(UUID userId) {
     RefreshTokenDto token =
@@ -51,5 +45,11 @@ public class RefreshTokenService {
 
   public void revokeAllForUser(UUID userId) {
     repository.deleteByUserId(userId);
+  }
+
+  private String generateToken() {
+    byte[] bytes = new byte[64];
+    random.nextBytes(bytes);
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 }

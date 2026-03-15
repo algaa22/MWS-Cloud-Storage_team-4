@@ -14,7 +14,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChu
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
 import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
 import java.util.List;
 import java.util.UUID;
@@ -26,11 +26,11 @@ import org.springframework.stereotype.Controller;
 public class FileController {
   // TODO: постоянный validate()
   private final FileService service;
-  private final JwtService jwtService;
+  private final AccessTokenService accessTokenService;
   private final StorageConfig storageConfig;
 
   public void startChunkedUpload(StartChunkedUploadRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     service.startChunkedUpload(request);
   }
 
@@ -51,47 +51,47 @@ public class FileController {
   }
 
   public List<StorageEntity> getFileList(GetFileListRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     return service.getFileList(request);
   }
 
   public StorageDto getFileInfo(SimpleFileOperationRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     return service.getFileInfo(request);
   }
 
   public void hardDeleteFile(SimpleFileOperationRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     service.hardDeleteFile(request);
   }
 
   public void softDeleteFile(SoftDeleteFileRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     service.softDeleteFile(request);
   }
 
   public UUID uploadFile(FileUploadRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     return service.uploadFile(request);
   }
 
   public void changeFileMetadata(ChangeFileMetadataRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     service.changeFileMetadata(request);
   }
 
   public void restoreFile(SimpleFileOperationRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     service.restoreFile(request);
   }
 
   public List<StorageEntity> getTrashFileList(GetFileListRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     return service.getTrashFileList(request);
   }
 
   public FileDownloadResponse downloadFile(SimpleFileOperationRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     return service.downloadFile(request);
   }
 }

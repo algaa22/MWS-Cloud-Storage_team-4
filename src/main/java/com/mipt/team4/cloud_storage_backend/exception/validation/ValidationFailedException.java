@@ -10,6 +10,10 @@ import lombok.Getter;
 public class ValidationFailedException extends BaseStorageException {
   private final Set<ValidationError> errors;
 
+  public ValidationFailedException(ValidationError error) {
+    this(Set.of(error));
+  }
+
   public ValidationFailedException(Set<ValidationError> errors) {
     super("Validation failed", HttpResponseStatus.BAD_REQUEST);
 

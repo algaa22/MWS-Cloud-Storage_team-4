@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.utils.validation;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
 import com.mipt.team4.cloud_storage_backend.utils.NumberComparator;
 import java.util.List;
 import java.util.UUID;
@@ -31,9 +31,9 @@ public class Validators {
     return combined;
   }
 
-  public static ValidationResult validToken(JwtService jwtService, String token) {
+  public static ValidationResult validToken(AccessTokenService accessTokenService, String token) {
     return validate(
-        jwtService.isTokenValid(token),
+        accessTokenService.isTokenValid(token),
         "User token",
         "User token expired or not valid",
         "VALID_TOKEN");

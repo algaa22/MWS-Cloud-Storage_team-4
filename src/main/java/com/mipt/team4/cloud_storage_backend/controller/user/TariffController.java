@@ -5,7 +5,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTari
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateAutoRenewRequest;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
@@ -14,35 +14,35 @@ import org.springframework.stereotype.Controller;
 public class TariffController {
 
   private final TariffService tariffService;
-  private final JwtService jwtService;
+  private final AccessTokenService accessTokenService;
 
   /** Купить тариф (при регистрации автоматически TRIAL, этот метод для платных) */
   public void purchaseTariff(PurchaseTariffRequest request) {
-    request.validate(jwtService); // проверяем токен
+    request.validate(accessTokenService); // проверяем токен
     tariffService.purchaseTariff(request);
   }
 
   /** Получить информацию о текущем тарифе */
   public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     return tariffService.getTariffInfo(request);
   }
 
   /** Обновить способ оплаты */
   public void updatePaymentMethod(UpdateAutoRenewRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     tariffService.updatePaymentMethod(request);
   }
 
   /** Переключить автопродление * */
   public void setAutoRenew(SimpleUserRequest request, boolean enabled) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     tariffService.setAutoRenew(request, enabled);
   }
 
   /** Проверить доступ к файлам (для FileService) */
   public boolean checkAccess(SimpleUserRequest request) {
-    request.validate(jwtService);
+    request.validate(accessTokenService);
     return tariffService.hasAccess(request);
   }
 }

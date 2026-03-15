@@ -4,7 +4,7 @@ import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionExce
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SessionDto;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -27,10 +27,10 @@ public class UserSessionService {
   private final Map<String, SessionDto> activeSessions = new ConcurrentHashMap<>();
   private final Map<String, LocalDateTime> blacklistedTokens = new ConcurrentHashMap<>();
   private final Duration accessTokenDuration = Duration.ofMinutes(15);
-  private final JwtService jwtService;
+  private final AccessTokenService accessTokenService;
 
   public SessionDto createSession(UserEntity user) {
-    String token = jwtService.generateAccessToken(user);
+    String token = accessTokenService.generateAccessToken(user);
     SessionDto session =
         new SessionDto(user.getId(), user.getEmail(), token, System.currentTimeMillis());
     activeSessions.put(token, session);
@@ -65,7 +65,7 @@ public class UserSessionService {
     }
 
     cleanExpiredBlacklistedTokens();
-    blacklistedTokens.put(token, jwtService.getAccessTokenExpiredDateTime());
+    blacklistedTokens.put(token, accessTokenService.getAccessTokenExpiredDateTime());
     // session.remove(token);
   }
 

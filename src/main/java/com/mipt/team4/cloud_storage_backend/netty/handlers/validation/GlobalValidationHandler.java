@@ -7,6 +7,7 @@ import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Path;
 import jakarta.validation.Validator;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,7 +29,7 @@ public class GlobalValidationHandler extends SimpleChannelInboundHandler<Object>
       if (!violations.isEmpty()) {
         Set<ValidationError> errors =
             violations.stream()
-                .map(v -> new ValidationError(v.getPropertyPath().toString(), v.getMessage()))
+                .map(v -> new ValidationError(getFieldName(v), v.getMessage()))
                 .collect(Collectors.toSet());
 
         throw new ValidationFailedException(errors);
@@ -36,5 +37,15 @@ public class GlobalValidationHandler extends SimpleChannelInboundHandler<Object>
     }
 
     ctx.fireChannelRead(msg);
+  }
+
+  private String getFieldName(ConstraintViolation<Object> violation) {
+    String fieldName = "";
+
+    for (Path.Node node : violation.getPropertyPath()) {
+      fieldName = node.getName();
+    }
+
+    return fieldName;
   }
 }

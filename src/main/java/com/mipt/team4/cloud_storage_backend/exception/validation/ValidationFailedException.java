@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.exception.validation;
 
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.validation.ValidationError;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Set;
 import lombok.Getter;

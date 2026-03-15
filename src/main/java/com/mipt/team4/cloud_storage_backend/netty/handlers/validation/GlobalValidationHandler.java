@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.validation;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.RouteRegistry;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;

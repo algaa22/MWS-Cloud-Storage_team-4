@@ -3,13 +3,14 @@ package com.mipt.team4.cloud_storage_backend.utils;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.UnknownParamTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
+import java.util.UUID;
 
 public class SafeParser {
   public static Object parse(
-      String value, Class<?> type, String defaultStr, boolean required, String name) {
+      String value, Class<?> type, String defaultStr, boolean required, String field) {
     if (value == null || value.isBlank()) {
       if (required && (defaultStr == null || defaultStr.isBlank())) {
-        throw new MissingRequiredParamException(name);
+        throw new MissingRequiredParamException(field);
       }
 
       value = (defaultStr != null && !defaultStr.isBlank()) ? defaultStr : null;
@@ -18,13 +19,22 @@ public class SafeParser {
     if (value == null) return null;
 
     if (type == String.class) return value;
-    if (type == Integer.class || type == int.class) return parseInt(name, value);
-    if (type == Long.class || type == long.class) return parseLong(name, value);
-    if (type == Boolean.class || type == boolean.class) return parseBoolean(name, value);
-    if (type == Float.class || type == float.class) return parseFloat(name, value);
-    if (type == Double.class || type == double.class) return parseDouble(name, value);
+    if (type == UUID.class) return parseUuid(field, value);
+    if (type == Integer.class || type == int.class) return parseInt(field, value);
+    if (type == Long.class || type == long.class) return parseLong(field, value);
+    if (type == Boolean.class || type == boolean.class) return parseBoolean(field, value);
+    if (type == Float.class || type == float.class) return parseFloat(field, value);
+    if (type == Double.class || type == double.class) return parseDouble(field, value);
 
-    throw new UnknownParamTypeException(name, type);
+    throw new UnknownParamTypeException(field, type);
+  }
+
+  public static UUID parseUuid(String field, String value) {
+    try {
+      return UUID.fromString(value);
+    } catch (IllegalArgumentException e) {
+      throw new ParseException(field, UUID.class, value);
+    }
   }
 
   public static Boolean parseBoolean(String field, String value) {

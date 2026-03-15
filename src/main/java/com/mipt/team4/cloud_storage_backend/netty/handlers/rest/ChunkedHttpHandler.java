@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
-import com.mipt.team4.cloud_storage_backend.controller.storage.chunked.ChunkedDownloadController;
+import com.mipt.team4.cloud_storage_backend.controller.storage.chunked.ChunkedUploadController;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.RouteRegistry;
 import io.netty.buffer.Unpooled;
@@ -26,7 +26,6 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
   private static final HttpObject POISON_PILL = new DefaultHttpContent(Unpooled.EMPTY_BUFFER);
 
   private final ChunkedUploadController chunkedUpload;
-  private final ChunkedDownloadController chunkedDownload;
   private final RestHandlerInvoker handlerInvoker;
   private final RouteRegistry routeRegistry;
 
@@ -82,14 +81,10 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
       }
 
       try {
-        if (msg instanceof HttpContent content) {
-          handleHttpContent(ctx, content);
+        handlerInvoker.invoke(ctx, msg);
 
-          if (content instanceof LastHttpContent) {
-            break;
-          }
-        } else {
-          handlerInvoker.invoke(ctx, msg);
+        if (msg instanceof LastHttpContent) {
+          break;
         }
       } catch (Exception e) {
         ctx.executor().execute(() -> ctx.fireExceptionCaught(e));
@@ -97,14 +92,6 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
       } finally {
         ReferenceCountUtil.release(msg);
       }
-    }
-  }
-
-  private void handleHttpContent(ChannelHandlerContext ctx, HttpContent content) {
-    if (content instanceof LastHttpContent) {
-      chunkedUpload.complete(ctx, (LastHttpContent) content);
-    } else {
-      chunkedUpload.handleChunk(ctx, content);
     }
   }
 

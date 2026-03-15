@@ -29,8 +29,8 @@ public class RestHandlerInvoker {
       for (Method method : beanClass.getDeclaredMethods()) {
         if (method.getParameterCount() == 2
             && method.getParameterTypes()[0] == ChannelHandlerContext.class) {
-          Class<?> dtoClass = method.getParameterTypes()[1];
-          handlerMethods.put(dtoClass, new HandlerMethod(bean, method));
+          Class<?> msgClass = method.getParameterTypes()[1];
+          handlerMethods.put(msgClass, new HandlerMethod(bean, method));
         }
       }
     }

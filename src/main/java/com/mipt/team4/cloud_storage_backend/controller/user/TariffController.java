@@ -1,9 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateAutoRenewRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdatePaymentMethodRequest;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
 import lombok.RequiredArgsConstructor;
@@ -23,13 +23,13 @@ public class TariffController {
   }
 
   /** Получить информацию о текущем тарифе */
-  public TariffInfoRequest getTariffInfo(SimpleUserRequest request) {
+  public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
     request.validate(accessTokenService);
     return tariffService.getTariffInfo(request);
   }
 
   /** Обновить способ оплаты */
-  public void updatePaymentMethod(UpdateAutoRenewRequest request) {
+  public void updatePaymentMethod(UpdatePaymentMethodRequest request) {
     request.validate(accessTokenService);
     tariffService.updatePaymentMethod(request);
   }

@@ -1,35 +1,26 @@
 package com.mipt.team4.cloud_storage_backend.model.user.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
-import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
-import lombok.Data;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestHeader;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.UserId;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import java.util.UUID;
 
-@Data
+@RequestMapping(method = "POST", path = ApiEndpoints.TARIFF_PURCHASE)
 public record PurchaseTariffRequest(
-    String userToken,
-    TariffPlan tariffPlan,
-    String paymentToken,
-    boolean autoRenew,
-    String paymentMethod) {
-  public void validate(AccessTokenService accessTokenService) throws ValidationFailedException {
-    ValidationResult result =
-        Validators.all(
-            Validators.notBlank("User token", userToken),
-            Validators.notNull("Tariff plan", tariffPlan),
-            Validators.notBlank("Payment token", paymentToken));
-
-    Validators.throwExceptionIfNotValid(result);
-    if (!accessTokenService.isTokenValid(userToken)) {
-      throw new ValidationFailedException(new ValidationError("userToken", "Invalid token"));
-    }
-
-    if (tariffPlan.isTrial()) {
-      throw new ValidationFailedException(
-          new ValidationError("tariffPlan", "Cannot purchase trial plan"));
-    }
-  }
-}
+    @UserId UUID userId,
+    @NotNull @QueryParam("plan") TariffPlan plan,
+    @NotBlank
+        @Pattern(
+            regexp = ValidationConstants.PAYMENT_TOKEN_REGEXP,
+            message = ValidationConstants.PAYMENT_TOKEN_ERROR)
+        @RequestHeader("X-Payment-Token")
+        String paymentToken,
+    @QueryParam(value = "autoRenew", defaultValue = "true") boolean autoRenew,
+    @RequestHeader(value = "X-Payment-Method", defaultValue = "card") String paymentMethod) {}

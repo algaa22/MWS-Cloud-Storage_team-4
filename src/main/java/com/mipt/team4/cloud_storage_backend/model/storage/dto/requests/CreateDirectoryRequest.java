@@ -1,22 +1,21 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
-import java.util.Optional;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.UserId;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
 
+@RequestMapping(method = "PUT", path = ApiEndpoints.DIRECTORIES_PREFIX)
 public record CreateDirectoryRequest(
-    String userToken, Optional<String> parentId, String name, UUID directoryId) {
-
-  public void validate(AccessTokenService accessTokenService) throws ValidationFailedException {
-    ValidationResult result =
-        Validators.all(
-            Validators.validFileName("Directory name", name),
-            Validators.validToken(accessTokenService, userToken),
-            Validators.notNull("Directory fileId", directoryId));
-
-    Validators.throwExceptionIfNotValid(result);
-  }
-}
+    @UserId UUID userId,
+    @NotBlank
+        @Pattern(
+            regexp = ValidationConstants.FILE_NAME_REGEXP,
+            message = ValidationConstants.FILE_NAME_ERROR)
+        @QueryParam("name")
+        String name,
+    @QueryParam(value = "parentId", required = false) UUID parentId) {}

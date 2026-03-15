@@ -1,19 +1,25 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
-import java.util.Optional;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.UserId;
+import jakarta.validation.constraints.Pattern;
+import java.util.List;
+import java.util.UUID;
 
+@RequestMapping(method = "GET", path = ApiEndpoints.FILES_LIST)
 public record GetFileListRequest(
-    String userToken,
-    boolean includeDirectories,
-    boolean recursive,
-    Optional<String> parentId,
-    Optional<String> tags) {
-  public void validate(AccessTokenService accessTokenService) throws ValidationFailedException {
-    ValidationResult result = Validators.all(Validators.validToken(accessTokenService, userToken));
-    Validators.throwExceptionIfNotValid(result);
-  }
-}
+    @UserId UUID userId,
+    @QueryParam(value = "parentId", required = false) UUID parentId,
+    @QueryParam(value = "recursive", defaultValue = "false", required = false) boolean recursive,
+    @QueryParam(value = "includeDirectories", defaultValue = "false", required = false)
+        boolean includeDirectories,
+    @QueryParam(value = "tags", required = false)
+        List<
+                @Pattern(
+                    regexp = ValidationConstants.SINGLE_TAG_REGEXP,
+                    message = ValidationConstants.SINGLE_TAG_ERROR)
+                String>
+            tags) {}

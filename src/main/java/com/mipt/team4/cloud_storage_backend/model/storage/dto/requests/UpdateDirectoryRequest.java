@@ -3,29 +3,19 @@ package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestHeader;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.UserId;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import java.util.List;
 import java.util.UUID;
 
-@RequestMapping(method = "PUT", path = ApiEndpoints.FILES_PREFIX)
-public record ChangeFileMetadataRequest(
+@RequestMapping(method = "POST", path = ApiEndpoints.DIRECTORIES_PREFIX)
+public record UpdateDirectoryRequest(
     @UserId UUID userId,
-    @NotNull @QueryParam("id") UUID fileId,
+    @NotNull @QueryParam("id") UUID directoryId,
     @Pattern(
             regexp = ValidationConstants.FILE_NAME_REGEXP,
             message = ValidationConstants.FILE_NAME_ERROR)
-        @QueryParam(value = "newName", required = false)
+        @QueryParam("newName")
         String newName,
-    @QueryParam(value = "newParentId", required = false) UUID newParentId,
-    @RequestHeader(value = "X-File-New-Visibility", required = false) String visibility,
-    @RequestHeader(value = "X-File-New-Tags", required = false)
-        List<
-                @Pattern(
-                    regexp = ValidationConstants.SINGLE_TAG_REGEXP,
-                    message = ValidationConstants.SINGLE_TAG_ERROR)
-                String>
-            tags) {}
+    @QueryParam("newParentId") UUID newParentId) {}

@@ -3,6 +3,8 @@ package com.mipt.team4.cloud_storage_backend.utils;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.UnknownParamTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 public class SafeParser {
@@ -20,6 +22,7 @@ public class SafeParser {
 
     if (type == String.class) return value;
     if (type == UUID.class) return parseUuid(field, value);
+    if (type == List.class) return parseStringList(value);
     if (type == Integer.class || type == int.class) return parseInt(field, value);
     if (type == Long.class || type == long.class) return parseLong(field, value);
     if (type == Boolean.class || type == boolean.class) return parseBoolean(field, value);
@@ -27,6 +30,12 @@ public class SafeParser {
     if (type == Double.class || type == double.class) return parseDouble(field, value);
 
     throw new UnknownParamTypeException(field, type);
+  }
+
+  public static List<String> parseStringList(String value) {
+    if (value == null || value.isBlank()) return List.of();
+
+    return Arrays.stream(value.split(",")).map(String::trim).toList();
   }
 
   public static UUID parseUuid(String field, String value) {

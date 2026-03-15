@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -42,7 +42,7 @@ public class StorageRepository {
         });
   }
 
-  public String uploadPart(StorageEntity entity, UploadPartRequest request) {
+  public String uploadPart(StorageEntity entity, UploadPartDto request) {
     return wrapper.processStep(
         entity,
         FileOperationType.UPLOAD,

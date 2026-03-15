@@ -15,16 +15,14 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ResumeChunkedUploadDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ResumeChunkedUploadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SoftDeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -104,7 +102,7 @@ public class FileService {
                 .build()));
   }
 
-  public void resumeChunkedUploadSession(ResumeChunkedUploadRequest request) {
+  public void resumeChunkedUploadSession(ResumeChunkedUploadDto request) {
     String uploadSessionId = request.sessionId();
     ChunkedUploadState uploadState = activeUploads.get(uploadSessionId);
 
@@ -119,7 +117,7 @@ public class FileService {
     uploadState.resume();
   }
 
-  public void uploadChunk(UploadChunkRequest request) {
+  public void uploadChunk(UploadChunkDto request) {
     ChunkedUploadState uploadState = activeUploads.get(request.sessionId());
     if (uploadState == null) {
       throw new UploadSessionNotFoundException();
@@ -349,7 +347,7 @@ public class FileService {
       eTag =
           storageRepository.uploadPart(
               fileEntity,
-              new UploadPartRequest(
+              new UploadPartDto(
                   uploadId,
                   fileEntity.getUserId(),
                   fileEntity.getId(),

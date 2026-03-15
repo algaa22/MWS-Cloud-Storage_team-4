@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 public @interface QueryParam {
   String value();
 
-  String defaultValue();
+  String defaultValue() default "";
 
   boolean required() default true;
 }

@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.controller.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CreateDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteDirectoryRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.MoveDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RenameDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.service.storage.DirectoryService;
 import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;

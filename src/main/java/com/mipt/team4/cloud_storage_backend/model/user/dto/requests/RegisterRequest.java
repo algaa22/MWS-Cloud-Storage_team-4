@@ -1,18 +1,22 @@
 package com.mipt.team4.cloud_storage_backend.model.user.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationConstants;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestHeader;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestMapping;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
-public record RegisterRequest(String email, String password, String userName) {
-
-  public void validate() throws ValidationFailedException {
-    ValidationResult result =
-        Validators.all(
-            Validators.isEmail(email),
-            Validators.notBlank("Password hash", password),
-            Validators.notBlank("User name", userName));
-
-    Validators.throwExceptionIfNotValid(result);
-  }
-}
+@RequestMapping(method = "POST", path = ApiEndpoints.AUTH_REGISTER)
+public record RegisterRequest(
+    @RequestHeader("X-Auth-Email")
+        @Pattern(
+            regexp = ValidationConstants.EMAIL_REGEXP,
+            message = ValidationConstants.EMAIL_ERROR)
+        String email,
+    @RequestHeader("X-Auth-Password")
+        @Pattern(
+            regexp = ValidationConstants.PASSWORD_REGEXP,
+            message = ValidationConstants.PASSWORD_ERROR)
+        String password,
+    @RequestHeader("X-Auth-Username") @NotBlank String username) {}

@@ -10,9 +10,9 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadySt
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadNotStoppedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ResumeChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ResumeChunkedUploadDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UploadChunkRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
@@ -87,7 +87,7 @@ public class ChunkedUploadHandler {
 
     try {
       fileController.processFileChunk(
-          new UploadChunkRequest(currentSessionId, currentName, currentParentId, chunkBytes));
+          new UploadChunkDto(currentSessionId, currentName, currentParentId, chunkBytes));
     } catch (ProcessUploadRetriableException exception) {
       sendNeedProcessRetryResponse(ctx, exception);
       return;
@@ -136,7 +136,7 @@ public class ChunkedUploadHandler {
     parseRequestMetadata(request);
     isInProgress = true;
 
-    fileController.resumeChunkedUpload(new ResumeChunkedUploadRequest(currentSessionId));
+    fileController.resumeChunkedUpload(new ResumeChunkedUploadDto(currentSessionId));
 
     if (log.isDebugEnabled()) {
       log.debug(

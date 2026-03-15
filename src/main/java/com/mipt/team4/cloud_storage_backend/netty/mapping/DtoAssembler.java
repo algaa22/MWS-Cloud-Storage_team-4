@@ -109,7 +109,8 @@ public class DtoAssembler {
       return null;
     }
 
-    JsonNode fieldNode = rootNode.get(param.name());
+    JsonNode fieldNode = param.name().isBlank() ? rootNode : rootNode.get(param.name());
+
     if (fieldNode == null || fieldNode.isMissingNode()) {
       if (param.required()) throw new MissingRequiredParamException(param.name());
 

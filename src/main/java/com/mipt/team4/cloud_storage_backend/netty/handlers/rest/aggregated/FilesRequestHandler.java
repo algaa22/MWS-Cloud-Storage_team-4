@@ -8,8 +8,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleFileOperationRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SoftDeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
@@ -149,7 +147,7 @@ public class FilesRequestHandler {
     if (permanent) {
       fileController.hardDeleteFile(new SimpleFileOperationRequest(fileId, userToken));
     } else {
-      fileController.softDeleteFile(new SoftDeleteFileRequest(fileId, userToken));
+      fileController.softDeleteFile(new SimpleFileOperationRequest(fileId, userToken));
     }
 
     ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully deleted");

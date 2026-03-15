@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.netty.mapping;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestBodyParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestHeader;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.ResponseBody;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.ResponseBodyParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.ResponseHeader;
 import java.lang.reflect.Parameter;
 
@@ -49,8 +49,8 @@ public record MappedParameter(
           SourceType.HEADER,
           annotation.defaultValue(),
           false);
-    } else if (parameter.isAnnotationPresent(ResponseBody.class)) {
-      ResponseBody annotation = parameter.getAnnotation(ResponseBody.class);
+    } else if (parameter.isAnnotationPresent(ResponseBodyParam.class)) {
+      ResponseBodyParam annotation = parameter.getAnnotation(ResponseBodyParam.class);
       return new MappedParameter(
           annotation.value(),
           parameter.getType(),

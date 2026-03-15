@@ -8,5 +8,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER, ElementType.FIELD})
 public @interface ResponseBody {
+  String value();
+
+  String defaultValue() default "";
+
   boolean required() default true;
 }

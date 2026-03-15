@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.mapping;
 
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestBody;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestBodyParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestHeader;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.ResponseBody;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.ResponseHeader;
@@ -32,10 +32,14 @@ public record MappedParameter(
           SourceType.HEADER,
           annotation.defaultValue(),
           annotation.required());
-    } else if (parameter.isAnnotationPresent(RequestBody.class)) {
-      RequestBody annotation = parameter.getAnnotation(RequestBody.class);
+    } else if (parameter.isAnnotationPresent(RequestBodyParam.class)) {
+      RequestBodyParam annotation = parameter.getAnnotation(RequestBodyParam.class);
       return new MappedParameter(
-          null, parameter.getType(), SourceType.BODY, null, annotation.required());
+          annotation.value(),
+          parameter.getType(),
+          SourceType.BODY,
+          annotation.defaultValue(),
+          annotation.required());
     } else if (parameter.isAnnotationPresent(ResponseHeader.class)) {
       ResponseHeader annotation = parameter.getAnnotation(ResponseHeader.class);
       return new MappedParameter(
@@ -47,7 +51,11 @@ public record MappedParameter(
     } else if (parameter.isAnnotationPresent(ResponseBody.class)) {
       ResponseBody annotation = parameter.getAnnotation(ResponseBody.class);
       return new MappedParameter(
-          null, parameter.getType(), SourceType.BODY, null, annotation.required());
+          annotation.value(),
+          parameter.getType(),
+          SourceType.BODY,
+          annotation.defaultValue(),
+          annotation.required());
     }
 
     return null;

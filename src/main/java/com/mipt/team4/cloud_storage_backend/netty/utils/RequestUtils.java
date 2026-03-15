@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Deprecated
 public class RequestUtils {
 
   public static String getRequiredQueryParam(HttpRequest request, String paramName) {

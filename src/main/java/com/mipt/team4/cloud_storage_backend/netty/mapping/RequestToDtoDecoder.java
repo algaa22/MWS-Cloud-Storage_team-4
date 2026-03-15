@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.exception.mapping.CreateDtoInstanceException;
 import com.mipt.team4.cloud_storage_backend.exception.mapping.ParseJsonParamException;
 import com.mipt.team4.cloud_storage_backend.exception.mapping.ReadJsonBodyException;
+import com.mipt.team4.cloud_storage_backend.exception.user.auth.MissingAuthTokenException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
+import com.mipt.team4.cloud_storage_backend.netty.constants.SecurityAttributes;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -19,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -31,8 +34,7 @@ public class RequestToDtoDecoder extends MessageToMessageDecoder<FullHttpRequest
   private final ObjectMapper objectMapper;
 
   @Override
-  protected void decode(
-      ChannelHandlerContext channelHandlerContext, FullHttpRequest request, List<Object> out) {
+  protected void decode(ChannelHandlerContext ctx, FullHttpRequest request, List<Object> out) {
     String method = request.method().name();
     String path = request.uri().split("\\?")[0];
 
@@ -43,14 +45,14 @@ public class RequestToDtoDecoder extends MessageToMessageDecoder<FullHttpRequest
       return;
     }
 
-    Object dto = assemble(dtoClass, request);
+    Object dto = assemble(ctx, dtoClass, request);
     out.add(dto);
   }
 
-  private Object assemble(Class<?> dtoClass, FullHttpRequest request) {
+  private Object assemble(ChannelHandlerContext ctx, Class<?> dtoClass, FullHttpRequest request) {
     MappedParameter[] parameters = metadataCache.getParameters(dtoClass);
     Constructor<?> constructor = metadataCache.getConstructor(dtoClass);
-    Object[] args = parseParameters(parameters, request);
+    Object[] args = parseParameters(ctx, parameters, request);
 
     try {
       return constructor.newInstance(args);
@@ -59,7 +61,8 @@ public class RequestToDtoDecoder extends MessageToMessageDecoder<FullHttpRequest
     }
   }
 
-  private Object[] parseParameters(MappedParameter[] parameters, FullHttpRequest request) {
+  private Object[] parseParameters(
+      ChannelHandlerContext ctx, MappedParameter[] parameters, FullHttpRequest request) {
     QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
     JsonNode rootNode = readJson(request.content());
     Object[] args = new Object[parameters.length];
@@ -72,6 +75,7 @@ public class RequestToDtoDecoder extends MessageToMessageDecoder<FullHttpRequest
             case QUERY -> parseQuery(queryDecoder, param);
             case HEADER -> parseHeader(request, param);
             case BODY -> parseBodyParam(rootNode, param);
+            case AUTH -> getAuthAttribute(ctx);
           };
     }
 
@@ -101,6 +105,15 @@ public class RequestToDtoDecoder extends MessageToMessageDecoder<FullHttpRequest
     String value = request.headers().get(param.name());
     return SafeParser.parse(
         value, param.type(), param.defaultValue(), param.required(), param.name());
+  }
+
+  private Object getAuthAttribute(ChannelHandlerContext ctx) {
+    UUID userId = ctx.channel().attr(SecurityAttributes.USER_ID).get();
+    if (userId == null) {
+      throw new MissingAuthTokenException();
+    }
+
+    return userId;
   }
 
   private Object parseBodyParam(JsonNode rootNode, MappedParameter param) {

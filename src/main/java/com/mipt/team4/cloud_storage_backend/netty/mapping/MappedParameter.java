@@ -12,7 +12,8 @@ public record MappedParameter(
   public enum SourceType {
     QUERY,
     HEADER,
-    BODY
+    BODY,
+    AUTH
   }
 
   public static MappedParameter from(Parameter parameter) {

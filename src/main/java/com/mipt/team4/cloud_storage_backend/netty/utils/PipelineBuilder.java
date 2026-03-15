@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.utils;
 
-import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.FinalErrorHandler;

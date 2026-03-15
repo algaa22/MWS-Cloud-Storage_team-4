@@ -9,8 +9,7 @@ import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.stream.ChunkedInput;
 import java.io.InputStream;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +17,8 @@ import org.springframework.stereotype.Component;
 @Component
 @Scope("prototype")
 @RequiredArgsConstructor
+@Slf4j
 class CustomChunkedInput implements ChunkedInput<HttpContent> {
-
-  private final Logger logger = LoggerFactory.getLogger(CustomChunkedInput.class);
 
   private final InputStream stream;
   private final int chunkSize;
@@ -35,8 +33,8 @@ class CustomChunkedInput implements ChunkedInput<HttpContent> {
 
   @Override
   public void close() throws Exception {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Closing input stream.");
+    if (log.isDebugEnabled()) {
+      log.debug("Closing input stream.");
     }
 
     stream.close();
@@ -62,8 +60,8 @@ class CustomChunkedInput implements ChunkedInput<HttpContent> {
     if (bytesRead == 0) {
       ended = true;
 
-      if (logger.isDebugEnabled()) {
-        logger.debug(
+      if (log.isDebugEnabled()) {
+        log.debug(
             "End of stream reached. Total bytes sent: {}. Sending LastHttpContent.", bytesSent);
       }
 
@@ -72,8 +70,8 @@ class CustomChunkedInput implements ChunkedInput<HttpContent> {
 
     bytesSent += bytesRead;
 
-    if (logger.isDebugEnabled()) {
-      logger.debug("Read from stream: {} bytes (total: {}/{})", bytesRead, bytesSent, totalSize);
+    if (log.isDebugEnabled()) {
+      log.debug("Read from stream: {} bytes (total: {}/{})", bytesRead, bytesSent, totalSize);
     }
 
     ByteBuf chunkBuf = allocator.buffer(bytesRead);

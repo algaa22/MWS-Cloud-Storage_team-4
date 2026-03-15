@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers;
+package com.mipt.team4.cloud_storage_backend.netty.constants;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;

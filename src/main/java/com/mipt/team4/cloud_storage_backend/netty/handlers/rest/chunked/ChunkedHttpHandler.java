@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest.chunked;
 
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.ChunkedUploadHandler;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -27,9 +27,7 @@ import org.springframework.stereotype.Component;
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> {
   private static final HttpObject POISON_PILL = new DefaultHttpContent(Unpooled.EMPTY_BUFFER);
   private final ChunkedUploadHandler chunkedUpload;
-  private final com.mipt.team4.cloud_storage_backend.netty.handlers.rest.chunked
-          .ChunkedDownloadHandler
-      chunkedDownload;
+  private final ChunkedDownloadHandler chunkedDownload;
   private final BlockingQueue<HttpObject> httpObjectsQueue = new LinkedBlockingQueue<>();
   private boolean threadStarted = false;
 
@@ -103,11 +101,11 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<HttpObject> 
     String uri = request.uri();
     HttpMethod method = request.method();
 
-    if (uri.startsWith("/api/files/upload/resume") && method.equals(HttpMethod.POST)) {
+    if (uri.startsWith(ApiEndpoints.FILES_UPLOAD_RESUME) && method.equals(HttpMethod.POST)) {
       chunkedUpload.resume(request);
-    } else if (uri.startsWith("/api/files/upload") && method.equals(HttpMethod.POST)) {
+    } else if (uri.startsWith(ApiEndpoints.FILES_UPLOAD) && method.equals(HttpMethod.POST)) {
       chunkedUpload.start(request);
-    } else if (uri.startsWith("/api/files/download") && method.equals(HttpMethod.GET)) {
+    } else if (uri.startsWith(ApiEndpoints.FILES_DOWNLOAD) && method.equals(HttpMethod.GET)) {
       chunkedDownload.start(ctx, request);
     } else {
       ResponseUtils.sendMethodNotSupported(ctx, uri, method);

@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
 import com.mipt.team4.cloud_storage_backend.netty.channel.Http2StreamInitializer;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;

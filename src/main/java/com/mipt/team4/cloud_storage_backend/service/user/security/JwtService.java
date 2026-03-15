@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.service.user.security;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -49,10 +48,6 @@ public class JwtService {
     return generateToken(user, accessTokenExpirationSec);
   }
 
-  public String generateRefreshToken(UserEntity user) {
-    return generateToken(user, refreshTokenExpirationSec);
-  }
-
   /**
    * Генерирует детерминированный токен с уникальным идентификатором (JTI).
    *
@@ -83,52 +78,5 @@ public class JwtService {
 
   public LocalDateTime getAccessTokenExpiredDateTime() {
     return LocalDateTime.now().plusSeconds(accessTokenExpirationSec);
-  }
-
-  public LocalDateTime getRefreshTokenExpiredDateTime() {
-    return LocalDateTime.now().plusSeconds(refreshTokenExpirationSec);
-  }
-
-  public String getUserIdFromToken(String token) {
-    Claims claims =
-        Jwts.parserBuilder()
-            .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
-            .build()
-            .parseClaimsJws(token)
-            .getBody();
-
-    return claims.getSubject(); // userId
-  }
-
-  public boolean isAccessToken(String token) {
-    try {
-      Claims claims =
-          Jwts.parserBuilder()
-              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
-              .build()
-              .parseClaimsJws(token)
-              .getBody();
-
-      String tokenType = claims.get("tokenType", String.class);
-      return "access".equals(tokenType);
-    } catch (JwtException | IllegalArgumentException e) {
-      return false;
-    }
-  }
-
-  public boolean isRefreshToken(String token) {
-    try {
-      Claims claims =
-          Jwts.parserBuilder()
-              .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey)))
-              .build()
-              .parseClaimsJws(token)
-              .getBody();
-
-      String tokenType = claims.get("tokenType", String.class);
-      return "refresh".equals(tokenType);
-    } catch (JwtException | IllegalArgumentException e) {
-      return false;
-    }
   }
 }

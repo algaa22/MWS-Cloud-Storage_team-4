@@ -32,8 +32,7 @@ public class RequestToDtoDecoder extends MessageToMessageDecoder<FullHttpRequest
 
   @Override
   protected void decode(
-      ChannelHandlerContext channelHandlerContext, FullHttpRequest request, List<Object> out)
-      throws Exception {
+      ChannelHandlerContext channelHandlerContext, FullHttpRequest request, List<Object> out) {
     String method = request.method().name();
     String path = request.uri().split("\\?")[0];
 

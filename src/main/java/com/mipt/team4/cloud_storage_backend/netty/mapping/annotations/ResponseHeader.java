@@ -11,6 +11,4 @@ public @interface ResponseHeader {
   String value();
 
   String defaultValue() default "";
-
-  boolean required() default true;
 }

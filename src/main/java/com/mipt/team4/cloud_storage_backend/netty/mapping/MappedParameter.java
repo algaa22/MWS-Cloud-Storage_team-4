@@ -47,7 +47,7 @@ public record MappedParameter(
           parameter.getType(),
           SourceType.HEADER,
           annotation.defaultValue(),
-          annotation.required());
+          false);
     } else if (parameter.isAnnotationPresent(ResponseBody.class)) {
       ResponseBody annotation = parameter.getAnnotation(ResponseBody.class);
       return new MappedParameter(
@@ -55,7 +55,7 @@ public record MappedParameter(
           parameter.getType(),
           SourceType.BODY,
           annotation.defaultValue(),
-          annotation.required());
+          false);
     }
 
     return null;

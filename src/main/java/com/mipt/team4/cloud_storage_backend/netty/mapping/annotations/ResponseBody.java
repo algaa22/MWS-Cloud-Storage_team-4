@@ -11,6 +11,4 @@ public @interface ResponseBody {
   String value();
 
   String defaultValue() default "";
-
-  boolean required() default true;
 }

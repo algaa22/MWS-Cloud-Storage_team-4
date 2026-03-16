@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
-import com.mipt.team4.cloud_storage_backend.controller.storage.chunked.ChunkedUploadController;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.RouteRegistry;
 import io.netty.buffer.Unpooled;
@@ -25,10 +24,8 @@ import org.springframework.stereotype.Component;
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
   private static final HttpObject POISON_PILL = new DefaultHttpContent(Unpooled.EMPTY_BUFFER);
 
-  private final ChunkedUploadController chunkedUpload;
-  private final RestHandlerInvoker handlerInvoker;
   private final RouteRegistry routeRegistry;
-
+  private final RestHandlerInvoker handlerInvoker;
   private final BlockingQueue<Object> httpObjectsQueue = new LinkedBlockingQueue<>();
 
   private boolean threadStarted = false;
@@ -66,7 +63,6 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
             throw new FatalStorageException(
                 "Virtual thread of chunked http handler was interrupted", e);
           } finally {
-            chunkedUpload.cleanup();
             clearHttpObjectsQueue();
           }
         });

@@ -1,10 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.netty.mapping;
 
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.QueryParam;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestBodyParam;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.RequestHeader;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.ResponseBodyParam;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.ResponseHeader;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.QueryParam;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestBodyParam;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestHeader;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.UserId;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseBodyParam;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseHeader;
 import java.lang.reflect.Parameter;
 
 public record MappedParameter(
@@ -13,7 +14,8 @@ public record MappedParameter(
     QUERY,
     HEADER,
     BODY,
-    AUTH
+    AUTH,
+    STATUS
   }
 
   public static MappedParameter from(Parameter parameter) {
@@ -57,6 +59,8 @@ public record MappedParameter(
           SourceType.BODY,
           annotation.defaultValue(),
           false);
+    } else if (parameter.isAnnotationPresent(UserId.class)) {
+      return new MappedParameter(null, parameter.getType(), SourceType.AUTH, null, false);
     }
 
     return null;

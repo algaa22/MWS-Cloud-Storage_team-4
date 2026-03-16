@@ -36,15 +36,15 @@ public class RestHandlerInvoker {
     }
   }
 
-  public void invoke(ChannelHandlerContext ctx, Object dto) {
-    HandlerMethod target = handlerMethods.get(dto.getClass());
+  public void invoke(ChannelHandlerContext ctx, Object msg) {
+    HandlerMethod target = handlerMethods.get(msg.getClass());
 
     if (target == null) {
-      throw new HandlerNotFoundException(dto.getClass());
+      throw new HandlerNotFoundException(msg.getClass());
     }
 
     try {
-      target.method.invoke(target.handler, ctx, dto);
+      target.method.invoke(target.handler, ctx, msg);
     } catch (IllegalAccessException | InvocationTargetException e) {
       throw new HandlerMethodInvokeException(e);
     }

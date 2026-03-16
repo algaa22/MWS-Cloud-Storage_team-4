@@ -10,6 +10,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.ResumeChunkedUploa
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.UploadRetryResponse;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -60,7 +61,7 @@ public class ChunkedUploadController {
     try {
       fileService.uploadChunk(new UploadChunkDto(metadata.sessionId(), bytes));
     } catch (ProcessUploadRetriableException e) {
-      ctx.writeAndFlush(new UploadRetryResponse(e));
+      ResponseUtils.send(ctx, new UploadRetryResponse(e));
     }
   }
 
@@ -76,7 +77,7 @@ public class ChunkedUploadController {
       ctx.writeAndFlush(result);
       cleanup();
     } catch (CompleteUploadRetriableException e) {
-      ctx.writeAndFlush(new UploadRetryResponse(e));
+      ResponseUtils.send(ctx, new UploadRetryResponse(e));
     }
   }
 

@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.mapping.annotations;
+package com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,8 +7,8 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER, ElementType.FIELD})
-public @interface RequestBodyParam {
-  String value() default "";
+public @interface QueryParam {
+  String value();
 
   String defaultValue() default "";
 

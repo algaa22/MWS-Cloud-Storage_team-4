@@ -6,6 +6,7 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ReadFieldVal
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.WriteJsonBodyException;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.DtoMetadataCache;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.MappedParameter;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseStatus;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
@@ -37,6 +38,12 @@ public class DtoToResponseEncoder extends MessageToMessageEncoder<Object> {
         new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.buffer());
 
     Class<?> clazz = msg.getClass();
+    ResponseStatus statusAnn = clazz.getAnnotation(ResponseStatus.class);
+
+    if (statusAnn != null) {
+      response.setStatus(HttpResponseStatus.valueOf(statusAnn.value()));
+    }
+
     MappedParameter[] parameters = metadataCache.getParameters(clazz);
     Map<String, Object> bodyMap = new HashMap<>();
 

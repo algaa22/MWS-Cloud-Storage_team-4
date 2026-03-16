@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.user.dto.responses;
 
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.ResponseBodyParam;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseBodyParam;
 
 public record TariffPlanResponse(
     @ResponseBodyParam String name,

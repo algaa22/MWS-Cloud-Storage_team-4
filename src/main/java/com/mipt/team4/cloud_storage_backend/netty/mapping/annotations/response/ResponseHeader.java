@@ -5,10 +5,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Отправляет значение поля в заголовке HTTP-ответа.
+ *
+ * <p>Аналогично {@code RequestHeader}, поддерживает авто-генерацию имен (X-Kebab-Case).
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER, ElementType.FIELD})
 public @interface ResponseHeader {
-  String value();
+  String value() default "";
 
   String defaultValue() default "";
 }

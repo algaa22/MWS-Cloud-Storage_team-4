@@ -9,4 +9,4 @@ import java.util.UUID;
 
 @RequestMapping(method = "POST", path = ApiEndpoints.TARIFF_UPDATE_PAYMENT)
 public record UpdatePaymentMethodRequest(
-    @UserId UUID userId, @NotBlank @RequestHeader("X-Payment-Method-Id") String paymentMethodId) {}
+    @UserId UUID userId, @NotBlank @RequestHeader String paymentMethodId) {}

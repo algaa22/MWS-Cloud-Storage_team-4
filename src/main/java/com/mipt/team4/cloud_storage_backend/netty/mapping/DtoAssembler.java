@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.NotFullReque
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ParseJsonParamException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ReadJsonBodyException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.UnknownRequestSourceTypeException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.WrongParameterTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.user.auth.MissingAuthTokenException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
 import com.mipt.team4.cloud_storage_backend.netty.constants.SecurityAttributes;
@@ -59,7 +60,7 @@ public class DtoAssembler {
           switch (param.source()) {
             case QUERY -> parseQuery(queryDecoder, param);
             case HEADER -> parseHeader(request, param);
-            case AUTH -> getAuthAttribute(ctx);
+            case AUTH -> getAuthAttribute(ctx, param);
             case BODY_PARAM -> parseBodyParam(rootNode, param);
             case BODY -> parseBody(request, param);
             default ->
@@ -105,7 +106,11 @@ public class DtoAssembler {
         value, param.type(), param.defaultValue(), param.required(), param.mappedName());
   }
 
-  private Object getAuthAttribute(ChannelHandlerContext ctx) {
+  private Object getAuthAttribute(ChannelHandlerContext ctx, MappedParameter param) {
+    if (param.type() != UUID.class) {
+      throw new WrongParameterTypeException(param.name(), UUID.class, param.type());
+    }
+
     UUID userId = ctx.channel().attr(SecurityAttributes.USER_ID).get();
     if (userId == null) {
       throw new MissingAuthTokenException();
@@ -147,6 +152,10 @@ public class DtoAssembler {
       } else {
         return null;
       }
+    }
+
+    if (param.type() != byte[].class) {
+      throw new WrongParameterTypeException(param.name(), byte[].class, param.type());
     }
 
     ByteBuf data = fullRequest.content();

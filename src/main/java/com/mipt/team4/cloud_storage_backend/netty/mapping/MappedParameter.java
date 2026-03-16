@@ -9,6 +9,9 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.R
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseHeader;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseStatus;
 import java.lang.reflect.Parameter;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 public record MappedParameter(
     String name,
@@ -26,75 +29,129 @@ public record MappedParameter(
     STATUS
   }
 
-  public static MappedParameter from(Parameter parameter) { // TODO: duplicate
-    if (parameter.isAnnotationPresent(QueryParam.class)) {
-      QueryParam annotation = parameter.getAnnotation(QueryParam.class);
-      return new MappedParameter(
-          parameter.getName(),
-          !annotation.value().isBlank() ? annotation.value() : parameter.getName(),
-          parameter.getType(),
-          SourceType.QUERY,
-          annotation.defaultValue(),
-          annotation.required());
-    } else if (parameter.isAnnotationPresent(RequestHeader.class)) {
-      RequestHeader annotation = parameter.getAnnotation(RequestHeader.class);
-      return new MappedParameter(
-          parameter.getName(),
-          annotation.value(),
-          parameter.getType(),
-          SourceType.HEADER,
-          annotation.defaultValue(),
-          annotation.required());
-    } else if (parameter.isAnnotationPresent(RequestBodyParam.class)) {
-      RequestBodyParam annotation = parameter.getAnnotation(RequestBodyParam.class);
-      return new MappedParameter(
-          parameter.getName(),
-          !annotation.value().isBlank() ? annotation.value() : parameter.getName(),
-          parameter.getType(),
-          SourceType.BODY_PARAM,
-          annotation.defaultValue(),
-          annotation.required());
-    } else if (parameter.isAnnotationPresent(RequestBody.class)) {
-      RequestBody annotation = parameter.getAnnotation(RequestBody.class);
-      return new MappedParameter(
-          parameter.getName(),
-          !annotation.value().isBlank() ? annotation.value() : parameter.getName(),
-          parameter.getType(),
-          SourceType.BODY,
-          null,
-          annotation.required());
-    } else if (parameter.isAnnotationPresent(ResponseHeader.class)) {
-      ResponseHeader annotation = parameter.getAnnotation(ResponseHeader.class);
-      return new MappedParameter(
-          parameter.getName(),
-          annotation.value(), // TODO: автомат. преобразование имени параметра в name
-          parameter.getType(),
-          SourceType.HEADER,
-          annotation.defaultValue(),
-          false);
-    } else if (parameter.isAnnotationPresent(ResponseBodyParam.class)) {
-      ResponseBodyParam annotation = parameter.getAnnotation(ResponseBodyParam.class);
-      return new MappedParameter(
-          parameter.getName(),
-          !annotation.value().isBlank() ? annotation.value() : parameter.getName(),
-          parameter.getType(),
-          SourceType.BODY_PARAM,
-          annotation.defaultValue(),
-          false);
-    } else if (parameter.isAnnotationPresent(UserId.class)) {
-      return new MappedParameter(
-          parameter.getName(), null, parameter.getType(), SourceType.AUTH, null, false);
-    } else if (parameter.isAnnotationPresent(ResponseStatus.class)) {
-      ResponseStatus annotation = parameter.getAnnotation(ResponseStatus.class);
-      return new MappedParameter(
-          parameter.getName(),
-          String.valueOf(annotation.value()),
-          parameter.getType(),
-          SourceType.STATUS,
-          null,
-          false);
+  public static MappedParameter from(Parameter parameter) {
+    return Stream.<Function<Parameter, Optional<MappedParameter>>>of(
+            MappedParameter::tryQueryParam,
+            MappedParameter::tryRequestHeader,
+            MappedParameter::tryRequestBodyParam,
+            MappedParameter::tryResponseBody,
+            MappedParameter::tryResponseHeader,
+            MappedParameter::tryResponseBodyParam,
+            MappedParameter::tryResponseStatus,
+            MappedParameter::tryUserId)
+        .map(func -> func.apply(parameter))
+        .flatMap(Optional::stream)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private static Optional<MappedParameter> tryQueryParam(Parameter p) {
+    return Optional.ofNullable(p.getAnnotation(QueryParam.class))
+        .map(a -> create(p, a.value(), SourceType.QUERY, a.defaultValue(), a.required()));
+  }
+
+  private static Optional<MappedParameter> tryRequestHeader(Parameter parameter) {
+    return Optional.ofNullable(parameter.getAnnotation(RequestHeader.class))
+        .map(
+            annotation ->
+                create(
+                    parameter,
+                    annotation.value().isEmpty()
+                        ? toHttpHeaderName(parameter.getName())
+                        : annotation.value(),
+                    SourceType.HEADER,
+                    annotation.defaultValue(),
+                    annotation.required()));
+  }
+
+  private static Optional<MappedParameter> tryRequestBodyParam(Parameter parameter) {
+    return Optional.ofNullable(parameter.getAnnotation(RequestBodyParam.class))
+        .map(
+            annotation ->
+                create(
+                    parameter,
+                    annotation.value(),
+                    SourceType.BODY_PARAM,
+                    annotation.defaultValue(),
+                    annotation.required()));
+  }
+
+  private static Optional<MappedParameter> tryResponseBodyParam(Parameter parameter) {
+    return Optional.ofNullable(parameter.getAnnotation(ResponseBodyParam.class))
+        .map(
+            annotation ->
+                create(
+                    parameter,
+                    annotation.value(),
+                    SourceType.BODY_PARAM,
+                    annotation.defaultValue(),
+                    true));
+  }
+
+  private static Optional<MappedParameter> tryResponseBody(Parameter parameter) {
+    return Optional.ofNullable(parameter.getAnnotation(RequestBody.class))
+        .map(annotation -> create(parameter, null, SourceType.BODY, null, annotation.required()));
+  }
+
+  private static Optional<MappedParameter> tryUserId(Parameter parameter) {
+    return Optional.ofNullable(parameter.getAnnotation(UserId.class))
+        .map(a -> create(parameter, null, SourceType.AUTH, null, true));
+  }
+
+  private static Optional<MappedParameter> tryResponseHeader(Parameter parameter) {
+    return Optional.ofNullable(parameter.getAnnotation(ResponseHeader.class))
+        .map(
+            annotation ->
+                create(
+                    parameter,
+                    annotation.value().isEmpty()
+                        ? toHttpHeaderName(parameter.getName())
+                        : annotation.value(),
+                    SourceType.HEADER,
+                    annotation.defaultValue(),
+                    false));
+  }
+
+  private static Optional<MappedParameter> tryResponseStatus(Parameter parameter) {
+    return Optional.ofNullable(parameter.getAnnotation(ResponseStatus.class))
+        .map(annotation -> create(parameter, null, SourceType.STATUS, null, false));
+  }
+
+  private static MappedParameter create(
+      Parameter parameter,
+      String mappedName,
+      SourceType source,
+      String defaultValue,
+      boolean required) {
+    return new MappedParameter(
+        parameter.getName(),
+        (mappedName == null || mappedName.isBlank()) ? parameter.getName() : mappedName,
+        parameter.getType(),
+        source,
+        defaultValue,
+        required);
+  }
+
+  /**
+   * Превращает camelCase в X-Kebab-Case.
+   *
+   * <p>Пример: fileSize -> X-File-Size
+   */
+  private static String toHttpHeaderName(String fieldName) {
+    StringBuilder result = new StringBuilder("X-");
+
+    for (int i = 0; i < fieldName.length(); i++) {
+      char c = fieldName.charAt(i);
+
+      if (Character.isUpperCase(c)) {
+        result.append("-").append(c);
+      } else if (i == 0) {
+        result.append(Character.toUpperCase(c));
+      } else {
+        result.append(c);
+      }
     }
 
-    return null;
+    return result.toString();
   }
 }

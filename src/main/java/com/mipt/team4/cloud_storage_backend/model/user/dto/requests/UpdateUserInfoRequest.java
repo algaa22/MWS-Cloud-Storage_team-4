@@ -9,10 +9,10 @@ import java.util.UUID;
 
 public record UpdateUserInfoRequest(
     @UserId UUID userId,
-    @RequestHeader(value = "X-Old-Password", required = false) String oldPassword,
+    @RequestHeader(required = false) String oldPassword,
     @Pattern(
             regexp = ValidationPatterns.PASSWORD_REGEXP,
             message = ValidationPatterns.PASSWORD_ERROR)
-        @RequestHeader(value = "X-New-Password", required = false)
+        @RequestHeader(required = false)
         String newPassword,
     @QueryParam(required = false) String newName) {}

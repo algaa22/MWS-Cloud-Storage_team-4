@@ -8,5 +8,4 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 @RequestMapping(method = "POST", path = ApiEndpoints.AUTH_LOGOUT)
-public record LogoutRequest(
-    @NotNull @RequestHeader("X-Auth-Token") String authToken, @UserId UUID userId) {}
+public record LogoutRequest(@NotNull @RequestHeader String authToken, @UserId UUID userId) {}

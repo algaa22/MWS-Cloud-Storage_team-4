@@ -22,11 +22,11 @@ public record ChangeFileMetadataRequest(
         @QueryParam(required = false)
         String newName,
     @QueryParam(required = false) UUID newParentId,
-    @RequestHeader(value = "X-File-New-Visibility", required = false) FileVisibility visibility,
+    @RequestHeader(value = "X-File-New-Visibility", required = false) FileVisibility newVisibility,
     @RequestHeader(value = "X-File-New-Tags", required = false)
         List<
                 @Pattern(
                     regexp = ValidationPatterns.SINGLE_TAG_REGEXP,
                     message = ValidationPatterns.SINGLE_TAG_ERROR)
                 String>
-            tags) {}
+            newTags) {}

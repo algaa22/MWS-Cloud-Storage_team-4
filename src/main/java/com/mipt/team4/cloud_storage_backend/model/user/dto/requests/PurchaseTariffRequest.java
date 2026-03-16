@@ -19,7 +19,7 @@ public record PurchaseTariffRequest(
         @Pattern(
             regexp = ValidationPatterns.PAYMENT_TOKEN_REGEXP,
             message = ValidationPatterns.PAYMENT_TOKEN_ERROR)
-        @RequestHeader("X-Payment-Token")
+        @RequestHeader
         String paymentToken,
     @QueryParam(defaultValue = "true") boolean autoRenew,
-    @RequestHeader(value = "X-Payment-Method", defaultValue = "card") String paymentMethod) {}
+    @RequestHeader(defaultValue = "card") String paymentMethod) {}

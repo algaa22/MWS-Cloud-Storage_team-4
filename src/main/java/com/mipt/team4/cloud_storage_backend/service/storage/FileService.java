@@ -99,7 +99,7 @@ public class FileService {
                 .parentId(parentId)
                 .name(name)
                 .isDirectory(false)
-                .tags(request.tags())
+                .tags(request.fileTags())
                 .status(FileStatus.READY)
                 .updatedAt(LocalDateTime.now())
                 .build()));
@@ -329,8 +329,8 @@ public class FileService {
 
     if (request.newName() != null) fileEntity.setName(request.newName());
     if (request.newParentId() != null) fileEntity.setParentId(request.newParentId());
-    if (request.tags() != null) fileEntity.setTags(request.tags());
-    if (request.visibility() != null) fileEntity.setVisibility(request.visibility().name());
+    if (request.newTags() != null) fileEntity.setTags(request.newTags());
+    if (request.newVisibility() != null) fileEntity.setVisibility(request.newVisibility().name());
   }
 
   private void uploadPart(ChunkedUploadSession uploadState) {

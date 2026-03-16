@@ -5,10 +5,13 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Указывает, что всё тело HTTP-запроса должно быть передано в этот параметр.
+ *
+ * <p>Используется только для параметров типа {@code byte[]}.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 public @interface RequestBody {
-  String value() default "";
-
   boolean required() default true;
 }

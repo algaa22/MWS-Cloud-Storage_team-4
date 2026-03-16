@@ -41,8 +41,8 @@ public class PipelineBuilder {
     pipeline.addLast(PipelineHandlerNames.GLOBAL_VALIDATION, globalValidationHandler);
     pipeline.addLast(PipelineHandlerNames.TRAFFIC_STRATEGY_SELECTOR, strategySelectors.getObject());
 
-    pipeline.addLast(PipelineHandlerNames.DTO_TO_RESPONSE, dtoToResponseEncoder);
     pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, storageExceptionHandlers);
+    pipeline.addLast(PipelineHandlerNames.DTO_TO_RESPONSE, dtoToResponseEncoder);
     pipeline.addLast(PipelineHandlerNames.GLOBAL_ERROR, globalErrorHandlers);
     pipeline.addLast(PipelineHandlerNames.IDLE_TIMEOUT, idleTimeoutHandlers);
   }

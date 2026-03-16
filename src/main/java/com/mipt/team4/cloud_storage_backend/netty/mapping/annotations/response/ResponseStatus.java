@@ -6,7 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
+@Target({ElementType.TYPE, ElementType.PARAMETER, ElementType.FIELD})
 public @interface ResponseStatus {
   int value() default 200;
+
+  int defaultValue() default 200;
 }

@@ -6,6 +6,7 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Re
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.UserId;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseBodyParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseHeader;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseStatus;
 import java.lang.reflect.Parameter;
 
 public record MappedParameter(
@@ -61,6 +62,8 @@ public record MappedParameter(
           false);
     } else if (parameter.isAnnotationPresent(UserId.class)) {
       return new MappedParameter(null, parameter.getType(), SourceType.AUTH, null, false);
+    } else if (parameter.isAnnotationPresent(ResponseStatus.class)) {
+      return new MappedParameter(null, parameter.getType(), SourceType.STATUS, null, false);
     }
 
     return null;

@@ -74,7 +74,7 @@ public class ChunkedUploadController {
 
     try {
       ChunkedUploadFileResult result = fileService.completeChunkedUpload(metadata.sessionId());
-      ctx.writeAndFlush(result);
+      ResponseUtils.send(ctx, result);
       cleanup();
     } catch (CompleteUploadRetriableException e) {
       ResponseUtils.send(ctx, new UploadRetryResponse(e));

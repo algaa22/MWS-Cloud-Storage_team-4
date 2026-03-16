@@ -10,7 +10,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
-import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -21,15 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class DirectoryService {
-  private final UserSessionService userSessionService;
   private final StorageRepository storageRepository;
   private final StorageJpaRepositoryAdapter metadataRepository;
   private final UserJpaRepositoryAdapter userRepository;
 
   @Transactional
   public UUID createDirectory(CreateDirectoryRequest request) {
-    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
-    UUID parentId = request.parentId().map(UUID::fromString).orElse(null);
+    UUID userId = request.userId();
+    UUID parentId = request.parentId();
     String name = request.name();
 
     if (storageRepository.exists(userId, parentId, name)) {
@@ -58,8 +56,8 @@ public class DirectoryService {
   @Transactional
   public void renameDirectory(UpdateDirectoryRequest request) {
     String newName = request.newName();
-    UUID directoryId = UUID.fromString(request.directoryId());
-    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+    UUID directoryId = request.directoryId();
+    UUID userId = request.userId();
 
     StorageEntity dirEntity = getDirectoryOrThrow(userId, directoryId);
 
@@ -73,9 +71,9 @@ public class DirectoryService {
 
   @Transactional
   public void moveDirectory(UpdateDirectoryRequest request) {
-    UUID newParentId = UUID.fromString(request.newParentId());
-    UUID directoryId = UUID.fromString(request.directoryId());
-    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+    UUID newParentId = request.newParentId();
+    UUID directoryId = request.directoryId();
+    UUID userId = request.userId();
 
     StorageEntity dir = getDirectoryOrThrow(userId, directoryId);
 
@@ -96,8 +94,8 @@ public class DirectoryService {
 
   @Transactional
   public void deleteDirectory(DeleteDirectoryRequest request) {
-    UUID directoryId = UUID.fromString(request.directoryId());
-    UUID userId = userSessionService.extractUserIdFromToken(request.userToken());
+    UUID directoryId = request.directoryId();
+    UUID userId = request.userId();
 
     StorageEntity directoryEntity = getDirectoryOrThrow(userId, directoryId);
     long freedSize = metadataRepository.calculateTotalSizeOfTree(directoryId);

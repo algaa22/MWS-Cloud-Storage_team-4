@@ -30,23 +30,20 @@ public class PaymentService {
   }
 
   public void autoRenewTariff(UUID userId) {
-    log.info("Starting auto-renew for user: {}", userId);
+    UserEntity userEntity =
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
-    UserEntity user =
-        userRepository
-            .getUserById(userId)
-            .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
-    if (!user.isAutoRenew()) {
+    if (!userEntity.isAutoRenew()) {
       log.info("Auto-renew is disabled for user: {}", userId);
       return;
     }
 
-    String paymentMethodId = user.getPaymentMethodId();
+    String paymentMethodId = userEntity.getPaymentMethodId();
     if (paymentMethodId == null || paymentMethodId.isBlank()) {
       throw new PaymentMethodNotFoundException(userId);
     }
 
-    TariffPlan currentPlan = user.getTariffPlan();
+    TariffPlan currentPlan = userEntity.getTariffPlan();
     if (currentPlan == null || currentPlan == TariffPlan.TRIAL) {
       throw new IllegalTariffStateException(userId, currentPlan);
     }

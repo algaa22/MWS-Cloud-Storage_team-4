@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.CreateDtoInstanceException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ParseJsonParamException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ReadJsonBodyException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.UnknownRequestSourceTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.user.auth.MissingAuthTokenException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
 import com.mipt.team4.cloud_storage_backend.netty.constants.SecurityAttributes;
@@ -57,6 +58,7 @@ public class DtoAssembler {
             case HEADER -> parseHeader(request, param);
             case AUTH -> getAuthAttribute(ctx);
             case BODY -> parseBodyParam(rootNode, param);
+            default -> throw new UnknownRequestSourceTypeException(param.name(), param.source());
           };
     }
 

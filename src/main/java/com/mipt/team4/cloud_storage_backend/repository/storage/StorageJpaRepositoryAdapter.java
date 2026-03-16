@@ -94,7 +94,7 @@ public class StorageJpaRepositoryAdapter {
       sql.append(" AND status = 'READY'");
     }
 
-    if (filter.tags().isPresent()) {
+    if (filter.tags() != null) {
       sql.append(" AND tags = :tags");
     }
 
@@ -104,8 +104,8 @@ public class StorageJpaRepositoryAdapter {
     query.setParameter("userId", filter.userId());
     query.setParameter("parentId", filter.parentId());
 
-    if (filter.tags().isPresent()) {
-      query.setParameter("tags", filter.tags().get());
+    if (filter.tags() != null) {
+      query.setParameter("tags", filter.tags());
     }
 
     return query.getResultList();

@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.service.user;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
+import com.mipt.team4.cloud_storage_backend.exception.user.MissingOldPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
@@ -39,15 +40,9 @@ public class UserService {
 
   @Transactional(readOnly = true)
   public UserInfoResponse getUserInfo(UserInfoRequest request) {
-    String token = request.token();
-    UUID userId = userSessionService.extractUserIdFromToken(token);
-    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-
-    if (userOpt.isEmpty()) {
-      throw new UserNotFoundException(token);
-    }
-
-    UserEntity userEntity = userOpt.get();
+    UUID userId = request.userId();
+    UserEntity userEntity =
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
     return new UserInfoResponse(
         null,
@@ -69,7 +64,7 @@ public class UserService {
     String hash = passwordHasher.hash(request.password());
     UserEntity userEntity =
         UserEntity.builder()
-            .username(request.userName())
+            .username(request.username())
             .email(request.email())
             .passwordHash(hash)
             .storageLimit(storageConfig.quotas().defaultStorageLimit())
@@ -87,35 +82,24 @@ public class UserService {
 
   @Transactional
   public TokenPairResponse loginUser(LoginRequest request) {
-    Optional<UserEntity> userOpt = userRepository.getUserByEmail(request.email());
-    if (userOpt.isEmpty()) {
-      throw new InvalidEmailOrPassword();
-    }
+    UserEntity userEntity =
+        userRepository.getUserByEmail(request.email()).orElseThrow(InvalidEmailOrPassword::new);
 
-    UserEntity user = userOpt.get();
-    if (!passwordHasher.verify(request.password(), user.getPasswordHash())) {
+    if (!passwordHasher.verify(request.password(), userEntity.getPasswordHash())) {
       throw new WrongPasswordException();
     }
 
-    Optional<SessionDto> session = userSessionService.findSessionByEmail(user.getEmail());
-    SessionDto usedSession = session.orElseGet(() -> userSessionService.createSession(user));
-    RefreshTokenDto refreshToken = refreshTokenService.create(user.getId());
+    Optional<SessionDto> session = userSessionService.findSessionByEmail(userEntity.getEmail());
+    SessionDto usedSession = session.orElseGet(() -> userSessionService.createSession(userEntity));
+    RefreshTokenDto refreshToken = refreshTokenService.create(userEntity.getId());
 
     return new TokenPairResponse(usedSession.token(), refreshToken.token());
   }
 
   @Transactional
   public void logoutUser(LogoutRequest request) {
-    String token = request.token();
-
-    if (userSessionService.tokenExists(token)) {
-      UUID userId = userSessionService.extractUserIdFromToken(token);
-
-      refreshTokenService.revokeAllForUser(userId);
-      userSessionService.blacklistToken(token);
-    } else {
-      throw new UserNotFoundException(token);
-    }
+    refreshTokenService.revokeAllForUser(request.userId());
+    userSessionService.blacklistToken(request.authToken());
   }
 
   @Transactional()
@@ -148,26 +132,24 @@ public class UserService {
 
   @Transactional
   public void updateUserInfo(UpdateUserInfoRequest request) {
-    UUID id = userSessionService.extractUserIdFromToken(request.userToken());
-    Optional<UserEntity> userOpt = userRepository.getUserById(id);
-    UserEntity entity = userOpt.orElseThrow(() -> new UserNotFoundException(request.userToken()));
+    UserEntity userEntity =
+        userRepository
+            .getUserById(request.userId())
+            .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
-    if (request.oldPassword().isPresent()) {
-      String oldPassword = request.oldPassword().get();
-      String currentPasswordHash = entity.getPasswordHash();
-
-      if (!passwordHasher.verify(oldPassword, currentPasswordHash)) {
+    if (request.newPassword() != null) {
+      if (request.oldPassword() == null) {
+        throw new MissingOldPasswordException();
+      } else if (!passwordHasher.verify(request.oldPassword(), userEntity.getPasswordHash())) {
         throw new WrongPasswordException();
       }
+
+      String newPasswordHash = passwordHasher.hash(request.newPassword());
+      userEntity.setPasswordHash(newPasswordHash);
     }
 
-    if (request.newPassword().isPresent()) {
-      String newPasswordHash = passwordHasher.hash(request.newPassword().get());
-      entity.setPasswordHash(newPasswordHash);
-    }
-
-    if (request.newName().isPresent()) {
-      entity.setUsername(request.newName().get());
+    if (request.newUsername() != null) {
+      userEntity.setUsername(request.newUsername());
     }
   }
 }

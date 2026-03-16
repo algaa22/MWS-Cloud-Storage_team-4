@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
-import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.SessionDto;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.service.user.security.AccessTokenService;
@@ -98,19 +97,6 @@ public class UserSessionService {
       }
     }
     return Optional.empty();
-  }
-
-  public UUID extractUserIdFromToken(String token) {
-    if (isBlacklisted(token) || isSessionExpired(token)) {
-      throw new UserNotFoundException(token);
-    }
-
-    Optional<SessionDto> userSession = getSession(token);
-    if (userSession.isEmpty()) {
-      throw new UserNotFoundException(token);
-    }
-
-    return userSession.get().userId();
   }
 
   public void revokeAllUserSessions(UUID userId) {

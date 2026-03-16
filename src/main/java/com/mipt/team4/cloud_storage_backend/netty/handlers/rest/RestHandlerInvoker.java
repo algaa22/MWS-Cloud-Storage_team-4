@@ -6,20 +6,25 @@ import io.netty.channel.ChannelHandlerContext;
 import jakarta.annotation.PostConstruct;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
 import org.springframework.aop.support.AopUtils;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 
 @Component
+@RequiredArgsConstructor
 public class RestHandlerInvoker {
   private final Map<Class<?>, HandlerMethod> handlerMethods = new ConcurrentHashMap<>();
+  private final ApplicationContext applicationContext;
 
   @PostConstruct
-  public void init(List<Object> beans) {
-    for (Object bean : beans) {
+  public void init() {
+    Map<String, Object> controllers = applicationContext.getBeansWithAnnotation(Controller.class);
+
+    for (Object bean : controllers.values()) {
       Class<?> beanClass = AopUtils.getTargetClass(bean);
 
       if (!beanClass.isAnnotationPresent(Controller.class)) {

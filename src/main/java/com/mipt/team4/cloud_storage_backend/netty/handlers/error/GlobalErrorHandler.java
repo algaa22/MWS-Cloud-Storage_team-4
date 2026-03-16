@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Sharable
 @Slf4j
-public class FinalErrorHandler extends ChannelDuplexHandler {
+public class GlobalErrorHandler extends ChannelDuplexHandler {
   private static final AttributeKey<Boolean> IGNORABLE_ERROR_LOGGED =
       AttributeKey.valueOf("ignorable_error_logged");
 
@@ -30,14 +30,17 @@ public class FinalErrorHandler extends ChannelDuplexHandler {
       "{\"success\":false,\"message\":\"Internal Server Error\"}";
 
   @Override
-  public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-    ResponseUtils.write(ctx, msg)
-        .addListener(
+  public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
+      throws Exception {
+    super.write(
+        ctx,
+        msg,
+        promise.addListener(
             future -> {
               if (!future.isSuccess()) {
                 exceptionCaught(ctx, future.cause());
               }
-            });
+            }));
   }
 
   @Override

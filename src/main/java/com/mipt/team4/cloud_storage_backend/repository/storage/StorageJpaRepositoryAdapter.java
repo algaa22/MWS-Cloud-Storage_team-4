@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
-import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import com.mipt.team4.cloud_storage_backend.utils.StringListConverter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.time.LocalDateTime;
@@ -24,7 +24,7 @@ public class StorageJpaRepositoryAdapter {
   public void addFile(StorageEntity fileEntity) {
     if (fileEntity.getId() == null) fileEntity.setId(UUID.randomUUID());
 
-    String tagsStr = FileTagsMapper.toString(fileEntity.getTags());
+    String tagsStr = StringListConverter.toString(fileEntity.getTags());
     jpaRepository.upsertFile(fileEntity, tagsStr);
   }
 

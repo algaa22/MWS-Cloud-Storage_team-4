@@ -1,8 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedDownloadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileDownloadResponse;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import io.netty.channel.ChannelFutureListener;
@@ -24,7 +24,7 @@ public class ChunkedDownloadController {
   private final FileService fileService;
 
   public void download(ChannelHandlerContext ctx, StartChunkedDownloadRequest request) {
-    FileDownloadResponse file = fileService.downloadFile(request);
+    FileDownloadInfoDto file = fileService.downloadFile(request);
 
     HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, file.size());
@@ -34,7 +34,7 @@ public class ChunkedDownloadController {
             HttpHeaderNames.CONTENT_TYPE,
             file.mimeType() != null ? file.mimeType() : "application/octet-stream");
 
-    ctx.write(response);
+    ResponseUtils.write(ctx, response);
 
     CustomChunkedInput input =
         inputProvider.getObject(

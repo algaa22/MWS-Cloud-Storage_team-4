@@ -2,11 +2,10 @@ package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
 import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferAlreadyStartedException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TransferNotStartedYetException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadNotStoppedException;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResult;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ResumeChunkedUploadDto;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectChunkedUploadStateException;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadInfoDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ResumeChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.UploadRetryResponse;
@@ -28,30 +27,28 @@ import org.springframework.stereotype.Controller;
 public class ChunkedUploadController {
   private final FileService fileService;
 
-  private StartChunkedUploadRequest metadata;
-  private boolean isInProgress = false;
+  private ChunkedUploadInfoDto uploadInfo;
+  private State state = State.IDLE;
 
   public void start(ChannelHandlerContext ctx, StartChunkedUploadRequest request) {
-    if (isInProgress) {
-      throw new TransferAlreadyStartedException();
+    if (state != State.IDLE) {
+      throw new IncorrectChunkedUploadStateException(State.IDLE, state);
     }
 
-    fileService.startChunkedUpload(request);
-
-    isInProgress = true;
-    metadata = request;
+    uploadInfo = fileService.startChunkedUpload(request);
+    state = State.PROCESSING;
   }
 
-  public void resume(ChannelHandlerContext ctx, ResumeChunkedUploadDto request) {
-    if (isInProgress) {
-      throw new UploadNotStoppedException();
+  public void resume(ChannelHandlerContext ctx, ResumeChunkedUploadRequest request) {
+    if (state != State.STOPPED) {
+      throw new IncorrectChunkedUploadStateException(State.STOPPED, state);
     }
 
-    fileService.resumeChunkedUploadSession(request);
-    isInProgress = true;
+    fileService.resumeChunkedUploadSession(uploadInfo);
+    state = State.PROCESSING;
   }
 
-  @RequestMapping(method = "POST", path = ApiEndpoints.FILES_UPLOAD)
+  @RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
   public void handleContent(ChannelHandlerContext ctx, HttpContent content) {
     if (content instanceof LastHttpContent lastContent) {
       complete(ctx, lastContent);
@@ -62,8 +59,8 @@ public class ChunkedUploadController {
   }
 
   private void handleChunk(ChannelHandlerContext ctx, HttpContent content) {
-    if (!isInProgress) {
-      throw new TransferNotStartedYetException();
+    if (state != State.PROCESSING) {
+      throw new IncorrectChunkedUploadStateException(State.PROCESSING, state);
     }
 
     ByteBuf data = content.content();
@@ -71,30 +68,36 @@ public class ChunkedUploadController {
     data.readBytes(bytes);
 
     try {
-      fileService.uploadChunk(new UploadChunkDto(metadata.sessionId(), bytes));
+      fileService.uploadChunk(new UploadChunkDto(uploadInfo.sessionId(), bytes));
     } catch (ProcessUploadRetriableException e) {
       ResponseUtils.send(ctx, new UploadRetryResponse(e));
+      state = State.STOPPED;
     }
   }
 
   public void complete(ChannelHandlerContext ctx, LastHttpContent content) {
-    if (!isInProgress) throw new TransferNotStartedYetException();
+    if (state != State.PROCESSING) {
+      throw new IncorrectChunkedUploadStateException(State.PROCESSING, state);
+    }
 
     if (content.content().readableBytes() > 0) {
       handleChunk(ctx, content);
     }
 
     try {
-      ChunkedUploadFileResult result = fileService.completeChunkedUpload(metadata.sessionId());
+      ChunkedUploadFileResponse result = fileService.completeChunkedUpload(uploadInfo);
       ResponseUtils.send(ctx, result);
-      cleanup();
+      state = State.COMPLETED;
     } catch (CompleteUploadRetriableException e) {
       ResponseUtils.send(ctx, new UploadRetryResponse(e));
+      state = State.STOPPED;
     }
   }
 
-  public void cleanup() {
-    isInProgress = false;
-    metadata = null;
+  public enum State {
+    IDLE,
+    PROCESSING,
+    STOPPED,
+    COMPLETED
   }
 }

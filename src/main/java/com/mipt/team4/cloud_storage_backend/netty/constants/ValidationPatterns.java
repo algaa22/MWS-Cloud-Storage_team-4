@@ -11,9 +11,11 @@ public class ValidationPatterns {
   public static final String EMAIL_REGEXP = "^[A-Za-z0-9+_.-]+@(.+)$";
   public static final String EMAIL_ERROR = "Invalid email format";
 
-  public static final String PASSWORD_REGEXP = "^(?=.*[0-9])(?=.*[a-zA-Z]).{8,}$";
+  public static final String PASSWORD_REGEXP =
+      "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!_\\-]).{8,64}$";
   public static final String PASSWORD_ERROR =
-      "Password must be at least 8 characters long and contain both letters and numbers";
+      "Password must be between 8 and 64 characters long and include uppercase and lowercase letters, "
+          + "digits, and special characters (@#$%^&+=!_-)";
 
   public static final String PAYMENT_TOKEN_REGEXP = "^[a-zA-Z0-9_.-]+$";
   public static final String PAYMENT_TOKEN_ERROR =

@@ -5,6 +5,6 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class MissingRequiredParamException extends BaseStorageException {
   public MissingRequiredParamException(String name) {
-    super("Required parameter " + name + " is missing", HttpResponseStatus.BAD_REQUEST);
+    super("Missing required parameter: " + name, HttpResponseStatus.BAD_REQUEST);
   }
 }

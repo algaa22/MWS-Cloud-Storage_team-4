@@ -15,4 +15,4 @@ public record UpdateUserInfoRequest(
             message = ValidationPatterns.PASSWORD_ERROR)
         @RequestHeader(value = "X-New-Password", required = false)
         String newPassword,
-    @QueryParam(value = "newName", required = false) String newUsername) {}
+    @QueryParam(required = false) String newName) {}

@@ -3,7 +3,10 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.validation.GlobalValidationHandler;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.codec.RequestToDtoDecoder;
 import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.channel.ChannelHandler;
@@ -55,6 +58,8 @@ import org.springframework.stereotype.Component;
 public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   private final ObjectProvider<ChunkedHttpHandler> chunkedHttpHandlers;
   private final AggregatedHttpHandler aggregatedHttpHandlerProvider;
+  private final GlobalValidationHandler globalValidationHandler;
+  private final RequestToDtoDecoder requestToDtoDecoder;
   private final StorageConfig storageConfig;
 
   private PipelineType previousPipeline = null;
@@ -107,6 +112,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
 
     if (currentPipeline == PipelineType.CHUNKED) {
       addHandlerToPipeline(pipeline, PipelineHandlerNames.CHUNKED_WRITE, new ChunkedWriteHandler());
+      addInitialRestHandlers(pipeline);
       addHandlerToPipeline(
           pipeline, PipelineHandlerNames.CHUNKED_HTTP, chunkedHttpHandlers.getObject());
     } else {
@@ -114,9 +120,15 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
           pipeline,
           PipelineHandlerNames.HTTP_OBJECT_AGGREGATOR,
           new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
+      addInitialRestHandlers(pipeline);
       addHandlerToPipeline(
           pipeline, PipelineHandlerNames.AGGREGATED_HTTP, aggregatedHttpHandlerProvider);
     }
+  }
+
+  private void addInitialRestHandlers(ChannelPipeline pipeline) {
+    addHandlerToPipeline(pipeline, PipelineHandlerNames.REQUEST_TO_DTO, requestToDtoDecoder);
+    addHandlerToPipeline(pipeline, PipelineHandlerNames.GLOBAL_VALIDATION, globalValidationHandler);
   }
 
   private void addHandlerToPipeline(ChannelPipeline pipeline, String name, ChannelHandler handler) {
@@ -145,7 +157,9 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
         }
       }
 
-      if (request.method() == HttpMethod.GET && request.uri().startsWith("/api/files/download")) {
+      if (request.uri().startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD)
+          || request.uri().startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD_RESUME)
+          || request.uri().startsWith(ApiEndpoints.FILES_DOWNLOAD)) {
         return CHUNKED;
       }
 

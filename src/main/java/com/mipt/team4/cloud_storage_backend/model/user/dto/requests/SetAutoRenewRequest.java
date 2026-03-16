@@ -8,4 +8,4 @@ import java.util.UUID;
 
 @RequestMapping(method = "POST", path = ApiEndpoints.TARIFF_SET_AUTO_RENEW)
 public record SetAutoRenewRequest(
-    @UserId UUID userId, @QueryParam(value = "enabled", defaultValue = "true") boolean enabled) {}
+    @UserId UUID userId, @QueryParam(defaultValue = "true") boolean enabled) {}

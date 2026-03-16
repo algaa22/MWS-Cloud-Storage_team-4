@@ -1,13 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
 import com.mipt.team4.cloud_storage_backend.exception.transfer.CombineChunksToPartException;
-import com.mipt.team4.cloud_storage_backend.service.storage.ChunkedUploadState;
+import com.mipt.team4.cloud_storage_backend.service.storage.ChunkedUploadSession;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class ChunkCombiner {
 
-  public static byte[] combineChunksToPart(ChunkedUploadState uploadState) {
+  public static byte[] combineChunksToPart(ChunkedUploadSession uploadState) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       for (byte[] chunk : uploadState.getChunks()) {
         outputStream.write(chunk);

@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.RouteRegistry;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.RoutedMessage;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -27,7 +26,6 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
 
   private final BlockingQueue<Object> httpObjectsQueue = new LinkedBlockingQueue<>();
   private final RestHandlerInvoker handlerInvoker;
-  private final RouteRegistry routeRegistry;
 
   private boolean threadStarted = false;
   private String currentMethod;

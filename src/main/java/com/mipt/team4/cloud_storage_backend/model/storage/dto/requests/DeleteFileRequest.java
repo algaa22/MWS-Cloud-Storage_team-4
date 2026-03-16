@@ -10,5 +10,5 @@ import java.util.UUID;
 @RequestMapping(method = "DELETE", path = ApiEndpoints.FILES_PREFIX) // Путь /api/files/
 public record DeleteFileRequest(
     @UserId UUID userId,
-    @QueryParam(value = "permanent", defaultValue = "false") boolean permanent,
-    @NotNull @QueryParam("id") UUID fileId) {}
+    @QueryParam(defaultValue = "false") boolean permanent,
+    @NotNull @QueryParam UUID id) {}

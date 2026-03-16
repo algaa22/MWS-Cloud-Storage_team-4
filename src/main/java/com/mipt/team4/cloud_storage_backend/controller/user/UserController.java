@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.UserInfoRes
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.user.UserService;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
@@ -16,12 +17,18 @@ public class UserController {
   private final UserService userService;
 
   public void register(ChannelHandlerContext ctx, RegisterRequest request) {
-    TokenPairResponse tokens = userService.registerUser(request);
+    TokenPairResponse tokens =
+        new TokenPairResponse(
+            HttpResponseStatus.CREATED,
+            "Successfully registered",
+            userService.registerUser(request));
     ResponseUtils.send(ctx, tokens);
   }
 
   public void login(ChannelHandlerContext ctx, LoginRequest request) {
-    TokenPairResponse tokens = userService.loginUser(request);
+    TokenPairResponse tokens =
+        new TokenPairResponse(
+            HttpResponseStatus.OK, "Successfully signed in", userService.loginUser(request));
     ResponseUtils.send(ctx, tokens);
   }
 
@@ -41,7 +48,11 @@ public class UserController {
   }
 
   public void refreshToken(ChannelHandlerContext ctx, RefreshTokenRequest request) {
-    TokenPairResponse tokens = userService.refreshTokens(request);
+    TokenPairResponse tokens =
+        new TokenPairResponse(
+            HttpResponseStatus.OK,
+            "Tokens were successfully refreshed",
+            userService.refreshTokens(request));
     ResponseUtils.send(ctx, tokens);
   }
 }

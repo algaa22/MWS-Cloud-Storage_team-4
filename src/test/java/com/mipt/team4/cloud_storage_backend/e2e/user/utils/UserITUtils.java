@@ -78,6 +78,6 @@ public class UserITUtils {
 
   public String extractAccessToken(HttpResponse<String> response) throws IOException {
     JsonNode root = itUtils.getRootNodeFromResponse(response);
-    return root.get("AccessToken").asText();
+    return root.get("accessToken").asText();
   }
 }

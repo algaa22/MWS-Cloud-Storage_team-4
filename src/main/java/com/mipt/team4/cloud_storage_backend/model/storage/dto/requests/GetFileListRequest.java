@@ -12,11 +12,10 @@ import java.util.UUID;
 @RequestMapping(method = "GET", path = ApiEndpoints.FILES_LIST)
 public record GetFileListRequest(
     @UserId UUID userId,
-    @QueryParam(value = "parentId", required = false) UUID parentId,
-    @QueryParam(value = "recursive", defaultValue = "false", required = false) boolean recursive,
-    @QueryParam(value = "includeDirectories", defaultValue = "false", required = false)
-        boolean includeDirectories,
-    @QueryParam(value = "tags", required = false)
+    @QueryParam(required = false) UUID parentId,
+    @QueryParam(defaultValue = "false", required = false) boolean recursive,
+    @QueryParam(defaultValue = "false", required = false) boolean includeDirectories,
+    @QueryParam(required = false)
         List<
                 @Pattern(
                     regexp = ValidationPatterns.SINGLE_TAG_REGEXP,

@@ -11,18 +11,16 @@ public class ApiEndpoints {
   public static final String TARIFF_PREFIX = USERS_PREFIX + "/tariff";
 
   // Files (Aggregated)
-  public static final String FILES_UPLOAD = FILES_PREFIX + "/upload";
+  public static final String FILES_SIMPLE_UPLOAD = FILES_PREFIX + "/upload";
+  public static final String FILES_CHUNKED_UPLOAD = FILES_SIMPLE_UPLOAD + "/chunked";
   public static final String FILES_RESTORE = FILES_PREFIX + "/restore";
   public static final String FILES_LIST = FILES_PREFIX + "/list";
   public static final String FILES_TRASH = FILES_PREFIX + "/trash";
   public static final String FILES_INFO = FILES_PREFIX + "/info";
 
   // Files (Chunked)
-  public static final String FILES_UPLOAD_RESUME = FILES_UPLOAD + "/resume";
+  public static final String FILES_CHUNKED_UPLOAD_RESUME = FILES_CHUNKED_UPLOAD + "/resume";
   public static final String FILES_DOWNLOAD = FILES_PREFIX + "/download";
-
-  // Directories
-  public static final String DIRECTORIES_ROOT = DIRECTORIES_PREFIX;
 
   // Users & Auth
   public static final String AUTH_LOGIN = AUTH_PREFIX + "/login";

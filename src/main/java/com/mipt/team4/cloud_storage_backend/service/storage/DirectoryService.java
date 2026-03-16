@@ -56,7 +56,7 @@ public class DirectoryService {
   @Transactional
   public void renameDirectory(UpdateDirectoryRequest request) {
     String newName = request.newName();
-    UUID directoryId = request.directoryId();
+    UUID directoryId = request.id();
     UUID userId = request.userId();
 
     StorageEntity dirEntity = getDirectoryOrThrow(userId, directoryId);
@@ -72,7 +72,7 @@ public class DirectoryService {
   @Transactional
   public void moveDirectory(UpdateDirectoryRequest request) {
     UUID newParentId = request.newParentId();
-    UUID directoryId = request.directoryId();
+    UUID directoryId = request.id();
     UUID userId = request.userId();
 
     StorageEntity dir = getDirectoryOrThrow(userId, directoryId);
@@ -94,7 +94,7 @@ public class DirectoryService {
 
   @Transactional
   public void deleteDirectory(DeleteDirectoryRequest request) {
-    UUID directoryId = request.directoryId();
+    UUID directoryId = request.id();
     UUID userId = request.userId();
 
     StorageEntity directoryEntity = getDirectoryOrThrow(userId, directoryId);

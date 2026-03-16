@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.user.tariff.UnknownTariffPlanException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenewRequest;
@@ -47,19 +46,11 @@ public class TariffService {
     UserEntity userEntity =
         userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
-    TariffPlan plan;
-
-    try {
-      plan = TariffPlan.valueOf(request.plan());
-    } catch (IllegalArgumentException e) {
-      throw new UnknownTariffPlanException();
-    }
-
-    paymentService.processPayment(userId, plan, request.paymentToken());
-
+    TariffPlan plan = request.plan();
     LocalDateTime now = LocalDateTime.now();
     LocalDateTime endDate = now.plusDays(plan.getDurationDays());
 
+    paymentService.processPayment(userId, plan, request.paymentToken());
     userRepository.updateTariff(
         userId, plan, now, endDate, request.autoRenew(), plan.getStorageLimit());
 

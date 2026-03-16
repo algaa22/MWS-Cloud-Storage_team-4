@@ -84,8 +84,8 @@ public class DtoToResponseEncoder extends MessageToMessageEncoder<Object> {
   private void mapValueToResponse(
       MappedParameter param, Object value, FullHttpResponse response, Map<String, Object> bodyMap) {
     switch (param.source()) {
-      case HEADER -> response.headers().set(param.name(), value.toString());
-      case BODY -> bodyMap.put(param.name(), value);
+      case HEADER -> response.headers().set(param.mappedName(), value.toString());
+      case BODY_PARAM -> bodyMap.put(param.mappedName(), value);
       case STATUS -> response.setStatus(parseResponseStatus(value));
     }
   }

@@ -10,7 +10,7 @@ import java.util.Map;
 import lombok.Getter;
 
 @Getter
-public class ChunkedUploadState {
+public class ChunkedUploadSession {
 
   private final List<byte[]> chunks = new ArrayList<>();
   // TODO: сессия не удаляется, если completeMultipartUpload не вызван
@@ -25,7 +25,7 @@ public class ChunkedUploadState {
   private int partNum = 0;
   private String uploadId;
 
-  ChunkedUploadState(StartChunkedUploadRequest request, StorageEntity entity) {
+  ChunkedUploadSession(StartChunkedUploadRequest request, StorageEntity entity) {
     this.request = request;
     this.entity = entity;
   }

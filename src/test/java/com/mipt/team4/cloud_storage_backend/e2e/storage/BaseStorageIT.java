@@ -80,15 +80,15 @@ public abstract class BaseStorageIT extends BaseIT {
     JsonNode rootNode = itUtils.getRootNodeFromResponse(fileInfoResponse);
 
     if (expectedName != null) {
-      assertEquals(expectedName, rootNode.get("Name").asText());
+      assertEquals(expectedName, rootNode.get("name").asText());
     }
 
     if (expectedVisibility != null) {
-      assertEquals(expectedVisibility, rootNode.get("Visibility").asText());
+      assertEquals(expectedVisibility, rootNode.get("visibility").asText());
     }
 
     if (expectedTags != null) {
-      assertEquals(expectedTags, rootNode.get("Tags").asText());
+      assertEquals(expectedTags, rootNode.get("tags").asText());
     }
   }
 }

@@ -6,26 +6,23 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Qu
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestHeader;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.UserId;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 
-@RequestMapping(method = "POST", path = ApiEndpoints.FILES_UPLOAD)
+@RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
 public record StartChunkedUploadRequest(
     @UserId UUID userId,
-    @NotNull @RequestHeader("X-Upload-Session-Id") String sessionId,
     @Pattern(
             regexp = ValidationPatterns.FILE_NAME_REGEXP,
             message = ValidationPatterns.FILE_NAME_ERROR)
-        @QueryParam("name")
+        @QueryParam
         String name,
-    @QueryParam("parentId") UUID parentId,
-    @Positive(message = "File size must be positive") @RequestHeader("X-File-Size") long fileSize,
-    @Size(max = 10, message = "Too many tags")
-        @RequestHeader(value = "X-File-Tags", required = false)
+    @QueryParam(required = false) UUID parentId,
+    @Positive @RequestHeader("X-File-Size") long fileSize,
+    @Size @RequestHeader(value = "X-File-Tags", required = false)
         List<
                 @Pattern(
                     regexp = ValidationPatterns.SINGLE_TAG_REGEXP,

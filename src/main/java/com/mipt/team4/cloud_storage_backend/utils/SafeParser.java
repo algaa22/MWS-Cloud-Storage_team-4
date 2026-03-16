@@ -3,7 +3,6 @@ package com.mipt.team4.cloud_storage_backend.utils;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.UnknownParamTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +20,7 @@ public class SafeParser {
     if (value == null) return null;
 
     if (type == String.class) return value;
+    if (type.isEnum()) return parseEnum(field, value, type);
     if (type == UUID.class) return parseUuid(field, value);
     if (type == List.class) return parseStringList(value);
     if (type == Integer.class || type == int.class) return parseInt(field, value);
@@ -32,10 +32,19 @@ public class SafeParser {
     throw new UnknownParamTypeException(field, type);
   }
 
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public static Object parseEnum(String field, String value, Class<?> type) {
+    try {
+      return Enum.valueOf((Class<? extends Enum>) type, value.toUpperCase().trim());
+    } catch (IllegalArgumentException | NullPointerException e) {
+      throw new ParseException(field, type, value);
+    }
+  }
+
   public static List<String> parseStringList(String value) {
     if (value == null || value.isBlank()) return List.of();
 
-    return Arrays.stream(value.split(",")).map(String::trim).toList();
+    return StringListConverter.toList(value);
   }
 
   public static UUID parseUuid(String field, String value) {

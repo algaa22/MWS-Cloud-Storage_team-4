@@ -6,8 +6,8 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.RoutedMessage;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
-import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.util.ReferenceCountUtil;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -27,10 +27,7 @@ public class RequestToDtoDecoder extends MessageToMessageDecoder<HttpRequest> {
     Class<?> dtoClass = routeRegistry.getDto(method, path);
 
     if (dtoClass == null) {
-      if (request instanceof FullHttpRequest fullHttpRequest) {
-        fullHttpRequest.retain();
-      }
-
+      ReferenceCountUtil.retain(request);
       out.add(request);
       return;
     }

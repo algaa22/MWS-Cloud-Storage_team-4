@@ -4,8 +4,7 @@ import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class InvalidSessionException extends BaseStorageException {
-
-  public InvalidSessionException(String message) {
-    super(message, HttpResponseStatus.UNAUTHORIZED);
+  public InvalidSessionException() {
+    super("No session with specified token was found", HttpResponseStatus.UNAUTHORIZED);
   }
 }

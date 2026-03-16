@@ -36,13 +36,8 @@ public class AccessTokenService {
     return generateToken(user, accessTokenExpirationSec);
   }
 
-  public boolean isTokenValid(String token) {
-    try {
-      Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token);
-      return true;
-    } catch (JwtException | IllegalArgumentException e) {
-      return false;
-    }
+  public boolean isValid(String token) {
+    return extractTokenClaims(token).isValid();
   }
 
   public TokenClaimsDto extractTokenClaims(String token) {

@@ -1,11 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.exception.transfer;
 
-import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
+import java.util.UUID;
 
-public class UploadSessionAlreadyExists extends BaseStorageException {
+public class UploadSessionAlreadyExists extends FatalStorageException {
 
-  public UploadSessionAlreadyExists(String sessionId) {
-    super("Upload with sessionId " + sessionId + " already exists", HttpResponseStatus.CONFLICT);
+  public UploadSessionAlreadyExists(UUID sessionId) {
+    super("Upload with sessionId " + sessionId + " already exists");
   }
 }

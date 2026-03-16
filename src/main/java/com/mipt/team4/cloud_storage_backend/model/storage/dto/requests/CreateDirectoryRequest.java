@@ -16,6 +16,6 @@ public record CreateDirectoryRequest(
         @Pattern(
             regexp = ValidationPatterns.FILE_NAME_REGEXP,
             message = ValidationPatterns.FILE_NAME_ERROR)
-        @QueryParam("name")
+        @QueryParam
         String name,
-    @QueryParam(value = "parentId", required = false) UUID parentId) {}
+    @QueryParam(required = false) UUID parentId) {}

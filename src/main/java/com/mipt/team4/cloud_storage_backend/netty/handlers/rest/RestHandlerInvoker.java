@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
 import com.mipt.team4.cloud_storage_backend.exception.netty.HandlerMethodInvokeException;
-import com.mipt.team4.cloud_storage_backend.exception.netty.HandlerNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.UnsupportedOperationException;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.RoutedMessage;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import io.netty.channel.ChannelHandlerContext;
@@ -37,9 +37,8 @@ public class RestHandlerInvoker {
       }
 
       for (Method method : beanClass.getDeclaredMethods()) {
-        if (!isValidMethod(method)) {
-          continue;
-        }
+        if (!isValidMethod(method)) continue;
+
         Class<?> msgClass = method.getParameterTypes()[1];
 
         RequestMapping annotation = msgClass.getAnnotation(RequestMapping.class);
@@ -68,16 +67,26 @@ public class RestHandlerInvoker {
   public void invoke(ChannelHandlerContext ctx, Object msg, String method, String path) {
     String key = getHandlersKey(method, path);
     HandlerMethod target =
-        (msg instanceof HttpContent) ? contentHandlers.get(key) : dtoHandlers.get(key);
+        msg instanceof HttpContent ? contentHandlers.get(key) : dtoHandlers.get(key);
+
+    if (msg instanceof RoutedMessage routedMsg) {
+      msg = routedMsg.dto();
+    }
 
     if (target == null) {
-      throw new HandlerNotFoundException(msg.getClass());
+      throw new UnsupportedOperationException(method, path);
     }
 
     try {
       target.method.invoke(target.handler, ctx, msg);
     } catch (IllegalAccessException | InvocationTargetException e) {
-      throw new HandlerMethodInvokeException(e);
+      Throwable cause = e.getCause();
+
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+
+      throw new HandlerMethodInvokeException(cause);
     }
   }
 
@@ -88,7 +97,7 @@ public class RestHandlerInvoker {
   }
 
   private String getHandlersKey(String method, String path) {
-    return method.toUpperCase() + path;
+    return method.toUpperCase() + ":" + path;
   }
 
   private record HandlerMethod(Object handler, Method method) {}

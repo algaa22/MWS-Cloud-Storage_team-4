@@ -57,7 +57,7 @@ public class FileChunkedTransferITUtils {
     HttpPost request =
         new HttpPost(
             itUtils.createUriString(
-                itUtils.fillQuery("/api/files/upload?name=%s", targetFileName)));
+                itUtils.fillQuery("/api/files/upload/chunked?name=%s", targetFileName)));
 
     InputStream fileStream = FileLoader.getInputStream(filePath);
     InputStreamEntity entity =

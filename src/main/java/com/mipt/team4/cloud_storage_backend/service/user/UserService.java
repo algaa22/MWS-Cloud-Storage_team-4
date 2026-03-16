@@ -1,21 +1,21 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.MissingOldPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.WrongPasswordException;
+import com.mipt.team4.cloud_storage_backend.exception.user.auth.InvalidRefreshTokenException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.RefreshTokenDto;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.SessionDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenPairDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.UserSessionDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.LoginRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.LogoutRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RefreshTokenRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.RegisterRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateUserInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UserInfoRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.TokenPairResponse;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.UserInfoResponse;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
@@ -56,7 +56,7 @@ public class UserService {
   }
 
   @Transactional
-  public TokenPairResponse registerUser(RegisterRequest request) {
+  public TokenPairDto registerUser(RegisterRequest request) {
     if (userRepository.getUserByEmail(request.email()).isPresent()) {
       throw new UserAlreadyExistsException(request.email());
     }
@@ -73,15 +73,15 @@ public class UserService {
 
     userRepository.addUser(userEntity);
 
-    SessionDto session = userSessionService.createSession(userEntity);
+    UserSessionDto session = userSessionService.createSession(userEntity);
     RefreshTokenDto refreshToken = refreshTokenService.create(userEntity.getId());
     tariffService.setupTrialPeriod(userEntity.getId());
 
-    return new TokenPairResponse(session.token(), refreshToken.token());
+    return new TokenPairDto(session.token(), refreshToken.token());
   }
 
   @Transactional
-  public TokenPairResponse loginUser(LoginRequest request) {
+  public TokenPairDto loginUser(LoginRequest request) {
     UserEntity userEntity =
         userRepository.getUserByEmail(request.email()).orElseThrow(InvalidEmailOrPassword::new);
 
@@ -89,11 +89,12 @@ public class UserService {
       throw new WrongPasswordException();
     }
 
-    Optional<SessionDto> session = userSessionService.findSessionByEmail(userEntity.getEmail());
-    SessionDto usedSession = session.orElseGet(() -> userSessionService.createSession(userEntity));
+    Optional<UserSessionDto> session = userSessionService.findSessionByEmail(userEntity.getEmail());
+    UserSessionDto usedSession =
+        session.orElseGet(() -> userSessionService.createSession(userEntity));
     RefreshTokenDto refreshToken = refreshTokenService.create(userEntity.getId());
 
-    return new TokenPairResponse(usedSession.token(), refreshToken.token());
+    return new TokenPairDto(usedSession.token(), refreshToken.token());
   }
 
   @Transactional
@@ -103,31 +104,24 @@ public class UserService {
   }
 
   @Transactional()
-  public TokenPairResponse refreshTokens(RefreshTokenRequest request) {
-    String refreshToken = request.refreshToken();
-    RefreshTokenDto stored = refreshTokenService.validate(refreshToken);
+  public TokenPairDto refreshTokens(RefreshTokenRequest request) {
+    RefreshTokenDto refreshToken = refreshTokenService.validate(request.refreshToken());
 
-    if (stored == null) {
-      throw new InvalidSessionException("Refresh token invalid or expired");
+    if (refreshToken == null) {
+      throw new InvalidRefreshTokenException();
     }
 
-    UUID userId = stored.userId();
-    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-
-    if (userOpt.isEmpty()) {
-      refreshTokenService.revoke(refreshToken);
-      throw new InvalidSessionException("User not found for refresh token");
-    }
-
-    UserEntity user = userOpt.get();
+    UUID userId = refreshToken.userId();
+    UserEntity userEntity =
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
     userSessionService.revokeAllUserSessions(userId);
-    SessionDto newSession = userSessionService.createSession(user);
+    UserSessionDto newSession = userSessionService.createSession(userEntity);
 
     RefreshTokenDto newRefreshToken = refreshTokenService.create(userId);
-    refreshTokenService.revoke(refreshToken);
+    refreshTokenService.revoke(refreshToken.token());
 
-    return new TokenPairResponse(newSession.token(), newRefreshToken.token());
+    return new TokenPairDto(newSession.token(), newRefreshToken.token());
   }
 
   @Transactional
@@ -148,8 +142,8 @@ public class UserService {
       userEntity.setPasswordHash(newPasswordHash);
     }
 
-    if (request.newUsername() != null) {
-      userEntity.setUsername(request.newUsername());
+    if (request.newName() != null) {
+      userEntity.setUsername(request.newName());
     }
   }
 }

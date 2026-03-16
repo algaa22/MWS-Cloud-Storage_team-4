@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.CreateDtoInstanceException;
+import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.NotFullRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ParseJsonParamException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ReadJsonBodyException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.UnknownRequestSourceTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.user.auth.MissingAuthTokenException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
 import com.mipt.team4.cloud_storage_backend.netty.constants.SecurityAttributes;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.MappedParameter.SourceType;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -20,6 +22,7 @@ import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +49,7 @@ public class DtoAssembler {
   private Object[] parseParameters(
       ChannelHandlerContext ctx, MappedParameter[] parameters, HttpRequest request) {
     QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
-    JsonNode rootNode = readJson(request);
+    JsonNode rootNode = dtoHasJson(parameters) ? readJson(request) : null;
     Object[] args = new Object[parameters.length];
 
     for (int i = 0; i < parameters.length; i++) {
@@ -57,12 +60,18 @@ public class DtoAssembler {
             case QUERY -> parseQuery(queryDecoder, param);
             case HEADER -> parseHeader(request, param);
             case AUTH -> getAuthAttribute(ctx);
-            case BODY -> parseBodyParam(rootNode, param);
-            default -> throw new UnknownRequestSourceTypeException(param.name(), param.source());
+            case BODY_PARAM -> parseBodyParam(rootNode, param);
+            case BODY -> parseBody(request, param);
+            default ->
+                throw new UnknownRequestSourceTypeException(param.mappedName(), param.source());
           };
     }
 
     return args;
+  }
+
+  private boolean dtoHasJson(MappedParameter[] parameters) {
+    return Arrays.stream(parameters).anyMatch(param -> param.source() == SourceType.BODY_PARAM);
   }
 
   private JsonNode readJson(HttpRequest request) {
@@ -84,16 +93,16 @@ public class DtoAssembler {
   }
 
   private Object parseQuery(QueryStringDecoder queryDecoder, MappedParameter param) {
-    List<String> values = queryDecoder.parameters().get(param.name());
+    List<String> values = queryDecoder.parameters().get(param.mappedName());
     String value = (values != null && !values.isEmpty()) ? values.getFirst() : null;
     return SafeParser.parse(
-        value, param.type(), param.defaultValue(), param.required(), param.name());
+        value, param.type(), param.defaultValue(), param.required(), param.mappedName());
   }
 
   private Object parseHeader(HttpRequest request, MappedParameter param) {
-    String value = request.headers().get(param.name());
+    String value = request.headers().get(param.mappedName());
     return SafeParser.parse(
-        value, param.type(), param.defaultValue(), param.required(), param.name());
+        value, param.type(), param.defaultValue(), param.required(), param.mappedName());
   }
 
   private Object getAuthAttribute(ChannelHandlerContext ctx) {
@@ -107,17 +116,18 @@ public class DtoAssembler {
 
   private Object parseBodyParam(JsonNode rootNode, MappedParameter param) {
     if (rootNode == null || rootNode.isNull()) {
-      if (param.required()) throw new MissingRequiredParamException(param.name());
+      if (param.required()) throw new MissingRequiredParamException(param.mappedName());
       return null;
     }
 
-    JsonNode fieldNode = param.name().isBlank() ? rootNode : rootNode.get(param.name());
+    JsonNode fieldNode = param.mappedName().isBlank() ? rootNode : rootNode.get(param.mappedName());
 
     if (fieldNode == null || fieldNode.isMissingNode()) {
-      if (param.required()) throw new MissingRequiredParamException(param.name());
+      if (param.required()) throw new MissingRequiredParamException(param.mappedName());
 
       if (param.defaultValue() != null && !param.defaultValue().isBlank()) {
-        return SafeParser.parse(param.defaultValue(), param.type(), null, false, param.name());
+        return SafeParser.parse(
+            param.defaultValue(), param.type(), null, false, param.mappedName());
       }
 
       return null;
@@ -126,7 +136,27 @@ public class DtoAssembler {
     try {
       return objectMapper.treeToValue(fieldNode, param.type());
     } catch (JsonProcessingException e) {
-      throw new ParseJsonParamException(param.name(), param.type(), e);
+      throw new ParseJsonParamException(param.mappedName(), param.type(), e);
     }
+  }
+
+  private byte[] parseBody(HttpRequest request, MappedParameter param) {
+    if (!(request instanceof FullHttpRequest fullRequest)) {
+      if (param.required()) {
+        throw new NotFullRequestException(param.name());
+      } else {
+        return null;
+      }
+    }
+
+    ByteBuf data = fullRequest.content();
+    if (data.readableBytes() == 0) {
+      return null;
+    }
+
+    byte[] bytes = new byte[data.readableBytes()];
+    data.readBytes(bytes);
+
+    return bytes;
   }
 }

@@ -162,7 +162,7 @@ graph TD
 
 ## 📖 Документация API
 
-Все запросы к API начинаются с префикса `/api`. Почти все операции (кроме авторизации) требуют заголовок:
+Все запросы к API начинаются с префикса `/api`. Почти все операции (кроме register/login/refresh) требуют заголовок:
 `X-Auth-Token: <access_token>`
 
 Опциональные параметры или заголовки обозначены через `*` 
@@ -180,15 +180,16 @@ graph TD
 
 #### 2. Работа с файлами (`/api/files`)
 
-| Endpoint | Method | Query Params                                              | Headers                    | Description                                  |
-| --- | --- |-----------------------------------------------------------|----------------------------|----------------------------------------------|
-| `/list` | `GET` | `parentId*`, `recursive*`, `includeDirectories*`, `tags*` | —                          | Список объектов в директории                 |
-| `/info` | `GET` | `id`                                                      | —                          | Детальные метаданные файла                   |
-| `/` | `PUT` | `id`, `newName*`, `newParentId*`                          | `X-File-New-Visibility*`   | Изменение метаданных                         |
-| `/` | `DELETE` | `id`, `permanent*`                                         | —                          | Удаление файла (soft/hard)                   |
-| `/download` | `GET` | `id`                                                      | —                          | Чанковое скачивание                          |
-| `/upload` | `POST` | `name`, `parentId*`                                       | `X-File-Tags`, `X-File-Size` | Обычная загрузка или старт чанковой загрузки |
-| `/upload/resume` | `POST` | `name`, `parentId*`                                       |                            | Возобновление прерванной чанковой загрузки   |
+| Endpoint                | Method | Query Params                                              | Headers                  | Description                                |
+|-------------------------| --- |-----------------------------------------------------------|--------------------------|--------------------------------------------|
+| `/list`                 | `GET` | `parentId*`, `recursive*`, `includeDirectories*`, `tags*` | —                        | Список объектов в директории               |
+| `/info`                 | `GET` | `id`                                                      | —                        | Детальные метаданные файла                 |
+| `/`                     | `PUT` | `id`, `newName*`, `newParentId*`                          | `X-File-New-Visibility*` | Изменение метаданных                       |
+| `/`                     | `DELETE` | `id`, `permanent*`                                         | —                        | Удаление файла (soft/hard)                 |
+| `/download`             | `GET` | `id`                                                      | —                        | Чанковое скачивание                        |
+| `/upload`               | `POST` | `name`, `parentId*`                                       | `X-File-Tags`            | Обычная загрузка                           |
+| `/upload/chunked`       | `POST` | `name`, `parentId*`                                       | `X-File-Tags`, `X-File-Size` | Чанковая загрузка                          |
+| `/upload/chunked/resume` | `POST` | `name`, `parentId*`                                       |                          | Возобновление прерванной чанковой загрузки |
 
 #### 3. Работа с директориями (`/api/directories`)
 

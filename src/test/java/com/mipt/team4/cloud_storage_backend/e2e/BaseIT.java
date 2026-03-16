@@ -8,11 +8,13 @@ import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 @SpringBootTest(webEnvironment = WebEnvironment.NONE)
 @ExtendWith(E2ETestSetupExtension.class)
+@ActiveProfiles("test")
 public class BaseIT {
   protected static final CloseableHttpClient apacheClient =
       HttpClients.custom()

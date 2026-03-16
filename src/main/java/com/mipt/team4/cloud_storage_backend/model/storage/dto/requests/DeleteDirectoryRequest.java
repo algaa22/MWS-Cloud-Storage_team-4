@@ -8,5 +8,4 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 @RequestMapping(method = "DELETE", path = ApiEndpoints.DIRECTORIES_PREFIX)
-public record DeleteDirectoryRequest(
-    @UserId UUID userId, @NotNull @QueryParam("id") UUID directoryId) {}
+public record DeleteDirectoryRequest(@UserId UUID userId, @NotNull @QueryParam UUID id) {}

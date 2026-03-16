@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
+import com.mipt.team4.cloud_storage_backend.exception.storage.MoveDirectoryIntoItselfException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageDirectoryCycleException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
@@ -78,11 +79,11 @@ public class DirectoryService {
     StorageEntity dir = getDirectoryOrThrow(userId, directoryId);
 
     if (directoryId.equals(newParentId)) {
-      throw new IllegalArgumentException("Cannot move directory into itself");
+      throw new MoveDirectoryIntoItselfException();
     }
 
     if (metadataRepository.isDescendant(directoryId, newParentId)) {
-      throw new StorageDirectoryCycleException("Cannot move directory into its own sub-directory");
+      throw new StorageDirectoryCycleException();
     }
 
     if (metadataRepository.exists(userId, newParentId, dir.getName())) {

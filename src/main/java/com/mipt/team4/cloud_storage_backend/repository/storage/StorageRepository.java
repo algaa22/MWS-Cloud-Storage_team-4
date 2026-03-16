@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
@@ -120,8 +121,7 @@ public class StorageRepository {
 
   public InputStream download(StorageEntity entity) {
     if (entity.getStatus() != FileStatus.READY) {
-      throw new IllegalStateException( // TODO: illegal state?
-          "FATAL: Attempt to download non-ready file: " + entity.getId());
+      throw new DownloadNonReadyFileException(entity.getId());
     }
 
     return contentRepository.downloadObject(entity.getS3Key());

@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
+import com.mipt.team4.cloud_storage_backend.netty.mapping.RoutedMessage;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -23,7 +24,9 @@ public class AggregatedHttpHandler extends SimpleChannelInboundHandler<Object> {
     Thread.startVirtualThread( // TODO: interrupted exception
         () -> {
           try {
-            handlerInvoker.invoke(ctx, msg);
+            if (msg instanceof RoutedMessage routedMsg) {
+              handlerInvoker.invoke(ctx, routedMsg);
+            }
           } catch (Exception e) {
             ctx.executor().execute(() -> ctx.fireExceptionCaught(e));
           } finally {

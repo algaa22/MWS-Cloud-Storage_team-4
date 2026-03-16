@@ -10,6 +10,8 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.ResumeChunkedUploa
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.UploadRetryResponse;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import io.netty.buffer.ByteBuf;
@@ -49,7 +51,17 @@ public class ChunkedUploadController {
     isInProgress = true;
   }
 
-  public void handleChunk(ChannelHandlerContext ctx, HttpContent content) {
+  @RequestMapping(method = "POST", path = ApiEndpoints.FILES_UPLOAD)
+  public void handleContent(ChannelHandlerContext ctx, HttpContent content) {
+    if (content instanceof LastHttpContent lastContent) {
+      complete(ctx, lastContent);
+      return;
+    }
+
+    handleChunk(ctx, content);
+  }
+
+  private void handleChunk(ChannelHandlerContext ctx, HttpContent content) {
     if (!isInProgress) {
       throw new TransferNotStartedYetException();
     }

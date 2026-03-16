@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.error;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
@@ -19,35 +18,28 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class StorageExceptionHandler extends ChannelInboundHandlerAdapter {
-  private final ObjectMapper objectMapper;
-
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    if (cause instanceof BaseStorageException storageException) {
-      Object details = null;
-
-      if (cause instanceof ValidationFailedException ve) {
-        details = ve.getErrors();
-      }
-
-      if (cause instanceof FatalStorageException) {
-        log.error("A fatal error has been caught", cause);
-        sendErrorAndClose(
-            ctx,
-            new ErrorResponse(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal Server Error"));
-        return;
-      }
-
-      ResponseUtils.send(
-          ctx,
-          new ErrorResponse(storageException.getStatus(), storageException.getMessage(), details));
+    if (!(cause instanceof BaseStorageException exception)) {
       return;
     }
 
-    log.error("Unhandled exception caught", cause);
-    sendErrorAndClose(
-        ctx,
-        new ErrorResponse(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Unexpected server error"));
+    Object details = null;
+
+    if (cause instanceof ValidationFailedException ve) {
+      details = ve.getErrors();
+    }
+
+    if (cause instanceof FatalStorageException) {
+      log.error("A fatal error has been caught", cause);
+      sendErrorAndClose(
+          ctx,
+          new ErrorResponse(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal Server Error"));
+      return;
+    }
+
+    ResponseUtils.send(
+        ctx, new ErrorResponse(exception.getStatus(), exception.getMessage(), details));
   }
 
   private void sendErrorAndClose(ChannelHandlerContext ctx, ErrorResponse error) {

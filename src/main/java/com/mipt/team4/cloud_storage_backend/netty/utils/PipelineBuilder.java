@@ -37,9 +37,9 @@ public class PipelineBuilder {
   public void finalizeHttpPipeline(ChannelPipeline pipeline) {
     pipeline.addLast(PipelineHandlerNames.CORS, corsHandler);
     pipeline.addLast(PipelineHandlerNames.JWT_AUTH, jwtAuthHandler);
+    pipeline.addLast(PipelineHandlerNames.TRAFFIC_STRATEGY_SELECTOR, strategySelectors.getObject());
     pipeline.addLast(PipelineHandlerNames.REQUEST_TO_DTO, requestToDtoDecoder);
     pipeline.addLast(PipelineHandlerNames.GLOBAL_VALIDATION, globalValidationHandler);
-    pipeline.addLast(PipelineHandlerNames.TRAFFIC_STRATEGY_SELECTOR, strategySelectors.getObject());
 
     pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, storageExceptionHandlers);
     pipeline.addLast(PipelineHandlerNames.DTO_TO_RESPONSE, dtoToResponseEncoder);

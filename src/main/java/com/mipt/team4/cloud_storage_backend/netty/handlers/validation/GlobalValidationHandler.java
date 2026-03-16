@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.validation;
 
 import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.netty.mapping.RouteRegistry;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.RoutedMessage;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -17,12 +17,11 @@ import org.springframework.stereotype.Component;
 @Sharable
 @RequiredArgsConstructor
 public class GlobalValidationHandler extends SimpleChannelInboundHandler<Object> {
-  private final RouteRegistry routeRegistry;
   private final Validator validator;
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
-    if (routeRegistry.isRegisteredDto(msg.getClass())) {
+    if (msg instanceof RoutedMessage) {
       Set<ConstraintViolation<Object>> violations = validator.validate(msg);
 
       if (!violations.isEmpty()) {

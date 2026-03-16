@@ -2,10 +2,14 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
 import com.mipt.team4.cloud_storage_backend.exception.netty.HandlerMethodInvokeException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.HandlerNotFoundException;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.RoutedMessage;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.HttpContent;
 import jakarta.annotation.PostConstruct;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +21,8 @@ import org.springframework.stereotype.Controller;
 @Component
 @RequiredArgsConstructor
 public class RestHandlerInvoker {
-  private final Map<Class<?>, HandlerMethod> handlerMethods = new ConcurrentHashMap<>();
+  private final Map<String, HandlerMethod> dtoHandlers = new ConcurrentHashMap<>();
+  private final Map<String, HandlerMethod> contentHandlers = new ConcurrentHashMap<>();
   private final ApplicationContext applicationContext;
 
   @PostConstruct
@@ -32,17 +37,38 @@ public class RestHandlerInvoker {
       }
 
       for (Method method : beanClass.getDeclaredMethods()) {
-        if (method.getParameterCount() == 2
-            && method.getParameterTypes()[0] == ChannelHandlerContext.class) {
-          Class<?> msgClass = method.getParameterTypes()[1];
-          handlerMethods.put(msgClass, new HandlerMethod(bean, method));
+        if (!isValidMethod(method)) {
+          continue;
+        }
+        Class<?> msgClass = method.getParameterTypes()[1];
+
+        RequestMapping annotation = msgClass.getAnnotation(RequestMapping.class);
+        if (annotation == null) {
+          annotation = method.getAnnotation(RequestMapping.class);
+        }
+
+        if (annotation != null) {
+          String key = getHandlersKey(annotation.method(), annotation.path());
+          HandlerMethod handlerMethod = new HandlerMethod(bean, method);
+
+          if (HttpContent.class.isAssignableFrom(msgClass)) {
+            contentHandlers.put(key, handlerMethod);
+          } else {
+            dtoHandlers.put(key, handlerMethod);
+          }
         }
       }
     }
   }
 
-  public void invoke(ChannelHandlerContext ctx, Object msg) {
-    HandlerMethod target = handlerMethods.get(msg.getClass());
+  public void invoke(ChannelHandlerContext ctx, RoutedMessage routedMsg) {
+    invoke(ctx, routedMsg.dto(), routedMsg.method(), routedMsg.path());
+  }
+
+  public void invoke(ChannelHandlerContext ctx, Object msg, String method, String path) {
+    String key = getHandlersKey(method, path);
+    HandlerMethod target =
+        (msg instanceof HttpContent) ? contentHandlers.get(key) : dtoHandlers.get(key);
 
     if (target == null) {
       throw new HandlerNotFoundException(msg.getClass());
@@ -53,6 +79,16 @@ public class RestHandlerInvoker {
     } catch (IllegalAccessException | InvocationTargetException e) {
       throw new HandlerMethodInvokeException(e);
     }
+  }
+
+  private boolean isValidMethod(Method method) {
+    return Modifier.isPublic(method.getModifiers())
+        && method.getParameterCount() == 2
+        && method.getParameterTypes()[0] == ChannelHandlerContext.class;
+  }
+
+  private String getHandlersKey(String method, String path) {
+    return method.toUpperCase() + path;
   }
 
   private record HandlerMethod(Object handler, Method method) {}

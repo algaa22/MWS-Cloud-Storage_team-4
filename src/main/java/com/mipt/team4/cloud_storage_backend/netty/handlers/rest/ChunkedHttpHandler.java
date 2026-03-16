@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.RouteRegistry;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.RoutedMessage;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -24,11 +25,13 @@ import org.springframework.stereotype.Component;
 public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
   private static final HttpObject POISON_PILL = new DefaultHttpContent(Unpooled.EMPTY_BUFFER);
 
-  private final RouteRegistry routeRegistry;
-  private final RestHandlerInvoker handlerInvoker;
   private final BlockingQueue<Object> httpObjectsQueue = new LinkedBlockingQueue<>();
+  private final RestHandlerInvoker handlerInvoker;
+  private final RouteRegistry routeRegistry;
 
   private boolean threadStarted = false;
+  private String currentMethod;
+  private String currentPath;
 
   @Override
   public void channelInactive(ChannelHandlerContext ctx) throws Exception {
@@ -40,14 +43,15 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
-    boolean isDto = routeRegistry.isRegisteredDto(msg.getClass());
-
-    if (msg instanceof HttpContent || isDto) {
+    if (msg instanceof HttpContent || msg instanceof RoutedMessage) {
       ReferenceCountUtil.retain(msg);
       httpObjectsQueue.add(msg);
     }
 
-    if (isDto && !threadStarted) {
+    if (msg instanceof RoutedMessage routedMsg && !threadStarted) {
+      currentMethod = routedMsg.method();
+      currentPath = routedMsg.path();
+
       startVirtualProcessor(ctx);
     }
   }
@@ -77,7 +81,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
       }
 
       try {
-        handlerInvoker.invoke(ctx, msg);
+        handlerInvoker.invoke(ctx, msg, currentMethod, currentPath);
 
         if (msg instanceof LastHttpContent) {
           break;

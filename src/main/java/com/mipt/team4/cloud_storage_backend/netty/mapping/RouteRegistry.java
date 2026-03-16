@@ -22,11 +22,15 @@ public class RouteRegistry {
   }
 
   public Class<?> getDto(String method, String path) {
-    return routes.get(mapToRouteKey(method, path));
+    return routes.get(getRouteKey(method, path));
   }
 
-  public boolean isRegisteredDto(Class<?> clazz) {
-    return routes.containsValue(clazz);
+  public boolean isRegisteredDto(Object msg) {
+    if (msg instanceof RoutedMessage routedMsg) {
+      return routes.containsValue(routedMsg.dto().getClass());
+    }
+
+    return false;
   }
 
   private void scanAndRegisterRoutes() {
@@ -41,7 +45,7 @@ public class RouteRegistry {
         Class<?> dtoClass = Class.forName(beanDefinition.getBeanClassName());
         RequestMapping mapping = dtoClass.getAnnotation(RequestMapping.class);
 
-        String routeKey = mapToRouteKey(mapping.method(), mapping.path());
+        String routeKey = getRouteKey(mapping.method(), mapping.path());
         routes.put(routeKey, dtoClass);
       } catch (ClassNotFoundException e) {
         throw new ScanRouteException(beanDefinition.getBeanClassName(), e);
@@ -49,7 +53,7 @@ public class RouteRegistry {
     }
   }
 
-  private String mapToRouteKey(String method, String path) {
+  private String getRouteKey(String method, String path) {
     return method.toUpperCase() + path;
   }
 }

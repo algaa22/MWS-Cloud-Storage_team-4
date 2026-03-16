@@ -120,7 +120,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   }
 
   private void addHandlerToPipeline(ChannelPipeline pipeline, String name, ChannelHandler handler) {
-    pipeline.addBefore(PipelineHandlerNames.DTO_TO_RESPONSE, name, handler);
+    pipeline.addBefore(PipelineHandlerNames.STORAGE_EXCEPTION, name, handler);
   }
 
   private void safeRemoveFromPipeline(

@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.mapping.codec;
 
 import com.mipt.team4.cloud_storage_backend.netty.mapping.DtoAssembler;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.RouteRegistry;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.RoutedMessage;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
@@ -35,6 +36,6 @@ public class RequestToDtoDecoder extends MessageToMessageDecoder<HttpRequest> {
     }
 
     Object dto = dtoAssembler.assemble(ctx, dtoClass, request);
-    out.add(dto);
+    out.add(new RoutedMessage(dto, method, path));
   }
 }

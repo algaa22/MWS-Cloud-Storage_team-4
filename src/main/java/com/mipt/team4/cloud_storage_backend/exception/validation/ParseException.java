@@ -1,14 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.exception.validation;
 
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationError;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.validation.ValidationError;
 
 public class ParseException extends ValidationFailedException {
 
   public <T> ParseException(String field, Class<?> expectedType, String value) {
     super(
         new ValidationError(
-            field,
-            "Field %s with value %s must be %s".formatted(field, value, expectedType),
-            "PARSE_" + expectedType));
+            field, "Field %s with value %s must be %s".formatted(field, value, expectedType)));
   }
 }

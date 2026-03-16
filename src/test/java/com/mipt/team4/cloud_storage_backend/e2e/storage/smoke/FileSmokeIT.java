@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.e2e.storage.smoke;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
@@ -11,6 +12,7 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransfe
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
@@ -81,12 +83,13 @@ public class FileSmokeIT extends BaseStorageIT {
     byte[] testFile = TestFiles.SMALL_FILE.getData();
 
     JsonNode rootNode = itUtils.getRootNodeFromResponse(response);
-    assertEquals(DEFAULT_FILE_TARGET_NAME, rootNode.get("Name").asText());
-    assertEquals("private", rootNode.get("Visibility").asText());
-    assertEquals("1,2,3", rootNode.get("Tags").asText());
-    assertEquals(testFile.length, rootNode.get("Size").asLong());
-    assertFalse(rootNode.get("Type").asText().isEmpty());
-    assertFalse(rootNode.get("IsDeleted").asBoolean());
+    assertEquals(fileId.toString(), rootNode.get("id").asText());
+    assertEquals(DEFAULT_FILE_TARGET_NAME, rootNode.get("name").asText());
+    assertEquals(testFile.length, rootNode.get("size").asLong());
+    assertEquals("1,2,3", rootNode.get("tags").asText());
+    assertEquals("private", rootNode.get("visibility").asText());
+    assertFalse(rootNode.get("isDirectory").asText().isEmpty());
+    assertNull(rootNode.get("parentId"));
   }
 
   @Test
@@ -122,7 +125,7 @@ public class FileSmokeIT extends BaseStorageIT {
             client, currentUserToken, fileId, "public");
     assertEquals(HttpStatus.SC_OK, changeFileResponse.statusCode());
 
-    assertFileInfoMatches(fileId, null, "public", null);
+    assertFileInfoMatches(fileId, null, "PUBLIC", null);
   }
 
   @Test
@@ -148,7 +151,7 @@ public class FileSmokeIT extends BaseStorageIT {
   private void assertDownloadResponseValid(
       FileChunkedTransferITUtils.DownloadResult downloadResult, int fileSize) {
     Map<String, String> headers = downloadResult.headers();
-    String receivedFileSize = headers.get("X-File-Size");
+    String receivedFileSize = headers.get(HttpHeaderNames.CONTENT_LENGTH.toString());
 
     assertEquals(String.valueOf(fileSize), receivedFileSize);
   }

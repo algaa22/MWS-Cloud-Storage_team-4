@@ -3,19 +3,20 @@ package com.mipt.team4.cloud_storage_backend.service.user;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateAutoRenewRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenewRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdatePaymentMethodRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -23,15 +24,12 @@ import org.springframework.stereotype.Service;
 public class TariffService {
 
   private final UserJpaRepositoryAdapter userRepository;
-  private final UserSessionService userSessionService;
   private final NotificationClient notificationClient;
   private final PaymentService paymentService;
 
+  @Transactional
   public void setupTrialPeriod(UUID userId) {
-    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-    if (userOpt.isEmpty()) {
-      throw new UserNotFoundException("User not found with id: " + userId);
-    }
+    userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
     LocalDateTime now = LocalDateTime.now();
     LocalDateTime endDate = now.plusDays(TariffPlan.TRIAL.getDurationDays());
@@ -42,52 +40,60 @@ public class TariffService {
     log.info("Trial period started for user: {}, ends at: {}", userId, endDate);
   }
 
+  @Transactional
   public void purchaseTariff(PurchaseTariffRequest request) {
-    String token = request.userToken();
-    UUID userId = userSessionService.extractUserIdFromToken(token);
+    UUID userId = request.userId();
+    UserEntity userEntity =
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
-    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-    if (userOpt.isEmpty()) {
-      throw new UserNotFoundException("User not found with token: " + token);
-    }
-
-    UserEntity user = userOpt.get();
-    paymentService.processPayment(userId, request.tariffPlan(), request.paymentToken());
-
+    TariffPlan plan = request.plan();
     LocalDateTime now = LocalDateTime.now();
-    LocalDateTime endDate = now.plusDays(request.tariffPlan().getDurationDays());
+    LocalDateTime endDate = now.plusDays(plan.getDurationDays());
 
+    paymentService.processPayment(userId, plan, request.paymentToken());
     userRepository.updateTariff(
-        userId,
-        request.tariffPlan(),
-        now,
-        endDate,
-        request.autoRenew(),
-        request.tariffPlan().getStorageLimit());
+        userId, plan, now, endDate, request.autoRenew(), plan.getStorageLimit());
 
     if (request.paymentMethod() != null) {
       userRepository.updatePaymentMethod(userId, request.paymentMethod());
     }
 
     notificationClient.notifyTariffPurchased(
-        user.getEmail(), user.getUsername(), request.tariffPlan().name(), endDate);
+        userEntity.getEmail(), userEntity.getUsername(), plan.name(), endDate);
 
-    log.info("User {} purchased tariff: {}", userId, request.tariffPlan());
+    log.info("User {} purchased tariff: {}", userId, plan.name());
   }
 
-  public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
-    String token = request.token();
-    UUID userId = userSessionService.extractUserIdFromToken(token);
+  @Transactional
+  public void setAutoRenew(SetAutoRenewRequest request) {
+    UUID userId = request.userId();
+    boolean enabled = request.enabled();
 
-    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-    if (userOpt.isEmpty()) {
-      throw new UserNotFoundException("User not found with token: " + token);
-    }
+    userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+    userRepository.updateAutoRenew(userId, enabled);
 
-    UserEntity user = userOpt.get();
+    log.info("Auto-renew {} for user: {}", enabled ? "enabled" : "disabled", userId);
+  }
 
-    TariffPlan tariffPlan = user.getTariffPlan() != null ? user.getTariffPlan() : TariffPlan.TRIAL;
-    LocalDateTime endDate = user.getTariffEndDate();
+  @Transactional
+  public void updatePaymentMethod(UpdatePaymentMethodRequest request) {
+    UUID userId = request.userId();
+
+    userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+    userRepository.updatePaymentMethod(userId, request.paymentMethodId());
+
+    log.info("Payment method updated for user: {}", userId);
+  }
+
+  @Transactional(readOnly = true)
+  public TariffInfoDto getTariffInfo(TariffInfoRequest request) {
+    UUID userId = request.userId();
+    UserEntity userEntity =
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+
+    TariffPlan tariffPlan =
+        userEntity.getTariffPlan() != null ? userEntity.getTariffPlan() : TariffPlan.TRIAL;
+    LocalDateTime endDate = userEntity.getTariffEndDate();
 
     int daysLeft = 0;
     if (endDate != null && endDate.isAfter(LocalDateTime.now())) {
@@ -96,63 +102,25 @@ public class TariffService {
 
     return new TariffInfoDto(
         tariffPlan,
-        user.getStorageLimit(),
-        user.getUsedStorage(),
-        user.getTariffStartDate(),
+        userEntity.getStorageLimit(),
+        userEntity.getUsedStorage(),
+        userEntity.getTariffStartDate(),
         endDate,
-        user.isAutoRenew(),
-        user.isActive(),
+        userEntity.isAutoRenew(),
+        userEntity.isActive(),
         daysLeft);
   }
 
-  public void setAutoRenew(SimpleUserRequest request, boolean enabled) {
-    String token = request.token();
-    UUID userId = userSessionService.extractUserIdFromToken(token);
-
-    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-    if (userOpt.isEmpty()) {
-      throw new UserNotFoundException("User not found with token: " + token);
-    }
-
-    userRepository.updateAutoRenew(userId, enabled);
-    log.info("Auto-renew {} for user: {}", enabled ? "enabled" : "disabled", userId);
-  }
-
-  public void updatePaymentMethod(UpdateAutoRenewRequest request) {
-    String token = request.userToken();
-    UUID userId = userSessionService.extractUserIdFromToken(token);
-
-    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-    if (userOpt.isEmpty()) {
-      throw new UserNotFoundException("User not found with token: " + token);
-    }
-
-    userRepository.updatePaymentMethod(userId, request.paymentMethodId());
-    log.info("Payment method updated for user: {}", userId);
-  }
-
+  @Transactional(readOnly = true)
   public boolean hasAccess(UUID userId) {
-    Optional<UserEntity> userOpt = userRepository.getUserById(userId);
-    if (userOpt.isEmpty()) {
+    UserEntity userEntity =
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+
+    if (!userEntity.isActive()) {
       return false;
     }
 
-    UserEntity user = userOpt.get();
-
-    if (!user.isActive()) {
-      return false;
-    }
-
-    if (user.getTariffEndDate() != null && user.getTariffEndDate().isBefore(LocalDateTime.now())) {
-      return false;
-    }
-
-    return true;
-  }
-
-  public boolean hasAccess(SimpleUserRequest request) {
-    String token = request.token();
-    UUID userId = userSessionService.extractUserIdFromToken(token);
-    return hasAccess(userId);
+    return userEntity.getTariffEndDate() == null
+        || !userEntity.getTariffEndDate().isBefore(LocalDateTime.now());
   }
 }

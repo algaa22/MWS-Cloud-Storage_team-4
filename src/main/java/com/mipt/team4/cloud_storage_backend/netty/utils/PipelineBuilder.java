@@ -1,11 +1,13 @@
 package com.mipt.team4.cloud_storage_backend.netty.utils;
 
-import com.mipt.team4.cloud_storage_backend.netty.handlers.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.auth.JwtAuthHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpTrafficStrategySelector;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.error.FinalErrorHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.error.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.StorageExceptionHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.HttpTrafficStrategySelector;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.codec.DtoToResponseEncoder;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpServerCodec;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +18,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PipelineBuilder {
   private final ObjectProvider<HttpTrafficStrategySelector> strategySelectors;
-  private final ObjectProvider<StorageExceptionHandler> storageExceptionHandlers;
-  private final ObjectProvider<FinalErrorHandler> globalErrorHandlers;
-  private final ObjectProvider<IdleTimeoutHandler> idleTimeoutHandlers;
-  private final ObjectProvider<CorsHandler> corsHandler;
+  private final StorageExceptionHandler storageExceptionHandlers;
+  private final GlobalErrorHandler globalErrorHandlers;
+  private final IdleTimeoutHandler idleTimeoutHandlers;
+  private final DtoToResponseEncoder dtoToResponseEncoder;
+  private final JwtAuthHandler jwtAuthHandler;
+  private final CorsHandler corsHandler;
 
   public void buildHttp11Pipeline(ChannelPipeline pipeline) {
     pipeline.addLast(PipelineHandlerNames.HTTP_SERVER_CODEC, new HttpServerCodec());
@@ -27,11 +31,14 @@ public class PipelineBuilder {
   }
 
   public void finalizeHttpPipeline(ChannelPipeline pipeline) {
-    pipeline.addLast(PipelineHandlerNames.CORS, corsHandler.getObject());
+    pipeline.addLast(PipelineHandlerNames.HEAD_GLOBAL_ERROR, globalErrorHandlers);
+    pipeline.addLast(PipelineHandlerNames.DTO_TO_RESPONSE, dtoToResponseEncoder);
+    pipeline.addLast(PipelineHandlerNames.CORS, corsHandler);
     pipeline.addLast(PipelineHandlerNames.TRAFFIC_STRATEGY_SELECTOR, strategySelectors.getObject());
+    pipeline.addLast(PipelineHandlerNames.JWT_AUTH, jwtAuthHandler);
 
-    pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, storageExceptionHandlers.getObject());
-    pipeline.addLast(PipelineHandlerNames.GLOBAL_ERROR, globalErrorHandlers.getObject());
-    pipeline.addLast(PipelineHandlerNames.IDLE_TIMEOUT, idleTimeoutHandlers.getObject());
+    pipeline.addLast(PipelineHandlerNames.STORAGE_EXCEPTION, storageExceptionHandlers);
+    pipeline.addLast(PipelineHandlerNames.TAIL_GLOBAL_ERROR, globalErrorHandlers);
+    pipeline.addLast(PipelineHandlerNames.IDLE_TIMEOUT, idleTimeoutHandlers);
   }
 }

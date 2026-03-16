@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.notification;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.NotificationRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.NotificationDto;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +21,8 @@ public class WebNotificationClient implements NotificationClient {
   }
 
   public void notifyFileDeleted(String userEmail, String userName, String fileName, UUID userId) {
-    NotificationRequest request =
-        NotificationRequest.builder()
+    NotificationDto request =
+        NotificationDto.builder()
             .type("FILE_DELETED")
             .userEmail(userEmail)
             .userName(userName)
@@ -35,8 +35,8 @@ public class WebNotificationClient implements NotificationClient {
 
   public void notifyStorageAlmostFull(
       String userEmail, String userName, long usedStorage, long storageLimit, UUID userId) {
-    NotificationRequest request =
-        NotificationRequest.builder()
+    NotificationDto request =
+        NotificationDto.builder()
             .type("STORAGE_ALMOST_FULL")
             .userEmail(userEmail)
             .userName(userName)
@@ -49,8 +49,8 @@ public class WebNotificationClient implements NotificationClient {
   }
 
   public void notifyStorageFull(String userEmail, String userName, UUID userId) {
-    NotificationRequest request =
-        NotificationRequest.builder()
+    NotificationDto request =
+        NotificationDto.builder()
             .type("STORAGE_FULL")
             .userEmail(userEmail)
             .userName(userName)
@@ -62,8 +62,8 @@ public class WebNotificationClient implements NotificationClient {
 
   public void notifyTariffPurchased(
       String email, String name, String tariffName, LocalDateTime endDate) {
-    NotificationRequest request =
-        NotificationRequest.builder()
+    NotificationDto request =
+        NotificationDto.builder()
             .type("TARIFF_PURCHASED")
             .userEmail(email)
             .userName(name)
@@ -75,8 +75,8 @@ public class WebNotificationClient implements NotificationClient {
 
   public void notifyTariffEndingSoon(
       String email, String name, int daysLeft, LocalDateTime endDate) {
-    NotificationRequest request =
-        NotificationRequest.builder()
+    NotificationDto request =
+        NotificationDto.builder()
             .type("TARIFF_ENDING_SOON")
             .userEmail(email)
             .userName(name)
@@ -87,18 +87,14 @@ public class WebNotificationClient implements NotificationClient {
   }
 
   public void notifyTariffExpired(String email, String name) {
-    NotificationRequest request =
-        NotificationRequest.builder()
-            .type("TARIFF_EXPIRED")
-            .userEmail(email)
-            .userName(name)
-            .build();
+    NotificationDto request =
+        NotificationDto.builder().type("TARIFF_EXPIRED").userEmail(email).userName(name).build();
     sendRequest(request);
   }
 
   public void notifyTariffRenewed(String email, String name, LocalDateTime newEndDate) {
-    NotificationRequest request =
-        NotificationRequest.builder()
+    NotificationDto request =
+        NotificationDto.builder()
             .type("TARIFF_RENEWED")
             .userEmail(email)
             .userName(name)
@@ -107,7 +103,7 @@ public class WebNotificationClient implements NotificationClient {
     sendRequest(request);
   }
 
-  private void sendRequest(NotificationRequest request) {
+  private void sendRequest(NotificationDto request) {
     webClient
         .post()
         .uri("/api/notifications/send")

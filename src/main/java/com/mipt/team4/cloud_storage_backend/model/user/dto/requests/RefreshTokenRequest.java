@@ -1,14 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.model.user.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestHeader;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
+import jakarta.validation.constraints.NotBlank;
 
-public record RefreshTokenRequest(String refreshToken) {
-
-  public void validate() throws ValidationFailedException {
-    ValidationResult result = Validators.all(Validators.notBlank("Refresh token", refreshToken));
-
-    Validators.throwExceptionIfNotValid(result);
-  }
-}
+@RequestMapping(method = "POST", path = ApiEndpoints.AUTH_REFRESH)
+public record RefreshTokenRequest(@RequestHeader @NotBlank String refreshToken) {}

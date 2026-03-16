@@ -7,11 +7,11 @@ import java.util.UUID;
 public class StorageFileNotFoundException extends BaseStorageException {
   public StorageFileNotFoundException(UUID parentId, String name) {
     super(
-        "File or directory not found: parentId=" + parentId + "; name=" + name,
+        "File or directory not found: id=" + parentId + "; name=" + name,
         HttpResponseStatus.NOT_FOUND);
   }
 
   public StorageFileNotFoundException(UUID id) {
-    super("File or directory not found: fileId=" + id, HttpResponseStatus.NOT_FOUND);
+    super("File or directory not found: id=" + id, HttpResponseStatus.NOT_FOUND);
   }
 }

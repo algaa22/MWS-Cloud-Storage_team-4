@@ -19,7 +19,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 @Tag("integration")
 public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
   private static final String NEW_NAME = "new_file";
-  private static final String NEW_VISIBILITY = "public";
+  private static final String NEW_VISIBILITY = "PUBLIC";
   private static final String NEW_TAGS = "1,2,3";
 
   @Autowired private FileOperationsITUtils fileOperationsITUtils;
@@ -63,7 +63,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
         fileOperationsITUtils.sendChangeFileVisibilityRequest(
             client, currentUserToken, fileId, "asdsad");
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
-    containsValidationError(response, "Visibility");
+    containsValidationError(response, "visibility");
   }
 
   @Test

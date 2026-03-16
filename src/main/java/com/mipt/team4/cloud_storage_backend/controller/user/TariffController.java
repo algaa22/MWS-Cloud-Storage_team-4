@@ -1,48 +1,53 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
+import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.AvailableTariffsRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SimpleUserRequest;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdateAutoRenewRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenewRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdatePaymentMethodRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.AvailableTariffsResponse;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.TariffPlanResponse;
+import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
+import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
+import io.netty.channel.ChannelHandlerContext;
+import java.util.Arrays;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
 @Controller
 @RequiredArgsConstructor
 public class TariffController {
-
   private final TariffService tariffService;
-  private final JwtService jwtService;
 
-  /** Купить тариф (при регистрации автоматически TRIAL, этот метод для платных) */
-  public void purchaseTariff(PurchaseTariffRequest request) {
-    request.validate(jwtService); // проверяем токен
+  public void purchaseTariff(ChannelHandlerContext ctx, PurchaseTariffRequest request) {
     tariffService.purchaseTariff(request);
+    ResponseUtils.send(ctx, new SuccessResponse("Tariff purchased successfully"));
   }
 
-  /** Получить информацию о текущем тарифе */
-  public TariffInfoDto getTariffInfo(SimpleUserRequest request) {
-    request.validate(jwtService);
-    return tariffService.getTariffInfo(request);
+  public void getTariffInfo(ChannelHandlerContext ctx, TariffInfoRequest request) {
+    TariffInfoDto info = tariffService.getTariffInfo(request);
+    ResponseUtils.send(ctx, info);
   }
 
-  /** Обновить способ оплаты */
-  public void updatePaymentMethod(UpdateAutoRenewRequest request) {
-    request.validate(jwtService);
+  public void setAutoRenew(ChannelHandlerContext ctx, SetAutoRenewRequest request) {
+    tariffService.setAutoRenew(request);
+    String message = request.enabled() ? "Auto-renew enabled" : "Auto-renew disabled";
+    ResponseUtils.send(ctx, new SuccessResponse(message));
+  }
+
+  public void updatePaymentMethod(ChannelHandlerContext ctx, UpdatePaymentMethodRequest request) {
     tariffService.updatePaymentMethod(request);
+    ResponseUtils.send(ctx, new SuccessResponse("Payment method updated"));
   }
 
-  /** Переключить автопродление * */
-  public void setAutoRenew(SimpleUserRequest request, boolean enabled) {
-    request.validate(jwtService);
-    tariffService.setAutoRenew(request, enabled);
-  }
-
-  /** Проверить доступ к файлам (для FileService) */
-  public boolean checkAccess(SimpleUserRequest request) {
-    request.validate(jwtService);
-    return tariffService.hasAccess(request);
+  public void getAvailableTariffs(ChannelHandlerContext ctx, AvailableTariffsRequest request) {
+    List<TariffPlanResponse> plans =
+        Arrays.stream(TariffPlan.values()).map(TariffPlanResponse::from).toList();
+    AvailableTariffsResponse response = new AvailableTariffsResponse(plans);
+    ResponseUtils.send(ctx, response);
   }
 }

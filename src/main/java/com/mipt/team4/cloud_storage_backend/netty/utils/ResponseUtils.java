@@ -105,7 +105,10 @@ public class ResponseUtils {
                       .addListener(
                           future -> {
                             if (future.isSuccess()) promise.setSuccess();
-                            else promise.setFailure(future.cause());
+                            else {
+                              promise.setFailure(future.cause());
+                              ctx.fireExceptionCaught(future.cause());
+                            }
                           });
                 } else {
                   ReferenceCountUtil.release(response);

@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.utils.converters;
 
-import com.mipt.team4.cloud_storage_backend.utils.FileTagsMapper;
+import com.mipt.team4.cloud_storage_backend.utils.StringListConverter;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import java.util.List;
@@ -9,11 +9,11 @@ import java.util.List;
 public class FileTagsConverter implements AttributeConverter<List<String>, String> {
   @Override
   public String convertToDatabaseColumn(List<String> attribute) {
-    return FileTagsMapper.toString(attribute);
+    return StringListConverter.toString(attribute);
   }
 
   @Override
   public List<String> convertToEntityAttribute(String dbData) {
-    return FileTagsMapper.toList(dbData);
+    return StringListConverter.toList(dbData);
   }
 }

@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.e2e.user.utils;
 
+import static org.junit.Assert.assertEquals;
+
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import java.io.IOException;
@@ -21,12 +23,7 @@ public class UserAuthUtils {
   public String sendRegisterRandomUserRequest(HttpClient client)
       throws IOException, InterruptedException {
     HttpResponse<String> response = sendRegisterTestUserRequest(client, createRandomUser());
-    String responseBody = response.body();
-
-    // TODO: RE?
-    if (response.statusCode() != HttpStatus.SC_CREATED) {
-      throw new RuntimeException("Failed to register test user: " + responseBody);
-    }
+    assertEquals(HttpStatus.SC_CREATED, response.statusCode());
 
     return userITUtils.extractAccessToken(response);
   }
@@ -35,7 +32,7 @@ public class UserAuthUtils {
     return new TestUserDto(
         "deadlyparkourkillerdarkbrawlstarsassassinstalkersniper1998rus",
         usersCounter++ + "@email.com",
-        "superpassword1488");
+        "superPassword$1488");
   }
 
   // TODO: нужен ли TestUserDto?

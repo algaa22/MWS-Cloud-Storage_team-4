@@ -16,7 +16,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
@@ -82,23 +81,24 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
   private void assertTokenIsInvalid(HttpRequest request) throws IOException, InterruptedException {
     HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    assertEquals(HttpStatus.SC_UNAUTHORIZED, response.statusCode());
 
-    assertTrue(containsValidationError(response, "User token"));
+    JsonNode messageJsonNode = itUtils.getRootNodeFromResponse(response).get("message");
+    assertNotNull(messageJsonNode);
+    assertTrue(messageJsonNode.asText().contains("token"));
   }
 
   protected boolean containsValidationError(HttpResponse<String> response, String validationField)
       throws IOException {
-    JsonNode messageJsonStrNode = itUtils.getRootNodeFromResponse(response).get("message");
-    assertNotNull(messageJsonStrNode);
+    JsonNode messageJsonNode = itUtils.getRootNodeFromResponse(response).get("message");
+    assertNotNull(messageJsonNode);
 
-    ObjectMapper mapper = new ObjectMapper();
-    JsonNode messageNode = mapper.readTree(messageJsonStrNode.asText());
-    assertTrue(messageNode.has("details"));
+    JsonNode detailsNode = itUtils.getRootNodeFromResponse(response).get("details");
+    assertNotNull(detailsNode);
 
     boolean hasTargetValidationError = false;
 
-    for (Iterator<JsonNode> it = messageNode.get("details").elements(); it.hasNext(); ) {
+    for (Iterator<JsonNode> it = detailsNode.elements(); it.hasNext(); ) {
       JsonNode detailNode = it.next();
 
       if (detailNode.get("field").asText().equalsIgnoreCase(validationField)) {

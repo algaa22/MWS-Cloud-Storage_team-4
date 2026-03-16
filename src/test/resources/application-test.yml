@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: cloud-storage-backend-test
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+netty:
+  enable-https: false
+  http-port: 8081
+  worker-threads: 2
+
+storage:
+  failsafe-retry:
+    max-attempts: 1

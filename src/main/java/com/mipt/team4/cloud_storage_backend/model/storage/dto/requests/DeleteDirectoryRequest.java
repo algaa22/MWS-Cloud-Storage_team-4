@@ -1,18 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.exception.validation.ValidationFailedException;
-import com.mipt.team4.cloud_storage_backend.service.user.security.JwtService;
-import com.mipt.team4.cloud_storage_backend.utils.validation.ValidationResult;
-import com.mipt.team4.cloud_storage_backend.utils.validation.Validators;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.QueryParam;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.UserId;
+import jakarta.validation.constraints.NotNull;
+import java.util.UUID;
 
-public record DeleteDirectoryRequest(String userToken, String directoryId) {
-
-  public void validate(JwtService jwtService) throws ValidationFailedException {
-    ValidationResult result =
-        Validators.all(
-            Validators.validToken(jwtService, userToken),
-            Validators.isUuid("Directory ID", directoryId));
-
-    Validators.throwExceptionIfNotValid(result);
-  }
-}
+@RequestMapping(method = "DELETE", path = ApiEndpoints.DIRECTORIES_PREFIX)
+public record DeleteDirectoryRequest(@UserId UUID userId, @NotNull @QueryParam UUID id) {}

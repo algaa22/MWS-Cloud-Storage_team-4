@@ -28,24 +28,24 @@ public class ChunkedUploadController {
   private final FileService fileService;
 
   private ChunkedUploadInfoDto uploadInfo;
-  private State state = State.IDLE;
+  private ChunkedUploadState state = ChunkedUploadState.IDLE;
 
   public void start(ChannelHandlerContext ctx, StartChunkedUploadRequest request) {
-    if (state != State.IDLE) {
-      throw new IncorrectChunkedUploadStateException(State.IDLE, state);
+    if (state != ChunkedUploadState.IDLE) {
+      throw new IncorrectChunkedUploadStateException(ChunkedUploadState.IDLE, state);
     }
 
     uploadInfo = fileService.startChunkedUpload(request);
-    state = State.PROCESSING;
+    state = ChunkedUploadState.PROCESSING;
   }
 
   public void resume(ChannelHandlerContext ctx, ResumeChunkedUploadRequest request) {
-    if (state != State.STOPPED) {
-      throw new IncorrectChunkedUploadStateException(State.STOPPED, state);
+    if (state != ChunkedUploadState.STOPPED) {
+      throw new IncorrectChunkedUploadStateException(ChunkedUploadState.STOPPED, state);
     }
 
     fileService.resumeChunkedUploadSession(uploadInfo);
-    state = State.PROCESSING;
+    state = ChunkedUploadState.PROCESSING;
   }
 
   @RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
@@ -58,9 +58,28 @@ public class ChunkedUploadController {
     handleChunk(ctx, content);
   }
 
+  private void complete(ChannelHandlerContext ctx, LastHttpContent content) {
+    if (state != ChunkedUploadState.PROCESSING) {
+      throw new IncorrectChunkedUploadStateException(ChunkedUploadState.PROCESSING, state);
+    }
+
+    if (content.content().readableBytes() > 0) {
+      handleChunk(ctx, content);
+    }
+
+    try {
+      ChunkedUploadFileResponse result = fileService.completeChunkedUpload(uploadInfo);
+      ResponseUtils.send(ctx, result);
+      state = ChunkedUploadState.COMPLETED;
+    } catch (CompleteUploadRetriableException e) {
+      ResponseUtils.send(ctx, new UploadRetryResponse(e));
+      state = ChunkedUploadState.STOPPED;
+    }
+  }
+
   private void handleChunk(ChannelHandlerContext ctx, HttpContent content) {
-    if (state != State.PROCESSING) {
-      throw new IncorrectChunkedUploadStateException(State.PROCESSING, state);
+    if (state != ChunkedUploadState.PROCESSING) {
+      throw new IncorrectChunkedUploadStateException(ChunkedUploadState.PROCESSING, state);
     }
 
     ByteBuf data = content.content();
@@ -71,33 +90,7 @@ public class ChunkedUploadController {
       fileService.uploadChunk(new UploadChunkDto(uploadInfo.sessionId(), bytes));
     } catch (ProcessUploadRetriableException e) {
       ResponseUtils.send(ctx, new UploadRetryResponse(e));
-      state = State.STOPPED;
+      state = ChunkedUploadState.STOPPED;
     }
-  }
-
-  public void complete(ChannelHandlerContext ctx, LastHttpContent content) {
-    if (state != State.PROCESSING) {
-      throw new IncorrectChunkedUploadStateException(State.PROCESSING, state);
-    }
-
-    if (content.content().readableBytes() > 0) {
-      handleChunk(ctx, content);
-    }
-
-    try {
-      ChunkedUploadFileResponse result = fileService.completeChunkedUpload(uploadInfo);
-      ResponseUtils.send(ctx, result);
-      state = State.COMPLETED;
-    } catch (CompleteUploadRetriableException e) {
-      ResponseUtils.send(ctx, new UploadRetryResponse(e));
-      state = State.STOPPED;
-    }
-  }
-
-  public enum State {
-    IDLE,
-    PROCESSING,
-    STOPPED,
-    COMPLETED
   }
 }

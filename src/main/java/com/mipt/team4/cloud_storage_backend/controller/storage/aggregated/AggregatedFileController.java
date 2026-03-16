@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.aggregated;
 
+import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedResponse;
+import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileInfoRequest;
@@ -13,7 +15,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +51,7 @@ public class AggregatedFileController {
 
   public void uploadFile(ChannelHandlerContext ctx, FileUploadRequest request) {
     UUID createdId = fileService.uploadFile(request);
-    ResponseUtils.sendCreatedResponse(ctx, createdId, "File successfully uploaded");
+    ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"));
   }
 
   public void deleteFile(ChannelHandlerContext ctx, DeleteFileRequest request) {
@@ -60,16 +61,16 @@ public class AggregatedFileController {
       fileService.softDeleteFile(request);
     }
 
-    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully deleted");
+    ResponseUtils.send(ctx, new SuccessResponse("File successfully deleted"));
   }
 
   public void restoreFile(ChannelHandlerContext ctx, RestoreFileRequest request) {
     fileService.restoreFile(request);
-    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File successfully restored");
+    ResponseUtils.send(ctx, new SuccessResponse("File successfully restored"));
   }
 
   public void changeMetadata(ChannelHandlerContext ctx, ChangeFileMetadataRequest request) {
     fileService.changeFileMetadata(request);
-    ResponseUtils.sendSuccess(ctx, HttpResponseStatus.OK, "File metadata successfully changed");
+    ResponseUtils.send(ctx, new SuccessResponse("File metadata successfully changed"));
   }
 }

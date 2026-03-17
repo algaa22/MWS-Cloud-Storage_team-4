@@ -983,6 +983,7 @@ export default function FileBrowser() {
                       try {
                         const params = new URLSearchParams();
                         params.append("includeDirectories", "true");
+                        params.append("recursive", "true");
                         params.append("tags", updatedTags.join(','));
 
                         const response = await fetchWithTokenRefresh(
@@ -1070,12 +1071,12 @@ export default function FileBrowser() {
                       if (updatedTags.length === 0) {
                         await fetchFiles();
                       } else {
-                        // Поиск с оставшимися тегами
                         setIsSearching(true);
                         try {
                           const params = new URLSearchParams();
                           params.append("includeDirectories", "true");
-                          updatedTags.forEach(tag => params.append("tags", tag));
+                          params.append("recursive", "true");
+                          params.append("tags", updatedTags.join(','));
 
                           const response = await fetchWithTokenRefresh(
                             `${BASE}/files/list?${params.toString()}`,
@@ -1083,12 +1084,19 @@ export default function FileBrowser() {
                             token
                           );
 
+                          const responseText = await response.text();
+                          console.log("RAW SEARCH RESPONSE:", responseText);
+
                           if (!response.ok) throw new Error(`Search failed: ${response.status}`);
 
-                          const data = await response.json();
-                          const files = data?.files || data || [];
+                          const data = JSON.parse(responseText);
+                          const items = data?.files || data || [];
 
-                          const processed = files.map(item => ({
+                          if (!Array.isArray(items)) {
+                            return;
+                          }
+
+                          const processed = items.map(item => ({
                             name: item.name || "Без имени",
                             type: item.isDirectory ? "folder" : "file",
                             size: item.size || 0,

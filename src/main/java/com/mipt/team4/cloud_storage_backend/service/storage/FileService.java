@@ -37,7 +37,6 @@ import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAda
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
-import com.mipt.team4.cloud_storage_backend.utils.StringListConverter;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -295,11 +294,10 @@ public class FileService {
   public List<StorageEntity> getFileList(GetFileListRequest request) {
     UUID parentId = request.parentId();
     UUID userId = request.userId();
-    String tags = StringListConverter.toString(request.tags());
 
     return storageRepository.getFileList(
         new FileListFilter(
-            userId, parentId, request.includeDirectories(), request.recursive(), tags));
+            userId, parentId, request.includeDirectories(), request.recursive(), request.tags()));
   }
 
   @Transactional(readOnly = true)

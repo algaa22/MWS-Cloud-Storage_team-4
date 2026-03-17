@@ -99,21 +99,20 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       nativeQuery = true,
       value =
           """
-        INSERT INTO files (id, user_id, parent_id, name, size, mime_type, visibility, is_deleted, tags, is_directory, status, operation_type, started_at, updated_at, retry_count, error_message)
-        VALUES (:#{#f.id}, :#{#f.userId}, :#{#f.parentId}, :#{#f.name}, :#{#f.size}, :#{#f.mimeType}, :#{#f.visibility}, :#{#f.isDeleted}, :tagsStr, :#{#f.isDirectory}, :#{#f.status.name()}, :#{#f.operationType?.name()}, :#{#f.startedAt}, :#{#f.updatedAt}, :#{#f.retryCount}, :#{#f.errorMessage})
-        ON CONFLICT (user_id, name, (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000')))
-        WHERE is_deleted = false
+                  INSERT INTO files (id, user_id, parent_id, name, size, mime_type, visibility, is_deleted, is_directory, status, operation_type, started_at, updated_at, retry_count, error_message)
+                          VALUES (:#{#f.id}, :#{#f.userId}, :#{#f.parentId}, :#{#f.name}, :#{#f.size}, :#{#f.mimeType}, :#{#f.visibility}, :#{#f.isDeleted}, :#{#f.isDirectory}, :#{#f.status.name()}, :#{#f.operationType?.name()}, :#{#f.startedAt}, :#{#f.updatedAt}, :#{#f.retryCount}, :#{#f.errorMessage})
+                          ON CONFLICT (user_id, name, (COALESCE(parent_id, '00000000-0000-0000-0000-000000000000')))
+                          WHERE is_deleted = false
 
-        DO UPDATE SET
-            size = EXCLUDED.size,
-            mime_type = EXCLUDED.mime_type,
-            tags = EXCLUDED.tags,
-            status = 'PENDING',
-            error_message = NULL,
-            updated_at = NOW()
-        WHERE files.status != 'READY'
-    """)
-  void upsertFile(@Param("f") StorageEntity file, @Param("tagsStr") String tagsStr);
+                          DO UPDATE SET
+                              size = EXCLUDED.size,
+                              mime_type = EXCLUDED.mime_type,
+                              status = 'PENDING',
+                              error_message = NULL,
+                              updated_at = NOW()
+                          WHERE files.status != 'READY'
+              """)
+  void upsertFile(@Param("f") StorageEntity file);
 
   @Modifying
   void deleteByUserIdAndId(UUID userId, UUID id);

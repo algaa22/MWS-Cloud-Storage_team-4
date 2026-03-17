@@ -94,7 +94,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       value = "SELECT * FROM files WHERE id = :id AND user_id = :userId AND is_deleted = true")
   Optional<StorageEntity> findDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
   @Query(
       nativeQuery = true,
       value =

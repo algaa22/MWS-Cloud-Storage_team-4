@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Обертка-фасад для управления жизненным циклом операций над файлами и директориями.
@@ -42,6 +43,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
   private final StorageJpaRepositoryAdapter metadataRepository;
+  private final TransactionTemplate transactionTemplate;
   private final StorageConfig storageConfig;
   private final RetryPolicy<Object> retryPolicy;
   private final EntityManager entityManager;
@@ -74,7 +76,7 @@ public class StorageRepositoryWrapper {
    * Начинает сложную операцию.
    *
    * <p>Для вызова требуется статус READY. <br>
-   * После выполнения операции переводит статус в {@code PENDING}
+   * Перед выполнением операции сам создает файл и переводит статус в {@code PENDING}
    */
   public <T> T initiateStep(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
@@ -140,10 +142,7 @@ public class StorageRepositoryWrapper {
   private <T> void finalizeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     executeOperation(entity, operationType, operation);
-
-    if (operationType != FileOperationType.DELETE) {
-      syncEntityWithDatabase(entity, operationType, FileStatus.READY);
-    }
+    syncEntityWithDatabase(entity, operationType, FileStatus.READY);
   }
 
   private void checkIfStatusIsReady(StorageEntity entity) {
@@ -268,29 +267,39 @@ public class StorageRepositoryWrapper {
       FileOperationType operationType,
       FileStatus newStatus,
       int newRetryCount) {
+    transactionTemplate.execute(
+        status -> {
+          if (operationType == FileOperationType.DELETE) {
+            return null;
+          }
 
-    if (operationType == FileOperationType.DELETE) {
-      return;
-    }
+          StorageEntity managedEntity = syncToPersistenceContext(entity);
 
-    entity = syncToPersistenceContext(entity);
+          managedEntity.setStatus(newStatus);
+          managedEntity.setRetryCount(newRetryCount);
 
-    entity.setStatus(newStatus);
-    entity.setRetryCount(newRetryCount);
+          if (newStatus == FileStatus.PENDING || newStatus == FileStatus.READY) {
+            managedEntity.setUpdatedAt(LocalDateTime.now());
+          }
 
-    if (newStatus == FileStatus.PENDING || newStatus == FileStatus.READY) {
-      entity.setUpdatedAt(LocalDateTime.now());
-    }
+          if (newStatus == FileStatus.READY) {
+            managedEntity.setOperationType(null);
+          }
 
-    if (newStatus == FileStatus.READY) {
-      entity.setOperationType(null);
-    }
+          metadataRepository.updateFile(managedEntity);
 
-    metadataRepository.updateFile(entity);
+          return null;
+        });
   }
 
   private StorageEntity syncToPersistenceContext(StorageEntity entity) {
-    entityManager.find(StorageEntity.class, entity.getId());
+    StorageEntity managed = entityManager.find(StorageEntity.class, entity.getId());
+
+    if (managed == null) {
+      entityManager.persist(entity);
+      return entity;
+    }
+
     return entityManager.merge(entity);
   }
 

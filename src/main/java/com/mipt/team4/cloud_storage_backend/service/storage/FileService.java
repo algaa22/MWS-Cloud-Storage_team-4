@@ -65,6 +65,7 @@ public class FileService {
   private final NotificationConfig notificationConfig;
   private final MinioConfig minioConfig;
 
+  @Transactional
   public ChunkedUploadInfoDto startChunkedUpload(StartChunkedUploadRequest request) {
     UUID parentId = request.parentId();
     UUID userId = request.userId();
@@ -80,28 +81,30 @@ public class FileService {
       throw new UploadSessionAlreadyExists(uploadSessionId);
     }
 
-    Optional<StorageEntity> fileEntity = storageRepository.getIncludeDeleted(userId, parentId);
-    if (fileEntity.isPresent()) {
-      throw new StorageFileAlreadyExistsException(parentId, name);
-    }
+    storageRepository
+        .getIncludeDeleted(userId, parentId)
+        .ifPresent(
+            entity -> {
+              throw new StorageFileAlreadyExistsException(parentId, name);
+            });
+
+    StorageEntity fileEntity =
+        StorageEntity.builder()
+            .id(UUID.randomUUID())
+            .userId(userId)
+            .mimeType(MimeTypeDetector.detect(name))
+            .parentId(parentId)
+            .name(name)
+            .isDirectory(false)
+            .tags(request.fileTags())
+            .status(FileStatus.READY)
+            .updatedAt(LocalDateTime.now())
+            .build();
 
     userRepository.increaseUsedStorage(userId, request.fileSize());
+    String uploadId = storageRepository.startMultipartUpload(fileEntity);
 
-    activeUploads.put(
-        uploadSessionId,
-        new ChunkedUploadSession(
-            request,
-            StorageEntity.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .mimeType(MimeTypeDetector.detect(name))
-                .parentId(parentId)
-                .name(name)
-                .isDirectory(false)
-                .tags(request.fileTags())
-                .status(FileStatus.READY)
-                .updatedAt(LocalDateTime.now())
-                .build()));
+    activeUploads.put(uploadSessionId, new ChunkedUploadSession(request, uploadId, fileEntity));
 
     return new ChunkedUploadInfoDto(uploadSessionId);
   }
@@ -334,7 +337,7 @@ public class FileService {
   }
 
   private void uploadPart(ChunkedUploadSession uploadState) {
-    String uploadId = uploadState.getOrCreateUploadId(storageRepository);
+    String uploadId = uploadState.getUploadId();
     byte[] part = ChunkCombiner.combineChunksToPart(uploadState);
     StorageEntity fileEntity = uploadState.getEntity();
 

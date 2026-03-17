@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class StorageJpaRepositoryAdapter {
   private final StorageJpaRepository jpaRepository;
   private final EntityManager entityManager;
-  private StorageEntity fileEntity;
 
   @Transactional
   public void addFile(StorageEntity fileEntity) {

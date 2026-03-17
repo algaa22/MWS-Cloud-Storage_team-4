@@ -37,10 +37,7 @@ public class StorageRepository {
     return wrapper.initiateStep(
         entity,
         FileOperationType.UPLOAD,
-        () -> {
-          metadataRepository.addFile(entity);
-          return contentRepository.startMultipartUpload(entity.getS3Key());
-        });
+        () -> contentRepository.startMultipartUpload(entity.getS3Key()));
   }
 
   public String uploadPart(StorageEntity entity, UploadPartDto request) {

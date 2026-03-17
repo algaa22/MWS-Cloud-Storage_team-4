@@ -181,7 +181,7 @@ public class FileService {
         fileEntity.getId(), fileEntity.getSize(), uploadState.getTotalParts());
   }
 
-  public UUID uploadFile(FileUploadRequest request) {
+  public UUID simpleUpload(FileUploadRequest request) {
     UUID fileId = UUID.randomUUID();
     UUID userId = request.userId();
 
@@ -222,7 +222,7 @@ public class FileService {
     return fileId;
   }
 
-  public FileDownloadInfoDto downloadFile(StartChunkedDownloadRequest request) {
+  public FileDownloadInfoDto download(StartChunkedDownloadRequest request) {
     UUID fileId = request.fileId();
     UUID userId = request.userId();
 
@@ -237,7 +237,7 @@ public class FileService {
         fileEntity.get().getMimeType(), storageRepository.download(entity), entity.getSize());
   }
 
-  public void hardDeleteFile(DeleteFileRequest request) {
+  public void hardDelete(DeleteFileRequest request) {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
@@ -256,7 +256,7 @@ public class FileService {
   }
 
   @Transactional
-  public void softDeleteFile(DeleteFileRequest request) {
+  public void softDelete(DeleteFileRequest request) {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
@@ -269,7 +269,7 @@ public class FileService {
   }
 
   @Transactional
-  public void restoreFile(RestoreFileRequest request) {
+  public void restore(RestoreFileRequest request) {
     UUID fileId = request.fileId();
     UUID userId = request.userId();
 
@@ -301,7 +301,7 @@ public class FileService {
   }
 
   @Transactional(readOnly = true)
-  public StorageEntity getFileInfo(GetFileInfoRequest request) {
+  public StorageEntity getInfo(GetFileInfoRequest request) {
     UUID fileId = request.fileId();
     UUID userId = request.userId();
 
@@ -314,7 +314,7 @@ public class FileService {
   }
 
   @Transactional
-  public void changeFileMetadata(ChangeFileMetadataRequest request) {
+  public void changeMetadata(ChangeFileMetadataRequest request) {
     UUID fileId = request.id();
     UUID userId = request.userId();
 

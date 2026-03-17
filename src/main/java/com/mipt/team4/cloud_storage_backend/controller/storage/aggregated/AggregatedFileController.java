@@ -44,33 +44,33 @@ public class AggregatedFileController {
   }
 
   public void getFileInfo(ChannelHandlerContext ctx, GetFileInfoRequest request) {
-    StorageEntity entity = fileService.getFileInfo(request);
+    StorageEntity entity = fileService.getInfo(request);
     FileInfoResponse response = FileInfoResponse.from(entity);
     ResponseUtils.send(ctx, response);
   }
 
   public void uploadFile(ChannelHandlerContext ctx, FileUploadRequest request) {
-    UUID createdId = fileService.uploadFile(request);
+    UUID createdId = fileService.simpleUpload(request);
     ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"));
   }
 
   public void deleteFile(ChannelHandlerContext ctx, DeleteFileRequest request) {
     if (request.permanent()) {
-      fileService.hardDeleteFile(request);
+      fileService.hardDelete(request);
     } else {
-      fileService.softDeleteFile(request);
+      fileService.softDelete(request);
     }
 
     ResponseUtils.send(ctx, new SuccessResponse("File successfully deleted"));
   }
 
   public void restoreFile(ChannelHandlerContext ctx, RestoreFileRequest request) {
-    fileService.restoreFile(request);
+    fileService.restore(request);
     ResponseUtils.send(ctx, new SuccessResponse("File successfully restored"));
   }
 
   public void changeMetadata(ChannelHandlerContext ctx, ChangeFileMetadataRequest request) {
-    fileService.changeFileMetadata(request);
+    fileService.changeMetadata(request);
     ResponseUtils.send(ctx, new SuccessResponse("File metadata successfully changed"));
   }
 }

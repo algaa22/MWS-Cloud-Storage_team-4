@@ -4,8 +4,8 @@ import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedRe
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
@@ -43,34 +43,34 @@ public class AggregatedFileController {
     ResponseUtils.send(ctx, response);
   }
 
-  public void getFileInfo(ChannelHandlerContext ctx, FileInfoRequest request) {
-    StorageEntity entity = fileService.getFileInfo(request);
+  public void getFileInfo(ChannelHandlerContext ctx, GetFileInfoRequest request) {
+    StorageEntity entity = fileService.getInfo(request);
     FileInfoResponse response = FileInfoResponse.from(entity);
     ResponseUtils.send(ctx, response);
   }
 
   public void uploadFile(ChannelHandlerContext ctx, FileUploadRequest request) {
-    UUID createdId = fileService.uploadFile(request);
+    UUID createdId = fileService.simpleUpload(request);
     ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"));
   }
 
   public void deleteFile(ChannelHandlerContext ctx, DeleteFileRequest request) {
     if (request.permanent()) {
-      fileService.hardDeleteFile(request);
+      fileService.hardDelete(request);
     } else {
-      fileService.softDeleteFile(request);
+      fileService.softDelete(request);
     }
 
     ResponseUtils.send(ctx, new SuccessResponse("File successfully deleted"));
   }
 
   public void restoreFile(ChannelHandlerContext ctx, RestoreFileRequest request) {
-    fileService.restoreFile(request);
+    fileService.restore(request);
     ResponseUtils.send(ctx, new SuccessResponse("File successfully restored"));
   }
 
   public void changeMetadata(ChannelHandlerContext ctx, ChangeFileMetadataRequest request) {
-    fileService.changeFileMetadata(request);
+    fileService.changeMetadata(request);
     ResponseUtils.send(ctx, new SuccessResponse("File metadata successfully changed"));
   }
 }

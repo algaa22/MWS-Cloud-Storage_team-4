@@ -4,7 +4,7 @@ import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionExce
 import com.mipt.team4.cloud_storage_backend.exception.user.auth.MissingAuthTokenException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserSessionDto;
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.SecurityAttributes;
+import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
@@ -52,7 +52,7 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
     }
 
     UUID userId = sessionDto.get().userId();
-    ctx.channel().attr(SecurityAttributes.USER_ID).set(userId);
+    ctx.channel().attr(NettyAttributes.USER_ID).set(userId);
     ctx.fireChannelRead(request);
   }
 }

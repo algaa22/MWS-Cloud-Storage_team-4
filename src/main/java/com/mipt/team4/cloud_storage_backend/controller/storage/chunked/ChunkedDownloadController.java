@@ -24,7 +24,7 @@ public class ChunkedDownloadController {
   private final FileService fileService;
 
   public void download(ChannelHandlerContext ctx, StartChunkedDownloadRequest request) {
-    FileDownloadInfoDto file = fileService.downloadFile(request);
+    FileDownloadInfoDto file = fileService.download(request);
 
     HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, file.size());

@@ -4,9 +4,8 @@ public class ValidationPatterns {
   public static final String FILE_NAME_REGEXP = "^[^\\\\/:*?\"<>|]+$";
   public static final String FILE_NAME_ERROR = "File name contains forbidden characters";
 
-  public static final String SINGLE_TAG_REGEXP = "^[a-zA-Z0-9а-яА-Я]+$";
-  public static final String SINGLE_TAG_ERROR =
-      "Each tag must be alphanumeric and contain no spaces";
+  public static final String SINGLE_TAG_REGEXP = "^[a-zA-Z0-9а-яА-Я\\s]*$";
+  public static final String SINGLE_TAG_ERROR = "Each tag must be alphanumeric";
 
   public static final String EMAIL_REGEXP = "^[A-Za-z0-9+_.-]+@(.+)$";
   public static final String EMAIL_ERROR = "Invalid email format";

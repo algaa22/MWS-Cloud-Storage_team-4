@@ -2,11 +2,10 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 
 @Getter
@@ -16,7 +15,7 @@ public class ChunkedUploadSession {
   // TODO: сессия не удаляется, если completeMultipartUpload не вызван
   // TODO: нужны ли все поля session?
   private final StartChunkedUploadRequest request;
-  private final Map<Integer, String> eTags = new HashMap<>();
+  private final Map<Integer, String> eTags = new ConcurrentHashMap<>();
   private final StorageEntity entity;
   private boolean stopped = false;
   private long fileSize = 0;
@@ -25,17 +24,10 @@ public class ChunkedUploadSession {
   private int partNum = 0;
   private String uploadId;
 
-  ChunkedUploadSession(StartChunkedUploadRequest request, StorageEntity entity) {
+  ChunkedUploadSession(StartChunkedUploadRequest request, String uploadId, StorageEntity entity) {
     this.request = request;
     this.entity = entity;
-  }
-
-  String getOrCreateUploadId(StorageRepository repo) {
-    if (uploadId == null) {
-      uploadId = repo.startMultipartUpload(entity);
-    }
-
-    return uploadId;
+    this.uploadId = uploadId;
   }
 
   public void increaseTotalParts() {

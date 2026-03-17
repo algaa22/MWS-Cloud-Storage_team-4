@@ -3,7 +3,6 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
-import com.mipt.team4.cloud_storage_backend.utils.StringListConverter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.time.LocalDateTime;
@@ -24,8 +23,8 @@ public class StorageJpaRepositoryAdapter {
   public void addFile(StorageEntity fileEntity) {
     if (fileEntity.getId() == null) fileEntity.setId(UUID.randomUUID());
 
-    String tagsStr = StringListConverter.toString(fileEntity.getTags());
-    jpaRepository.upsertFile(fileEntity, tagsStr);
+    jpaRepository.upsertFile(fileEntity);
+    syncTags(fileEntity.getId(), fileEntity.getTags());
   }
 
   @Transactional
@@ -53,7 +52,7 @@ public class StorageJpaRepositoryAdapter {
 
   @Transactional
   public void updateFile(StorageEntity entity) {
-    jpaRepository.save(entity);
+    jpaRepository.saveAndFlush(entity);
   }
 
   @Transactional(readOnly = true)
@@ -94,18 +93,31 @@ public class StorageJpaRepositoryAdapter {
       sql.append(" AND status = 'READY'");
     }
 
-    if (filter.tags() != null) {
-      sql.append(" AND tags = :tags");
+    boolean needTags = filter.tags() != null && !filter.tags().isEmpty();
+
+    if (needTags) {
+      sql.append(
+          """
+          AND EXISTS (
+              SELECT 1 FROM file_tags ft
+              WHERE ft.file_id = id
+              AND ft.tag IN (:tags)
+              GROUP BY ft.file_id
+              HAVING COUNT(DISTINCT ft.tag) = :tagCount
+          )
+      """);
     }
 
-    Query query = entityManager.createNativeQuery(sql.toString(), StorageEntity.class);
     sql.append(" ORDER BY CASE WHEN is_directory THEN 1 ELSE 2 END, name ASC");
+
+    Query query = entityManager.createNativeQuery(sql.toString(), StorageEntity.class);
 
     query.setParameter("userId", filter.userId());
     query.setParameter("parentId", filter.parentId());
 
-    if (filter.tags() != null) {
+    if (needTags) {
       query.setParameter("tags", filter.tags());
+      query.setParameter("tagCount", filter.tags().size());
     }
 
     return query.getResultList();
@@ -181,5 +193,22 @@ public class StorageJpaRepositoryAdapter {
     }
 
     return String.join("/", nodes);
+  }
+
+  private void syncTags(UUID fileId, List<String> tags) {
+    entityManager
+        .createNativeQuery("DELETE FROM file_tags WHERE file_id = :fileId")
+        .setParameter("fileId", fileId)
+        .executeUpdate();
+
+    if (tags != null && !tags.isEmpty()) {
+      String sql = "INSERT INTO file_tags (file_id, tag) " + "SELECT :fileId, unnest(:tags)";
+
+      entityManager
+          .createNativeQuery(sql)
+          .setParameter("fileId", fileId)
+          .setParameter("tags", tags.toArray(new String[0]))
+          .executeUpdate();
+    }
   }
 }

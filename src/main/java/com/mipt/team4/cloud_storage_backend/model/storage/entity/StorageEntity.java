@@ -4,15 +4,15 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationTyp
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.utils.StoragePaths;
-import com.mipt.team4.cloud_storage_backend.utils.converters.FileTagsConverter;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,10 +38,7 @@ import org.hibernate.annotations.SQLRestriction;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class StorageEntity {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.UUID)
-  @EqualsAndHashCode.Include
-  private UUID id;
+  @Id @EqualsAndHashCode.Include private UUID id;
 
   @Column(name = "user_id", nullable = false)
   private UUID userId;
@@ -60,7 +57,9 @@ public class StorageEntity {
   @Column(name = "is_deleted", nullable = false)
   private boolean isDeleted = false;
 
-  @Convert(converter = FileTagsConverter.class)
+  @ElementCollection(fetch = FetchType.EAGER)
+  @CollectionTable(name = "file_tags", joinColumns = @JoinColumn(name = "file_id"))
+  @Column(name = "tag")
   private List<String> tags;
 
   @Column(name = "parent_id")

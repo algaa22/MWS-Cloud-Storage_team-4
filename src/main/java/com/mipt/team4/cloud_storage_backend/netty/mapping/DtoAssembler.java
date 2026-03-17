@@ -11,7 +11,7 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.UnknownReque
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.WrongParameterTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.user.auth.MissingAuthTokenException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
-import com.mipt.team4.cloud_storage_backend.netty.constants.SecurityAttributes;
+import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.MappedParameter.SourceType;
 import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.buffer.ByteBuf;
@@ -58,7 +58,7 @@ public class DtoAssembler {
 
       args[i] =
           switch (param.source()) {
-            case QUERY -> parseQuery(queryDecoder, param);
+            case QUERY -> parseQueryParam(queryDecoder, param);
             case HEADER -> parseHeader(request, param);
             case AUTH -> getAuthAttribute(ctx, param);
             case BODY_PARAM -> parseBodyParam(rootNode, param);
@@ -93,7 +93,7 @@ public class DtoAssembler {
     return null;
   }
 
-  private Object parseQuery(QueryStringDecoder queryDecoder, MappedParameter param) {
+  private Object parseQueryParam(QueryStringDecoder queryDecoder, MappedParameter param) {
     List<String> values = queryDecoder.parameters().get(param.mappedName());
     String value = (values != null && !values.isEmpty()) ? values.getFirst() : null;
     return SafeParser.parse(
@@ -111,7 +111,7 @@ public class DtoAssembler {
       throw new WrongParameterTypeException(param.name(), UUID.class, param.type());
     }
 
-    UUID userId = ctx.channel().attr(SecurityAttributes.USER_ID).get();
+    UUID userId = ctx.channel().attr(NettyAttributes.USER_ID).get();
     if (userId == null) {
       throw new MissingAuthTokenException();
     }

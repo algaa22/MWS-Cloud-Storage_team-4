@@ -12,10 +12,12 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationTyp
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Обертка-фасад для управления жизненным циклом операций над файлами и директориями.
@@ -41,8 +43,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
   private final StorageJpaRepositoryAdapter metadataRepository;
+  private final TransactionTemplate transactionTemplate;
   private final StorageConfig storageConfig;
   private final RetryPolicy<Object> retryPolicy;
+  private final EntityManager entityManager;
 
   /**
    * Выполняет обновление существующего файла.
@@ -72,7 +76,7 @@ public class StorageRepositoryWrapper {
    * Начинает сложную операцию.
    *
    * <p>Для вызова требуется статус READY. <br>
-   * После выполнения операции переводит статус в {@code PENDING}
+   * Перед выполнением операции сам создает файл и переводит статус в {@code PENDING}
    */
   public <T> T initiateStep(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
@@ -95,7 +99,7 @@ public class StorageRepositoryWrapper {
     T result = executeOperation(entity, operationType, operation);
 
     if (shouldThrottledUpdate(entity)) {
-      syncEntityWithDatabase(entity, FileStatus.PENDING);
+      syncEntityWithDatabase(entity, operationType, FileStatus.PENDING);
     }
 
     return result;
@@ -116,7 +120,7 @@ public class StorageRepositoryWrapper {
 
   /** Принудительно помечает операцию как {@code READY} и устанавливает {@code retry_count = 0}. */
   public void resetToReady(StorageEntity entity) {
-    syncEntityWithDatabase(entity, FileStatus.READY, 0);
+    syncEntityWithDatabase(entity, FileOperationType.CHANGE_METADATA, FileStatus.READY, 0);
   }
 
   private <T> T executeOperation(
@@ -138,10 +142,7 @@ public class StorageRepositoryWrapper {
   private <T> void finalizeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     executeOperation(entity, operationType, operation);
-
-    if (operationType != FileOperationType.DELETE) {
-      syncEntityWithDatabase(entity, FileStatus.READY);
-    }
+    syncEntityWithDatabase(entity, operationType, FileStatus.READY);
   }
 
   private void checkIfStatusIsReady(StorageEntity entity) {
@@ -162,7 +163,7 @@ public class StorageRepositoryWrapper {
     entity.setOperationType(operationType);
     entity.setStartedAt(LocalDateTime.now());
 
-    syncEntityWithDatabase(entity, FileStatus.PENDING, 0);
+    syncEntityWithDatabase(entity, operationType, FileStatus.PENDING, 0);
   }
 
   private boolean shouldThrottledUpdate(StorageEntity entity) {
@@ -183,7 +184,7 @@ public class StorageRepositoryWrapper {
     } else if (throwable instanceof FatalStorageException exception) {
       handleFatalException(exception, entity, operationType);
     } else {
-      handleBusinessException(entity);
+      handleBusinessException(entity, operationType);
     }
   }
 
@@ -198,7 +199,7 @@ public class StorageRepositoryWrapper {
           entity.getUserId(),
           entity.getId(),
           exception);
-      syncEntityWithDatabase(entity, FileStatus.FATAL);
+      syncEntityWithDatabase(entity, operationType, FileStatus.FATAL);
       return;
     }
 
@@ -206,7 +207,7 @@ public class StorageRepositoryWrapper {
       initiateRetryStrategy(exception, entity, operationType);
     }
 
-    syncEntityWithDatabase(entity, FileStatus.ERROR, entity.getRetryCount() + 1);
+    syncEntityWithDatabase(entity, operationType, FileStatus.ERROR, entity.getRetryCount() + 1);
   }
 
   private void handleFatalException(
@@ -217,11 +218,11 @@ public class StorageRepositoryWrapper {
         entity.getUserId(),
         entity.getId(),
         exception);
-    syncEntityWithDatabase(entity, FileStatus.FATAL);
+    syncEntityWithDatabase(entity, operationType, FileStatus.FATAL);
   }
 
-  private void handleBusinessException(StorageEntity entity) {
-    syncEntityWithDatabase(entity, FileStatus.READY);
+  private void handleBusinessException(StorageEntity entity, FileOperationType operationType) {
+    syncEntityWithDatabase(entity, operationType, FileStatus.READY);
   }
 
   /**
@@ -250,34 +251,56 @@ public class StorageRepositoryWrapper {
     switch (operationType) {
       case UPLOAD -> throw new UploadRetriableException(exception);
       case CHANGE_METADATA -> {
-        syncEntityWithDatabase(entity, FileStatus.READY, 0);
+        syncEntityWithDatabase(entity, operationType, FileStatus.READY, 0);
         throw new ChangeMetadataRetriableException(exception);
       }
     }
   }
 
-  private void syncEntityWithDatabase(StorageEntity entity, FileStatus newStatus) {
-    syncEntityWithDatabase(entity, newStatus, entity.getRetryCount());
+  private void syncEntityWithDatabase(
+      StorageEntity entity, FileOperationType operationType, FileStatus newStatus) {
+    syncEntityWithDatabase(entity, operationType, newStatus, entity.getRetryCount());
   }
 
   private void syncEntityWithDatabase(
-      StorageEntity entity, FileStatus newStatus, int newRetryCount) {
-    entity.setStatus(newStatus);
-    entity.setRetryCount(newRetryCount);
+      StorageEntity entity,
+      FileOperationType operationType,
+      FileStatus newStatus,
+      int newRetryCount) {
+    transactionTemplate.execute(
+        status -> {
+          if (operationType == FileOperationType.DELETE) {
+            return null;
+          }
 
-    if (newStatus == FileStatus.PENDING || newStatus == FileStatus.READY) {
-      entity.setUpdatedAt(LocalDateTime.now());
+          StorageEntity managedEntity = syncToPersistenceContext(entity);
+
+          managedEntity.setStatus(newStatus);
+          managedEntity.setRetryCount(newRetryCount);
+
+          if (newStatus == FileStatus.PENDING || newStatus == FileStatus.READY) {
+            managedEntity.setUpdatedAt(LocalDateTime.now());
+          }
+
+          if (newStatus == FileStatus.READY) {
+            managedEntity.setOperationType(null);
+          }
+
+          metadataRepository.updateFile(managedEntity);
+
+          return null;
+        });
+  }
+
+  private StorageEntity syncToPersistenceContext(StorageEntity entity) {
+    StorageEntity managed = entityManager.find(StorageEntity.class, entity.getId());
+
+    if (managed == null) {
+      entityManager.persist(entity);
+      return entity;
     }
 
-    if (newStatus == FileStatus.READY) {
-      entity.setOperationType(null);
-    }
-
-    try {
-      metadataRepository.updateFile(entity);
-    } catch (Exception e) {
-      log.error("FATAL: Failed to update file entity {}", entity.getId(), e);
-    }
+    return entityManager.merge(entity);
   }
 
   @FunctionalInterface

@@ -155,13 +155,7 @@ public class NettyServerManager {
   private Channel startServer(
       EventLoopGroup bossGroup, EventLoopGroup workerGroup, ServerProtocol protocol)
       throws InterruptedException {
-    ServerBootstrap bootstrap = new ServerBootstrap();
-    bootstrap
-        .group(bossGroup, workerGroup)
-        .channel(NioServerSocketChannel.class)
-        .option(ChannelOption.SO_REUSEADDR, true)
-        .childHandler(
-            protocol == ServerProtocol.HTTP ? httpChannelInitializer : httpsChannelInitializer);
+    ServerBootstrap bootstrap = createBootstrap(bossGroup, workerGroup, protocol);
 
     int port = protocol == ServerProtocol.HTTPS ? nettyConfig.httpsPort() : nettyConfig.httpPort();
     Channel channel = bootstrap.bind(port).sync().channel();
@@ -170,6 +164,20 @@ public class NettyServerManager {
     startupLatch.countDown();
 
     return channel;
+  }
+
+  private ServerBootstrap createBootstrap(
+      EventLoopGroup bossGroup, EventLoopGroup workerGroup, ServerProtocol protocol) {
+    ServerBootstrap bootstrap = new ServerBootstrap();
+
+    bootstrap
+        .group(bossGroup, workerGroup)
+        .channel(NioServerSocketChannel.class)
+        .option(ChannelOption.SO_REUSEADDR, true)
+        .childHandler(
+            protocol == ServerProtocol.HTTP ? httpChannelInitializer : httpsChannelInitializer);
+
+    return bootstrap;
   }
 
   private EventLoopGroup createEventLoopGroup(int numThreads) {

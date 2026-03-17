@@ -1,4 +1,7 @@
 spring:
+  main:
+    web-application-type: none
+
   application:
     name: cloud-storage-backend
 
@@ -20,7 +23,6 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
 
 netty:
   enable-logging: false

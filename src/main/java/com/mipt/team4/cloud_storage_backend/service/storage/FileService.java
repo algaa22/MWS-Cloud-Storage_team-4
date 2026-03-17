@@ -338,6 +338,12 @@ public class FileService {
     byte[] part = ChunkCombiner.combineChunksToPart(uploadState);
     StorageEntity fileEntity = uploadState.getEntity();
 
+    log.info(
+        "[CHUNK] Uploading part #{} for session {}. Size: {} bytes",
+        uploadState.getPartNum(),
+        uploadState.getEntity().getId(),
+        part.length);
+
     String eTag;
 
     try {
@@ -350,7 +356,11 @@ public class FileService {
                   fileEntity.getId(),
                   uploadState.getPartNum(),
                   part));
+      log.info("[CHUNK] Part #{} uploaded successfully. ETag: {}", uploadState.getPartNum(), eTag);
     } catch (UploadRetriableException exception) {
+      log.warn(
+          "[RETRY] Failed to upload part #{}. Session stopped for retry.",
+          uploadState.getPartNum());
       uploadState.stop();
       throw new ProcessUploadRetriableException(
           uploadState.getFileSize(), uploadState.getPartNum(), exception.getCause());

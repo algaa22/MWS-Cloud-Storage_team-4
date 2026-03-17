@@ -7,7 +7,7 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Us
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
-@RequestMapping(method = "DELETE", path = ApiEndpoints.FILES_PREFIX) // Путь /api/files/
+@RequestMapping(method = "DELETE", path = ApiEndpoints.FILES_PREFIX)
 public record DeleteFileRequest(
     @UserId UUID userId,
     @QueryParam(defaultValue = "false") boolean permanent,

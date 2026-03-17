@@ -32,13 +32,13 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       @Param("name") String name,
       @Param("onlyReady") boolean onlyReady);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query(
       "UPDATE StorageEntity s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP, s.updatedAt = CURRENT_TIMESTAMP "
           + "WHERE s.id = :id AND s.userId = :userId")
   void softDelete(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query(
       nativeQuery = true,
       value =

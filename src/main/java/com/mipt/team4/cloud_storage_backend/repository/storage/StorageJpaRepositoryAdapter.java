@@ -53,7 +53,7 @@ public class StorageJpaRepositoryAdapter {
 
   @Transactional
   public void updateFile(StorageEntity entity) {
-    jpaRepository.save(entity);
+    jpaRepository.saveAndFlush(entity);
   }
 
   @Transactional(readOnly = true)

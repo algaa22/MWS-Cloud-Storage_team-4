@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
+import com.mipt.team4.cloud_storage_backend.controller.storage.chunked.ChunkedUploadState.Status;
 import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectChunkedUploadStateException;
@@ -10,6 +11,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.UploadRetryResponse;
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
@@ -19,43 +21,47 @@ import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.LastHttpContent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Controller;
 
 @Controller
-@Scope("prototype")
 @RequiredArgsConstructor
 @Slf4j
 public class ChunkedUploadController {
   private final FileService fileService;
 
-  private ChunkedUploadInfoDto uploadInfo;
-  private ChunkedUploadState state = ChunkedUploadState.IDLE;
-
   private long totalSize;
   private long uploadedSize = 0;
 
   public void start(ChannelHandlerContext ctx, StartChunkedUploadRequest request) {
-    if (state != ChunkedUploadState.IDLE) {
-      throw new IncorrectChunkedUploadStateException(ChunkedUploadState.IDLE, state);
+    ChunkedUploadState uploadState = getChannelUploadState(ctx);
+
+    if (uploadState != null && uploadState.getStatus() != Status.IDLE) {
+      throw new IncorrectChunkedUploadStateException(Status.IDLE, uploadState);
     }
-    this.totalSize = request.fileSize(); // Запоминаем размер
+
+    this.totalSize = request.fileSize();
+    this.uploadedSize = 0;
     log.info(
         "[STATE] IDLE -> PROCESSING. Starting upload for file: {} ({} bytes)",
         request.name(),
         totalSize);
 
-    uploadInfo = fileService.startChunkedUpload(request);
-    state = ChunkedUploadState.PROCESSING;
+    ChunkedUploadInfoDto uploadInfo = fileService.startChunkedUpload(request);
+
+    ctx.channel()
+        .attr(NettyAttributes.CHUNKED_UPLOAD_STATE)
+        .set(new ChunkedUploadState(uploadInfo, Status.PROCESSING));
   }
 
   public void resume(ChannelHandlerContext ctx, ResumeChunkedUploadRequest request) {
-    if (state != ChunkedUploadState.STOPPED) {
-      throw new IncorrectChunkedUploadStateException(ChunkedUploadState.STOPPED, state);
+    ChunkedUploadState uploadState = getChannelUploadState(ctx);
+
+    if (uploadState == null || uploadState.getStatus() != Status.STOPPED) {
+      throw new IncorrectChunkedUploadStateException(Status.STOPPED, uploadState);
     }
 
-    fileService.resumeChunkedUploadSession(uploadInfo);
-    state = ChunkedUploadState.PROCESSING;
+    fileService.resumeChunkedUploadSession(uploadState.getInfo());
+    uploadState.setStatus(Status.PROCESSING);
   }
 
   @RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
@@ -69,8 +75,10 @@ public class ChunkedUploadController {
   }
 
   private void complete(ChannelHandlerContext ctx, LastHttpContent content) {
-    if (state != ChunkedUploadState.PROCESSING) {
-      throw new IncorrectChunkedUploadStateException(ChunkedUploadState.PROCESSING, state);
+    ChunkedUploadState uploadState = getChannelUploadState(ctx);
+
+    if (uploadState == null || uploadState.getStatus() != Status.PROCESSING) {
+      throw new IncorrectChunkedUploadStateException(Status.PROCESSING, uploadState);
     }
 
     if (content.content().readableBytes() > 0) {
@@ -78,19 +86,21 @@ public class ChunkedUploadController {
     }
 
     try {
-      ChunkedUploadFileResponse result = fileService.completeChunkedUpload(uploadInfo);
+      ChunkedUploadFileResponse result = fileService.completeChunkedUpload(uploadState.getInfo());
       ResponseUtils.send(ctx, result);
-      state = ChunkedUploadState.COMPLETED;
+      uploadState.setStatus(Status.COMPLETED);
     } catch (CompleteUploadRetriableException e) {
       log.error("[STATE] PROCESSING -> STOPPED. Retriable error: {}", e.getMessage());
       ResponseUtils.send(ctx, new UploadRetryResponse(e));
-      state = ChunkedUploadState.STOPPED;
+      uploadState.setStatus(Status.STOPPED);
     }
   }
 
   private void handleChunk(ChannelHandlerContext ctx, HttpContent content) {
-    if (state != ChunkedUploadState.PROCESSING) {
-      throw new IncorrectChunkedUploadStateException(ChunkedUploadState.PROCESSING, state);
+    ChunkedUploadState uploadState = getChannelUploadState(ctx);
+
+    if (uploadState == null || uploadState.getStatus() != Status.PROCESSING) {
+      throw new IncorrectChunkedUploadStateException(Status.PROCESSING, uploadState);
     }
 
     int chunkSize = content.content().readableBytes();
@@ -103,11 +113,11 @@ public class ChunkedUploadController {
     data.readBytes(bytes);
 
     try {
-      fileService.uploadChunk(new UploadChunkDto(uploadInfo.sessionId(), bytes));
+      fileService.uploadChunk(new UploadChunkDto(uploadState.getInfo().sessionId(), bytes));
     } catch (ProcessUploadRetriableException e) {
       log.error("[STATE] PROCESSING -> STOPPED. Retriable error: {}", e.getMessage());
       ResponseUtils.send(ctx, new UploadRetryResponse(e));
-      state = ChunkedUploadState.STOPPED;
+      uploadState.setStatus(Status.STOPPED);
     }
   }
 
@@ -126,5 +136,9 @@ public class ChunkedUploadController {
 
     log.info(
         String.format("%s %.2f%% (%d/%d bytes)", bar.toString(), percentage * 100, current, total));
+  }
+
+  private ChunkedUploadState getChannelUploadState(ChannelHandlerContext ctx) {
+    return ctx.channel().attr(NettyAttributes.CHUNKED_UPLOAD_STATE).get();
   }
 }

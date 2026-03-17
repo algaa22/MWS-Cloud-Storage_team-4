@@ -4,8 +4,8 @@ import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedRe
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
@@ -43,7 +43,7 @@ public class AggregatedFileController {
     ResponseUtils.send(ctx, response);
   }
 
-  public void getFileInfo(ChannelHandlerContext ctx, FileInfoRequest request) {
+  public void getFileInfo(ChannelHandlerContext ctx, GetFileInfoRequest request) {
     StorageEntity entity = fileService.getFileInfo(request);
     FileInfoResponse response = FileInfoResponse.from(entity);
     ResponseUtils.send(ctx, response);

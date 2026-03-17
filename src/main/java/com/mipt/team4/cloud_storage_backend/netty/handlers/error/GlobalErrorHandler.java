@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.error;
 
+import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelDuplexHandler;
@@ -13,7 +14,6 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
-import io.netty.util.AttributeKey;
 import io.netty.util.CharsetUtil;
 import java.net.SocketAddress;
 import lombok.extern.slf4j.Slf4j;
@@ -23,9 +23,6 @@ import org.springframework.stereotype.Component;
 @Sharable
 @Slf4j
 public class GlobalErrorHandler extends ChannelDuplexHandler {
-  private static final AttributeKey<Boolean> IGNORABLE_ERROR_LOGGED =
-      AttributeKey.valueOf("ignorable_error_logged");
-
   private static final String FATAL_ERROR_JSON =
       "{\"success\":false,\"message\":\"Internal Server Error\"}";
 
@@ -58,9 +55,9 @@ public class GlobalErrorHandler extends ChannelDuplexHandler {
     SocketAddress remoteAddress = ctx.channel().remoteAddress();
 
     if (isIgnorableException(cause)) {
-      if (!ctx.channel().hasAttr(IGNORABLE_ERROR_LOGGED)) {
+      if (!ctx.channel().hasAttr(NettyAttributes.IGNORABLE_ERROR_LOGGED)) {
         log.debug("Connection closed by client: {}", remoteAddress, cause);
-        ctx.channel().attr(IGNORABLE_ERROR_LOGGED).set(true);
+        ctx.channel().attr(NettyAttributes.IGNORABLE_ERROR_LOGGED).set(true);
       }
     } else {
       log.error("Unhandled exception in channel: {}", remoteAddress, cause);

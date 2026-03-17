@@ -276,7 +276,8 @@ public class StorageRepositoryWrapper {
     try {
       metadataRepository.updateFile(entity);
     } catch (Exception e) {
-      log.error("FATAL: Failed to update file entity {}", entity.getId(), e);
+      log.error("FATAL: Failed to update file entity in wrapper: {}", entity.getId(), e);
+      throw e;
     }
   }
 

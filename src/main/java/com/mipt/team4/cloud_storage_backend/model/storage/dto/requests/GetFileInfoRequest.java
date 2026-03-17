@@ -8,4 +8,4 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 @RequestMapping(method = "GET", path = ApiEndpoints.FILES_INFO)
-public record FileInfoRequest(@UserId UUID userId, @NotNull @QueryParam("id") UUID fileId) {}
+public record GetFileInfoRequest(@UserId UUID userId, @NotNull @QueryParam("id") UUID fileId) {}

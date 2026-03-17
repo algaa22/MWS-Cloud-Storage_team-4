@@ -22,8 +22,8 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadChunkDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedDownloadRequest;
@@ -174,8 +174,8 @@ public class FileService {
       uploadState.stop();
       throw new CompleteUploadRetriableException(exception.getCause());
     }
-    checkStorageAndNotify(fileEntity.getUserId());
 
+    checkStorageAndNotify(fileEntity.getUserId());
     activeUploads.remove(uploadInfo.sessionId());
 
     return new ChunkedUploadFileResponse(
@@ -261,10 +261,12 @@ public class FileService {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
-    Optional<StorageEntity> fileEntity = storageRepository.getIncludeDeleted(userId, fileId);
-    StorageEntity entity = fileEntity.orElseThrow(() -> new StorageFileNotFoundException(fileId));
+    StorageEntity fileEntity =
+        storageRepository
+            .getIncludeDeleted(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-    storageRepository.softDeleteEntity(entity);
+    storageRepository.softDeleteEntity(fileEntity);
   }
 
   @Transactional
@@ -301,7 +303,7 @@ public class FileService {
   }
 
   @Transactional(readOnly = true)
-  public StorageEntity getFileInfo(FileInfoRequest request) {
+  public StorageEntity getFileInfo(GetFileInfoRequest request) {
     UUID fileId = request.fileId();
     UUID userId = request.userId();
 

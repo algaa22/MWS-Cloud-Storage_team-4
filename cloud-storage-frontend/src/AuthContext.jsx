@@ -24,42 +24,70 @@ export function AuthProvider({ children }) {
     });
   };
 
-  const loadUserData = async (authToken) => {
-    try {
-      console.log("AuthContext: Loading user info with token...");
-      const userInfo = await getUserInfo(authToken);
-      console.log("AuthContext: Raw user info from server:", userInfo);
+ const loadUserData = async (authToken) => {
+   try {
+     console.log("AuthContext: Loading user info with token...");
+     const userInfo = await getUserInfo(authToken);
+     console.log("AuthContext: Raw user info from server:", userInfo);
 
-      if (userInfo) {
-        console.log("AuthContext: All user info fields:", Object.keys(userInfo));
-        console.log("AuthContext: username field:", userInfo.username);
-        console.log("AuthContext: name field:", userInfo.name);
-        console.log("AuthContext: email field:", userInfo.email);
-      }
+     if (userInfo) {
+       console.log("AuthContext: All user info fields:", Object.keys(userInfo));
+       console.log("AuthContext: username field:", userInfo.username);
+       console.log("AuthContext: name field:", userInfo.name);
+       console.log("AuthContext: email field:", userInfo.email);
+     }
 
-      const username = userInfo.Name.split('@')[0] || 'User';
+     // Исправлено: безопасное получение имени пользователя
+     let username = 'User';
 
-      const email = userInfo.email || userInfo.Email || '';
+     // Пробуем разные варианты полей с именем
+     if (userInfo?.name) {
+       username = userInfo.name;
+     } else if (userInfo?.username) {
+       username = userInfo.username;
+     } else if (userInfo?.email) {
+       // Если есть email, берем часть до @
+       username = userInfo.email.split('@')[0];
+     } else if (userInfo?.Name) {
+       username = userInfo.Name.split('@')[0];
+     }
 
-      const formattedUser = {
-        username: username,
-        name: username,
-        email: email,
-        ...userInfo
-      };
+     // Безопасное получение email
+     const email = userInfo?.email || userInfo?.Email || '';
 
-      console.log("AuthContext: Formatted user object:", formattedUser);
+     const formattedUser = {
+       username: username,
+       name: username,
+       email: email,
+       ...userInfo
+     };
 
-      localStorage.setItem("user", JSON.stringify(formattedUser));
-      setUser(formattedUser);
-      setIsAuthenticated(true);
-      return formattedUser;
+     console.log("AuthContext: Formatted user object:", formattedUser);
 
-    } catch (error) {
-      console.error('AuthContext: Failed to load user info:', error.message);
-      return null;
-    }
-  };
+     localStorage.setItem("user", JSON.stringify(formattedUser));
+     setUser(formattedUser);
+     setIsAuthenticated(true);
+     return formattedUser;
+
+   } catch (error) {
+     console.error('AuthContext: Failed to load user info:', error.message);
+
+     // Если не удалось загрузить, но есть токен, создаем временного пользователя
+     if (authToken) {
+       const tempUser = {
+         username: "User",
+         name: "User",
+         email: ""
+       };
+       localStorage.setItem("user", JSON.stringify(tempUser));
+       setUser(tempUser);
+       setIsAuthenticated(true);
+       return tempUser;
+     }
+
+     return null;
+   }
+ };
 
   useEffect(() => {
     console.log("AuthContext: useEffect triggered, token:",
@@ -110,10 +138,21 @@ export function AuthProvider({ children }) {
       localStorage.setItem("accessToken", t);
       setToken(t);
 
+      // Пытаемся загрузить данные пользователя
       const userData = await loadUserData(t);
 
+      // Даже если userData вернул null, но у нас есть токен - считаем авторизацию успешной
       if (!userData) {
-        throw new Error("Failed to load user data");
+        console.warn('AuthContext: User data is null, but token exists');
+        // Создаем базового пользователя
+        const basicUser = {
+          username: email.split('@')[0] || 'User',
+          name: email.split('@')[0] || 'User',
+          email: email
+        };
+        localStorage.setItem("user", JSON.stringify(basicUser));
+        setUser(basicUser);
+        setIsAuthenticated(true);
       }
 
       console.log('AuthContext: Login completed successfully');
@@ -124,6 +163,7 @@ export function AuthProvider({ children }) {
 
       localStorage.removeItem("accessToken");
       localStorage.removeItem("user");
+      localStorage.removeItem("refreshToken");
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);

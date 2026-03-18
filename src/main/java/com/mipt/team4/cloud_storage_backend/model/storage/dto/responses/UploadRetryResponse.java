@@ -14,13 +14,13 @@ public record UploadRetryResponse(
     @ResponseBodyParam Integer partNum) {
   public UploadRetryResponse(ProcessUploadRetriableException exception) {
     this(
-        "RESUME_CONTINUE",
+        "RETRY_PART",
         exception.getMessage(),
         exception.getCurrentFileSize(),
         exception.getPartNum());
   }
 
   public UploadRetryResponse(CompleteUploadRetriableException exception) {
-    this("RESUME_RETRY", exception.getMessage(), null, null);
+    this("RETRY_COMPLETE", exception.getMessage(), null, null);
   }
 }

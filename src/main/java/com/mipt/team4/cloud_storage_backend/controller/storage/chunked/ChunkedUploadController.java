@@ -56,12 +56,7 @@ public class ChunkedUploadController {
     }
 
     cleanOldPartInfo(ctx);
-
-    ChunkedUploadPartContext newPart =
-        new ChunkedUploadPartContext(
-            request.sessionId(), request.userId(), request.part(), ctx.alloc().compositeBuffer());
-
-    getPartAttribute(ctx).set(newPart);
+    setPartContext(ctx, request);
   }
 
   @RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
@@ -79,7 +74,8 @@ public class ChunkedUploadController {
     }
   }
 
-  public void complete(ChannelHandlerContext ctx, CompleteChunkedUploadRequest request) {
+  public void completeUploadSession(
+      ChannelHandlerContext ctx, CompleteChunkedUploadRequest request) {
     try {
       UUID createdId = uploadService.completeChunkedUpload(request);
       ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"));
@@ -100,23 +96,47 @@ public class ChunkedUploadController {
     }
   }
 
+  private void setPartContext(ChannelHandlerContext ctx, ChunkedUploadPartRequest request) {
+    CompositeByteBuf accumulator = ctx.alloc().compositeBuffer();
+
+    ctx.channel()
+        .closeFuture()
+        .addListener(
+            future -> {
+              if (accumulator.refCnt() > 0) {
+                accumulator.release();
+              }
+            });
+
+    ChunkedUploadPartContext newPart =
+        new ChunkedUploadPartContext(
+            request.sessionId(), request.userId(), request.part(), accumulator);
+    getPartAttribute(ctx).set(newPart);
+  }
+
   private void addChunk(
       ChannelHandlerContext ctx, ChunkedUploadPartContext currentPart, HttpContent content) {
-    CompositeByteBuf accumulator = currentPart.accumulator();
+    CompositeByteBuf accumulator = currentPart.accumulator().retain();
     ByteBuf chunk = content.content();
 
-    if (chunk.isReadable()) {
-      if (accumulator.readableBytes() + chunk.readableBytes() > s3Config.maxFilePartSize()) {
-        resetCurrentPart(ctx, accumulator);
-        throw new TooLargeFilePartException(s3Config.maxFilePartSize());
-      }
+    try {
+      if (chunk.isReadable()) {
+        if (accumulator.readableBytes() + chunk.readableBytes() > s3Config.maxFilePartSize()) {
+          resetCurrentPart(ctx, accumulator);
+          throw new TooLargeFilePartException(s3Config.maxFilePartSize());
+        }
 
-      accumulator.addComponent(true, chunk.retain());
+        accumulator.addComponent(true, chunk.retain());
+      }
+    } finally {
+      accumulator.release();
     }
   }
 
   private void finalizePartUpload(ChannelHandlerContext ctx, ChunkedUploadPartContext currentPart) {
     CompositeByteBuf accumulator = currentPart.accumulator();
+
+    accumulator.retain();
 
     try (ByteBufInputStream inputStream = new ByteBufInputStream(accumulator)) {
       uploadService.uploadPart(
@@ -133,6 +153,7 @@ public class ChunkedUploadController {
       ResponseUtils.send(
           ctx, new UploadPartRetryResponse("RETRY_PART", e.getMessage(), currentPart.partNumber()));
     } finally {
+      accumulator.release();
       resetCurrentPart(ctx, accumulator);
     }
   }
@@ -142,7 +163,10 @@ public class ChunkedUploadController {
   }
 
   private void resetCurrentPart(ChannelHandlerContext ctx, CompositeByteBuf accumulator) {
-    accumulator.release();
+    if (accumulator.refCnt() > 0) {
+      accumulator.release();
+    }
+
     getPartAttribute(ctx).set(null);
   }
 }

@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @RequiredArgsConstructor
 public class StorageJpaRepositoryAdapter {
-  private final ChunkedUploadSessionRepository uploadSessionRepository;
+  private final ChunkedUploadRepository uploadRepository;
   private final StorageJpaRepository jpaRepository;
   private final EntityManager entityManager;
 
@@ -60,12 +60,17 @@ public class StorageJpaRepositoryAdapter {
 
   @Transactional
   public void upsertUploadPart(ChunkedUploadPart part) {
-    uploadSessionRepository.upsertPart(part);
+    uploadRepository.upsertPart(part);
   }
 
   @Transactional(readOnly = true)
   public Optional<ChunkedUploadSession> getUploadSession(UUID sessionId) {
-    return uploadSessionRepository.findByIdWithParts(sessionId);
+    return uploadRepository.findByIdWithParts(sessionId);
+  }
+
+  @Transactional(readOnly = true)
+  public boolean isPartAlreadyUploaded(UUID sessionId, int partNumber) {
+    return uploadRepository.existsPart(sessionId, partNumber);
   }
 
   @Transactional(readOnly = true)

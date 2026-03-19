@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -134,6 +133,10 @@ public class StorageRepository {
 
   public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
     return metadataRepository.getDeletedById(userId, fileId);
+  }
+
+  public boolean isPartAlreadyUploaded(UUID sessionId, int partNumber) {
+    return metadataRepository.isPartAlreadyUploaded(sessionId, partNumber);
   }
 
   public boolean exists(UUID userId, UUID parentId, String name) {

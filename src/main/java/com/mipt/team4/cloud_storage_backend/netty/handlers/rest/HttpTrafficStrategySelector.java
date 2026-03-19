@@ -158,8 +158,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       }
 
       if (request.uri().startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD)
-          || request.uri().startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD_RESUME)
-          || request.uri().startsWith(ApiEndpoints.FILES_DOWNLOAD)) {
+          || request.uri().startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD)) {
         return CHUNKED;
       }
 

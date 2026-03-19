@@ -12,14 +12,15 @@ public class ApiEndpoints {
 
   // Files (Aggregated)
   public static final String FILES_SIMPLE_UPLOAD = FILES_PREFIX + "/upload";
-  public static final String FILES_CHUNKED_UPLOAD = FILES_SIMPLE_UPLOAD + "/chunked";
   public static final String FILES_RESTORE = FILES_PREFIX + "/restore";
   public static final String FILES_LIST = FILES_PREFIX + "/list";
   public static final String FILES_TRASH = FILES_PREFIX + "/trash";
   public static final String FILES_INFO = FILES_PREFIX + "/info";
 
   // Files (Chunked)
-  public static final String FILES_CHUNKED_UPLOAD_RESUME = FILES_CHUNKED_UPLOAD + "/resume";
+  public static final String FILES_CHUNKED_UPLOAD = FILES_SIMPLE_UPLOAD + "/chunked";
+  public static final String FILES_CHUNKED_UPLOAD_START = FILES_CHUNKED_UPLOAD + "/start";
+  public static final String FILES_CHUNKED_UPLOAD_COMPLETE = FILES_CHUNKED_UPLOAD + "/complete";
   public static final String FILES_DOWNLOAD = FILES_PREFIX + "/download";
 
   // Users & Auth

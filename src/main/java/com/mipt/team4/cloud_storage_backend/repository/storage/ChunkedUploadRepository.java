@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ChunkedUploadSessionRepository extends JpaRepository<ChunkedUploadSession, UUID> {
+public interface ChunkedUploadRepository extends JpaRepository<ChunkedUploadSession, UUID> {
   @Modifying
   @Query(
       value =
@@ -27,4 +27,8 @@ public interface ChunkedUploadSessionRepository extends JpaRepository<ChunkedUpl
 
   @Query("SELECT s FROM ChunkedUploadSession s LEFT JOIN FETCH s.parts WHERE s.id = :id")
   Optional<ChunkedUploadSession> findByIdWithParts(@Param("id") UUID id);
+
+  @Query(
+      "SELECT COUNT(p) > 0 FROM ChunkedUploadPart p WHERE p.session.id = :sid AND p.partNumber = :pNum")
+  boolean existsPart(@Param("sid") UUID sessionId, @Param("pNum") int partNumber);
 }

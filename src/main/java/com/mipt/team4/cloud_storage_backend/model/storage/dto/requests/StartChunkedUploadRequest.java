@@ -12,7 +12,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 
-@RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
+@RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD_START)
 public record StartChunkedUploadRequest(
     @UserId UUID userId,
     @Pattern(

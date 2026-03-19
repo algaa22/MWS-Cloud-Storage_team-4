@@ -86,8 +86,7 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes) {
-    InputStream inputStream = new ByteArrayInputStream(bytes);
+  public String uploadPart(String uploadId, String s3Key, int partNum, InputStream inputStream) {
     return wrapper
         .execute(
             () ->

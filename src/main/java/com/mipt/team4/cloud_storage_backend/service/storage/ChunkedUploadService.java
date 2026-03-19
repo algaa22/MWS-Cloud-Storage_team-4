@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectPartNumberException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
@@ -50,7 +49,6 @@ public class ChunkedUploadService {
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
-  private final StorageConfig storageConfig;
   private final S3Config s3Config;
 
   @Transactional
@@ -63,8 +61,8 @@ public class ChunkedUploadService {
       throw new TariffAccessDeniedException();
     }
 
-    if (request.totalParts() > s3Config.maxPartsNum()) {
-      throw new TooManyPartsException(s3Config.maxPartsNum());
+    if (request.totalParts() > s3Config.limits().maxPartsNum()) {
+      throw new TooManyPartsException(s3Config.limits().maxPartsNum());
     }
 
     storageRepository
@@ -85,6 +83,7 @@ public class ChunkedUploadService {
             .tags(request.fileTags())
             .status(FileStatus.READY)
             .updatedAt(LocalDateTime.now())
+            .size(request.fileSize())
             .build();
 
     UUID sessionId = UUID.randomUUID();
@@ -115,7 +114,7 @@ public class ChunkedUploadService {
         ChunkedUploadPartEntity.builder()
             .id(UUID.randomUUID())
             .session(session)
-            .partNumber(partDto.partNumber())
+            .number(partDto.partNumber())
             .size(partDto.size())
             .build();
 
@@ -131,7 +130,6 @@ public class ChunkedUploadService {
       if (partDto.checksum() != null) {
         ChecksumUtils.compareChecksums(partDto.checksum(), messageDigest.digest());
       }
-
     } catch (IOException e) {
       throw new UploadPartIOException(e);
     }
@@ -147,8 +145,8 @@ public class ChunkedUploadService {
       StorageEntity fileEntity = session.getFile();
       Map<Integer, String> partETags = collectETagsIntoMap(session.getParts());
 
-      validateFinalFileSize(session);
       checkMissingParts(session, partETags);
+      validateFinalFileSize(session);
 
       storageRepository.completeMultipartUpload(
           fileEntity, session.getId(), session.getUploadId(), partETags);
@@ -178,7 +176,7 @@ public class ChunkedUploadService {
     return parts.stream()
         .collect(
             Collectors.toMap(
-                ChunkedUploadPartEntity::getPartNumber,
+                ChunkedUploadPartEntity::getNumber,
                 ChunkedUploadPartEntity::getETag,
                 (oldValue, newValue) -> oldValue,
                 TreeMap::new));
@@ -199,8 +197,8 @@ public class ChunkedUploadService {
   }
 
   private void validatePartSize(long partSize, int partNumber, int totalParts) {
-    if (partNumber < totalParts && partSize < s3Config.minFilePartSize()) {
-      throw new TooSmallFilePartException(s3Config.minFilePartSize());
+    if (partNumber < totalParts && partSize < s3Config.limits().minFilePartSize()) {
+      throw new TooSmallFilePartException(s3Config.limits().minFilePartSize());
     }
   }
 

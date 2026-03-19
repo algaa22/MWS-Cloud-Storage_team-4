@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
+import com.mipt.team4.cloud_storage_backend.utils.ChecksumUtils;
 import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import java.io.IOException;
@@ -34,6 +35,7 @@ public class FileSimpleTransferITUtils {
       String fileTags)
       throws IOException, InterruptedException {
     byte[] testFile = FileLoader.getInputStream(localFilePath).readAllBytes();
+    String checksum = ChecksumUtils.calculateMd5(testFile);
 
     String endpoint = itUtils.fillQuery("/api/files/upload?name=%s", targetFileName);
     if (parentId != null) {
@@ -45,6 +47,7 @@ public class FileSimpleTransferITUtils {
             .createRequest(endpoint)
             .header("X-Auth-Token", userToken)
             .header("X-File-Tags", fileTags)
+            .header("Content-MD5", checksum)
             .POST(HttpRequest.BodyPublishers.ofByteArray(testFile))
             .build();
 

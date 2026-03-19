@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -37,9 +38,9 @@ class MinioContentRepositoryTest {
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("minio.url", MINIO::getS3URL);
-    registry.add("minio.username", MINIO::getUserName);
-    registry.add("minio.password", MINIO::getPassword);
+    registry.add("s3.url", MINIO::getS3URL);
+    registry.add("s3.username", MINIO::getUserName);
+    registry.add("s3.password", MINIO::getPassword);
   }
 
   @BeforeAll
@@ -95,7 +96,12 @@ class MinioContentRepositoryTest {
     for (int i = 0; i < partCount; i++) {
       int end = Math.min(offset + PART_SIZE, file.data.length);
       byte[] part = Arrays.copyOfRange(file.data, offset, end);
-      eTags.put(i + 1, repository.uploadPart(uploadID, file.s3Key, i + 1, part));
+
+      try (InputStream inputStream = new ByteArrayInputStream(part)) {
+        eTags.put(
+            i + 1, repository.uploadPart(uploadID, file.s3Key, i + 1, inputStream, part.length));
+      }
+
       offset += PART_SIZE;
     }
 

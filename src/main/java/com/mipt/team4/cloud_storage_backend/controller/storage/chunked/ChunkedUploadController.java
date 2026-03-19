@@ -57,7 +57,7 @@ public class ChunkedUploadController {
     setPartContext(ctx, request);
   }
 
-  @RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
+  @RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD_PART)
   public void handlePartContent(ChannelHandlerContext ctx, HttpContent content) {
     ChunkedUploadPartContext currentPart = getPartAttribute(ctx).get();
 
@@ -119,9 +119,10 @@ public class ChunkedUploadController {
 
     try {
       if (chunk.isReadable()) {
-        if (accumulator.readableBytes() + chunk.readableBytes() > s3Config.maxFilePartSize()) {
+        if (accumulator.readableBytes() + chunk.readableBytes()
+            > s3Config.limits().maxFilePartSize()) {
           resetCurrentPart(ctx, accumulator);
-          throw new TooLargeFilePartException(s3Config.maxFilePartSize());
+          throw new TooLargeFilePartException(s3Config.limits().maxFilePartSize());
         }
 
         accumulator.addComponent(true, chunk.retain());
@@ -133,7 +134,6 @@ public class ChunkedUploadController {
 
   private void finalizePartUpload(ChannelHandlerContext ctx, ChunkedUploadPartContext currentPart) {
     CompositeByteBuf accumulator = currentPart.accumulator();
-
     accumulator.retain();
 
     try {

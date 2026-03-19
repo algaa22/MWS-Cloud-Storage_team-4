@@ -30,9 +30,10 @@ public class BaseIT {
     registry.add("spring.datasource.username", E2ETestSetupExtension.POSTGRES::getUsername);
     registry.add("spring.datasource.password", E2ETestSetupExtension.POSTGRES::getPassword);
 
-    registry.add("minio.url", E2ETestSetupExtension.MINIO::getS3URL);
-    registry.add("minio.username", E2ETestSetupExtension.MINIO::getUserName);
-    registry.add("minio.password", E2ETestSetupExtension.MINIO::getPassword);
+    registry.add("s3.url", E2ETestSetupExtension.MINIO::getS3URL);
+    registry.add("s3.username", E2ETestSetupExtension.MINIO::getUserName);
+    registry.add("s3.password", E2ETestSetupExtension.MINIO::getPassword);
+
     registry.add(
         "storage.auth.jwt-secret-key",
         () -> "Y29tZS12ZXJ5LWxvbmctYW5kLXNlY3VyZS10ZXN0LXNlY3V0ZS1rZXktMzItY2hhcnM=");

@@ -16,7 +16,8 @@ public class ChunkedUploadJpaRepositoryAdapter {
 
   @Transactional
   public void upsertPart(ChunkedUploadPartEntity part) {
-    jpaRepository.upsertPart(part);
+    jpaRepository.upsertPart(
+        part.getId(), part.getSession().getId(), part.getNumber(), part.getSize(), part.getETag());
   }
 
   @Transactional

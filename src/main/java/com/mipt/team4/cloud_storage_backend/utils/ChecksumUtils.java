@@ -17,6 +17,11 @@ public class ChecksumUtils {
     }
   }
 
+  public static String calculateMd5(byte[] data) {
+    MessageDigest messageDigest = ChecksumUtils.createMD5();
+    return encodeDigest(messageDigest.digest(data));
+  }
+
   public static void compareChecksums(String clientChecksum, byte[] serverDigest) {
     String serverChecksum = encodeDigest(serverDigest);
 

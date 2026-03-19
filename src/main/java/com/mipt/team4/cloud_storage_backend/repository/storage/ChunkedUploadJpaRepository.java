@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
 import java.util.Optional;
@@ -14,18 +13,22 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ChunkedUploadJpaRepository
     extends JpaRepository<ChunkedUploadSessionEntity, UUID> {
-  @Modifying()
+  @Modifying
   @Query(
       value =
           """
-        INSERT INTO chunked_upload_parts (id, session_id, part_number, etag, size)
-        VALUES (:#{#part.id != null ? #part.id : gen_random_uuid()},
-                :#{#part.session.id}, :#{#part.partNumber}, :#{#part.etag}, :#{#part.size})
+        INSERT INTO chunked_upload_parts (id, session_id, part_number, part_size, etag)
+        VALUES (COALESCE(:id, gen_random_uuid()), :sessionId, :partNumber, :partSize, :etag)
         ON CONFLICT (session_id, part_number)
-        DO UPDATE SET etag = EXCLUDED.etag, size = EXCLUDED.size
+        DO UPDATE SET etag = EXCLUDED.etag, part_size = EXCLUDED.part_size
         """,
       nativeQuery = true)
-  void upsertPart(@Param("part") ChunkedUploadPartEntity part);
+  void upsertPart(
+      @Param("id") UUID id,
+      @Param("sessionId") UUID sessionId,
+      @Param("partNumber") int partNumber,
+      @Param("partSize") long partSize,
+      @Param("etag") String eTag);
 
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("DELETE FROM ChunkedUploadSessionEntity s WHERE s.id = :id")
@@ -43,12 +46,12 @@ public interface ChunkedUploadJpaRepository
   @Modifying
   @Query(
       "UPDATE ChunkedUploadSessionEntity s SET s.currentSize = s.currentSize + :delta WHERE s.id = :id")
-  void incrementCurrentSize(@Param("id") UUID id, @Param("size") long delta);
+  void incrementCurrentSize(@Param("id") UUID id, @Param("delta") long delta);
 
-  @Query("SELECT s FROM ChunkedUploadSession s LEFT JOIN FETCH s.parts WHERE s.id = :id")
+  @Query("SELECT s FROM ChunkedUploadSessionEntity s LEFT JOIN FETCH s.parts WHERE s.id = :id")
   Optional<ChunkedUploadSessionEntity> findByIdWithParts(@Param("id") UUID id);
 
   @Query(
-      "SELECT COUNT(p) > 0 FROM ChunkedUploadPart p WHERE p.session.id = :sid AND p.partNumber = :pNum")
+      "SELECT COUNT(p) > 0 FROM ChunkedUploadPartEntity p WHERE p.session.id = :sid AND p.number = :pNum")
   boolean existsPart(@Param("sid") UUID sessionId, @Param("pNum") int partNumber);
 }

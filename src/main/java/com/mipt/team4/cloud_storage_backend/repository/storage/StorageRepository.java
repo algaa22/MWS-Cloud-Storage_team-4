@@ -62,11 +62,7 @@ public class StorageRepository {
         () -> {
           String eTag =
               contentRepository.uploadPart(
-                  uploadId,
-                  fileEntity.getS3Key(),
-                  part.getPartNumber(),
-                  inputStream,
-                  part.getSize());
+                  uploadId, fileEntity.getS3Key(), part.getNumber(), inputStream, part.getSize());
 
           part.setETag(eTag);
           uploadRepository.upsertPart(part);

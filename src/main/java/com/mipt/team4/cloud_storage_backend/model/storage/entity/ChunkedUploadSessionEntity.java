@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
 import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -23,6 +24,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@Table(name = "chunked_upload_sessions")
 @Getter
 @Setter
 @Builder
@@ -52,6 +54,6 @@ public class ChunkedUploadSessionEntity {
   private long currentSize = 0;
 
   @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
-  @OrderBy("partNumber ASC")
+  @OrderBy("number ASC")
   private List<ChunkedUploadPartEntity> parts;
 }

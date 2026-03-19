@@ -9,10 +9,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.util.UUID;
 
-@RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
+@RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD_PART)
 public record ChunkedUploadPartRequest(
     @UserId UUID userId,
     @NotNull @QueryParam UUID sessionId,
     @Positive @QueryParam int part,
-    @Positive @RequestHeader(value = "Content-MD5", required = false) String checksum,
-    @Positive @RequestHeader("Content-Length") long partSize) {}
+    @Positive @RequestHeader("Content-Length") long partSize,
+    @RequestHeader(value = "Content-MD5", required = false) String checksum) {}

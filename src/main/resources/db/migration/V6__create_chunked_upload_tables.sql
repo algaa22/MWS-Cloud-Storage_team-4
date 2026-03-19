@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS chunked_upload_parts (
     session_id UUID NOT NULL REFERENCES chunked_upload_sessions(id) ON DELETE CASCADE,
     part_number INT NOT NULL,
     part_size BIGINT NOT NULL,
-    etag TEXT NOT NULL
+    etag TEXT NOT NULL,
 
     UNIQUE (session_id, part_number)
 );

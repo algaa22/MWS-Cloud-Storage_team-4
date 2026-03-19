@@ -21,11 +21,11 @@ public class ChunkedUploadPartEntity {
   private ChunkedUploadSessionEntity session;
 
   @Column(name = "part_number", nullable = false)
-  private Integer partNumber;
+  private Integer number;
 
-  @Column(nullable = false)
-  private String eTag;
-
-  @Column(nullable = false)
+  @Column(name = "part_size", nullable = false)
   private Long size;
+
+  @Column(name = "etag", nullable = false)
+  private String eTag;
 }

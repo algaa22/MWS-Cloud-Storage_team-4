@@ -9,10 +9,10 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedDownloadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
@@ -44,7 +44,7 @@ public class FileService {
   private final NotificationService notificationService;
 
   @Transactional
-  public UUID simpleUpload(FileUploadRequest request) {
+  public UUID simpleUpload(SimpleUploadRequest request) {
     UUID userId = request.userId();
     UUID parentId = request.parentId();
     String name = request.name();

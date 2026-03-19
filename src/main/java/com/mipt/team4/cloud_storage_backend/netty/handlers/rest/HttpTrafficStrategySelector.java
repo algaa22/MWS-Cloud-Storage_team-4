@@ -102,6 +102,9 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       safeRemoveFromPipeline(pipeline, HttpObjectAggregator.class);
       safeRemoveFromPipeline(pipeline, AggregatedHttpHandler.class);
     }
+
+    safeRemoveFromPipeline(pipeline, RequestToDtoDecoder.class);
+    safeRemoveFromPipeline(pipeline, GlobalValidationHandler.class);
   }
 
   private void configurePipeline(PipelineType currentPipeline, ChannelHandlerContext ctx) {
@@ -147,7 +150,8 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       String uri = request.uri();
       HttpMethod method = request.method();
 
-      if (uri.equals(ApiEndpoints.FILES_CHUNKED_UPLOAD_PART) && method.equals(HttpMethod.POST)) {
+      if (uri.startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD_PART)
+          && method.equals(HttpMethod.POST)) {
         return CHUNKED;
       }
 

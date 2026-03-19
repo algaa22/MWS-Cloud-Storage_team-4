@@ -89,6 +89,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
         break;
       } finally {
         ReferenceCountUtil.release(msg);
+        threadStarted = false;
       }
     }
   }

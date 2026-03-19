@@ -9,8 +9,9 @@ import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.e2e.BaseIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils;
+import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils.UploadResult;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
+import com.mipt.team4.cloud_storage_backend.utils.ChecksumUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
@@ -40,19 +41,40 @@ public class FileSmokeIT extends BaseStorageIT {
 
   @Test
   public void shouldChunkedUploadAndDownloadFile() throws IOException {
-    byte[] fileData = TestFiles.BIG_FILE.getData();
+    final int partSize = 5 * 1024 * 1024;
 
-    FileChunkedTransferITUtils.UploadResult uploadResult =
-        chunkedITUtils.sendUploadRequest(
+    byte[] fileData = TestFiles.BIG_FILE.getData();
+    List<byte[]> parts = chunkedITUtils.splitData(fileData, partSize);
+
+    UploadResult startUploadResult =
+        chunkedITUtils.startUploadSession(
             apacheClient,
             currentUserToken,
             DEFAULT_FILE_TARGET_NAME,
-            TestConstants.BIG_FILE_LOCAL_PATH,
-            "",
-            fileData.length);
-    UUID fileId = itUtils.extractIdFromBody(uploadResult.body());
+            fileData.length,
+            parts.size());
+    assertEquals(HttpStatus.SC_OK, startUploadResult.statusCode());
 
-    assertEquals(HttpStatus.SC_CREATED, uploadResult.statusCode());
+    UUID sessionId =
+        UUID.fromString(
+            itUtils.getRootNodeFromBody(startUploadResult.body()).get("sessionId").asText());
+
+    for (int i = 0; i < parts.size(); i++) {
+      int partNumber = i + 1;
+      byte[] partData = parts.get(i);
+      String checksum = ChecksumUtils.calculateMd5(partData);
+
+      UploadResult uploadPartResult =
+          chunkedITUtils.uploadPart(
+              apacheClient, currentUserToken, sessionId, partNumber, partData, checksum);
+      assertEquals(HttpStatus.SC_OK, uploadPartResult.statusCode());
+    }
+
+    UploadResult completeUploadResult =
+        chunkedITUtils.completeUploadSession(apacheClient, currentUserToken, sessionId);
+    assertEquals(HttpStatus.SC_CREATED, completeUploadResult.statusCode());
+
+    UUID fileId = itUtils.extractIdFromBody(completeUploadResult.body());
     checkDownloadFile(fileId, fileData);
   }
 

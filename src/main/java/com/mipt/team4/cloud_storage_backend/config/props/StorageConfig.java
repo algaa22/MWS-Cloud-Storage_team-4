@@ -11,11 +11,7 @@ public record StorageConfig(
     StateMachine stateMachine,
     FailsafeRetry failsafeRetry,
     Trash trash) {
-  public record Rest(
-      int maxAggregatedContentLength,
-      long maxFileSize,
-      long maxFileChunkSize,
-      int fileDownloadChunkSize) {}
+  public record Rest(int maxAggregatedContentLength, int fileDownloadChunkSize) {}
 
   public record Auth(
       String jwtSecretKey, long accessTokenExpirationSec, long refreshTokenExpirationSec) {}

@@ -9,7 +9,7 @@ public interface FileContentRepository {
 
   String startMultipartUpload(String s3Key);
 
-  String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes);
+  String uploadPart(String uploadId, String s3Key, int partNum, InputStream inputStream, long size);
 
   void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags);
 

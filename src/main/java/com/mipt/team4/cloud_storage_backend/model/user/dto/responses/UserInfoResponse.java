@@ -1,14 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.model.user.dto.responses;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseBodyParam;
 
 public record UserInfoResponse(
-    UUID id,
-    String name,
-    String email,
-    String password,
-    long storageLimit,
-    long usedStorage,
-    LocalDateTime createdAt,
-    boolean isActive) {}
+    @ResponseBodyParam String name,
+    @ResponseBodyParam String email,
+    @ResponseBodyParam long storageLimit,
+    @ResponseBodyParam long usedStorage,
+    @ResponseBodyParam boolean isActive) {}

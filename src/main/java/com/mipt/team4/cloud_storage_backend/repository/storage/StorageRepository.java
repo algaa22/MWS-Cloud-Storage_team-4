@@ -2,8 +2,10 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import java.io.InputStream;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class StorageRepository {
+  private final ChunkedUploadJpaRepositoryAdapter uploadRepository;
   private final StorageJpaRepositoryAdapter metadataRepository;
   private final FileContentRepository contentRepository;
   private final StorageRepositoryWrapper wrapper;
@@ -33,30 +36,50 @@ public class StorageRepository {
         });
   }
 
-  public String startMultipartUpload(StorageEntity entity) {
-    return wrapper.initiateStep(
-        entity,
+  public void startMultipartUpload(StorageEntity fileEntity, ChunkedUploadSessionEntity session) {
+    wrapper.initiateStep(
+        fileEntity,
         FileOperationType.UPLOAD,
-        () -> contentRepository.startMultipartUpload(entity.getS3Key()));
+        () -> {
+          String uploadId = contentRepository.startMultipartUpload(fileEntity.getS3Key());
+
+          session.setUploadId(uploadId);
+          uploadRepository.addSession(session);
+
+          return null;
+        });
   }
 
-  public String uploadPart(StorageEntity entity, UploadPartDto request) {
-    return wrapper.processStep(
-        entity,
+  public void uploadPart(
+      StorageEntity fileEntity,
+      UUID sessionId,
+      String uploadId,
+      InputStream inputStream,
+      ChunkedUploadPartEntity part) {
+    wrapper.processStep(
+        fileEntity,
         FileOperationType.UPLOAD,
-        () ->
-            contentRepository.uploadPart(
-                request.uploadId(), entity.getS3Key(), request.partIndex(), request.bytes()));
+        () -> {
+          String eTag =
+              contentRepository.uploadPart(
+                  uploadId, fileEntity.getS3Key(), part.getNumber(), inputStream, part.getSize());
+
+          part.setETag(eTag);
+          uploadRepository.upsertPart(part);
+          uploadRepository.incrementCurrentSize(sessionId, part.getSize());
+
+          return null;
+        });
   }
 
   public void completeMultipartUpload(
-      StorageEntity entity, long fileSize, String uploadId, Map<Integer, String> eTags) {
+      StorageEntity entity, UUID sessionId, String uploadId, Map<Integer, String> eTags) {
     wrapper.completeStep(
         entity,
         FileOperationType.UPLOAD,
         () -> {
-          entity.setSize(fileSize);
           contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
+          uploadRepository.deleteSession(sessionId);
           return null;
         });
   }
@@ -112,6 +135,12 @@ public class StorageRepository {
         });
   }
 
+  public void updateUploadSessionStatus(
+      ChunkedUploadSessionEntity session, ChunkedUploadStatus newStatus) {
+    session.setStatus(newStatus);
+    uploadRepository.updateSessionStatus(session.getId(), session.getStatus(), newStatus);
+  }
+
   public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
     return metadataRepository.getTrashFileList(userId, parentId);
   }
@@ -132,8 +161,12 @@ public class StorageRepository {
     return metadataRepository.getIncludeDeleted(userId, fileId);
   }
 
-  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
-    return metadataRepository.getDeletedById(userId, fileId);
+  public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID parentId, String name) {
+    return metadataRepository.getIncludeDeleted(userId, parentId, name);
+  }
+
+  public Optional<StorageEntity> getDeleted(UUID userId, UUID fileId) {
+    return metadataRepository.getDeleted(userId, fileId);
   }
 
   public boolean exists(UUID userId, UUID parentId, String name) {
@@ -146,5 +179,13 @@ public class StorageRepository {
 
   public String getFullFilePath(UUID fileId) {
     return metadataRepository.getFullFilePath(fileId);
+  }
+
+  public boolean isPartAlreadyUploaded(UUID sessionId, int partNumber) {
+    return uploadRepository.isPartAlreadyUploaded(sessionId, partNumber);
+  }
+
+  public Optional<ChunkedUploadSessionEntity> getUploadSession(UUID sessionId) {
+    return uploadRepository.getSession(sessionId);
   }
 }

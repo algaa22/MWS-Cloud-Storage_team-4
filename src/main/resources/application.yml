@@ -27,6 +27,7 @@ spring:
 netty:
   enable-logging: false
   enable-https: true
+  https-redirect: true
   http-port: 8080
   https-port: 8443
   boss-threads: 1
@@ -46,22 +47,23 @@ cors:
     allow-credentials: true
     max-age: 3600
 
-minio:
+s3:
   url: ${MINIO_URL}
   username: ${MINIO_USERNAME}
   password: ${MINIO_PASSWORD}
-
-  min-file-part-size: 5242880 # 5mb
   region: "eu-central-1"
+
+  limits:
+    min-file-part-size: 5242880 # 5mb
+    max-file-part-size: 33554432 # 32mb
+    max-parts-num: 10000
 
   user-data-bucket:
     name: user-data
 
 storage:
   rest:
-    max-aggregated-content-length: 5242900 # 5mb + 20b
-    max-file-size: 10737418240 # 10 gb
-    max-file-chunk-size: 10485760 # 10 mb
+    max-aggregated-content-length: 1048576 # 1mb
     file-download-chunk-size: 65536 # 64 kb
 
   auth:

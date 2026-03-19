@@ -1,11 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenewRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdatePaymentMethodRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.TariffInfoResponse;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
@@ -86,7 +86,7 @@ public class TariffService {
   }
 
   @Transactional(readOnly = true)
-  public TariffInfoDto getTariffInfo(TariffInfoRequest request) {
+  public TariffInfoResponse getTariffInfo(TariffInfoRequest request) {
     UUID userId = request.userId();
     UserEntity userEntity =
         userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
@@ -100,7 +100,7 @@ public class TariffService {
       daysLeft = (int) ChronoUnit.DAYS.between(LocalDateTime.now(), endDate);
     }
 
-    return new TariffInfoDto(
+    return new TariffInfoResponse(
         tariffPlan,
         userEntity.getStorageLimit(),
         userEntity.getUsedStorage(),

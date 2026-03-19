@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
-import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
@@ -17,8 +17,7 @@ import io.minio.messages.Part;
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Comparator;
 import java.util.Map;
 import org.springframework.stereotype.Repository;
 
@@ -26,19 +25,19 @@ import org.springframework.stereotype.Repository;
 public class MinioContentRepository implements FileContentRepository {
 
   private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
-  private final MinioConfig minioConfig;
+  private final S3Config s3Config;
   private final MinioWrapper wrapper;
   private final String bucketName;
   private final String region;
 
   private MinioAsyncClient minioClient;
 
-  public MinioContentRepository(MinioConfig minioConfig, MinioWrapper wrapper) {
-    this.minioConfig = minioConfig;
+  public MinioContentRepository(S3Config s3Config, MinioWrapper wrapper) {
+    this.s3Config = s3Config;
     this.wrapper = wrapper;
 
-    this.bucketName = minioConfig.userDataBucket().name();
-    this.region = minioConfig.region();
+    this.bucketName = s3Config.userDataBucket().name();
+    this.region = s3Config.region();
   }
 
   @PostConstruct
@@ -46,8 +45,8 @@ public class MinioContentRepository implements FileContentRepository {
     try {
       minioClient =
           MinioAsyncClient.builder()
-              .endpoint(minioConfig.url())
-              .credentials(minioConfig.username(), minioConfig.password())
+              .endpoint(s3Config.url())
+              .credentials(s3Config.username(), s3Config.password())
               .build();
     } catch (Exception e) {
       throw new FatalStorageException("Failed to initialize MinIO", e);
@@ -86,8 +85,8 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   @Override
-  public String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes) {
-    InputStream inputStream = new ByteArrayInputStream(bytes);
+  public String uploadPart(
+      String uploadId, String s3Key, int partNum, InputStream inputStream, long size) {
     return wrapper
         .execute(
             () ->
@@ -97,7 +96,7 @@ public class MinioContentRepository implements FileContentRepository {
                         region,
                         s3Key,
                         inputStream,
-                        bytes.length,
+                        size,
                         uploadId,
                         partNum,
                         EMPTY_MAP,
@@ -185,16 +184,9 @@ public class MinioContentRepository implements FileContentRepository {
   }
 
   private Part[] createPartArray(Map<Integer, String> eTags) {
-    List<Part> partsList = new ArrayList<>(eTags.size());
-
-    for (Map.Entry<Integer, String> entry : eTags.entrySet()) {
-      int partNumber = entry.getKey();
-      String eTag = entry.getValue();
-
-      Part part = new Part(partNumber, eTag);
-      partsList.add(part);
-    }
-
-    return partsList.toArray(Part[]::new);
+    return eTags.entrySet().stream()
+        .map(entry -> new Part(entry.getKey(), entry.getValue()))
+        .sorted(Comparator.comparingInt(Part::partNumber))
+        .toArray(Part[]::new);
   }
 }

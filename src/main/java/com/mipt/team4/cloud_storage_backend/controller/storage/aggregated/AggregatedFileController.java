@@ -4,10 +4,10 @@ import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedRe
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.FileUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileInfoResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileListResponse;
@@ -49,7 +49,7 @@ public class AggregatedFileController {
     ResponseUtils.send(ctx, response);
   }
 
-  public void uploadFile(ChannelHandlerContext ctx, FileUploadRequest request) {
+  public void uploadFile(ChannelHandlerContext ctx, SimpleUploadRequest request) {
     UUID createdId = fileService.simpleUpload(request);
     ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"));
   }

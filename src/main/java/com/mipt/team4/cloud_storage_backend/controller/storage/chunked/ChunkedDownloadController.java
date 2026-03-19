@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedDownloadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedDownloadRequest;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import io.netty.channel.ChannelFutureListener;
@@ -23,7 +23,7 @@ public class ChunkedDownloadController {
   private final StorageConfig storageConfig;
   private final FileService fileService;
 
-  public void download(ChannelHandlerContext ctx, StartChunkedDownloadRequest request) {
+  public void download(ChannelHandlerContext ctx, ChunkedDownloadRequest request) {
     FileDownloadInfoDto file = fileService.download(request);
 
     HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);

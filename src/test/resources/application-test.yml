@@ -7,6 +7,7 @@ spring:
 
 netty:
   enable-https: false
+  https-redirect: false
   http-port: 8081
   worker-threads: 2
 

@@ -27,6 +27,7 @@ spring:
 netty:
   enable-logging: false
   enable-https: true
+  https-redirect: true
   http-port: 8080
   https-port: 8443
   boss-threads: 1

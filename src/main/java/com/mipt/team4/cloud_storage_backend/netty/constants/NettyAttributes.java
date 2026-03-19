@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.netty.constants;
 
-import com.mipt.team4.cloud_storage_backend.controller.storage.chunked.ChunkedUploadState;
 import io.netty.util.AttributeKey;
 import java.util.UUID;
 

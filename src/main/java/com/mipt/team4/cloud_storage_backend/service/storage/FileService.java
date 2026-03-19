@@ -104,7 +104,7 @@ public class FileService {
     userRepository.increaseUsedStorage(userId, request.fileSize());
     String uploadId = storageRepository.startMultipartUpload(fileEntity);
 
-    activeUploads.put(uploadSessionId, new ChunkedUploadSession(request, uploadId, fileEntity));
+    activeUploads.put(uploadSessionId, new ChunkedUploadSession(uploadId, fileEntity));
 
     return new ChunkedUploadInfoDto(uploadSessionId);
   }
@@ -365,8 +365,7 @@ public class FileService {
           "[RETRY] Failed to upload part #{}. Session stopped for retry.",
           uploadState.getPartNum());
       uploadState.stop();
-      throw new ProcessUploadRetriableException(
-          uploadState.getFileSize(), uploadState.getPartNum(), exception.getCause());
+      throw new ProcessUploadRetriableException(uploadState.getPartNum(), exception.getCause());
     } finally {
       uploadState.getChunks().clear();
       uploadState.resetPartSize();

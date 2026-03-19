@@ -1,6 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPart;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSession;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import jakarta.persistence.EntityManager;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @RequiredArgsConstructor
 public class StorageJpaRepositoryAdapter {
+  private final ChunkedUploadSessionRepository uploadSessionRepository;
   private final StorageJpaRepository jpaRepository;
   private final EntityManager entityManager;
 
@@ -53,6 +56,16 @@ public class StorageJpaRepositoryAdapter {
   @Transactional
   public void updateFile(StorageEntity entity) {
     jpaRepository.saveAndFlush(entity);
+  }
+
+  @Transactional
+  public void upsertUploadPart(ChunkedUploadPart part) {
+    uploadSessionRepository.upsertPart(part);
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<ChunkedUploadSession> getUploadSession(UUID sessionId) {
+    return uploadSessionRepository.findByIdWithParts(sessionId);
   }
 
   @Transactional(readOnly = true)

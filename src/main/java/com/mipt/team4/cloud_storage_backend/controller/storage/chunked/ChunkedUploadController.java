@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
-import com.mipt.team4.cloud_storage_backend.controller.storage.chunked.ChunkedUploadState.Status;
 import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectChunkedUploadStateException;

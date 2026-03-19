@@ -1,6 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
+import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
+import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadContextException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadPartsException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.TooLargeFilePartException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadPartIOException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedResponse;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
@@ -9,7 +13,10 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartD
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CompleteChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadInfoResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.CompleteUploadRetryResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.MissingUploadPartsResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.StartChunkedUploadResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.UploadPartRetryResponse;
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
@@ -34,13 +41,14 @@ import org.springframework.stereotype.Controller;
 @Slf4j
 public class ChunkedUploadController {
   private final ChunkedUploadService uploadService;
+  private final S3Config s3Config;
 
-  public void start(ChannelHandlerContext ctx, StartChunkedUploadRequest request) {
-    ChunkedUploadInfoResponse response = uploadService.startChunkedUpload(request);
+  public void startUploadSession(ChannelHandlerContext ctx, StartChunkedUploadRequest request) {
+    StartChunkedUploadResponse response = uploadService.startChunkedUpload(request);
     ResponseUtils.send(ctx, response);
   }
 
-  public void uploadPart(ChannelHandlerContext ctx, ChunkedUploadPartRequest request) {
+  public void startPartUploading(ChannelHandlerContext ctx, ChunkedUploadPartRequest request) {
     if (uploadService.isPartAlreadyUploaded(request)) {
       ResponseUtils.send(ctx, new SuccessResponse("Part already uploaded"))
           .addListener(ChannelFutureListener.CLOSE);
@@ -49,11 +57,11 @@ public class ChunkedUploadController {
 
     cleanOldPartInfo(ctx);
 
-    ChunkedUploadPartContext partInfo =
+    ChunkedUploadPartContext newPart =
         new ChunkedUploadPartContext(
             request.sessionId(), request.userId(), request.part(), ctx.alloc().compositeBuffer());
 
-    getPartAttribute(ctx).set(partInfo);
+    getPartAttribute(ctx).set(newPart);
   }
 
   @RequestMapping(method = "POST", path = ApiEndpoints.FILES_CHUNKED_UPLOAD)
@@ -64,32 +72,46 @@ public class ChunkedUploadController {
       throw new MissingUploadContextException();
     }
 
-    addChunk(currentPart, content);
+    addChunk(ctx, currentPart, content);
 
     if (content instanceof LastHttpContent) {
       finalizePartUpload(ctx, currentPart);
     }
   }
 
-  private void complete(ChannelHandlerContext ctx, CompleteChunkedUploadRequest request) {
-    UUID createdId = uploadService.completeChunkedUpload(request);
-    ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"));
-  }
-
-  private void cleanOldPartInfo(ChannelHandlerContext ctx) {
-    ChunkedUploadPartContext partInfo = getPartAttribute(ctx).get();
-
-    if (partInfo != null && partInfo.accumulator() != null && partInfo.accumulator().refCnt() > 0) {
-      partInfo.accumulator().release();
+  public void complete(ChannelHandlerContext ctx, CompleteChunkedUploadRequest request) {
+    try {
+      UUID createdId = uploadService.completeChunkedUpload(request);
+      ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"));
+    } catch (UploadRetriableException e) {
+      ResponseUtils.send(ctx, new CompleteUploadRetryResponse("RETRY_COMPLETE", e.getMessage()));
+    } catch (MissingUploadPartsException e) {
+      String bitmask = ResponseUtils.encodeBitset(e.getPartsBitSet());
+      ResponseUtils.send(
+          ctx, new MissingUploadPartsResponse(e.getMessage(), request.sessionId(), bitmask));
     }
   }
 
-  private void addChunk(ChunkedUploadPartContext currentPart, HttpContent content) {
+  private void cleanOldPartInfo(ChannelHandlerContext ctx) {
+    ChunkedUploadPartContext oldPart = getPartAttribute(ctx).getAndSet(null);
+
+    if (oldPart != null && oldPart.accumulator() != null && oldPart.accumulator().refCnt() > 0) {
+      oldPart.accumulator().release();
+    }
+  }
+
+  private void addChunk(
+      ChannelHandlerContext ctx, ChunkedUploadPartContext currentPart, HttpContent content) {
     CompositeByteBuf accumulator = currentPart.accumulator();
     ByteBuf chunk = content.content();
 
     if (chunk.isReadable()) {
-      accumulator.addComponent(chunk.retain());
+      if (accumulator.readableBytes() + chunk.readableBytes() > s3Config.maxFilePartSize()) {
+        resetCurrentPart(ctx, accumulator);
+        throw new TooLargeFilePartException(s3Config.maxFilePartSize());
+      }
+
+      accumulator.addComponent(true, chunk.retain());
     }
   }
 
@@ -102,16 +124,25 @@ public class ChunkedUploadController {
               currentPart.sessionId(),
               currentPart.userId(),
               currentPart.partNumber(),
+              accumulator.readableBytes(),
               inputStream));
+      ResponseUtils.send(ctx, new SuccessResponse("Part successfully uploaded"));
     } catch (IOException e) {
       throw new UploadPartIOException(ctx, e);
+    } catch (UploadRetriableException e) {
+      ResponseUtils.send(
+          ctx, new UploadPartRetryResponse("RETRY_PART", e.getMessage(), currentPart.partNumber()));
     } finally {
-      accumulator.release();
-      getPartAttribute(ctx).set(null);
+      resetCurrentPart(ctx, accumulator);
     }
   }
 
   private Attribute<ChunkedUploadPartContext> getPartAttribute(ChannelHandlerContext ctx) {
     return ctx.channel().attr(NettyAttributes.CHUNKED_UPLOAD_PART_INFO);
+  }
+
+  private void resetCurrentPart(ChannelHandlerContext ctx, CompositeByteBuf accumulator) {
+    accumulator.release();
+    getPartAttribute(ctx).set(null);
   }
 }

@@ -16,6 +16,8 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.BitSet;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -140,5 +142,14 @@ public class ResponseUtils {
     root.put("id", entityId.toString());
 
     ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, root);
+  }
+
+  public static String encodeBitset(BitSet bitset) {
+    if (bitset == null || bitset.isEmpty()) {
+      return "";
+    }
+
+    byte[] bytes = bitset.toByteArray();
+    return Base64.getEncoder().encodeToString(bytes);
   }
 }

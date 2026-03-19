@@ -4,4 +4,4 @@ import java.io.InputStream;
 import java.util.UUID;
 
 public record ChunkedUploadPartDto(
-    UUID sessionId, UUID userId, int partNumber, InputStream inputStream) {}
+    UUID sessionId, UUID userId, int partNumber, long size, InputStream inputStream) {}

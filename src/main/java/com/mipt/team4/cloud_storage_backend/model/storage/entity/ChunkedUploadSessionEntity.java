@@ -1,7 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
-import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,7 +9,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
@@ -31,7 +29,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class ChunkedUploadSession {
+public class ChunkedUploadSessionEntity {
   @Id @EqualsAndHashCode.Include private UUID id;
 
   @Column(name = "upload_id", nullable = false)
@@ -39,17 +37,21 @@ public class ChunkedUploadSession {
 
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "file_id", nullable = false)
-  private StorageEntity entity;
+  private StorageEntity file;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", nullable = false)
-  private UserEntity user;
-
+  @Builder.Default
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private ChunkedUploadStatus status;
+  @Column(name = "status", nullable = false)
+  private ChunkedUploadStatus status = ChunkedUploadStatus.UPLOADING;
+
+  @Column(name = "total_parts", nullable = false)
+  private int totalParts;
+
+  @Builder.Default
+  @Column(name = "current_size", nullable = false)
+  private long currentSize = 0;
 
   @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
   @OrderBy("partNumber ASC")
-  private List<ChunkedUploadPart> parts;
+  private List<ChunkedUploadPartEntity> parts;
 }

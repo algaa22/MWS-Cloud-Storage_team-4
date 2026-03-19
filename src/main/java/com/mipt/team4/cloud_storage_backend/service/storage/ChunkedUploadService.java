@@ -1,30 +1,37 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
-import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
-import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
-import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.MissingFilePartException;
+import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectPartNumberException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadPartsException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.TooManyPartsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionAlreadyExists;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSizeMismatchException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CompleteChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadFileResponse;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.ChunkedUploadInfoResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.StartChunkedUploadResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
-import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
+import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
 import java.time.LocalDateTime;
+import java.util.BitSet;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,27 +40,23 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChunkedUploadService {
   private final TariffService tariffService;
-
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
-
-  private final NotificationClient notificationClient;
-  private final NotificationConfig notificationConfig;
+  private final NotificationService notificationService;
+  private final S3Config s3Config;
 
   @Transactional
-  public ChunkedUploadInfoResponse startChunkedUpload(StartChunkedUploadRequest request) {
-    UUID parentId = request.parentId();
+  public StartChunkedUploadResponse startChunkedUpload(StartChunkedUploadRequest request) {
     UUID userId = request.userId();
-
-    if (!tariffService.hasAccess(request.userId())) {
-      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
-    }
-
-    UUID uploadSessionId = UUID.randomUUID();
+    UUID parentId = request.parentId();
     String name = request.name();
 
-    if (activeUploads.containsKey(uploadSessionId)) {
-      throw new UploadSessionAlreadyExists(uploadSessionId);
+    if (!tariffService.hasAccess(request.userId())) {
+      throw new TariffAccessDeniedException();
+    }
+
+    if (request.totalParts() > s3Config.maxPartsNum()) {
+      throw new TooManyPartsException(s3Config.maxPartsNum());
     }
 
     storageRepository
@@ -76,138 +79,137 @@ public class ChunkedUploadService {
             .updatedAt(LocalDateTime.now())
             .build();
 
+    UUID sessionId = UUID.randomUUID();
+
+    ChunkedUploadSessionEntity session =
+        ChunkedUploadSessionEntity.builder()
+            .id(sessionId)
+            .file(fileEntity)
+            .status(ChunkedUploadStatus.UPLOADING)
+            .totalParts(request.totalParts())
+            .build();
+
     userRepository.increaseUsedStorage(userId, request.fileSize());
-    String uploadId = storageRepository.startMultipartUpload(fileEntity);
+    storageRepository.startMultipartUpload(fileEntity, session);
 
-    activeUploads.put(uploadSessionId, new ChunkedUploadSession(uploadId, fileEntity));
+    return new StartChunkedUploadResponse(sessionId);
+  }
 
-    return new ChunkedUploadInfoResponse(uploadSessionId);
+  @Transactional
+  public void uploadPart(ChunkedUploadPartDto partDto) {
+    ChunkedUploadSessionEntity session = getSession(partDto.sessionId());
+
+    validatePartNumber(partDto.partNumber(), session.getTotalParts());
+    validatePartSize(partDto.size(), partDto.partNumber(), session.getTotalParts());
+    validateCurrentFileSize(session.getCurrentSize(), partDto.size(), session.getFile().getSize());
+
+    ChunkedUploadPartEntity partEntity =
+        ChunkedUploadPartEntity.builder()
+            .id(UUID.randomUUID())
+            .session(session)
+            .partNumber(partDto.partNumber())
+            .size(partDto.size())
+            .build();
+
+    storageRepository.uploadPart(
+        session.getFile(),
+        session.getId(),
+        session.getUploadId(),
+        partDto.inputStream(),
+        partEntity);
+  }
+
+  @Transactional
+  public UUID completeChunkedUpload(CompleteChunkedUploadRequest request) {
+    ChunkedUploadSessionEntity session = getSession(request.sessionId());
+
+    storageRepository.updateUploadSessionStatus(
+        session.getId(), session.getStatus(), ChunkedUploadStatus.COMPLETING);
+
+    try {
+      StorageEntity fileEntity = session.getFile();
+      Map<Integer, String> partETags = collectETagsIntoMap(session.getParts());
+
+      validateFinalFileSize(session);
+      checkMissingParts(session, partETags);
+
+      storageRepository.completeMultipartUpload(
+          fileEntity, session.getId(), session.getUploadId(), partETags);
+      notificationService.checkStorageUsageAndNotify(fileEntity.getUserId());
+
+      return fileEntity.getId();
+    } catch (Exception e) {
+      storageRepository.updateUploadSessionStatus(
+          session.getId(), ChunkedUploadStatus.COMPLETING, ChunkedUploadStatus.UPLOADING);
+      throw e;
+    }
+  }
+
+  private ChunkedUploadSessionEntity getSession(UUID sessionId) {
+    ChunkedUploadSessionEntity session =
+        storageRepository
+            .getUploadSession(sessionId)
+            .orElseThrow(UploadSessionNotFoundException::new);
+
+    if (session.getStatus() != ChunkedUploadStatus.UPLOADING) {
+      throw new IncorrectUploadStatusException(ChunkedUploadStatus.UPLOADING, session.getStatus());
+    }
+
+    return session;
+  }
+
+  private Map<Integer, String> collectETagsIntoMap(List<ChunkedUploadPartEntity> parts) {
+    return parts.stream()
+        .collect(
+            Collectors.toMap(
+                ChunkedUploadPartEntity::getPartNumber,
+                ChunkedUploadPartEntity::getETag,
+                (oldValue, newValue) -> oldValue,
+                TreeMap::new));
+  }
+
+  private void validatePartNumber(int partNumber, int totalParts) {
+    if (partNumber < 1 || partNumber > totalParts) {
+      throw new IncorrectPartNumberException(partNumber, totalParts);
+    }
+  }
+
+  private void validateCurrentFileSize(long currentSize, long partSize, long expectedSize) {
+    long newSize = currentSize + partSize;
+
+    if (newSize > expectedSize) {
+      throw new UploadSizeMismatchException(expectedSize, newSize);
+    }
+  }
+
+  private void validatePartSize(long partSize, int partNumber, int totalParts) {
+    if (partNumber < totalParts && partSize < s3Config.minFilePartSize()) {
+      throw new TooSmallFilePartException(s3Config.minFilePartSize());
+    }
+  }
+
+  private void validateFinalFileSize(ChunkedUploadSessionEntity session) {
+    StorageEntity fileEntity = session.getFile();
+
+    if (fileEntity.getSize() != session.getCurrentSize()) {
+      throw new UploadSizeMismatchException(fileEntity.getSize(), session.getCurrentSize());
+    }
+  }
+
+  private void checkMissingParts(
+      ChunkedUploadSessionEntity session, Map<Integer, String> partETags) {
+    if (session.getTotalParts() != partETags.size()) {
+      BitSet partsBitSet = new BitSet(session.getTotalParts());
+
+      for (int partNumber : partETags.keySet()) {
+        partsBitSet.set(partNumber - 1);
+      }
+
+      throw new MissingUploadPartsException(partsBitSet);
+    }
   }
 
   public boolean isPartAlreadyUploaded(ChunkedUploadPartRequest request) {
     return storageRepository.isPartAlreadyUploaded(request.sessionId(), request.part());
-  }
-
-  public void uploadPart(ChunkedUploadPartDto part) {
-    // TODO
-  }
-
-  public UUID completeChunkedUpload(CompleteChunkedUploadRequest request) {
-    ChunkedUploadSession uploadState = activeUploads.get(request.sessionId());
-
-    if (uploadState == null) {
-      throw new UploadSessionNotFoundException();
-    }
-
-    try {
-      if (uploadState.getTotalParts() == 0) {
-        throw new TooSmallFilePartException(minioConfig.minFilePartSize());
-      }
-
-      if (uploadState.getPartSize() != 0) {
-        uploadPart(uploadState);
-      }
-
-      for (int i = 1; i <= uploadState.getTotalParts(); i++) {
-        if (!uploadState.getETags().containsKey(i)) {
-          throw new MissingFilePartException(i);
-        }
-      }
-    } catch (Exception exception) {
-      if (!(exception instanceof UploadRetriableException)) {
-        activeUploads.remove(request.sessionId());
-      }
-
-      throw exception;
-    }
-
-    StorageEntity fileEntity = uploadState.getEntity();
-
-    try {
-      storageRepository.completeMultipartUpload(
-          fileEntity, uploadState.getFileSize(), uploadState.getUploadId(), uploadState.getETags());
-    } catch (UploadRetriableException exception) {
-      uploadState.stop();
-      throw new CompleteUploadRetriableException(exception.getCause());
-    }
-
-    checkStorageAndNotify(fileEntity.getUserId());
-    activeUploads.remove(request.sessionId());
-
-    return new ChunkedUploadFileResponse(
-        fileEntity.getId(), fileEntity.getSize(), uploadState.getTotalParts());
-  }
-
-  private void uploadPart(ChunkedUploadSession uploadState) {
-    String uploadId = uploadState.getUploadId();
-    byte[] part = ChunkCombiner.combineChunksToPart(uploadState);
-    StorageEntity fileEntity = uploadState.getEntity();
-
-    log.info(
-        "[CHUNK] Uploading part #{} for session {}. Size: {} bytes",
-        uploadState.getPartNum(),
-        uploadState.getEntity().getId(),
-        part.length);
-
-    String eTag;
-
-    try {
-      eTag =
-          storageRepository.uploadPart(
-              fileEntity,
-              new UploadPartDto(
-                  uploadId,
-                  fileEntity.getUserId(),
-                  fileEntity.getId(),
-                  uploadState.getPartNum(),
-                  part));
-      log.info("[CHUNK] Part #{} uploaded successfully. ETag: {}", uploadState.getPartNum(), eTag);
-    } catch (UploadRetriableException exception) {
-      log.warn(
-          "[RETRY] Failed to upload part #{}. Session stopped for retry.",
-          uploadState.getPartNum());
-      uploadState.stop();
-      throw new ProcessUploadRetriableException(uploadState.getPartNum(), exception.getCause());
-    } finally {
-      uploadState.getChunks().clear();
-      uploadState.resetPartSize();
-    }
-
-    uploadState.getETags().put(uploadState.getPartNum(), eTag);
-    uploadState.addFileSize(part.length);
-    uploadState.increaseTotalParts();
-  }
-
-  private void checkStorageAndNotify(UUID userId) {
-    userRepository
-        .getStorageUsage(userId)
-        .ifPresent(
-            usage -> {
-              double ratio = usage.getRatio();
-
-              log.info(
-                  "Storage check for user {}: used={}, limit={}, {}%",
-                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
-
-              if (ratio >= notificationConfig.fullThreshold()) {
-                userRepository
-                    .getUserById(userId)
-                    .ifPresent(
-                        user ->
-                            notificationClient.notifyStorageFull(
-                                user.getEmail(), user.getUsername(), userId));
-              } else if (ratio >= notificationConfig.almostFullThreshold()) {
-                userRepository
-                    .getUserById(userId)
-                    .ifPresent(
-                        user ->
-                            notificationClient.notifyStorageAlmostFull(
-                                user.getEmail(),
-                                user.getUsername(),
-                                usage.used(),
-                                usage.limit(),
-                                userId));
-              }
-            });
   }
 }

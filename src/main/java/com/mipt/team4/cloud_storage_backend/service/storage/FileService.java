@@ -16,14 +16,14 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFi
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
+import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,37 +39,36 @@ public class FileService {
 
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
-
-  private final NotificationClient notificationClient;
+  private final NotificationService notificationService;
 
   public UUID simpleUpload(FileUploadRequest request) {
-    UUID fileId = UUID.randomUUID();
     UUID userId = request.userId();
+    UUID parentId = request.parentId();
+    String name = request.name();
 
     if (!tariffService.hasAccess(userId)) {
-      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+      throw new TariffAccessDeniedException();
     }
 
-    UUID parentId = request.parentId();
-    String fileName = request.name();
+    storageRepository
+        .getIncludeDeleted(userId, parentId, name)
+        .ifPresent(
+            entity -> {
+              throw new StorageFileAlreadyExistsException(parentId, name);
+            });
 
-    Optional<StorageEntity> fileEntity = storageRepository.getIncludeDeleted(userId, fileId);
-
-    if (fileEntity.isPresent()) {
-      throw new StorageFileAlreadyExistsException(parentId, fileName);
-    }
-
-    String mimeType = MimeTypeDetector.detect(fileName);
+    UUID fileId = UUID.randomUUID();
+    String mimeType = MimeTypeDetector.detect(name);
     byte[] data = request.data();
 
-    StorageEntity entity =
+    StorageEntity fileEntity =
         StorageEntity.builder()
             .id(fileId)
             .userId(userId)
             .mimeType(mimeType)
             .size(data.length)
             .parentId(parentId)
-            .name(fileName)
+            .name(name)
             .isDirectory(false)
             .tags(request.tags())
             .status(FileStatus.READY)
@@ -77,9 +76,9 @@ public class FileService {
             .build();
 
     userRepository.increaseUsedStorage(userId, data.length);
-    storageRepository.add(entity, data);
+    storageRepository.add(fileEntity, data);
+    notificationService.checkStorageUsageAndNotify(userId);
 
-    checkStorageAndNotify(userId);
     return fileId;
   }
 
@@ -88,32 +87,35 @@ public class FileService {
     UUID userId = request.userId();
 
     if (!tariffService.hasAccess(userId)) {
-      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+      throw new TariffAccessDeniedException();
     }
 
-    Optional<StorageEntity> fileEntity = storageRepository.get(userId, fileId);
-    StorageEntity entity = fileEntity.orElseThrow(() -> new StorageFileNotFoundException(fileId));
+    StorageEntity fileEntity =
+        storageRepository
+            .get(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-    return new FileDownloadInfoDto(
-        fileEntity.get().getMimeType(), storageRepository.download(entity), entity.getSize());
+    InputStream inputStream = storageRepository.download(fileEntity);
+
+    return new FileDownloadInfoDto(fileEntity.getMimeType(), inputStream, fileEntity.getSize());
   }
 
   public void hardDelete(DeleteFileRequest request) {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
-    Optional<StorageEntity> fileEntity = storageRepository.getIncludeDeleted(userId, fileId);
-    StorageEntity entity = fileEntity.orElseThrow(() -> new StorageFileNotFoundException(fileId));
+    StorageEntity fileEntity =
+        storageRepository
+            .getIncludeDeleted(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-    UserEntity user =
+    UserEntity userEntity =
         userRepository
             .getUserById(userId)
             .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
-    erasureService.hardDelete(entity);
-
-    String fullPath = storageRepository.getFullFilePath(fileId);
-    notificationClient.notifyFileDeleted(user.getEmail(), user.getUsername(), fullPath, userId);
+    erasureService.hardDelete(fileEntity);
+    notificationService.notifyFileDeleted(fileId, userEntity);
   }
 
   @Transactional
@@ -136,7 +138,7 @@ public class FileService {
 
     StorageEntity fileEntity =
         storageRepository
-            .getDeletedById(userId, fileId)
+            .getDeleted(userId, fileId)
             .orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
     if (storageRepository.exists(userId, fileEntity.getParentId(), fileEntity.getName())) {
@@ -166,12 +168,9 @@ public class FileService {
     UUID fileId = request.fileId();
     UUID userId = request.userId();
 
-    Optional<StorageEntity> fileEntity = storageRepository.get(userId, fileId);
-    if (fileEntity.isEmpty()) {
-      throw new StorageFileNotFoundException(fileId);
-    }
-
-    return fileEntity.get();
+    return storageRepository
+        .get(userId, fileId)
+        .orElseThrow(() -> new StorageFileNotFoundException(fileId));
   }
 
   @Transactional

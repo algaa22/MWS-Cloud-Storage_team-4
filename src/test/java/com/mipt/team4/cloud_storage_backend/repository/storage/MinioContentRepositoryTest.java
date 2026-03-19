@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.IOException;
@@ -27,7 +27,7 @@ import org.testcontainers.containers.MinIOContainer;
 @SpringBootTest(
     webEnvironment = WebEnvironment.NONE,
     classes = {MinioContentRepository.class, MinioWrapper.class})
-@EnableConfigurationProperties(MinioConfig.class)
+@EnableConfigurationProperties(S3Config.class)
 @Tag("integration")
 class MinioContentRepositoryTest {
 

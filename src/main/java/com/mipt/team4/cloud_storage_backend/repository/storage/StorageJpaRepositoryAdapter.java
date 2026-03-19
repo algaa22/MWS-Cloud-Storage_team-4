@@ -1,8 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPart;
-import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSession;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import jakarta.persistence.EntityManager;
@@ -18,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @RequiredArgsConstructor
 public class StorageJpaRepositoryAdapter {
-  private final ChunkedUploadRepository uploadRepository;
   private final StorageJpaRepository jpaRepository;
   private final EntityManager entityManager;
 
@@ -56,21 +53,6 @@ public class StorageJpaRepositoryAdapter {
   @Transactional
   public void updateFile(StorageEntity entity) {
     jpaRepository.saveAndFlush(entity);
-  }
-
-  @Transactional
-  public void upsertUploadPart(ChunkedUploadPart part) {
-    uploadRepository.upsertPart(part);
-  }
-
-  @Transactional(readOnly = true)
-  public Optional<ChunkedUploadSession> getUploadSession(UUID sessionId) {
-    return uploadRepository.findByIdWithParts(sessionId);
-  }
-
-  @Transactional(readOnly = true)
-  public boolean isPartAlreadyUploaded(UUID sessionId, int partNumber) {
-    return uploadRepository.existsPart(sessionId, partNumber);
   }
 
   @Transactional(readOnly = true)
@@ -142,7 +124,7 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
+  public Optional<StorageEntity> getDeleted(UUID userId, UUID fileId) {
     return jpaRepository.findDeletedById(userId, fileId);
   }
 
@@ -165,6 +147,11 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
     return jpaRepository.findByIdIncludeDeleted(userId, fileId);
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID parentId, String name) {
+    return jpaRepository.findByParentIdAndNameIncludeDeleted(userId, parentId, name);
   }
 
   @Transactional(readOnly = true)

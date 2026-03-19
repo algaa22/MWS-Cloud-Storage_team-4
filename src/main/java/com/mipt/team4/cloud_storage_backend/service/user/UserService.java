@@ -38,23 +38,6 @@ public class UserService {
   private final StorageConfig storageConfig;
   private final TariffService tariffService;
 
-  @Transactional(readOnly = true)
-  public UserInfoResponse getUserInfo(UserInfoRequest request) {
-    UUID userId = request.userId();
-    UserEntity userEntity =
-        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
-
-    return new UserInfoResponse(
-        null,
-        userEntity.getUsername(),
-        userEntity.getEmail(),
-        null,
-        userEntity.getStorageLimit(),
-        userEntity.getUsedStorage(),
-        null,
-        userEntity.isActive());
-  }
-
   @Transactional
   public TokenPairDto registerUser(RegisterRequest request) {
     if (userRepository.getUserByEmail(request.email()).isPresent()) {
@@ -103,7 +86,7 @@ public class UserService {
     userSessionService.blacklistToken(request.authToken());
   }
 
-  @Transactional()
+  @Transactional
   public TokenPairDto refreshTokens(RefreshTokenRequest request) {
     RefreshTokenDto refreshToken = refreshTokenService.validate(request.refreshToken());
 
@@ -145,5 +128,19 @@ public class UserService {
     if (request.newName() != null) {
       userEntity.setUsername(request.newName());
     }
+  }
+
+  @Transactional(readOnly = true)
+  public UserInfoResponse getUserInfo(UserInfoRequest request) {
+    UUID userId = request.userId();
+    UserEntity userEntity =
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+
+    return new UserInfoResponse(
+        userEntity.getUsername(),
+        userEntity.getEmail(),
+        userEntity.getStorageLimit(),
+        userEntity.getUsedStorage(),
+        userEntity.isActive());
   }
 }

@@ -11,14 +11,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ChunkedUploadPart {
+public class ChunkedUploadPartEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "session_id", nullable = false)
-  private ChunkedUploadSession session;
+  private ChunkedUploadSessionEntity session;
 
   @Column(name = "part_number", nullable = false)
   private Integer partNumber;

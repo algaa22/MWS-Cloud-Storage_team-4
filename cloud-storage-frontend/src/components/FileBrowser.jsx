@@ -16,7 +16,13 @@ import {
   updateFileMetadata,
   moveFolder,
   BASE,
-  fetchWithTokenRefresh
+  fetchWithTokenRefresh,
+  getTrashFiles,
+  restoreFile,
+  permanentDeleteFile,
+  emptyTrash,
+  softDeleteFile,
+  softDeleteFolder
 } from "../api.js";
 
 export default function FileBrowser() {
@@ -52,6 +58,10 @@ export default function FileBrowser() {
   const [searchTags, setSearchTags] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashFiles, setTrashFiles] = useState([]);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [selectedTrashItems, setSelectedTrashItems] = useState(new Set());
 
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
@@ -398,7 +408,152 @@ export default function FileBrowser() {
     }
   };
 
+const handleSoftDelete = async (item) => {
+  if (!item || !item.id) return;
+
+  const itemType = item.type === "folder" ? "папку" : "файл";
+  const itemName = item.name || "Без имени";
+
+  if (window.confirm(`Переместить ${itemType} "${itemName}" в корзину?`)) {
+    try {
+      if (item.type === "folder") {
+        await softDeleteFolder(token, item.id);
+      } else {
+        await softDeleteFile(token, item.id);
+      }
+      await fetchFiles(); // Обновляем список файлов
+      await loadStorageInfo(); // Обновляем информацию о хранилище
+      await loadTrashFiles(); // ← Добавьте эту строку для обновления корзины
+      setSuccess(`"${itemName}" перемещен(а) в корзину`);
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err) {
+      console.error("Soft delete error:", err);
+      setError(`Ошибка при перемещении в корзину: ${err.message}`);
+    }
+  }
+};
+
+// Обработчик восстановления из корзины
+const handleRestoreFromTrash = async (id) => {
+  try {
+    await restoreFile(token, id);
+    await loadTrashFiles(); // Обновляем корзину
+    await fetchFiles(); // Обновляем основное хранилище
+    setSuccess("Файл восстановлен");
+    setTimeout(() => setSuccess(""), 2000);
+  } catch (err) {
+    console.error("Restore error:", err);
+    setError(`Ошибка восстановления: ${err.message}`);
+  }
+};
+
+const loadTrashFiles = async () => {
+  if (!token) return;
+
+  setTrashLoading(true);
+  try {
+    const files = await getTrashFiles(token);
+    setTrashFiles(files);
+  } catch (err) {
+    console.error("Error loading trash:", err);
+  } finally {
+    setTrashLoading(false);
+  }
+};
+
+// Обработчик безвозвратного удаления
+const handlePermanentDelete = async (id) => {
+  if (window.confirm("Удалить файл безвозвратно? Это действие нельзя отменить!")) {
+    try {
+      await permanentDeleteFile(token, id);
+      await loadTrashFiles(); // Обновляем корзину
+      setSuccess("Файл удален навсегда");
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err) {
+      console.error("Permanent delete error:", err);
+      setError(`Ошибка удаления: ${err.message}`);
+    }
+  }
+};
+
+// Обработчик очистки корзины
+const handleEmptyTrash = async () => {
+  if (window.confirm("Очистить корзину? Все файлы будут удалены безвозвратно!")) {
+    try {
+      const result = await emptyTrash(token);
+      await loadTrashFiles(); // Обновляем корзину
+      setSuccess(`Корзина очищена. Удалено: ${result.success} файлов`);
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err) {
+      console.error("Empty trash error:", err);
+      setError(`Ошибка очистки корзины: ${err.message}`);
+    }
+  }
+};
+
+// Обработчик выбора всех файлов в корзине
+const handleSelectAllTrash = () => {
+  if (selectedTrashItems.size === trashFiles.length) {
+    setSelectedTrashItems(new Set());
+  } else {
+    setSelectedTrashItems(new Set(trashFiles.map(f => f.id)));
+  }
+};
+
+// Обработчик выбора файла в корзине
+const handleSelectTrashItem = (id) => {
+  const newSelected = new Set(selectedTrashItems);
+  if (newSelected.has(id)) {
+    newSelected.delete(id);
+  } else {
+    newSelected.add(id);
+  }
+  setSelectedTrashItems(newSelected);
+};
+
+// Обработчик восстановления выбранных
+const handleRestoreSelected = async () => {
+  if (selectedTrashItems.size === 0) return;
+
+  try {
+    for (const id of selectedTrashItems) {
+      await restoreFile(token, id);
+    }
+    setSelectedTrashItems(new Set());
+    await loadTrashFiles();
+    await fetchFiles();
+    setSuccess(`Восстановлено ${selectedTrashItems.size} файлов`);
+    setTimeout(() => setSuccess(""), 2000);
+  } catch (err) {
+    console.error("Restore selected error:", err);
+    setError(`Ошибка восстановления: ${err.message}`);
+  }
+};
+
+// Обработчик удаления выбранных
+const handleDeleteSelected = async () => {
+  if (selectedTrashItems.size === 0) return;
+
+  if (window.confirm(`Удалить ${selectedTrashItems.size} файлов безвозвратно?`)) {
+    try {
+      for (const id of selectedTrashItems) {
+        await permanentDeleteFile(token, id);
+      }
+      setSelectedTrashItems(new Set());
+      await loadTrashFiles();
+      setSuccess(`Удалено ${selectedTrashItems.size} файлов`);
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err) {
+      console.error("Delete selected error:", err);
+      setError(`Ошибка удаления: ${err.message}`);
+    }
+  }
+};
+
   const handleFileAction = async (action) => {
+    console.log("DELETE ID:", selectedItem.id, selectedItem);
+    console.log("handleFileAction called with action:", action, "selectedItem:", selectedItem);
+
     if (!selectedItem) return;
 
     setShowItemMenu(false);
@@ -419,16 +574,27 @@ export default function FileBrowser() {
           const itemType = selectedItem.type === "folder" ? "папку" : "файл";
           const itemName = getItemName(selectedItem);
 
-          if (window.confirm(`Удалить ${itemType} "${itemName}"?`)) {
-            if (selectedItem.type === "folder") {
-              await apiDeleteFolder(token, selectedItem.id);
-            } else {
-              await apiDeleteFile(token, selectedItem.id, false);
+          if (window.confirm(`Переместить ${itemType} "${itemName}" в корзину?`)) {
+            try {
+              if (selectedItem.type === "folder") {
+                await softDeleteFolder(token, selectedItem.id);
+              } else {
+                await softDeleteFile(token, selectedItem.id);
+              }
+                const trashCheck = await getTrashFiles(token);
+                console.log("Files in trash after delete:", trashCheck);
+              await fetchFiles(); // обновляем список файлов
+              await loadStorageInfo(); // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+              await loadTrashFiles();
+              setSuccess(`"${itemName}" перемещен(а) в корзину`);
+              setTimeout(() => setSuccess(""), 2000);
+            } catch (err) {
+              console.error("Delete error:", err);
+              setError(`Ошибка при удалении: ${err.message}`);
             }
-            await fetchFiles();
-            await loadStorageInfo();
           }
           break;
+
         case "info":
           const info = selectedItem.type === "file"
             ? await apiGetFileInfo(token, selectedItem.id)
@@ -1210,7 +1376,8 @@ export default function FileBrowser() {
         )}
       </div>
 
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-4">
+      {/* Кнопки действий */}
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-4 z-40">
         <button
           onClick={() => setShowUploadModal(true)}
           disabled={uploading}
@@ -1235,6 +1402,20 @@ export default function FileBrowser() {
         >
           <span>📁</span>
           <span>Создать папку</span>
+        </button>
+
+        {/* Кнопка корзины */}
+        <button
+          onClick={() => navigate("/trash")}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-colors flex items-center space-x-2 shadow-lg relative"
+        >
+          <span>🗑️</span>
+          <span>Корзина</span>
+          {trashFiles.length > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {trashFiles.length}
+            </span>
+          )}
         </button>
       </div>
 

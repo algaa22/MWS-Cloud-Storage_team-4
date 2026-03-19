@@ -7,4 +7,4 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Us
 import java.util.UUID;
 
 @RequestMapping(method = "GET", path = ApiEndpoints.FILES_TRASH)
-public record TrashFileListRequest(@UserId UUID userId, @QueryParam("parentId") UUID parentId) {}
+public record TrashFileListRequest(@UserId UUID userId) {}

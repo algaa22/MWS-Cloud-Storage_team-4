@@ -15,7 +15,7 @@ public class FileErasureService {
 
   @Transactional
   public void hardDelete(StorageEntity entity) {
-    storageRepository.hardDelete(entity);
     userRepository.decreaseUsedStorage(entity.getUserId(), entity.getSize());
+    storageRepository.hardDelete(entity);
   }
 }

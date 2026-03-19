@@ -115,7 +115,12 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   void upsertFile(@Param("f") StorageEntity file);
 
   @Modifying
-  void deleteByUserIdAndId(UUID userId, UUID id);
+  @Query("DELETE FROM StorageEntity f WHERE f.userId = :userId AND f.id = :id")
+  int deleteByUserIdAndId(@Param("userId") UUID userId, @Param("id") UUID id);
+
+  @Modifying
+  @Query(value = "DELETE FROM files WHERE user_id = :userId AND id = :id", nativeQuery = true)
+  int hardDeleteNative(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Query(
       nativeQuery = true,
@@ -181,10 +186,15 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       nativeQuery = true)
   List<String> getFullPathNodes(@Param("fileId") UUID fileId);
 
+  @Query("SELECT f FROM StorageEntity f WHERE f.userId = :userId AND f.isDeleted = true")
+  List<StorageEntity> findAllTrashByUserId(@Param("userId") UUID userId);
+
   Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID fileId);
 
   List<StorageEntity> findByStatusInAndUpdatedAtBefore(
       List<FileStatus> statuses, LocalDateTime threshold);
 
   Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
+  List<StorageEntity> findAllByUserIdAndIsDeletedTrue(UUID userId);
+
 }

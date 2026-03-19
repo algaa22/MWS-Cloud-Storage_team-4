@@ -57,7 +57,6 @@ export async function fetchWithTokenRefresh(url, options = {}, token) {
           return retryRes;
         } catch (refreshError) {
           console.error("Refresh failed:", refreshError);
-          // Очищаем токены и перенаправляем на логин
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
           localStorage.removeItem("user");
@@ -65,7 +64,6 @@ export async function fetchWithTokenRefresh(url, options = {}, token) {
           throw new Error(`Authentication failed: ${refreshError.message}`);
         }
       } else {
-        // Нет refresh token - перенаправляем на логин
         console.error("Refresh token not available");
         localStorage.removeItem("accessToken");
         localStorage.removeItem("user");
@@ -181,55 +179,28 @@ export async function getUserInfo(token) {
 
     console.log("Response status:", res.status, res.statusText);
 
-    // Получаем текст ответа
     const text = await res.text();
-    console.log("Raw response text:", text);
+    console.log("RAW RESPONSE TEXT:", text);
 
-    // Если ответ пустой
     if (!text || text.trim() === '') {
       console.warn("Empty response from server");
-      return {
-        name: "User",
-        email: "",
-        UsedStorage: 0,
-        StorageLimit: 10 * 1024 * 1024 * 1024,
-        storageInfo: {
-          used: 0,
-          total: 10 * 1024 * 1024 * 1024,
-          formattedUsed: '0 Bytes',
-          formattedTotal: '10 GB',
-          percentage: 0
-        }
-      };
+      throw new Error("Empty response");
     }
 
     if (!res.ok) {
-      console.error("Error response:", text);
       throw new Error(`HTTP ${res.status}: ${text}`);
     }
 
-    // Парсим JSON
     let data;
     try {
       data = JSON.parse(text);
     } catch (e) {
       console.error("Failed to parse JSON:", e);
-      return {
-        name: "User",
-        email: "",
-        UsedStorage: 0,
-        StorageLimit: 10 * 1024 * 1024 * 1024,
-        storageInfo: {
-          used: 0,
-          total: 10 * 1024 * 1024 * 1024,
-          formattedUsed: '0 Bytes',
-          formattedTotal: '10 GB',
-          percentage: 0
-        }
-      };
+      throw new Error("Invalid JSON response");
     }
 
-    console.log("Success! User data:", data);
+    console.log("Parsed user data:", data);
+    console.log("Data keys:", Object.keys(data));
 
     const storageInfo = {
       used: 0,
@@ -239,20 +210,14 @@ export async function getUserInfo(token) {
       percentage: 0
     };
 
-    if (data.UsedStorage !== undefined) {
-      storageInfo.used = Number(data.UsedStorage) || 0;
-    }
-
-    if (data.StorageLimit !== undefined) {
-      storageInfo.total = Number(data.StorageLimit) || 10 * 1024 * 1024 * 1024;
-    }
-
-    if (data.usedStorage !== undefined && storageInfo.used === 0) {
+    if (data.usedStorage !== undefined) {
       storageInfo.used = Number(data.usedStorage) || 0;
+      console.log("✅ found usedStorage:", storageInfo.used);
     }
 
-    if (data.storageLimit !== undefined && storageInfo.total === 10 * 1024 * 1024 * 1024) {
+    if (data.storageLimit !== undefined) {
       storageInfo.total = Number(data.storageLimit) || 10 * 1024 * 1024 * 1024;
+      console.log("✅ found storageLimit:", storageInfo.total);
     }
 
     storageInfo.percentage = storageInfo.total > 0 ?
@@ -260,25 +225,39 @@ export async function getUserInfo(token) {
     storageInfo.formattedUsed = formatBytes(storageInfo.used);
     storageInfo.formattedTotal = formatBytes(storageInfo.total);
 
+    const userName = data.name || data.email?.split('@')[0] || "User";
+    console.log("✅ User name:", userName);
+
     return {
-      ...data,
+      id: data.id,
+      name: userName,
+      username: userName,
+      email: data.email || "",
+      usedStorage: storageInfo.used,
+      storageLimit: storageInfo.total,
+      createdAt: data.createdAt,
+      isActive: data.isActive,
       storageInfo
     };
 
   } catch (error) {
-    console.error("Fetch error in getUserInfo:", error);
+    console.error("❌ Error in getUserInfo:", error);
+
+    const defaultStorage = {
+      used: 0,
+      total: 10 * 1024 * 1024 * 1024,
+      formattedUsed: '0 Bytes',
+      formattedTotal: '10 GB',
+      percentage: 0
+    };
+
     return {
       name: "User",
+      username: "User",
       email: "",
-      UsedStorage: 0,
-      StorageLimit: 10 * 1024 * 1024 * 1024,
-      storageInfo: {
-        used: 0,
-        total: 10 * 1024 * 1024 * 1024,
-        formattedUsed: '0 Bytes',
-        formattedTotal: '10 GB',
-        percentage: 0
-      }
+      usedStorage: 0,
+      storageLimit: 10 * 1024 * 1024 * 1024,
+      storageInfo: defaultStorage
     };
   }
 }
@@ -404,10 +383,170 @@ export const downloadFile = async (token, id, filename, fileSize) => {
   }
 };
 
+export const getTrashFiles = async (token) => {
+  console.log("=== GET TRASH FILES ===");
+
+  if (!token) throw new Error("Требуется авторизация");
+
+  // parentId больше не нужен!
+  const url = `${BASE}/files/trash`;
+  console.log("Request URL:", url);
+
+  try {
+    const response = await fetchWithTokenRefresh(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      }
+    }, token);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to get trash: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("Raw trash data:", data);
+
+    // Сервер может вернуть массив сразу или объект с полем files
+    const files = Array.isArray(data) ? data : (data.files || []);
+    console.log(`Found ${files.length} files in trash`);
+
+    return files.map(item => ({
+      name: item.name || "Без имени",
+      id: item.id,
+      type: item.isDirectory ? "folder" : "file",
+      size: item.size || 0,
+      deletedAt: item.deletedAt || item.deleted_at || item.DeletedAt
+    }));
+
+  } catch (error) {
+    console.error("Error getting trash files:", error);
+    throw error;
+  }
+};
+
+
+export const softDeleteFile = async (token, id) => {
+  console.log("softDeleteFile request (to trash):", { id });
+
+  // Убедитесь, что permanent=false
+  const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=false`;
+
+  const res = await fetchWithTokenRefresh(url, {
+    method: "DELETE",
+    headers: {
+      "Accept": "application/json"
+    }
+  }, token);
+
+  console.log("softDeleteFile status:", res.status);
+
+  if (!res.ok) {
+    const responseText = await res.text();
+    throw new Error(`Soft delete failed: ${res.status} ${responseText}`);
+  }
+
+  // Прочитайте ответ сервера
+  const responseText = await res.text();
+  console.log("softDeleteFile response:", responseText);
+
+  return true;
+};
+
+export const softDeleteFolder = async (token, id) => {
+  console.log("softDeleteFolder request (to trash):", { id });
+
+  const res = await fetchWithTokenRefresh(
+      `${BASE}/directories?id=${encodeURIComponent(id)}`,
+      {
+        method: "DELETE"
+      },
+      token
+  );
+
+  console.log("softDeleteFolder status:", res.status, res.statusText);
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "(no body)");
+    console.error("Soft delete folder failed:", res.status, txt);
+    throw new Error(`Soft delete folder failed: ${res.status} ${txt}`);
+  }
+  return true;
+};
+
+
+export const restoreFile = async (token, id) => {
+  console.log("restoreFile request:", { id });
+
+  const url = `${BASE}/files/restore?id=${encodeURIComponent(id)}`;
+
+  const res = await fetchWithTokenRefresh(url, {
+    method: "POST"
+  }, token);
+
+  console.log("restoreFile status:", res.status, res.statusText);
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "(no body)");
+    console.error("Restore failed:", res.status, txt);
+    throw new Error(`Restore failed: ${res.status} ${txt}`);
+  }
+  return true;
+};
+
+export const permanentDeleteFile = async (token, id) => {
+  console.log("permanentDeleteFile request:", { id });
+
+  const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=true`;
+
+  const res = await fetchWithTokenRefresh(url, {
+    method: "DELETE"
+  }, token);
+
+  console.log("permanentDeleteFile status:", res.status, res.statusText);
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "(no body)");
+    console.error("Permanent delete failed:", res.status, txt);
+    throw new Error(`Permanent delete failed: ${res.status} ${txt}`);
+  }
+  return true;
+};
+
+export const emptyTrash = async (token) => {
+  console.log("emptyTrash request");
+
+  try {
+    const trashFiles = await getTrashFiles(token);
+
+    const results = await Promise.allSettled(
+      trashFiles.map(file => permanentDeleteFile(token, file.id))
+    );
+
+    const failed = results.filter(r => r.status === 'rejected');
+    if (failed.length > 0) {
+      console.warn(`${failed.length} files failed to delete permanently`);
+    }
+
+    return {
+      total: trashFiles.length,
+      success: trashFiles.length - failed.length,
+      failed: failed.length
+    };
+  } catch (error) {
+    console.error("Error emptying trash:", error);
+    throw error;
+  }
+};
+
 export const deleteFile = async (token, id, permanent = false) => {
   console.log("deleteFile request:", { id, permanent });
 
-  const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=${permanent}`;
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userId = user.id || '';
+
+  const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=${permanent}&userId=${encodeURIComponent(userId)}`;
 
   const res = await fetchWithTokenRefresh(url, {
     method: "DELETE"

@@ -38,21 +38,70 @@ public class StorageJpaRepositoryAdapter {
 
   @Transactional
   public void hardDelete(UUID userId, UUID fileId) {
-    jpaRepository.deleteByUserIdAndId(userId, fileId);
+    System.out.println("=== JPA ADAPTER HARD DELETE (NATIVE) ===");
+    System.out.println("User ID: " + userId);
+    System.out.println("File ID: " + fileId);
+
+    int deletedCount = jpaRepository.hardDeleteNative(userId, fileId);
+    System.out.println("Deleted rows: " + deletedCount);
+
+    if (deletedCount == 0) {
+      System.out.println("⚠️ WARNING: No rows deleted!");
+    }
   }
 
   @Transactional
   public void restore(UUID userId, UUID fileId, boolean isDirectory) {
+    System.out.println("=== JPA ADAPTER RESTORE ===");
+    System.out.println("User ID: " + userId);
+    System.out.println("File ID: " + fileId);
+
+    int updated = 0;
     if (isDirectory) {
       jpaRepository.restoreRecursive(userId, fileId);
     } else {
       jpaRepository.restore(userId, fileId);
     }
+
+    System.out.println("Rows updated: " + updated);
+
+    // Проверим, что действительно обновилось
+    Optional<StorageEntity> check = jpaRepository.findByIdIncludeDeleted(userId, fileId);
+    if (check.isPresent()) {
+      System.out.println("After restore - isDeleted: " + check.get().isDeleted());
+    } else {
+      System.out.println("File not found after restore!");
+    }
+  }
+
+  @Transactional(readOnly = true)
+  public List<StorageEntity> getAllTrashFiles(UUID userId) {
+    String sql = "SELECT * FROM files WHERE user_id = :userId AND is_deleted = true";
+    Query query = entityManager.createNativeQuery(sql, StorageEntity.class);
+    query.setParameter("userId", userId);
+    return query.getResultList();
   }
 
   @Transactional
   public void updateFile(StorageEntity entity) {
-    jpaRepository.saveAndFlush(entity);
+    System.out.println("=== updateFile ===");
+    System.out.println("Entity ID: " + entity.getId());
+    System.out.println("Is deleted: " + entity.isDeleted());
+
+    // Проверяем, есть ли в БД
+    Optional<StorageEntity> existing = jpaRepository.findById(entity.getId());
+    System.out.println("Exists in DB: " + existing.isPresent());
+
+    if (existing.isPresent()) {
+      System.out.println("Existing entity deleted: " + existing.get().isDeleted());
+      // Обновляем существующую
+      jpaRepository.saveAndFlush(entity);
+    } else {
+      // Это действительно новый файл
+      System.out.println("Entity not found in DB - this is a new file");
+      jpaRepository.saveAndFlush(entity);
+    }
+    System.out.println("saveAndFlush completed");
   }
 
   @Transactional(readOnly = true)
@@ -151,7 +200,7 @@ public class StorageJpaRepositoryAdapter {
 
   @Transactional(readOnly = true)
   public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
-    return jpaRepository.findTrashByParentId(userId, parentId);
+      return jpaRepository.findAllTrashByUserId(userId);
   }
 
   @Transactional(readOnly = true)

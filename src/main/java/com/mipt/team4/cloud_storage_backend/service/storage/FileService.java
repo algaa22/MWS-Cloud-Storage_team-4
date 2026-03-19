@@ -241,21 +241,34 @@ public class FileService {
   }
 
   public void hardDelete(DeleteFileRequest request) {
+    System.out.println("=== HARD DELETE SERVICE ===");
     UUID fileId = request.id();
     UUID userId = request.userId();
 
+    System.out.println("File ID: " + fileId);
+    System.out.println("User ID: " + userId);
+
     Optional<StorageEntity> fileEntity = storageRepository.getIncludeDeleted(userId, fileId);
-    StorageEntity entity = fileEntity.orElseThrow(() -> new StorageFileNotFoundException(fileId));
+    if (fileEntity.isEmpty()) {
+      System.out.println("File not found in DB at all!");
+      return;
+    }
+
+    StorageEntity entity = fileEntity.get();
+    System.out.println("Found file: " + entity.getName());
+    System.out.println("Is deleted: " + entity.isDeleted());
 
     UserEntity user =
-        userRepository
-            .getUserById(userId)
-            .orElseThrow(() -> new UserNotFoundException(request.userId()));
+            userRepository
+                    .getUserById(userId)
+                    .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
     erasureService.hardDelete(entity);
 
     String fullPath = storageRepository.getFullFilePath(fileId);
     notificationClient.notifyFileDeleted(user.getEmail(), user.getUsername(), fullPath, userId);
+
+    System.out.println("Hard delete completed");
   }
 
   @Transactional
@@ -267,7 +280,10 @@ public class FileService {
         storageRepository
             .getIncludeDeleted(userId, fileId)
             .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+    userRepository.decreaseUsedStorage(userId, fileEntity.getSize());
 
+    fileEntity.setDeleted(true);
+    fileEntity.setDeletedAt(LocalDateTime.now());
     storageRepository.softDeleteEntity(fileEntity);
   }
 
@@ -276,16 +292,29 @@ public class FileService {
     UUID fileId = request.fileId();
     UUID userId = request.userId();
 
+    System.out.println("=== FILE SERVICE RESTORE ===");
+    System.out.println("Looking for file: " + fileId);
+
     StorageEntity fileEntity =
-        storageRepository
-            .getDeletedById(userId, fileId)
-            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+            storageRepository
+                    .getDeletedById(userId, fileId)
+                    .orElseThrow(() -> {
+                      System.out.println("File not found in trash!");
+                      return new StorageFileNotFoundException(fileId);
+                    });
+
+    System.out.println("Found file: " + fileEntity.getName());
+    System.out.println("Current deleted status: " + fileEntity.isDeleted());
+    System.out.println("Parent ID: " + fileEntity.getParentId());
 
     if (storageRepository.exists(userId, fileEntity.getParentId(), fileEntity.getName())) {
+      System.out.println("Conflict! File already exists at destination");
       throw new StorageFileAlreadyExistsException(fileEntity.getParentId(), fileEntity.getName());
     }
 
+    System.out.println("Calling storageRepository.restore...");
     storageRepository.restore(fileEntity);
+    System.out.println("Restore completed");
   }
 
   @Transactional(readOnly = true)
@@ -314,6 +343,11 @@ public class FileService {
     }
 
     return fileEntity.get();
+  }
+
+  @Transactional(readOnly = true)
+  public List<StorageEntity> getAllTrashFiles(UUID userId) {
+    return storageRepository.getAllTrashFiles(userId);
   }
 
   @Transactional
@@ -409,4 +443,4 @@ public class FileService {
               }
             });
   }
-}
+  }

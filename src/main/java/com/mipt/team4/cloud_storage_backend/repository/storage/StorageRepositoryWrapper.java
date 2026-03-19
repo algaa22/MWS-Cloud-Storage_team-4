@@ -14,6 +14,10 @@ import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -140,8 +144,10 @@ public class StorageRepositoryWrapper {
   }
 
   private <T> void finalizeOperation(
-      StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
+          StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
+
     executeOperation(entity, operationType, operation);
+
     syncEntityWithDatabase(entity, operationType, FileStatus.READY);
   }
 
@@ -293,14 +299,44 @@ public class StorageRepositoryWrapper {
   }
 
   private StorageEntity syncToPersistenceContext(StorageEntity entity) {
-    StorageEntity managed = entityManager.find(StorageEntity.class, entity.getId());
+    System.out.println("=== syncToPersistenceContext DEEP DEBUG ===");
+    System.out.println("Entity ID: " + entity.getId());
+    System.out.println("Entity hash: " + System.identityHashCode(entity));
 
-    if (managed == null) {
-      entityManager.persist(entity);
-      return entity;
+    // 1. Пробуем найти через JPA
+    StorageEntity managed = entityManager.find(StorageEntity.class, entity.getId());
+    System.out.println("JPA find result: " + (managed != null ? "found" : "null"));
+
+    if (managed != null) {
+      System.out.println("JPA found entity with hash: " + System.identityHashCode(managed));
+      return entityManager.merge(entity);
     }
 
-    return entityManager.merge(entity);
+    // 2. Если JPA не нашел, пробуем прямой SQL
+    String sql = "SELECT * FROM files WHERE id = :id";
+    Query query = entityManager.createNativeQuery(sql, StorageEntity.class);
+    query.setParameter("id", entity.getId());
+
+    List<StorageEntity> result = query.getResultList();
+    System.out.println("SQL query result size: " + result.size());
+
+    if (!result.isEmpty()) {
+      StorageEntity fromDb = result.get(0);
+      System.out.println("Found in DB via SQL! ID: " + fromDb.getId());
+      System.out.println("Is deleted in DB: " + fromDb.isDeleted());
+
+      // УБИРАЕМ REFRESH - ОН НЕ НУЖЕН!
+
+      // Просто делаем merge
+      StorageEntity merged = entityManager.merge(fromDb);
+      System.out.println("After merge - hash: " + System.identityHashCode(merged));
+      return merged;
+    }
+
+    // 3. Если действительно нет в БД
+    System.out.println("Entity not found in DB at all - doing persist");
+    entityManager.persist(entity);
+    return entity;
   }
 
   @FunctionalInterface

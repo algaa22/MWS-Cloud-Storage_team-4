@@ -35,11 +35,10 @@ public class AggregatedFileController {
   }
 
   public void getTrashFileList(ChannelHandlerContext ctx, TrashFileListRequest request) {
-    List<StorageEntity> trashFiles =
-        fileService.getTrashFileList(
-            new GetFileListRequest(request.userId(), request.parentId(), false, false, null));
+    List<StorageEntity> trashFiles = fileService.getAllTrashFiles(request.userId());
+
     FileListResponse response =
-        new FileListResponse(trashFiles.stream().map(FileInfoResponse::from).toList());
+            new FileListResponse(trashFiles.stream().map(FileInfoResponse::from).toList());
     ResponseUtils.send(ctx, response);
   }
 
@@ -55,9 +54,15 @@ public class AggregatedFileController {
   }
 
   public void deleteFile(ChannelHandlerContext ctx, DeleteFileRequest request) {
+    System.out.println("=== DELETE CONTROLLER ===");
+    System.out.println("File ID: " + request.id());
+    System.out.println("Permanent: " + request.permanent());  // Должно быть true!
+
     if (request.permanent()) {
+      System.out.println("🔥 CALLING HARD DELETE");
       fileService.hardDelete(request);
     } else {
+      System.out.println("📦 CALLING SOFT DELETE");
       fileService.softDelete(request);
     }
 
@@ -65,8 +70,20 @@ public class AggregatedFileController {
   }
 
   public void restoreFile(ChannelHandlerContext ctx, RestoreFileRequest request) {
-    fileService.restore(request);
-    ResponseUtils.send(ctx, new SuccessResponse("File successfully restored"));
+    System.out.println("=== RESTORE CONTROLLER ===");
+    System.out.println("User ID: " + request.userId());
+    System.out.println("File ID: " + request.fileId());
+    System.out.println("Timestamp: " + new java.util.Date());
+
+    try {
+      fileService.restore(request);
+      System.out.println("Restore successful");
+      ResponseUtils.send(ctx, new SuccessResponse("File successfully restored"));
+    } catch (Exception e) {
+      System.out.println("Restore failed: " + e.getMessage());
+      e.printStackTrace();
+      throw e;
+    }
   }
 
   public void changeMetadata(ChannelHandlerContext ctx, ChangeFileMetadataRequest request) {

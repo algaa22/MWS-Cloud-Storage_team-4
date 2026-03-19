@@ -7,6 +7,7 @@ import FileBrowser from './components/FileBrowser';
 import Landing from './pages/Landing';
 import SettingsPage from './components/SettingsPage';
 import TariffsPage from './components/TariffsPage';
+import TrashPage from './components/TrashPage';
 
 
 function PrivateRoute({ children }) {
@@ -57,6 +58,7 @@ function App() {
                 }
             />
             <Route path="*" element={<Navigate to="/" />} />
+              <Route path="/trash" element={<TrashPage />} />
           </Routes>
         </Router>
       </AuthProvider>

@@ -1,12 +1,14 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectPartNumberException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadPartsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooManyPartsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadPartIOException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSizeMismatchException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
@@ -24,7 +26,12 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
+import com.mipt.team4.cloud_storage_backend.utils.ChecksumUtils;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.BitSet;
 import java.util.List;
@@ -43,6 +50,7 @@ public class ChunkedUploadService {
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
+  private final StorageConfig storageConfig;
   private final S3Config s3Config;
 
   @Transactional
@@ -111,20 +119,29 @@ public class ChunkedUploadService {
             .size(partDto.size())
             .build();
 
-    storageRepository.uploadPart(
-        session.getFile(),
-        session.getId(),
-        session.getUploadId(),
-        partDto.inputStream(),
-        partEntity);
+    MessageDigest messageDigest = ChecksumUtils.createMD5();
+
+    try (InputStream inputStream =
+        partDto.checksum() == null
+            ? partDto.inputStream()
+            : new DigestInputStream(partDto.inputStream(), messageDigest)) {
+      storageRepository.uploadPart(
+          session.getFile(), session.getId(), session.getUploadId(), inputStream, partEntity);
+
+      if (partDto.checksum() != null) {
+        ChecksumUtils.compareChecksums(partDto.checksum(), messageDigest.digest());
+      }
+
+    } catch (IOException e) {
+      throw new UploadPartIOException(e);
+    }
   }
 
   @Transactional
   public UUID completeChunkedUpload(CompleteChunkedUploadRequest request) {
     ChunkedUploadSessionEntity session = getSession(request.sessionId());
 
-    storageRepository.updateUploadSessionStatus(
-        session.getId(), session.getStatus(), ChunkedUploadStatus.COMPLETING);
+    storageRepository.updateUploadSessionStatus(session, ChunkedUploadStatus.COMPLETING);
 
     try {
       StorageEntity fileEntity = session.getFile();
@@ -139,8 +156,7 @@ public class ChunkedUploadService {
 
       return fileEntity.getId();
     } catch (Exception e) {
-      storageRepository.updateUploadSessionStatus(
-          session.getId(), ChunkedUploadStatus.COMPLETING, ChunkedUploadStatus.UPLOADING);
+      storageRepository.updateUploadSessionStatus(session, ChunkedUploadStatus.UPLOADING);
       throw e;
     }
   }

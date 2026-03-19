@@ -14,4 +14,5 @@ public record ChunkedUploadPartRequest(
     @UserId UUID userId,
     @NotNull @QueryParam UUID sessionId,
     @Positive @QueryParam int part,
+    @Positive @RequestHeader(value = "Content-MD5", required = false) String checksum,
     @Positive @RequestHeader("Content-Length") long partSize) {}

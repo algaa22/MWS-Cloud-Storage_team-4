@@ -5,7 +5,6 @@ import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableExcep
 import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadContextException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadPartsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.TooLargeFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadPartIOException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedResponse;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartContext;
@@ -30,7 +29,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.Attribute;
-import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -110,7 +108,7 @@ public class ChunkedUploadController {
 
     ChunkedUploadPartContext newPart =
         new ChunkedUploadPartContext(
-            request.sessionId(), request.userId(), request.part(), accumulator);
+            request.sessionId(), request.userId(), request.part(), request.checksum(), accumulator);
     getPartAttribute(ctx).set(newPart);
   }
 
@@ -138,22 +136,20 @@ public class ChunkedUploadController {
 
     accumulator.retain();
 
-    try (ByteBufInputStream inputStream = new ByteBufInputStream(accumulator)) {
+    try {
       uploadService.uploadPart(
           new ChunkedUploadPartDto(
               currentPart.sessionId(),
               currentPart.userId(),
               currentPart.partNumber(),
+              currentPart.checksum(),
               accumulator.readableBytes(),
-              inputStream));
+              new ByteBufInputStream(accumulator)));
       ResponseUtils.send(ctx, new SuccessResponse("Part successfully uploaded"));
-    } catch (IOException e) {
-      throw new UploadPartIOException(ctx, e);
     } catch (UploadRetriableException e) {
       ResponseUtils.send(
           ctx, new UploadPartRetryResponse("RETRY_PART", e.getMessage(), currentPart.partNumber()));
     } finally {
-      accumulator.release();
       resetCurrentPart(ctx, accumulator);
     }
   }

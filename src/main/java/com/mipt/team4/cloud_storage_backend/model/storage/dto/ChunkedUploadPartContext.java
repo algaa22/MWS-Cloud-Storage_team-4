@@ -4,4 +4,4 @@ import io.netty.buffer.CompositeByteBuf;
 import java.util.UUID;
 
 public record ChunkedUploadPartContext(
-    UUID sessionId, UUID userId, int partNumber, CompositeByteBuf accumulator) {}
+    UUID sessionId, UUID userId, int partNumber, String checksum, CompositeByteBuf accumulator) {}

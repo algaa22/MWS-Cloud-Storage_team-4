@@ -22,7 +22,6 @@ public record StartChunkedUploadRequest(
         String name,
     @QueryParam(required = false) UUID parentId,
     @Positive @RequestHeader int totalParts,
-    @Positive @RequestHeader String checksum,
     @Positive @RequestHeader("Content-Length") long fileSize,
     @Size @RequestHeader(value = "X-File-Tags", required = false)
         List<

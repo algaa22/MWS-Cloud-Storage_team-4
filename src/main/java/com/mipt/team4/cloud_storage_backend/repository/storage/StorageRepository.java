@@ -140,8 +140,9 @@ public class StorageRepository {
   }
 
   public void updateUploadSessionStatus(
-      UUID sessionId, ChunkedUploadStatus oldStatus, ChunkedUploadStatus newStatus) {
-    uploadRepository.updateSessionStatus(sessionId, oldStatus, newStatus);
+      ChunkedUploadSessionEntity session, ChunkedUploadStatus newStatus) {
+    session.setStatus(newStatus);
+    uploadRepository.updateSessionStatus(session.getId(), session.getStatus(), newStatus);
   }
 
   public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {

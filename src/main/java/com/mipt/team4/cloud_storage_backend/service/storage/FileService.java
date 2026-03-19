@@ -20,8 +20,10 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
+import com.mipt.team4.cloud_storage_backend.utils.ChecksumUtils;
 import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
 import java.io.InputStream;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +43,7 @@ public class FileService {
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
 
+  @Transactional
   public UUID simpleUpload(FileUploadRequest request) {
     UUID userId = request.userId();
     UUID parentId = request.parentId();
@@ -60,6 +63,11 @@ public class FileService {
     UUID fileId = UUID.randomUUID();
     String mimeType = MimeTypeDetector.detect(name);
     byte[] data = request.data();
+
+    if (request.checksum() != null) {
+      MessageDigest messageDigest = ChecksumUtils.createMD5();
+      ChecksumUtils.compareChecksums(request.checksum(), messageDigest.digest(data));
+    }
 
     StorageEntity fileEntity =
         StorageEntity.builder()
@@ -100,6 +108,7 @@ public class FileService {
     return new FileDownloadInfoDto(fileEntity.getMimeType(), inputStream, fileEntity.getSize());
   }
 
+  @Transactional
   public void hardDelete(DeleteFileRequest request) {
     UUID fileId = request.id();
     UUID userId = request.userId();

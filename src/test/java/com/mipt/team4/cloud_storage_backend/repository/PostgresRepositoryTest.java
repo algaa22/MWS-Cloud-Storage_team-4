@@ -51,7 +51,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
         UserEntity.builder()
             .username("name")
             .email("test-" + UUID.randomUUID() + "@email.com")
-            .passwordHash("password")
+            .passwordHash("secretKey")
             .storageLimit(10737418240L)
             .createdAt(LocalDateTime.now())
             .build();

@@ -10,10 +10,15 @@ import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.Serv
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
 import dev.failsafe.RetryPolicy;
+import java.net.URI;
 import java.security.SecureRandom;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
 
 @Configuration
 public class ApplicationConfig {
@@ -48,6 +53,21 @@ public class ApplicationConfig {
         protocolNegotiationHandler,
         nettyConfig,
         ServerProtocol.HTTPS);
+  }
+
+  @Bean
+  public S3Client s3Client(StorageConfig config) {
+    StorageConfig.S3 s3Props = config.s3();
+
+    AwsBasicCredentials credentials =
+        AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey());
+
+    return S3Client.builder()
+        .endpointOverride(URI.create(s3Props.url()))
+        .region(Region.of(s3Props.region()))
+        .credentialsProvider(StaticCredentialsProvider.create(credentials))
+        .forcePathStyle(true)
+        .build();
   }
 
   @Bean

@@ -4,9 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -20,31 +21,57 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.containers.GenericContainer;
+import software.amazon.awssdk.services.s3.S3Client;
 
 @SpringBootTest(
     webEnvironment = WebEnvironment.NONE,
-    classes = {MinioContentRepository.class, MinioWrapper.class})
-@EnableConfigurationProperties(MinioConfig.class)
+    classes = {
+      S3ContentRepository.class,
+      S3Wrapper.class,
+      S3ContentRepositoryTest.S3TestConfig.class
+    })
+@EnableConfigurationProperties(StorageConfig.class)
 @Tag("integration")
-class MinioContentRepositoryTest {
+class S3ContentRepositoryTest {
 
-  private static final MinIOContainer MINIO = TestUtils.createMinioContainer();
+  @TestConfiguration
+  static class S3TestConfig {
+    @Bean
+    public S3Client s3Client(StorageConfig config) {
+      var s3Props = config.s3();
+      return S3Client.builder()
+          .endpointOverride(java.net.URI.create(s3Props.url()))
+          .region(software.amazon.awssdk.regions.Region.of(s3Props.region()))
+          .credentialsProvider(
+              software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                  software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
+                      s3Props.accessKey(), s3Props.secretKey())))
+          .forcePathStyle(true)
+          .build();
+    }
+  }
 
-  @Autowired private MinioContentRepository repository;
+  private static final GenericContainer<?> S3 = TestUtils.createS3Container();
+
+  @Autowired private S3ContentRepository repository;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("minio.url", MINIO::getS3URL);
-    registry.add("minio.username", MINIO::getUserName);
-    registry.add("minio.password", MINIO::getPassword);
+    String s3Url = "http://" + S3.getHost() + ":" + S3.getMappedPort(8333);
+
+    registry.add("storage.s3.url", () -> s3Url);
+    registry.add("storage.s3.access-key", () -> "test-key");
+    registry.add("storage.s3.secret-key", () -> "test-secret");
   }
 
   @BeforeAll
   public static void beforeAll() {
-    MINIO.start();
+    S3.start();
   }
 
   @Test
@@ -59,7 +86,7 @@ class MinioContentRepositoryTest {
 
   @Test
   public void shouldPutAndDownloadObject() throws IOException {
-    assertFileEqualsMinioObject(createTestFile());
+    assertFileEqualsS3Object(createTestFile());
   }
 
   @Test
@@ -95,13 +122,16 @@ class MinioContentRepositoryTest {
     for (int i = 0; i < partCount; i++) {
       int end = Math.min(offset + PART_SIZE, file.data.length);
       byte[] part = Arrays.copyOfRange(file.data, offset, end);
-      eTags.put(i + 1, repository.uploadPart(uploadID, file.s3Key, i + 1, part));
+      eTags.put(
+          i + 1,
+          repository.uploadPart(
+              uploadID, file.s3Key, i + 1, new ByteArrayInputStream(part), part.length));
       offset += PART_SIZE;
     }
 
     repository.completeMultipartUpload(file.s3Key, uploadID, eTags);
 
-    assertFileEqualsMinioObject(file);
+    assertFileEqualsS3Object(file);
   }
 
   private String createTestBucket() {
@@ -119,7 +149,7 @@ class MinioContentRepositoryTest {
     return file;
   }
 
-  private void assertFileEqualsMinioObject(TestFileDto file) throws IOException {
+  private void assertFileEqualsS3Object(TestFileDto file) throws IOException {
     try (InputStream downloadStream = repository.downloadObject(file.s3Key)) {
       assertTrue(repository.objectExists(file.s3Key));
       assertArrayEquals(file.data, downloadStream.readAllBytes());

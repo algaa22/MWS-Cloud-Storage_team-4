@@ -23,11 +23,11 @@ public class SslContextFactory {
       log.info("Loading SSL from PKCS12 file");
 
       KeyStore keyStore = KeyStore.getInstance("PKCS12");
-      keyStore.load(p12Stream, "password".toCharArray()); // TODO: "password"?
+      keyStore.load(p12Stream, "secretKey".toCharArray()); // TODO: "secretKey"?
 
       KeyManagerFactory kmf =
           KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-      kmf.init(keyStore, "password".toCharArray());
+      kmf.init(keyStore, "secretKey".toCharArray());
 
       return SslContextBuilder.forServer(kmf)
           .sslProvider(SslProvider.OPENSSL_REFCNT)

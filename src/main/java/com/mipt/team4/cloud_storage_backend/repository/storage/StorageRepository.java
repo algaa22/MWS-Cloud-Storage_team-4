@@ -6,6 +6,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,12 @@ public class StorageRepository {
         FileOperationType.UPLOAD,
         () ->
             contentRepository.uploadPart(
-                request.uploadId(), entity.getS3Key(), request.partIndex(), request.bytes()));
+                request.uploadId(),
+                entity.getS3Key(),
+                request.partIndex(),
+                new ByteArrayInputStream(request.bytes()),
+                request.bytes().length));
+    // TODO: Использование InputStream распространить дальше по проекту
   }
 
   public void completeMultipartUpload(

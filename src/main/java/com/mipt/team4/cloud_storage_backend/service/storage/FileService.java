@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.retry.CompleteUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ProcessUploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
@@ -63,7 +63,7 @@ public class FileService {
 
   private final NotificationClient notificationClient;
   private final NotificationConfig notificationConfig;
-  private final MinioConfig minioConfig;
+  private final StorageConfig storageConfig;
 
   @Transactional
   public ChunkedUploadInfoDto startChunkedUpload(StartChunkedUploadRequest request) {
@@ -133,7 +133,7 @@ public class FileService {
     uploadState.getChunks().add(request.chunkData());
     uploadState.addPartSize(request.chunkData().length);
 
-    if (uploadState.getPartSize() >= minioConfig.minFilePartSize()) {
+    if (uploadState.getPartSize() >= storageConfig.s3().minFilePartSize()) {
       uploadPart(uploadState);
     }
   }
@@ -147,7 +147,7 @@ public class FileService {
 
     try {
       if (uploadState.getTotalParts() == 0) {
-        throw new TooSmallFilePartException(minioConfig.minFilePartSize());
+        throw new TooSmallFilePartException(storageConfig.s3().minFilePartSize());
       }
 
       if (uploadState.getPartSize() != 0) {

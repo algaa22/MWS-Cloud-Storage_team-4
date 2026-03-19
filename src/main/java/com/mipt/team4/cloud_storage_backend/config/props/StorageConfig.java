@@ -10,7 +10,8 @@ public record StorageConfig(
     Quotas quotas,
     StateMachine stateMachine,
     FailsafeRetry failsafeRetry,
-    Trash trash) {
+    Trash trash,
+    S3 s3) {
   public record Rest(
       int maxAggregatedContentLength,
       long maxFileSize,
@@ -29,4 +30,14 @@ public record StorageConfig(
       int maxAttempts, double delayFactor, Duration firstDelay, Duration maxDelay, double jitter) {}
 
   public record Trash(int retentionDays) {}
+
+  public record S3(
+      long minFilePartSize,
+      String url,
+      String accessKey,
+      String secretKey,
+      String region,
+      UserDataBucket userDataBucket) {
+    public record UserDataBucket(String name) {}
+  }
 }

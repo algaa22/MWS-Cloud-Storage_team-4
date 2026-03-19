@@ -4,29 +4,29 @@ import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
-import io.minio.errors.ErrorResponseException;
-import io.minio.errors.InsufficientDataException;
-import io.minio.errors.InternalException;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
- * Обертка над клиентом MinIO для централизованной обработки исключений.
+ * Обёртка над S3 клиентом для централизованной обработки исключений AWS SDK v2.
  *
  * <p>Реализует паттерн "Execute Strategy", инкапсулируя логику анализа сетевых и протокольных
  * ошибок S3-хранилища. Трансформирует специфичные ошибки SDK в иерархию исключений приложения
  * {@link com.mipt.team4.cloud_storage_backend.exception.BaseStorageException}.
  */
 @Component
-public class MinioWrapper {
+public class S3Wrapper {
 
   /**
-   * Выполняет операцию в контексте обработки ошибок MinIO.
+   * Выполняет операцию в контексте обработки ошибок S3.
    *
-   * @param operation лямбда или Callable, содержащий вызов MinioClient.
+   * @param operation лямбда или Callable, содержащий вызов S3Client.
    * @param <T> тип возвращаемого значения операции.
    * @return результат выполнения операции.
    * @throws StorageObjectNotFoundException если объект не найден в бакете.
@@ -50,34 +50,39 @@ public class MinioWrapper {
   private RuntimeException classifyException(Exception e) {
     if (e instanceof ExecutionException || e instanceof java.util.concurrent.CompletionException) {
       Throwable cause = e.getCause();
-
-      if (cause instanceof ErrorResponseException ex) {
-        String code = ex.errorResponse().code();
-
-        if ("NoSuchKey".equals(code) || ex.response().code() == 404) {
-          return new StorageObjectNotFoundException("", e);
-        }
-
-        if ("NoSuchUpload".equals(code)) {
-          return new UploadSessionNotFoundException(new RecoverableStorageException(ex));
-        }
-      }
-
       if (cause instanceof Exception) {
         return classifyException((Exception) cause);
       }
     }
 
+    if (e instanceof S3Exception s3Ex) {
+      String errorCode = s3Ex.awsErrorDetails().errorCode();
+
+      if (e instanceof NoSuchKeyException
+          || e instanceof NoSuchBucketException
+          || s3Ex.statusCode() == 404) {
+        return new StorageObjectNotFoundException("S3 object or bucket not found", e);
+      }
+
+      if ("NoSuchUpload".equals(errorCode)) {
+        return new UploadSessionNotFoundException(new RecoverableStorageException(e));
+      }
+
+      if (s3Ex.statusCode() == 403) {
+        return new FatalStorageException("S3 Access Denied (check credentials/permissions)", e);
+      }
+    }
+
     if (e instanceof InterruptedException) {
       Thread.currentThread().interrupt();
-      return new FatalStorageException("Thread was interrupted", e);
+      return new FatalStorageException("Thread was interrupted during S3 operation", e);
     }
 
     if (isRecoverable(e)) {
       return new RecoverableStorageException(e);
     }
 
-    return new FatalStorageException("Critical MinIO error", e);
+    return new FatalStorageException("Critical S3 error", e);
   }
 
   /**
@@ -92,17 +97,13 @@ public class MinioWrapper {
    * </ul>
    */
   private boolean isRecoverable(Exception e) {
-    if (e instanceof IOException
-        || e instanceof InternalException
-        || e instanceof InsufficientDataException) {
+    if (e instanceof IOException || e instanceof SdkClientException) {
       return true;
     }
 
-    if (e instanceof ErrorResponseException minioEx) {
-      int httpStatus = minioEx.response().code();
-
-      return httpStatus >= HttpResponseStatus.INTERNAL_SERVER_ERROR.code() // Все 500-ые статусы
-          || httpStatus == HttpResponseStatus.TOO_MANY_REQUESTS.code();
+    if (e instanceof S3Exception s3Ex) {
+      int httpStatus = s3Ex.statusCode();
+      return httpStatus >= 500 || httpStatus == 429;
     }
 
     return false;

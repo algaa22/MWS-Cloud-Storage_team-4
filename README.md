@@ -31,13 +31,18 @@ cd MWS-Cloud-Storage_team-4
 
 ```bash
 DB_URL=jdbc:postgresql://postgres:5432/cloud_storage_db
-DB_NAME=cloud_storage_db
-DB_USERNAME=postgres  
-DB_PASSWORD=super_secret_password_123  
-  
-MINIO_URL=http://minio:9000
-MINIO_USERNAME=minioadmin
-MINIO_PASSWORD=super_secret_password_123
+DB_USERNAME=postgres
+DB_PASSWORD=super_secret_password_123
+
+POSTGRES_DB=cloud_storage_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=super_secret_password_123
+
+S3_URL=http://seaweedfs:8333
+S3_ACCESS_KEY=admin_user
+S3_SECRET_KEY=super_secret_password_123
+S3_REGION=eu-central-1
+S3_BUCKET_NAME=user-data
 
 JWT_SECRET_KEY=d8f4a9c3e7b2f6a1d9e4c8b3f7a2e5d1f9c6b4e8a3d7f2c9e1b5f8d3a6c9e4b7
 ```
@@ -116,7 +121,7 @@ graph TD
     C[Сторонние клиенты] --> B
     B --> D[Backend на Java]
     D --> E[(PostgreSQL<br/>Метаданные)]
-    D --> F[(MinIO<br/>Файлы-объекты)]
+    D --> F[(S3<br/>Файлы-объекты)]
 ```
 
 #### Ключевые архитектурные решения:
@@ -125,7 +130,7 @@ graph TD
 
     - **PostgreSQL **хранит всю **логическую структуру**: пользователей, виртуальные пути файлов, теги, права доступа
 
-    - **MinIO (S3-совместимое)** хранит **сами файлы** как объекты. Это обеспечивает отказоустойчивость и эффективность
+    - **SeaweedFS (S3-совместимое)** хранит **сами файлы** как объекты. Это обеспечивает отказоустойчивость и эффективность
       для
       больших бинарных данных
 
@@ -133,7 +138,7 @@ graph TD
 
     - **Для пользователя**: привычные пути (`documents/report.pdf`)
 
-    - **Для системы**: в MinIO файл хранится по ключу`user_id/file_id`, что идеально соответствует объектной модели S3 и
+    - **Для системы**: в SeaweedFS файл хранится по ключу`user_id/file_id`, что идеально соответствует объектной модели S3 и
       обеспечивает высокую производительность
 
 3. **Единая точка входа**
@@ -142,7 +147,7 @@ graph TD
 
 4. **Контейнеризация**
 
-    - Каждый компонент (Backend, PostgreSQL, MinIO) работает в **отдельном Docker-контейнере**. Это гарантирует
+    - Каждый компонент (Backend, PostgreSQL, SeaweedFS) работает в **отдельном Docker-контейнере**. Это гарантирует
       идентичность окружений на всех машинах и упрощает развёртывание одной командой (`docker-compose up`)
 
 ---
@@ -153,7 +158,7 @@ graph TD
 ![Netty](https://img.shields.io/badge/Netty-6DB33F?style=for-the-badge&logo=netty&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![MinIO](https://img.shields.io/badge/MinIO-F05032?style=for-the-badge&logo=minio&logoColor=white)
+![SeaweedFS](https://img.shields.io/badge/SeaweedFS-41B883?style=for-the-badge&logo=files&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![CSS](https://img.shields.io/badge/CSS-1572B6?style=for-the-badge&logo=css&logoColor=white)

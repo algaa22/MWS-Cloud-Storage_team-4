@@ -38,7 +38,7 @@ public class AggregatedFileController {
     List<StorageEntity> trashFiles = fileService.getAllTrashFiles(request.userId());
 
     FileListResponse response =
-            new FileListResponse(trashFiles.stream().map(FileInfoResponse::from).toList());
+        new FileListResponse(trashFiles.stream().map(FileInfoResponse::from).toList());
     ResponseUtils.send(ctx, response);
   }
 
@@ -56,7 +56,7 @@ public class AggregatedFileController {
   public void deleteFile(ChannelHandlerContext ctx, DeleteFileRequest request) {
     System.out.println("=== DELETE CONTROLLER ===");
     System.out.println("File ID: " + request.id());
-    System.out.println("Permanent: " + request.permanent());  // Должно быть true!
+    System.out.println("Permanent: " + request.permanent()); // Должно быть true!
 
     if (request.permanent()) {
       System.out.println("🔥 CALLING HARD DELETE");

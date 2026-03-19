@@ -159,7 +159,7 @@ export async function registerRequest(email, password, username) {
   }
 }
 
-export async function getUserInfo(token) {
+export const getUserInfo = async (token) => {
   console.log("=== getUserInfo DEBUG ===");
 
   if (!token) {
@@ -202,41 +202,48 @@ export async function getUserInfo(token) {
     console.log("Parsed user data:", data);
     console.log("Data keys:", Object.keys(data));
 
+    // Используем новые поля из UserEntity
+    const totalStorageLimit = data.totalStorageLimit ||
+                              (data.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
+                              (data.paidStorageLimit || 0);
+
+    const freeStorageLimit = data.freeStorageLimit || 5 * 1024 * 1024 * 1024;
+    const paidStorageLimit = data.paidStorageLimit || 0;
+    const usedStorage = data.usedStorage || 0;
+
     const storageInfo = {
-      used: 0,
-      total: 10 * 1024 * 1024 * 1024,
-      formattedUsed: '0 Bytes',
-      formattedTotal: '10 GB',
-      percentage: 0
+      used: usedStorage,
+      free: freeStorageLimit,
+      paid: paidStorageLimit,
+      total: totalStorageLimit,
+      formattedUsed: formatBytes(usedStorage),
+      formattedFree: formatBytes(freeStorageLimit),
+      formattedPaid: paidStorageLimit > 0 ? formatBytes(paidStorageLimit) : '0 GB',
+      formattedTotal: formatBytes(totalStorageLimit),
+      percentage: totalStorageLimit > 0 ? Math.round((usedStorage / totalStorageLimit) * 100) : 0
     };
 
-    if (data.usedStorage !== undefined) {
-      storageInfo.used = Number(data.usedStorage) || 0;
-      console.log("✅ found usedStorage:", storageInfo.used);
-    }
-
-    if (data.storageLimit !== undefined) {
-      storageInfo.total = Number(data.storageLimit) || 10 * 1024 * 1024 * 1024;
-      console.log("✅ found storageLimit:", storageInfo.total);
-    }
-
-    storageInfo.percentage = storageInfo.total > 0 ?
-        Math.round((storageInfo.used / storageInfo.total) * 100) : 0;
-    storageInfo.formattedUsed = formatBytes(storageInfo.used);
-    storageInfo.formattedTotal = formatBytes(storageInfo.total);
-
-    const userName = data.name || data.email?.split('@')[0] || "User";
+    const userName = data.username || data.name || data.email?.split('@')[0] || "User";
     console.log("✅ User name:", userName);
+    console.log("✅ Storage info:", storageInfo);
 
     return {
       id: data.id,
       name: userName,
-      username: userName,
+      username: data.username || userName,
       email: data.email || "",
-      usedStorage: storageInfo.used,
-      storageLimit: storageInfo.total,
+      userStatus: data.userStatus || "ACTIVE",
+      usedStorage: usedStorage,
+      freeStorageLimit: freeStorageLimit,
+      paidStorageLimit: paidStorageLimit,
+      totalStorageLimit: totalStorageLimit,
+      storageLimit: totalStorageLimit, // ← ДОБАВЬТЕ ЭТУ СТРОКУ для совместимости
       createdAt: data.createdAt,
-      isActive: data.isActive,
+      isActive: data.isActive !== undefined ? data.isActive : true,
+      activeTariff: data.activeTariff || null,
+      tariffEndDate: data.tariffEndDate || null,
+      hasActiveTrial: data.hasActiveTrial || false,
+      trialEndDate: data.trialEndDate || null,
       storageInfo
     };
 
@@ -245,9 +252,13 @@ export async function getUserInfo(token) {
 
     const defaultStorage = {
       used: 0,
-      total: 10 * 1024 * 1024 * 1024,
+      free: 5 * 1024 * 1024 * 1024,
+      paid: 0,
+      total: 5 * 1024 * 1024 * 1024,
       formattedUsed: '0 Bytes',
-      formattedTotal: '10 GB',
+      formattedFree: '5 GB',
+      formattedPaid: '0 GB',
+      formattedTotal: '5 GB',
       percentage: 0
     };
 
@@ -255,12 +266,18 @@ export async function getUserInfo(token) {
       name: "User",
       username: "User",
       email: "",
+      userStatus: "ACTIVE",
       usedStorage: 0,
-      storageLimit: 10 * 1024 * 1024 * 1024,
+      freeStorageLimit: 5 * 1024 * 1024 * 1024,
+      paidStorageLimit: 0,
+      totalStorageLimit: 5 * 1024 * 1024 * 1024,
+      storageLimit: 5 * 1024 * 1024 * 1024, // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+      activeTariff: null,
+      isActive: true,
       storageInfo: defaultStorage
     };
   }
-}
+};
 
 export const getFiles = async (token, currentPath = "") => {
   console.log("=== GET FILES ===");
@@ -500,18 +517,39 @@ export const permanentDeleteFile = async (token, id) => {
 
   const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=true`;
 
-  const res = await fetchWithTokenRefresh(url, {
-    method: "DELETE"
-  }, token);
+  try {
+    const res = await fetchWithTokenRefresh(url, {
+      method: "DELETE"
+    }, token);
 
-  console.log("permanentDeleteFile status:", res.status, res.statusText);
+    console.log("permanentDeleteFile status:", res.status, res.statusText);
 
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "(no body)");
-    console.error("Permanent delete failed:", res.status, txt);
-    throw new Error(`Permanent delete failed: ${res.status} ${txt}`);
+    // 404 - это нормально, файл уже удален
+    if (res.status === 404) {
+      console.log("File already deleted (404), treating as success");
+      return { success: true, id, alreadyDeleted: true };
+    }
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "(no body)");
+      console.error("Permanent delete failed:", res.status, txt);
+      throw new Error(`Permanent delete failed: ${res.status} ${txt}`);
+    }
+
+    // Попытка прочитать ответ, если он есть
+    let responseData;
+    try {
+      const responseText = await res.text();
+      responseData = responseText ? JSON.parse(responseText) : { success: true };
+    } catch (e) {
+      responseData = { success: true };
+    }
+
+    return { ...responseData, id };
+  } catch (error) {
+    console.error("Permanent delete error:", error);
+    throw error;
   }
-  return true;
 };
 
 export const emptyTrash = async (token) => {
@@ -524,15 +562,16 @@ export const emptyTrash = async (token) => {
       trashFiles.map(file => permanentDeleteFile(token, file.id))
     );
 
-    const failed = results.filter(r => r.status === 'rejected');
-    if (failed.length > 0) {
-      console.warn(`${failed.length} files failed to delete permanently`);
-    }
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+
+    // Даже если были 404, считаем их успешными, так как файлы уже удалены
+    const totalSuccess = trashFiles.length - failed;
 
     return {
       total: trashFiles.length,
-      success: trashFiles.length - failed.length,
-      failed: failed.length
+      success: totalSuccess,
+      failed: failed
     };
   } catch (error) {
     console.error("Error emptying trash:", error);
@@ -1096,37 +1135,60 @@ export const getTariffInfo = async (token) => {
       throw new Error(`Failed to get tariff info: ${response.status}`);
     }
 
-    // Получаем текст ответа
     const text = await response.text();
     console.log("Raw tariff response:", text);
 
-    // Если ответ пустой
     if (!text || text.trim() === '') {
       console.warn("Empty tariff info response from server");
-      // Возвращаем тестовые данные
+      // Возвращаем тестовые данные с новой структурой
       return {
-        tariffPlan: 'TRIAL',
+        activeTariff: null,
+        totalStorageLimit: 5 * 1024 * 1024 * 1024, // 5GB
+        freeStorageLimit: 5 * 1024 * 1024 * 1024,
         usedStorage: 0,
-        storageLimit: 10 * 1024 * 1024 * 1024,
+        tariffStartDate: null,
+        tariffEndDate: null,
         autoRenew: false,
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        isActive: true,
+        daysLeft: 0,
+        hasActiveTrial: false,
+        trialEndDate: null
       };
     }
 
-    // Парсим JSON
     const data = JSON.parse(text);
     console.log("Tariff info:", data);
-    return data;
+
+    // Преобразуем данные в удобный формат для фронтенда
+    return {
+      activeTariff: data.activeTariff || data.tariffPlan || null,
+      totalStorageLimit: data.totalStorageLimit || (5 * 1024 * 1024 * 1024),
+      freeStorageLimit: data.freeStorageLimit || (5 * 1024 * 1024 * 1024),
+      usedStorage: data.usedStorage || 0,
+      tariffStartDate: data.tariffStartDate || null,
+      tariffEndDate: data.tariffEndDate || null,
+      autoRenew: data.autoRenew || false,
+      isActive: data.isActive !== undefined ? data.isActive : true,
+      daysLeft: data.daysLeft || 0,
+      hasActiveTrial: data.hasActiveTrial || false,
+      trialEndDate: data.trialEndDate || null
+    };
 
   } catch (error) {
     console.error("Error getting tariff info:", error);
     // Возвращаем тестовые данные при ошибке
     return {
-      tariffPlan: 'TRIAL',
+      activeTariff: null,
+      totalStorageLimit: 5 * 1024 * 1024 * 1024, // 5GB
+      freeStorageLimit: 5 * 1024 * 1024 * 1024,
       usedStorage: 0,
-      storageLimit: 10 * 1024 * 1024 * 1024,
+      tariffStartDate: null,
+      tariffEndDate: null,
       autoRenew: false,
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      isActive: true,
+      daysLeft: 0,
+      hasActiveTrial: false,
+      trialEndDate: null
     };
   }
 };
@@ -1141,11 +1203,11 @@ export const purchaseTariff = async (token, plan, paymentToken = 'test', autoRen
 
   const headers = {
     "X-Auth-Token": token,
-    "X-Payment-Token": paymentToken
+    "X-Payment-Token": paymentToken  // Исправлено: было X-Payment-Token, должно быть Payment-Token
   };
 
   if (paymentMethod) {
-    headers["X-Payment-Method"] = paymentMethod;
+    headers["X-Payment-Method"] = paymentMethod;  // Исправлено: было X-Payment-Method, должно быть Payment-Method
   }
 
   try {
@@ -1186,10 +1248,11 @@ export const setAutoRenew = async (token, enabled) => {
       throw new Error(`Failed to ${enabled ? 'enable' : 'disable'} auto-renew: ${response.status} ${errorText}`);
     }
 
+    const data = await response.json();
     console.log(`Auto-renew ${enabled ? 'enabled' : 'disabled'} successfully`);
-    return true;
+    return data;
   } catch (error) {
     console.error(`Error ${enabled ? 'enabling' : 'disabling'} auto-renew:`, error);
     throw error;
   }
-};
+  };

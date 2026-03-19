@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -118,6 +119,12 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query("DELETE FROM StorageEntity f WHERE f.userId = :userId AND f.id = :id")
   int deleteByUserIdAndId(@Param("userId") UUID userId, @Param("id") UUID id);
 
+  @Query("SELECT f FROM StorageEntity f WHERE f.userId = :userId AND f.isDeleted = false ORDER BY f.updatedAt ASC")
+  List<StorageEntity> findByUserIdAndIsDeletedFalseOrderByUpdatedAtAsc(
+          @Param("userId") UUID userId,
+          Pageable pageable
+  );
+
   @Modifying
   @Query(value = "DELETE FROM files WHERE user_id = :userId AND id = :id", nativeQuery = true)
   int hardDeleteNative(@Param("userId") UUID userId, @Param("id") UUID id);
@@ -134,6 +141,9 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
         SELECT EXISTS (SELECT 1 FROM descendants WHERE id = :targetId)
     """)
   boolean isDescendant(@Param("sourceId") UUID sourceId, @Param("targetId") UUID targetId);
+
+  @Query("SELECT COALESCE(SUM(f.size), 0) FROM StorageEntity f WHERE f.userId = :userId AND f.isDeleted = false")
+  Long sumFileSizesByUserId(@Param("userId") UUID userId);
 
   @Query(
       nativeQuery = true,
@@ -195,6 +205,6 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       List<FileStatus> statuses, LocalDateTime threshold);
 
   Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
-  List<StorageEntity> findAllByUserIdAndIsDeletedTrue(UUID userId);
 
+  List<StorageEntity> findAllByUserIdAndIsDeletedTrue(UUID userId);
 }

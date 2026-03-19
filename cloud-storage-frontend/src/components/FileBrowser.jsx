@@ -108,6 +108,146 @@ export default function FileBrowser() {
     loadData();
   }, [token, currentPath]);
 
+// Добавьте этот useEffect для обновления при возвращении на страницу
+useEffect(() => {
+  const handleFocus = () => {
+    console.log("Window focused, refreshing user info...");
+    refreshUserInfo();
+  };
+
+  window.addEventListener('focus', handleFocus);
+
+  return () => {
+    window.removeEventListener('focus', handleFocus);
+  };
+}, [token]);
+
+// Добавьте этот useEffect для проверки sessionStorage при монтировании
+useEffect(() => {
+  const shouldRefresh = sessionStorage.getItem('refreshStorage');
+  if (shouldRefresh === 'true') {
+    refreshUserInfo();
+    sessionStorage.removeItem('refreshStorage');
+  }
+}, []);
+
+useEffect(() => {
+  // Регистрируем метод для доступа из других компонентов
+  window.refreshStorageInfo = refreshStorageInfo;
+  console.log("✅ refreshStorageInfo registered globally");
+
+  return () => {
+    // Очищаем при размонтировании
+    delete window.refreshStorageInfo;
+    console.log("❌ refreshStorageInfo unregistered");
+  };
+}, [token]); // Важно: зависимость от token
+
+useEffect(() => {
+  const handleStorageUpdate = async (event) => {
+    console.log("📡 Received storage-updated event", event.detail);
+
+    if (event.detail && event.detail.usedStorage !== undefined) {
+      // Обновляем storageInfo из события
+      const userData = event.detail;
+      const totalStorageLimit = userData.totalStorageLimit ||
+                                (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
+                                (userData.paidStorageLimit || 0);
+      const usedStorage = userData.usedStorage || 0;
+
+      setStorageInfo({
+        used: usedStorage,
+        total: totalStorageLimit,
+        formattedUsed: formatFileSize(usedStorage),
+        formattedTotal: formatFileSize(totalStorageLimit),
+        percentage: totalStorageLimit > 0 ? Math.round((usedStorage / totalStorageLimit) * 100) : 0
+      });
+      console.log("✅ Storage info updated from event:", { usedStorage, totalStorageLimit });
+
+      // Также обновляем список файлов
+      await fetchFiles();
+    } else {
+      // Если данных нет, просто обновляем через API
+      await refreshStorageInfo();
+      await fetchFiles();
+    }
+  };
+
+  window.addEventListener('storage-updated', handleStorageUpdate);
+
+  return () => {
+    window.removeEventListener('storage-updated', handleStorageUpdate);
+  };
+}, [token]);
+
+useEffect(() => {
+  window.refreshStorageFromFiles = refreshStorageFromFiles;
+  window.refreshStorageInfo = refreshStorageInfo;
+  console.log("✅ Global storage methods registered");
+
+  return () => {
+    delete window.refreshStorageFromFiles;
+    delete window.refreshStorageInfo;
+    console.log("❌ Global storage methods unregistered");
+  };
+}, [token, files]); // Добавили files в зависимости
+
+useEffect(() => {
+  // Регистрируем методы для доступа из других компонентов
+  window.refreshStorageInfo = refreshStorageInfo;
+  window.refreshStorageFromFiles = refreshStorageFromFiles;
+  window.forceStorageUpdate = forceStorageUpdate; // Добавьте эту строку
+  console.log("✅ Global storage methods registered");
+
+  return () => {
+    // Очищаем при размонтировании
+    delete window.refreshStorageInfo;
+    delete window.refreshStorageFromFiles;
+    delete window.forceStorageUpdate; // Добавьте эту строку
+    console.log("❌ Global storage methods unregistered");
+  };
+}, [token]);
+
+// Добавьте после других useEffect в FileBrowser.js
+useEffect(() => {
+  console.log("📊 Current storage info:", storageInfo);
+  console.log("📁 Current files:", files.length, "files, total size:",
+    files.reduce((sum, f) => sum + (f.size || 0), 0));
+}, [storageInfo, files]);
+
+
+const refreshStorageFromFiles = () => {
+  console.log("Refreshing storage from files...");
+  if (files.length === 0 && folders.length === 0) {
+    setStorageInfo(prev => ({
+      ...prev,
+      used: 0,
+      formattedUsed: '0 Bytes',
+      percentage: 0
+    }));
+    return;
+  }
+
+  let totalUsed = 0;
+  files.forEach(file => {
+    if (file.type === 'file' && file.size) {
+      totalUsed += file.size;
+    }
+  });
+
+  const totalLimit = storageInfo.total || (10 * 1024 * 1024 * 1024);
+  const percentage = totalLimit > 0 ? Math.round((totalUsed / totalLimit) * 100) : 0;
+
+  setStorageInfo({
+    ...storageInfo,
+    used: totalUsed,
+    formattedUsed: formatFileSize(totalUsed),
+    percentage
+  });
+
+  console.log("Storage updated:", { used: totalUsed, total: totalLimit, percentage });
+  };
+
   const handleAddSearchTag = () => {
     if (searchInput.trim() && !searchTags.includes(searchInput.trim())) {
       setSearchTags([...searchTags, searchInput.trim()]);
@@ -229,6 +369,38 @@ export default function FileBrowser() {
     }
   };
 
+const refreshStorageInfo = async () => {
+  if (!token) return;
+  setStorageLoading(true);
+  try {
+    const userData = await getUserInfo(token);
+    console.log("User info refreshed:", userData);
+
+    if (userData.storageInfo) {
+      setStorageInfo(userData.storageInfo);
+    } else {
+      // Если нет storageInfo, вычисляем вручную
+      const totalStorageLimit = userData.totalStorageLimit ||
+                                (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
+                                (userData.paidStorageLimit || 0);
+      const usedStorage = userData.usedStorage || 0;
+
+      setStorageInfo({
+        used: usedStorage,
+        total: totalStorageLimit,
+        formattedUsed: formatFileSize(usedStorage),
+        formattedTotal: formatFileSize(totalStorageLimit),
+        percentage: totalStorageLimit > 0 ? Math.round((usedStorage / totalStorageLimit) * 100) : 0
+      });
+    }
+  } catch (err) {
+    console.error("Error refreshing user info:", err);
+  } finally {
+    setStorageLoading(false);
+  }
+};
+
+
   const calculateStorageFromFiles = () => {
     if (files.length === 0 && folders.length === 0) return;
 
@@ -304,6 +476,7 @@ export default function FileBrowser() {
       setFiles(filesList);
       setFolders(foldersList);
       setError("");
+
     } catch (err) {
       console.error("Error in fetchFiles:", err);
       setError(`Не удалось загрузить файлы: ${err.message}`);
@@ -318,6 +491,12 @@ export default function FileBrowser() {
     logout();
     navigate("/login");
   };
+
+const forceStorageUpdate = async () => {
+  console.log("🔄 Force storage update triggered");
+  await loadStorageInfo();
+  await fetchFiles();
+};
 
   const handleGoHome = () => {
     setCurrentPath("");
@@ -662,6 +841,38 @@ const handleDeleteSelected = async () => {
     }
   };
 
+// Добавьте этот метод в компонент FileBrowser
+const refreshUserInfo = async () => {
+  if (!token) return;
+  setStorageLoading(true);
+  try {
+    const userData = await getUserInfo(token);
+    console.log("User info refreshed:", userData);
+
+    if (userData.storageInfo) {
+      setStorageInfo(userData.storageInfo);
+    } else {
+      // Если нет storageInfo, вычисляем вручную
+      const totalStorageLimit = userData.totalStorageLimit ||
+                                (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
+                                (userData.paidStorageLimit || 0);
+      const usedStorage = userData.usedStorage || 0;
+
+      setStorageInfo({
+        used: usedStorage,
+        total: totalStorageLimit,
+        formattedUsed: formatFileSize(usedStorage),
+        formattedTotal: formatFileSize(totalStorageLimit),
+        percentage: totalStorageLimit > 0 ? Math.round((usedStorage / totalStorageLimit) * 100) : 0
+      });
+    }
+  } catch (err) {
+    console.error("Error refreshing user info:", err);
+  } finally {
+    setStorageLoading(false);
+  }
+};
+
   const handleSaveFileName = async () => {
     if (!fileInfoData || !fileInfoData.item || !newFileName.trim() || newFileName === fileInfoData.name) {
       return;
@@ -989,11 +1200,11 @@ const handleDeleteSelected = async () => {
             className="flex items-center space-x-3 bg-white/10 hover:bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 transition-all duration-200 border border-white/10 hover:border-white/20"
           >
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500/90 to-purple-500/90 rounded-full flex items-center justify-center text-white font-bold shadow-md">
-              {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
+              {((user?.username || user?.name || user?.email || "U").charAt(0)).toUpperCase()}
             </div>
             <div className="text-left">
               <span className="font-medium text-white text-sm block">
-                {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+                {user?.username || user?.name || user?.email?.split('@')[0] || "Пользователь"}
               </span>
               {user?.email && <span className="text-white/50 text-xs block">{user.email}</span>}
             </div>
@@ -1007,11 +1218,11 @@ const handleDeleteSelected = async () => {
                <div className="px-4 py-3 border-b border-white/10">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                        {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
+                        {((user?.username || user?.name || user?.email || "U").charAt(0)).toUpperCase()}
                       </div>
                       <div>
                         <p className="font-semibold text-white">
-                          {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+                          {user?.username || user?.name || user?.email?.split('@')[0] || "Пользователь"}
                         </p>
                         {user?.email && <p className="text-white/60 text-xs mt-0.5">{user.email}</p>}
                       </div>

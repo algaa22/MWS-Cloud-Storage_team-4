@@ -32,7 +32,9 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
+import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepositoryWrapper;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.utils.ChunkCombiner;
@@ -45,6 +47,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,11 +62,17 @@ public class FileService {
   private final TariffService tariffService;
 
   private final StorageRepository storageRepository;
+  private final StorageJpaRepositoryAdapter
+      storageJpaRepositoryAdapter; // ДЛЯ findOldestFilesByUserId
+  private final StorageRepositoryWrapper
+      storageRepositoryWrapper; // ДЛЯ getFullFilePath и deleteFile
   private final UserJpaRepositoryAdapter userRepository;
 
   private final NotificationClient notificationClient;
   private final NotificationConfig notificationConfig;
   private final MinioConfig minioConfig;
+
+  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
 
   @Transactional
   public ChunkedUploadInfoDto startChunkedUpload(StartChunkedUploadRequest request) {
@@ -259,13 +268,13 @@ public class FileService {
     System.out.println("Is deleted: " + entity.isDeleted());
 
     UserEntity user =
-            userRepository
-                    .getUserById(userId)
-                    .orElseThrow(() -> new UserNotFoundException(request.userId()));
+        userRepository
+            .getUserById(userId)
+            .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
     erasureService.hardDelete(entity);
 
-    String fullPath = storageRepository.getFullFilePath(fileId);
+    String fullPath = storageRepositoryWrapper.getFullFilePath(fileId); // ИСПРАВЛЕНО
     notificationClient.notifyFileDeleted(user.getEmail(), user.getUsername(), fullPath, userId);
 
     System.out.println("Hard delete completed");
@@ -296,12 +305,13 @@ public class FileService {
     System.out.println("Looking for file: " + fileId);
 
     StorageEntity fileEntity =
-            storageRepository
-                    .getDeletedById(userId, fileId)
-                    .orElseThrow(() -> {
-                      System.out.println("File not found in trash!");
-                      return new StorageFileNotFoundException(fileId);
-                    });
+        storageRepository
+            .getDeletedById(userId, fileId)
+            .orElseThrow(
+                () -> {
+                  System.out.println("File not found in trash!");
+                  return new StorageFileNotFoundException(fileId);
+                });
 
     System.out.println("Found file: " + fileEntity.getName());
     System.out.println("Current deleted status: " + fileEntity.isDeleted());
@@ -314,6 +324,8 @@ public class FileService {
 
     System.out.println("Calling storageRepository.restore...");
     storageRepository.restore(fileEntity);
+    userRepository.increaseUsedStorage(userId, fileEntity.getSize());
+    System.out.println("✅ Increased usedStorage by: " + fileEntity.getSize());
     System.out.println("Restore completed");
   }
 
@@ -355,6 +367,11 @@ public class FileService {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
+    // Проверяем права на изменение метаданных
+    if (!tariffService.canModifyFiles(userId)) {
+      throw new TariffAccessDeniedException("Cannot modify files: subscription expired");
+    }
+
     StorageEntity fileEntity =
         storageRepository
             .get(userId, fileId)
@@ -369,6 +386,11 @@ public class FileService {
     if (request.newTags() != null) fileEntity.setTags(request.newTags());
     if (request.newVisibility() != null) fileEntity.setVisibility(request.newVisibility().name());
   }
+
+  /**
+   * Удаляет самые старые файлы пользователя до достижения размера sizeToDelete Используется при
+   * просрочке подписки
+   */
 
   private void uploadPart(ChunkedUploadSession uploadState) {
     String uploadId = uploadState.getUploadId();
@@ -443,4 +465,4 @@ public class FileService {
               }
             });
   }
-  }
+}

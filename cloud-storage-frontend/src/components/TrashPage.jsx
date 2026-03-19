@@ -5,7 +5,8 @@ import {
   getTrashFiles,
   restoreFile,
   permanentDeleteFile,
-  emptyTrash
+  emptyTrash,
+  getUserInfo
 } from "../api";
 
 export default function TrashPage() {
@@ -39,6 +40,39 @@ export default function TrashPage() {
     }
   };
 
+  const refreshStorage = async () => {
+    console.log("🔄 Refreshing storage from TrashPage");
+
+    // Способ 1: через глобальный метод forceStorageUpdate
+    if (window.forceStorageUpdate) {
+      console.log("Calling window.forceStorageUpdate from TrashPage");
+      await window.forceStorageUpdate();
+      console.log("✅ Storage force updated via global method");
+      return;
+    }
+
+    // Способ 2: через getUserInfo и событие
+    try {
+      console.log("Getting user info for storage update...");
+      const userData = await getUserInfo(token);
+      console.log("User data received:", userData);
+
+      // Отправляем событие с данными
+      window.dispatchEvent(new CustomEvent('storage-updated', {
+        detail: userData
+      }));
+      console.log("✅ Storage-updated event dispatched");
+    } catch (err) {
+      console.error("Failed to get user info:", err);
+
+      // Способ 3: через refreshStorageInfo
+      if (window.refreshStorageInfo) {
+        console.log("Falling back to refreshStorageInfo");
+        window.refreshStorageInfo();
+      }
+    }
+  };
+
   const handleSelectAll = () => {
     if (selectedFiles.size === files.length) {
       setSelectedFiles(new Set());
@@ -60,12 +94,28 @@ export default function TrashPage() {
   const handleRestore = async (id) => {
     try {
       setActionInProgress(true);
+      console.log(`🔄 Restoring file ${id}...`);
+
       await restoreFile(token, id);
-      await loadTrashFiles();
+      console.log("✅ File restored successfully");
+
+      // Оптимистичное обновление UI
+      setFiles(prevFiles => prevFiles.filter(f => f.id !== id));
+      setSelectedFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+
+      // Обновляем информацию о хранилище
+      await refreshStorage();
+
       setSuccess("Файл восстановлен");
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
+      console.error("Restore error:", err);
       setError(`Ошибка восстановления: ${err.message}`);
+      await loadTrashFiles();
     } finally {
       setActionInProgress(false);
     }
@@ -74,17 +124,37 @@ export default function TrashPage() {
   const handleRestoreSelected = async () => {
     if (selectedFiles.size === 0) return;
 
+    const idsToRestore = Array.from(selectedFiles);
+
     try {
       setActionInProgress(true);
-      for (const id of selectedFiles) {
-        await restoreFile(token, id);
-      }
+      console.log(`🔄 Restoring ${idsToRestore.length} files...`);
+
+      // Оптимистичное обновление UI
+      setFiles(prevFiles => prevFiles.filter(f => !idsToRestore.includes(f.id)));
       setSelectedFiles(new Set());
-      await loadTrashFiles();
-      setSuccess(`Восстановлено ${selectedFiles.size} файлов`);
+
+      let successCount = 0;
+
+      for (const id of idsToRestore) {
+        try {
+          await restoreFile(token, id);
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to restore ${id}:`, err);
+        }
+      }
+
+      console.log(`✅ Restored ${successCount} files`);
+
+      // Обновляем информацию о хранилище
+      await refreshStorage();
+
+      setSuccess(`Восстановлено ${successCount} файлов`);
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
       setError(`Ошибка восстановления: ${err.message}`);
+      await loadTrashFiles();
     } finally {
       setActionInProgress(false);
     }
@@ -94,14 +164,32 @@ export default function TrashPage() {
     if (!window.confirm('Вы уверены? Файл будет удален безвозвратно!')) {
       return;
     }
+
     try {
       setActionInProgress(true);
-      await permanentDeleteFile(token, id);
-      await loadTrashFiles();
-      setSuccess("Файл удален навсегда");
+
+      // Оптимистичное удаление из UI
+      setFiles(prevFiles => prevFiles.filter(f => f.id !== id));
+      setSelectedFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+
+      try {
+        await permanentDeleteFile(token, id);
+        setSuccess("Файл удален навсегда");
+      } catch (err) {
+        if (err.message.includes('404')) {
+          console.log("File already deleted (404), UI already updated");
+          setSuccess("Файл удален навсегда");
+        } else {
+          console.error("Permanent delete error:", err);
+          setError(`Ошибка удаления: ${err.message}`);
+          await loadTrashFiles();
+        }
+      }
       setTimeout(() => setSuccess(""), 2000);
-    } catch (err) {
-      setError(`Ошибка удаления: ${err.message}`);
     } finally {
       setActionInProgress(false);
     }
@@ -113,17 +201,46 @@ export default function TrashPage() {
     if (!window.confirm(`Удалить ${selectedFiles.size} файлов безвозвратно?`)) {
       return;
     }
+
+    const idsToDelete = Array.from(selectedFiles);
+
     try {
       setActionInProgress(true);
-      for (const id of selectedFiles) {
-        await permanentDeleteFile(token, id);
-      }
+
+      // Оптимистичное удаление из UI
+      setFiles(prevFiles => prevFiles.filter(f => !idsToDelete.includes(f.id)));
       setSelectedFiles(new Set());
-      await loadTrashFiles();
-      setSuccess(`Удалено ${selectedFiles.size} файлов`);
+
+      let successCount = 0;
+      let error404Count = 0;
+      let otherErrorCount = 0;
+
+      for (const id of idsToDelete) {
+        try {
+          await permanentDeleteFile(token, id);
+          successCount++;
+        } catch (err) {
+          if (err.message.includes('404')) {
+            successCount++;
+            error404Count++;
+          } else {
+            otherErrorCount++;
+            console.error(`Failed to delete ${id}:`, err);
+          }
+        }
+      }
+
+      if (otherErrorCount === 0) {
+        setSuccess(`Удалено ${successCount} файлов` + (error404Count > 0 ? ` (${error404Count} уже были удалены)` : ''));
+      } else {
+        setError(`Ошибка удаления: ${otherErrorCount} файлов не удалось удалить`);
+        await loadTrashFiles();
+      }
+
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
       setError(`Ошибка удаления: ${err.message}`);
+      await loadTrashFiles();
     } finally {
       setActionInProgress(false);
     }
@@ -133,15 +250,24 @@ export default function TrashPage() {
     if (!window.confirm('Очистить корзину? Все файлы будут удалены безвозвратно!')) {
       return;
     }
+
     try {
       setActionInProgress(true);
-      const result = await emptyTrash(token);
+
+      // Оптимистичное удаление из UI
+      setFiles([]);
       setSelectedFiles(new Set());
-      await loadTrashFiles();
-      setSuccess(`Корзина очищена. Удалено: ${result.success} файлов`);
+
+      try {
+        const result = await emptyTrash(token);
+        setSuccess(`Корзина очищена. Удалено: ${result.success} файлов`);
+      } catch (err) {
+        console.error("Empty trash error:", err);
+        await loadTrashFiles();
+        setError(`Ошибка очистки корзины: ${err.message}`);
+      }
+
       setTimeout(() => setSuccess(""), 2000);
-    } catch (err) {
-      setError(`Ошибка очистки корзины: ${err.message}`);
     } finally {
       setActionInProgress(false);
     }
@@ -200,11 +326,11 @@ export default function TrashPage() {
         <div className="relative w-32 flex justify-end">
           <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 border border-white/10">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500/90 to-purple-500/90 rounded-full flex items-center justify-center text-white font-bold shadow-md">
-              {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
+              {((user?.username || user?.name || user?.email || "U").charAt(0)).toUpperCase()}
             </div>
             <div className="text-left">
               <span className="font-medium text-white text-sm block">
-                {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+                {user?.username || user?.name || user?.email?.split('@')[0] || "Пользователь"}
               </span>
               {user?.email && <span className="text-white/50 text-xs block">{user.email}</span>}
             </div>

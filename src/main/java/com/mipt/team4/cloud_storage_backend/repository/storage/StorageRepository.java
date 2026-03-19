@@ -29,7 +29,6 @@ public class StorageRepository {
         () -> {
           metadataRepository.addFile(entity);
           contentRepository.putObject(entity.getS3Key(), data);
-
           return null;
         });
   }
@@ -62,65 +61,60 @@ public class StorageRepository {
         });
   }
 
-    public void hardDelete(StorageEntity entity) {
-        wrapper.wrapUpdate(
-                entity,
-                FileOperationType.DELETE,
-                () -> {
-                    if (entity.isDirectory()) {
-                        List<StorageEntity> descendants =
-                                metadataRepository.findAllDescendants(entity.getUserId(), entity.getId());
+  public void hardDelete(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.DELETE,
+        () -> {
+          if (entity.isDirectory()) {
+            List<StorageEntity> descendants =
+                metadataRepository.findAllDescendants(entity.getUserId(), entity.getId());
 
-                        for (StorageEntity file : descendants) {
-                            contentRepository.hardDelete(file.getS3Key());
-                        }
-                    }
+            for (StorageEntity file : descendants) {
+              contentRepository.hardDelete(file.getS3Key());
+            }
+          }
 
-                    contentRepository.hardDelete(entity.getS3Key());
-                    metadataRepository.hardDelete(entity.getUserId(), entity.getId());
+          contentRepository.hardDelete(entity.getS3Key());
+          metadataRepository.hardDelete(entity.getUserId(), entity.getId());
 
-                    // Проверка после удаления
-                    Optional<StorageEntity> check = metadataRepository.getIncludeDeleted(
-                            entity.getUserId(), entity.getId());
-                    if (check.isPresent()) {
-                        System.out.println("❌ ERROR: File still exists after hard delete!");
-                        throw new RuntimeException("Hard delete failed");
-                    } else {
-                        System.out.println("✅ File successfully deleted from DB");
-                    }
+          // Проверка после удаления
+          Optional<StorageEntity> check =
+              metadataRepository.getIncludeDeleted(entity.getUserId(), entity.getId());
+          if (check.isPresent()) {
+            System.out.println("❌ ERROR: File still exists after hard delete!");
+            throw new RuntimeException("Hard delete failed");
+          } else {
+            System.out.println("✅ File successfully deleted from DB");
+          }
 
-                    return null;
-                });
-    }
+          return null;
+        });
+  }
 
-    public void softDeleteEntity(StorageEntity entity) {
-        wrapper.wrapUpdate(
-                entity,
-                FileOperationType.CHANGE_METADATA,
-                () -> {
-                    // Обновляем поля прямо здесь
-                    entity.setDeleted(true);
-                    entity.setDeletedAt(LocalDateTime.now());
+  public void softDeleteEntity(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.CHANGE_METADATA,
+        () -> {
+          entity.setDeleted(true);
+          entity.setDeletedAt(LocalDateTime.now());
+          metadataRepository.saveFile(entity);
+          return null;
+        });
+  }
 
-                    // Используем updateFile вместо softDelete
-                    metadataRepository.updateFile(entity);
-                    return null;
-                });
-    }
-
-    public void restore(StorageEntity entity) {
-        wrapper.wrapUpdate(
-                entity,
-                FileOperationType.CHANGE_METADATA,
-                () -> {
-                    metadataRepository.restore(entity.getUserId(), entity.getId(), entity.isDirectory());
-
-                    entity.setDeleted(false);
-                    entity.setDeletedAt(null);
-
-                    return null;
-                });
-    }
+  public void restore(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.CHANGE_METADATA,
+        () -> {
+          metadataRepository.restore(entity.getUserId(), entity.getId(), entity.isDirectory());
+          entity.setDeleted(false);
+          entity.setDeletedAt(null);
+          return null;
+        });
+  }
 
   public void addDirectory(StorageEntity entity) {
     wrapper.wrapNewEntityTask(
@@ -140,7 +134,6 @@ public class StorageRepository {
     if (entity.getStatus() != FileStatus.READY) {
       throw new DownloadNonReadyFileException(entity.getId());
     }
-
     return contentRepository.downloadObject(entity.getS3Key());
   }
 
@@ -160,9 +153,9 @@ public class StorageRepository {
     return metadataRepository.exists(userId, parentId, name);
   }
 
-    public List<StorageEntity> getAllTrashFiles(UUID userId) {
-        return metadataRepository.getAllTrashFiles(userId);
-    }
+  public List<StorageEntity> getAllTrashFiles(UUID userId) {
+    return metadataRepository.getAllTrashFiles(userId);
+  }
 
   public List<StorageEntity> getFileList(FileListFilter filter) {
     return metadataRepository.getFileList(filter);

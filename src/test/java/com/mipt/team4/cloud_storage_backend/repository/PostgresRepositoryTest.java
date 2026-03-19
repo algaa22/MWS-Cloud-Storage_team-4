@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
@@ -33,12 +34,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @Import({StorageJpaRepositoryAdapter.class, UserJpaRepositoryAdapter.class})
 public class PostgresRepositoryTest extends BasePostgresTest {
+
   @MockitoBean private NettyServerManager nettyServerManager;
 
   @Autowired private StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
   @Autowired private UserJpaRepositoryAdapter userRepository;
+
   private StorageEntity commonFileEntity;
   private UUID testUserUuid;
+
+  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
 
   @BeforeEach
   void beforeEach() {
@@ -52,7 +57,10 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .username("name")
             .email("test-" + UUID.randomUUID() + "@email.com")
             .passwordHash("password")
-            .storageLimit(10737418240L)
+            .freeStorageLimit(FREE_STORAGE_LIMIT)
+            .usedStorage(0L)
+            .isActive(true)
+            .userStatus(UserStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .build();
 
@@ -73,6 +81,8 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .isDirectory(false)
             .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
             .tags(List.of("some xml"))
+            // УБРАНО: .createdAt(LocalDateTime.now())
+            // УБРАНО: .updatedAt(LocalDateTime.now())
             .build();
 
     storageJpaRepositoryAdapter.addFile(fileEntity);
@@ -121,13 +131,62 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .name("parent-folder")
             .isDirectory(true)
             .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
+            // УБРАНО: .createdAt(LocalDateTime.now())
+            // УБРАНО: .updatedAt(LocalDateTime.now())
             .build();
     storageJpaRepositoryAdapter.addFile(folder);
 
     StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
 
     assertTrue(storageJpaRepositoryAdapter.isDescendant(folder.getId(), childFile.getId()));
-
     assertFalse(storageJpaRepositoryAdapter.isDescendant(childFile.getId(), folder.getId()));
+  }
+
+  @Test
+  void shouldGetFileById() throws StorageFileAlreadyExistsException {
+    StorageEntity file = addTestFile(null, "get-by-id.txt");
+
+    var found = storageJpaRepositoryAdapter.getFileById(file.getId());
+    assertTrue(found.isPresent());
+    assertTrue(found.get().getName().equals("get-by-id.txt"));
+  }
+
+  @Test
+  void shouldGetIncludeDeleted() throws StorageFileAlreadyExistsException {
+    StorageEntity file = addTestFile(null, "include-deleted.txt");
+
+    // Софт-удаляем
+    storageJpaRepositoryAdapter.softDelete(file.getUserId(), file.getId(), false);
+
+    // Должен находиться через getIncludeDeleted
+    var found = storageJpaRepositoryAdapter.getIncludeDeleted(file.getUserId(), file.getId());
+    assertTrue(found.isPresent());
+    assertTrue(found.get().isDeleted());
+
+    // Не должен находиться через обычный get
+    var notFound = storageJpaRepositoryAdapter.get(file.getUserId(), file.getId());
+    assertTrue(notFound.isEmpty());
+  }
+
+  @Test
+  void shouldFindOldestFiles() throws StorageFileAlreadyExistsException, InterruptedException {
+    // Создаем несколько файлов
+    StorageEntity file1 = addTestFile(null, "oldest1.txt");
+    Thread.sleep(10); // Небольшая задержка
+
+    StorageEntity file2 = addTestFile(null, "oldest2.txt");
+    Thread.sleep(10);
+
+    StorageEntity file3 = addTestFile(null, "oldest3.txt");
+    Thread.sleep(10);
+
+    StorageEntity file4 = addTestFile(null, "oldest4.txt");
+
+    // Получаем самые старые 2 файла
+    var oldest =
+        storageJpaRepositoryAdapter.findOldestFilesByUserId(
+            testUserUuid, org.springframework.data.domain.PageRequest.of(0, 2));
+
+    assertTrue(oldest.size() <= 2);
   }
 }

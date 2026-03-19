@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,14 +57,11 @@ public class StorageJpaRepositoryAdapter {
     System.out.println("User ID: " + userId);
     System.out.println("File ID: " + fileId);
 
-    int updated = 0;
     if (isDirectory) {
       jpaRepository.restoreRecursive(userId, fileId);
     } else {
       jpaRepository.restore(userId, fileId);
     }
-
-    System.out.println("Rows updated: " + updated);
 
     // Проверим, что действительно обновилось
     Optional<StorageEntity> check = jpaRepository.findByIdIncludeDeleted(userId, fileId);
@@ -83,25 +81,8 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional
-  public void updateFile(StorageEntity entity) {
-    System.out.println("=== updateFile ===");
-    System.out.println("Entity ID: " + entity.getId());
-    System.out.println("Is deleted: " + entity.isDeleted());
-
-    // Проверяем, есть ли в БД
-    Optional<StorageEntity> existing = jpaRepository.findById(entity.getId());
-    System.out.println("Exists in DB: " + existing.isPresent());
-
-    if (existing.isPresent()) {
-      System.out.println("Existing entity deleted: " + existing.get().isDeleted());
-      // Обновляем существующую
-      jpaRepository.saveAndFlush(entity);
-    } else {
-      // Это действительно новый файл
-      System.out.println("Entity not found in DB - this is a new file");
-      jpaRepository.saveAndFlush(entity);
-    }
-    System.out.println("saveAndFlush completed");
+  public void saveFile(StorageEntity entity) {
+    jpaRepository.saveAndFlush(entity);
   }
 
   @Transactional(readOnly = true)
@@ -112,26 +93,26 @@ public class StorageJpaRepositoryAdapter {
     if (filter.recursive()) {
       sql.append(
           """
-            WITH RECURSIVE folder_tree AS (
+                WITH RECURSIVE folder_tree AS (
+                    SELECT * FROM files
+                    WHERE user_id = :userId
+                      AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
+                      AND is_deleted = FALSE
+                    UNION ALL
+                    SELECT f.* FROM files f
+                    INNER JOIN folder_tree ft ON f.parent_id = ft.id
+                    WHERE f.is_deleted = FALSE
+                )
+                SELECT * FROM folder_tree WHERE 1=1
+            """);
+    } else {
+      sql.append(
+          """
                 SELECT * FROM files
                 WHERE user_id = :userId
                   AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
                   AND is_deleted = FALSE
-                UNION ALL
-                SELECT f.* FROM files f
-                INNER JOIN folder_tree ft ON f.parent_id = ft.id
-                WHERE f.is_deleted = FALSE
-            )
-            SELECT * FROM folder_tree WHERE 1=1
-        """);
-    } else {
-      sql.append(
-          """
-            SELECT * FROM files
-            WHERE user_id = :userId
-              AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
-              AND is_deleted = FALSE
-        """);
+            """);
     }
 
     if (!filter.includeDirectories()) {
@@ -147,14 +128,14 @@ public class StorageJpaRepositoryAdapter {
     if (needTags) {
       sql.append(
           """
-          AND EXISTS (
-              SELECT 1 FROM file_tags ft
-              WHERE ft.file_id = id
-              AND ft.tag IN (:tags)
-              GROUP BY ft.file_id
-              HAVING COUNT(DISTINCT ft.tag) = :tagCount
-          )
-      """);
+              AND EXISTS (
+                  SELECT 1 FROM file_tags ft
+                  WHERE ft.file_id = id
+                  AND ft.tag IN (:tags)
+                  GROUP BY ft.file_id
+                  HAVING COUNT(DISTINCT ft.tag) = :tagCount
+              )
+          """);
     }
 
     sql.append(" ORDER BY CASE WHEN is_directory THEN 1 ELSE 2 END, name ASC");
@@ -178,6 +159,11 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
+  public List<StorageEntity> findOldestFilesByUserId(UUID userId, Pageable pageable) {
+    return jpaRepository.findByUserIdAndIsDeletedFalseOrderByUpdatedAtAsc(userId, pageable);
+  }
+
+  @Transactional(readOnly = true)
   public List<StorageEntity> getStaleFiles(LocalDateTime threshold) {
     return jpaRepository.findByStatusInAndUpdatedAtBefore(
         List.of(FileStatus.PENDING, FileStatus.ERROR), threshold);
@@ -185,6 +171,7 @@ public class StorageJpaRepositoryAdapter {
 
   @Transactional(readOnly = true)
   public Optional<StorageEntity> get(UUID userId, UUID parentId, String name) {
+    // Исправлено: используем правильное название метода из репозитория
     return jpaRepository.findByUserIdAndIdAndName(userId, parentId, name);
   }
 
@@ -199,8 +186,14 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
+  public Optional<StorageEntity> getFileById(UUID fileId) {
+    return jpaRepository.findById(fileId);
+  }
+
+  @Transactional(readOnly = true)
   public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
-      return jpaRepository.findAllTrashByUserId(userId);
+    // parentId не используется в текущей реализации, но оставляем параметр для API
+    return jpaRepository.findAllTrashByUserId(userId);
   }
 
   @Transactional(readOnly = true)
@@ -251,7 +244,7 @@ public class StorageJpaRepositoryAdapter {
         .executeUpdate();
 
     if (tags != null && !tags.isEmpty()) {
-      String sql = "INSERT INTO file_tags (file_id, tag) " + "SELECT :fileId, unnest(:tags)";
+      String sql = "INSERT INTO file_tags (file_id, tag) SELECT :fileId, unnest(:tags)";
 
       entityManager
           .createNativeQuery(sql)

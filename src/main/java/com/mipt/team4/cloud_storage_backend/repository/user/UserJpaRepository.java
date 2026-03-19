@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.user;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageUsageProjection;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
+import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -43,22 +44,22 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
   @Modifying
   @Query(
-      """
-        UPDATE UserEntity u
-        SET u.tariffPlan = :plan,
-            u.tariffStartDate = :startDate,
-            u.tariffEndDate = :endDate,
-            u.autoRenew = :autoRenew,
-            u.storageLimit = :storageLimit
-        WHERE u.id = :userId
-    """)
+          """
+          UPDATE UserEntity u
+          SET u.tariffPlan = :plan,
+              u.tariffStartDate = :startDate,
+              u.tariffEndDate = :endDate,
+              u.autoRenew = :autoRenew,
+              u.paidStorageLimit = :storageLimit
+          WHERE u.id = :userId
+          """)
   void updateTariff(
-      @Param("userId") UUID userId,
-      @Param("plan") TariffPlan plan,
-      @Param("startDate") LocalDateTime startDate,
-      @Param("endDate") LocalDateTime endDate,
-      @Param("autoRenew") boolean autoRenew,
-      @Param("storageLimit") long storageLimit);
+          @Param("userId") UUID userId,
+          @Param("plan") TariffPlan plan,
+          @Param("startDate") LocalDateTime startDate,
+          @Param("endDate") LocalDateTime endDate,
+          @Param("autoRenew") boolean autoRenew,
+          @Param("storageLimit") Long storageLimit);
 
   @Modifying
   @Query("UPDATE UserEntity u SET u.tariffEndDate = :newEndDate WHERE u.id = :userId")
@@ -74,14 +75,59 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
   @Query("UPDATE UserEntity u SET u.isActive = :isActive WHERE u.id = :userId")
   void updateActiveStatus(@Param("userId") UUID userId, @Param("isActive") boolean isActive);
 
+  @Modifying
+  @Query("UPDATE UserEntity u SET u.userStatus = :status WHERE u.id = :userId")
+  void updateUserStatus(@Param("userId") UUID userId, @Param("status") UserStatus status);
+
+  @Modifying
+  @Query("UPDATE UserEntity u SET u.scheduledDeletionDate = :deletionDate WHERE u.id = :userId")
+  void updateScheduledDeletionDate(
+      @Param("userId") UUID userId, @Param("deletionDate") LocalDateTime deletionDate);
+
+  @Modifying
   @Query(
-      "SELECT u.usedStorage as usedStorage, u.storageLimit as storageLimit FROM UserEntity u WHERE u.id = :userId")
+      "UPDATE UserEntity u SET u.trialStartDate = :startDate, u.trialEndDate = :endDate WHERE u.id = :userId")
+  void updateTrialDates(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDateTime startDate,
+      @Param("endDate") LocalDateTime endDate);
+
+  @Query(
+          "SELECT u.usedStorage as usedStorage, " +
+                  "u.freeStorageLimit as freeStorageLimit, " +
+                  "u.paidStorageLimit as paidStorageLimit " +
+                  "FROM UserEntity u WHERE u.id = :userId")
   Optional<StorageUsageProjection> findStorageUsageById(@Param("userId") UUID userId);
 
+  // Поиск пользователей с истекающим тарифом по статусу
+  @Query(
+      "SELECT u FROM UserEntity u WHERE u.tariffEndDate BETWEEN :from AND :to AND u.userStatus = :status")
+  List<UserEntity> findAllByTariffEndDateBetweenAndUserStatus(
+      @Param("from") LocalDateTime from,
+      @Param("to") LocalDateTime to,
+      @Param("status") UserStatus status);
+
+  // Поиск пользователей с истекшим тарифом по статусу
+  @Query("SELECT u FROM UserEntity u WHERE u.tariffEndDate < :now AND u.userStatus = :status")
+  List<UserEntity> findAllByTariffEndDateBeforeAndUserStatus(
+      @Param("now") LocalDateTime now, @Param("status") UserStatus status);
+
+  // Поиск пользователей по статусу и дате удаления
+  List<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
+      @Param("status") UserStatus status, @Param("date") LocalDateTime date);
+
+  // Поиск пользователей с истекшим триалом и без купленного тарифа
+  @Query("SELECT u FROM UserEntity u WHERE u.trialEndDate < :now AND u.tariffPlan IS NULL")
+  List<UserEntity> findAllByTrialEndDateBeforeAndTariffPlanIsNull(@Param("now") LocalDateTime now);
+
+  // Поиск пользователей с триалом, начавшимся в определенный период
+  List<UserEntity> findAllByTrialStartDateBetween(LocalDateTime start, LocalDateTime end);
+
+  // Для обратной совместимости, если нужны старые методы
+  @Deprecated
   List<UserEntity> findAllByTariffEndDateBetweenAndIsActiveTrue(
       LocalDateTime from, LocalDateTime to);
 
+  @Deprecated
   List<UserEntity> findAllByTariffEndDateBeforeAndIsActiveTrue(LocalDateTime now);
-
-  List<UserEntity> findAllByTrialStartDateBetween(LocalDateTime start, LocalDateTime end);
 }

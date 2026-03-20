@@ -59,3 +59,4 @@ node_modules/
 
 /src/test/resources/s3.json
 
+/etc/seaweedfs/s3.json

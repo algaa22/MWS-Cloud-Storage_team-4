@@ -16,8 +16,6 @@ import software.amazon.awssdk.services.s3.model.*;
 
 @Repository
 public class S3ContentRepository implements FileContentRepository {
-
-  private final StorageConfig storageConfig;
   private final S3Wrapper wrapper;
   private final String bucketName;
 
@@ -25,7 +23,6 @@ public class S3ContentRepository implements FileContentRepository {
 
   @Autowired
   public S3ContentRepository(StorageConfig storageConfig, S3Wrapper wrapper, S3Client s3Client) {
-    this.storageConfig = storageConfig;
     this.wrapper = wrapper;
 
     this.bucketName = storageConfig.s3().userDataBucket().name();

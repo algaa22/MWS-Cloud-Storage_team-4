@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
 import { getShareInfo, downloadSharedFile } from '../api';
+import { useLocation, useParams } from 'react-router-dom';
 
 export default function SharedFilePage() {
-  const { token } = useParams();
+  const location = useLocation();
+
+  const queryParams = new URLSearchParams(location.search);
+  const token = queryParams.get('shareToken');
 
   const [fileInfo, setFileInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,23 +46,21 @@ export default function SharedFilePage() {
     setError(null);
 
     try {
-      const jwt = localStorage.getItem('token');
-      const result = await downloadSharedFile(token, password, jwt);
+      const { blob, filename } = await downloadSharedFile(token, password);
 
-      const url = window.URL.createObjectURL(result.blob);
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = result.filename || (fileInfo ? fileInfo.fileName : 'file');
+      link.setAttribute('download', filename || 'file');
       document.body.appendChild(link);
       link.click();
-      link.remove();
+
+      link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
+
     } catch (err) {
-      if (err.message.includes('401') || err.message.includes('password')) {
-        setError('INVALID_PASSWORD');
-      } else {
-        setError('DOWNLOAD_ERROR');
-      }
+      console.error("Download error:", err);
+      setError(err.status === 401 ? 'INVALID_PASSWORD' : 'DOWNLOAD_FAILED');
     } finally {
       setDownloading(false);
     }

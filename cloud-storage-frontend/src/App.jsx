@@ -50,7 +50,7 @@ function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/register" element={<Register />} />
             <Route path="/tariffs" element={<TariffsPage />} />
-            <Route path="/s/:token" element={<SharedFilePage />} />
+            <Route path="/s" element={<SharedFilePage />} />
 
             <Route
                 path="/files/*"

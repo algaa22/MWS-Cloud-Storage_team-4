@@ -34,16 +34,6 @@ export async function fetchWithTokenRefresh(url, options = {}, token) {
     const res = await fetch(url, { ...options, headers });
 
     if (res.status === 401) {
-      // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: если URL содержит /s/ или токен шаринга,
-      // мы не имеем права редиректить юзера на главную.
-      if (window.location.pathname.includes('/s/')) {
-        console.warn("401 Unauthorized on share page - handling locally");
-        // Выбрасываем ошибку с кодом, чтобы SharedFilePage её поймал
-        const error = new Error("AUTH_REQUIRED");
-        error.status = 401;
-        throw error;
-      }
-
       // Обычная логика рефреша для личного кабинета
       const refreshToken = localStorage.getItem("refreshToken");
       if (refreshToken) {
@@ -783,8 +773,7 @@ export const createShareLink = async (token, fileId, options = {}) => {
 export const getShareInfo = async (shareToken) => {
   const url = `${BASE}/shares/info?token=${shareToken}`;
 
-  // Используем обычный fetch, чтобы избежать логики рефреша
-  const res = await fetch(url);
+  const res = await fetch(url, { method: "GET" });
 
   if (!res.ok) {
     const error = new Error('Share info not found');
@@ -794,18 +783,14 @@ export const getShareInfo = async (shareToken) => {
   return await res.json();
 };
 
-export const downloadSharedFile = async (shareToken, password = "", jwt = null) => {
-  // Формируем URL с токеном в query параметре shareToken
-  let url = `${BASE}/shares/download?shareToken=${shareToken}`;
+export const downloadSharedFile = async (shareToken, password = "") => {
+  let url = `${API_BASE}/shares/download?shareToken=${shareToken}`;
 
-  // Добавляем пароль, если он есть
   if (password) {
     url += `&password=${encodeURIComponent(password)}`;
   }
 
-  // Используем нашу исправленную обертку, чтобы прокинуть JWT (X-Auth-Token)
-  // для приватных ссылок, но не вылететь по редиректу
-  const res = await fetchWithTokenRefresh(url, { method: "GET" }, jwt);
+  const res = await fetch(url, { method: "GET" });
 
   if (!res.ok) {
     const error = new Error('Download failed');
@@ -814,8 +799,6 @@ export const downloadSharedFile = async (shareToken, password = "", jwt = null) 
   }
 
   const blob = await res.blob();
-
-  // Достаем имя файла из заголовков
   const contentDisposition = res.headers.get('Content-Disposition');
   let filename = 'file';
   if (contentDisposition && contentDisposition.includes('filename=')) {

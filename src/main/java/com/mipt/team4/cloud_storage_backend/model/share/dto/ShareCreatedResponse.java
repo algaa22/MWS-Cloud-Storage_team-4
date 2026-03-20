@@ -9,6 +9,8 @@ public record ShareCreatedResponse(
     @ResponseBodyParam String shareToken) {
   public static ShareCreatedResponse fromShare(FileShare share, String baseUrl) {
     return new ShareCreatedResponse(
-        share.getId().toString(), baseUrl + "/s/" + share.getShareToken(), share.getShareToken());
+        share.getId().toString(),
+        baseUrl + "/s?shareToken=" + share.getShareToken(),
+        share.getShareToken());
   }
 }

@@ -26,7 +26,8 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
       Set.of(ApiEndpoints.AUTH_REGISTER, ApiEndpoints.AUTH_LOGIN, ApiEndpoints.AUTH_REFRESH);
 
   private static final String AUTH_HEADER = "X-Auth-Token";
-  private static final Set<String> PUBLIC_PATHS = Set.of(ApiEndpoints.SHARES_DOWNLOAD);
+  private static final Set<String> PUBLIC_PATHS =
+      Set.of(ApiEndpoints.SHARES_DOWNLOAD, ApiEndpoints.SHARES_GET_INFO);
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {

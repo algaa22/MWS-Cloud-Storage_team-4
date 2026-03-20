@@ -22,7 +22,7 @@ public record ShareResponse(
   public static ShareResponse fromShare(FileShare share, String baseUrl) {
     return new ShareResponse(
         share.getId(),
-        baseUrl + "/s/" + share.getShareToken(),
+        baseUrl + "/s?shareToken=" + share.getShareToken(),
         share.getShareToken(),
         share.getFile().getId(),
         share.getFile().getName(),

@@ -23,7 +23,7 @@ public record ShareInfoResponse(
   public static ShareInfoResponse fromShare(FileShare share, String baseUrl) {
     return new ShareInfoResponse(
         share.getId().toString(),
-        baseUrl + "/s/" + share.getShareToken(),
+        baseUrl + "/s?shareToken=" + share.getShareToken(),
         share.getShareToken(),
         share.getFile().getId().toString(),
         share.getFile().getName(),

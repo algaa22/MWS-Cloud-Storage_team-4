@@ -43,7 +43,7 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
       };
 
       const frontendBaseUrl = getFrontendBaseUrl();
-      const fullUrl = `${frontendBaseUrl}/s/${response.shareToken}`;
+      const fullUrl = `${frontendBaseUrl}/s?shareToken=${response.shareToken}`;
 
       console.log('Generated frontend URL:', fullUrl);
       setShareUrl(fullUrl);

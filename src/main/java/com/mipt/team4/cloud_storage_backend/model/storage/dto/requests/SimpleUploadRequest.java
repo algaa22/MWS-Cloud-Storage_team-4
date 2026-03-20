@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RequestMapping(method = "POST", path = ApiEndpoints.FILES_SIMPLE_UPLOAD)
-public record FileUploadRequest(
+public record SimpleUploadRequest(
     @UserId UUID userId,
     @NotBlank
         @Pattern(
@@ -30,4 +30,5 @@ public record FileUploadRequest(
                     message = ValidationPatterns.SINGLE_TAG_ERROR)
                 String>
             tags,
+    @RequestHeader(value = "Content-MD5", required = false) String checksum,
     @NotEmpty @RequestBody byte[] data) {}

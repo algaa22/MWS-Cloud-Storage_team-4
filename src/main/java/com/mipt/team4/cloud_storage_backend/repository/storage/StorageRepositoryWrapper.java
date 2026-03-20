@@ -112,10 +112,10 @@ public class StorageRepositoryWrapper {
    * Блокирует строку в БД, выполняет операцию и переводит файл в {@code READY}.<br>
    * Автоматически сохраняет любые изменения {@code entity}, сделанные в лямбде.
    */
-  public <T> void completeStep(
+  public <T> T completeStep(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsPending(entity);
-    finalizeOperation(entity, operationType, operation);
+    return finalizeOperation(entity, operationType, operation);
   }
 
   /** Принудительно помечает операцию как {@code READY} и устанавливает {@code retry_count = 0}. */
@@ -139,10 +139,12 @@ public class StorageRepositoryWrapper {
     }
   }
 
-  private <T> void finalizeOperation(
+  private <T> T finalizeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
-    executeOperation(entity, operationType, operation);
+    T result = executeOperation(entity, operationType, operation);
     syncEntityWithDatabase(entity, operationType, FileStatus.READY);
+
+    return result;
   }
 
   private void checkIfStatusIsReady(StorageEntity entity) {

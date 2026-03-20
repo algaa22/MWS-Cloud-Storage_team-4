@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.netty.utils;
 import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.auth.JwtAuthHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpsRedirectHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.StorageExceptionHandler;
@@ -21,12 +22,14 @@ public class PipelineBuilder {
   private final StorageExceptionHandler storageExceptionHandlers;
   private final GlobalErrorHandler globalErrorHandlers;
   private final IdleTimeoutHandler idleTimeoutHandlers;
+  private final HttpsRedirectHandler httpsRedirectHandler;
   private final DtoToResponseEncoder dtoToResponseEncoder;
   private final JwtAuthHandler jwtAuthHandler;
   private final CorsHandler corsHandler;
 
   public void buildHttp11Pipeline(ChannelPipeline pipeline) {
     pipeline.addLast(PipelineHandlerNames.HTTP_SERVER_CODEC, new HttpServerCodec());
+    pipeline.addLast(PipelineHandlerNames.HTTPS_REDIRECT, httpsRedirectHandler);
     finalizeHttpPipeline(pipeline);
   }
 

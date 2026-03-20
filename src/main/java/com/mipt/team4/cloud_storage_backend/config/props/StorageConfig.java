@@ -14,8 +14,6 @@ public record StorageConfig(
     S3 s3) {
   public record Rest(
       int maxAggregatedContentLength,
-      long maxFileSize,
-      long maxFileChunkSize,
       int fileDownloadChunkSize) {}
 
   public record Auth(

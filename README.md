@@ -227,8 +227,8 @@ graph TD
 
 Если возникла временная ошибка записи, сервер вернет статус `409 Conflict` с полем `action` в теле:
 
-* `RESUME_CONTINUE`: Ошибка записи чанка. Повторите отправку с той части, что указана в полях `currentFileSize` и `partNum`.
-* `RESUME_FINALIZE`: Ошибка при сборке файла. Повторите финальный `LastHttpContent`.
+* `RETRY_PART`: Ошибка записи чанка. Повторите отправку с той части, что указана в полях `currentFileSize` и `partNum`.
+* `RETRY_COMPLETE`: Ошибка при сборке файла. Повторите финальный `LastHttpContent`.
 
 #### Скачивание (Download)
 

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
+import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import java.io.ByteArrayInputStream;
@@ -123,10 +124,12 @@ class S3ContentRepositoryTest {
     for (int i = 0; i < partCount; i++) {
       int end = Math.min(offset + PART_SIZE, file.data.length);
       byte[] part = Arrays.copyOfRange(file.data, offset, end);
-      eTags.put(
-          i + 1,
-          repository.uploadPart(
-              uploadID, file.s3Key, i + 1, new ByteArrayInputStream(part), part.length));
+
+      try (InputStream inputStream = new ByteArrayInputStream(part)) {
+        eTags.put(
+            i + 1, repository.uploadPart(uploadID, file.s3Key, i + 1, inputStream, part.length));
+      }
+
       offset += PART_SIZE;
     }
 

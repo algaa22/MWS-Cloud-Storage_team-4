@@ -124,7 +124,7 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
+  public Optional<StorageEntity> getDeleted(UUID userId, UUID fileId) {
     return jpaRepository.findDeletedById(userId, fileId);
   }
 
@@ -147,6 +147,11 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
     return jpaRepository.findByIdIncludeDeleted(userId, fileId);
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID parentId, String name) {
+    return jpaRepository.findByParentIdAndNameIncludeDeleted(userId, parentId, name);
   }
 
   @Transactional(readOnly = true)

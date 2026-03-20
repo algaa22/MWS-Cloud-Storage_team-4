@@ -5,6 +5,4 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Qu
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 
 @RequestMapping(method = "GET", path = ApiEndpoints.SHARES_GET_INFO)
-public record GetShareInfoRequest(
-        @QueryParam String token
-) {}
+public record GetShareInfoRequest(@QueryParam String token) {}

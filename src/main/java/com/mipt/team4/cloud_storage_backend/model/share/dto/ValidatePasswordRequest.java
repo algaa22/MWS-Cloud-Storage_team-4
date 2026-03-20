@@ -7,6 +7,4 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Re
 
 @RequestMapping(method = "POST", path = ApiEndpoints.SHARES_VALIDATE_PASSWORD)
 public record ValidatePasswordRequest(
-        @QueryParam String shareToken,
-        @RequestBody String password
-) {}
+    @QueryParam String shareToken, @RequestBody String password) {}

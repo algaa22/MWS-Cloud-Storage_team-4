@@ -9,23 +9,28 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface ShareRecipientJpaRepository extends JpaRepository<ShareRecipient, ShareRecipientId> {
+public interface ShareRecipientJpaRepository
+    extends JpaRepository<ShareRecipient, ShareRecipientId> {
 
-    List<ShareRecipient> findByShareId(UUID shareId);
+  List<ShareRecipient> findByShareId(UUID shareId);
 
-    List<ShareRecipient> findByUserId(UUID userId);
+  List<ShareRecipient> findByUserId(UUID userId);
 
-    boolean existsByShareIdAndUserId(UUID shareId, UUID userId);
+  boolean existsByShareIdAndUserId(UUID shareId, UUID userId);
 
-    @Modifying
-    void deleteByShareId(UUID shareId);
+  @Modifying
+  void deleteByShareId(UUID shareId);
 
-    @Modifying
-    void deleteByShareIdAndUserId(UUID shareId, UUID userId);
+  @Modifying
+  void deleteByShareIdAndUserId(UUID shareId, UUID userId);
 
-    @Query("SELECT sr.permission FROM ShareRecipient sr WHERE sr.id.shareId = :shareId AND sr.id.userId = :userId")
-    String findPermissionByShareIdAndUserId(@Param("shareId") UUID shareId, @Param("userId") UUID userId);
+  @Query(
+      "SELECT sr.permission FROM ShareRecipient sr WHERE sr.id.shareId = :shareId AND sr.id.userId = :userId")
+  String findPermissionByShareIdAndUserId(
+      @Param("shareId") UUID shareId, @Param("userId") UUID userId);
 
-    @Query("SELECT sr FROM ShareRecipient sr WHERE sr.id.userId = :userId AND sr.permission = :permission")
-    List<ShareRecipient> findByUserIdAndPermission(@Param("userId") UUID userId, @Param("permission") String permission);
+  @Query(
+      "SELECT sr FROM ShareRecipient sr WHERE sr.id.userId = :userId AND sr.permission = :permission")
+  List<ShareRecipient> findByUserIdAndPermission(
+      @Param("userId") UUID userId, @Param("permission") String permission);
 }

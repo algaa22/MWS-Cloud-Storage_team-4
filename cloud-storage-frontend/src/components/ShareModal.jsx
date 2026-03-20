@@ -146,9 +146,9 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
             onChange={(e) => setShareType(e.target.value)}
             className="w-full p-3 rounded-xl bg-white/20 text-white"
           >
-            <option value="PUBLIC">Публичный (любой по ссылке)</option>
-            <option value="PROTECTED">Защищенный (с паролем)</option>
-            <option value="PRIVATE">Приватный (только для пользователей)</option>
+            <option value="PUBLIC" className="bg-gray-800 text-white">Публичный (любой по ссылке)</option>
+            <option value="PROTECTED" className="bg-gray-800 text-white">Защищенный (с паролем)</option>
+            <option value="PRIVATE" className="bg-gray-800 text-white">Приватный (только для пользователей)</option>
           </select>
         </div>
 
@@ -172,14 +172,15 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
           <label className="block text-sm text-white/70 mb-2">
             Лимит скачиваний (оставьте пустым для безлимита):
           </label>
-          <input
-            type="number"
-            min="1"
-            value={maxDownloads}
-            onChange={(e) => setMaxDownloads(e.target.value)}
-            placeholder="Например: 10"
-            className="w-full p-3 rounded-xl bg-white/20 text-white"
-          />
+          <form>
+            <input
+              type="number"
+              min="1"
+              value={maxDownloads}
+              onChange={(e) => setMaxDownloads(e.target.value)}
+              className="w-full p-3 rounded-xl bg-white/20 text-white"
+            />
+          </form>
         </div>
 
         {shareType === 'PROTECTED' && (

@@ -133,16 +133,18 @@ public class UserJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Optional<StorageUsage> getStorageUsage(UUID userId) {
     return jpaRepository
-            .findStorageUsageById(userId)
-            .map(projection -> {
-              long used = projection.getUsedStorage() != null ?
-                      projection.getUsedStorage() : 0L;
+        .findStorageUsageById(userId)
+        .map(
+            projection -> {
+              long used = projection.getUsedStorage() != null ? projection.getUsedStorage() : 0L;
 
-              long freeLimit = projection.getFreeStorageLimit() != null ?
-                      projection.getFreeStorageLimit() : 5L * 1024 * 1024 * 1024;
+              long freeLimit =
+                  projection.getFreeStorageLimit() != null
+                      ? projection.getFreeStorageLimit()
+                      : 5L * 1024 * 1024 * 1024;
 
-              long paidLimit = projection.getPaidStorageLimit() != null ?
-                      projection.getPaidStorageLimit() : 0L;
+              long paidLimit =
+                  projection.getPaidStorageLimit() != null ? projection.getPaidStorageLimit() : 0L;
 
               long totalLimit = freeLimit + paidLimit;
 

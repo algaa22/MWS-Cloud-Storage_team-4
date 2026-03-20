@@ -26,8 +26,7 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
       Set.of(ApiEndpoints.AUTH_REGISTER, ApiEndpoints.AUTH_LOGIN, ApiEndpoints.AUTH_REFRESH);
 
   private static final String AUTH_HEADER = "X-Auth-Token";
-  private static final Set<String> PUBLIC_PATHS =
-          Set.of("/s/");
+  private static final Set<String> PUBLIC_PATHS = Set.of(ApiEndpoints.SHARES_DOWNLOAD);
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -44,6 +43,7 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
       ctx.fireChannelRead(request);
       return;
     }
+
     if (isPublicPath(path)) {
       System.out.println("Public path /s/, allowing without token");
       ctx.fireChannelRead(request);
@@ -65,6 +65,7 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
     ctx.channel().attr(NettyAttributes.USER_ID).set(userId);
     ctx.fireChannelRead(request);
   }
+
   private boolean isPublicPath(String path) {
     return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
   }

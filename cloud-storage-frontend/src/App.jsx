@@ -4,11 +4,11 @@ import { AuthProvider, useAuth } from './AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
 import FileBrowser from './components/FileBrowser';
-import Landing from './pages/Landing';
+import Landing from './components/Landing';
 import SettingsPage from './components/SettingsPage';
 import TariffsPage from './components/TariffsPage';
 import TrashPage from './components/TrashPage';
-import SharedFilePage from './pages/SharedFilePage';
+import SharedFilePage from './components/SharedFilePage';
 
 
 function PrivateRoute({ children }) {

@@ -7,7 +7,4 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Us
 import java.util.UUID;
 
 @RequestMapping(method = "GET", path = ApiEndpoints.SHARES_FILE)
-public record GetFileSharesRequest(
-        @UserId UUID userId,
-        @QueryParam UUID fileId
-) {}
+public record GetFileSharesRequest(@UserId UUID userId, @QueryParam UUID fileId) {}

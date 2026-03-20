@@ -47,7 +47,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -391,7 +390,6 @@ public class FileService {
    * Удаляет самые старые файлы пользователя до достижения размера sizeToDelete Используется при
    * просрочке подписки
    */
-
   private void uploadPart(ChunkedUploadSession uploadState) {
     String uploadId = uploadState.getUploadId();
     byte[] part = ChunkCombiner.combineChunksToPart(uploadState);

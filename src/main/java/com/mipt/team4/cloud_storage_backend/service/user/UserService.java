@@ -20,7 +20,6 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.UserInfoRes
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepository;
-import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
 import com.mipt.team4.cloud_storage_backend.service.user.security.RefreshTokenService;

@@ -44,7 +44,7 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
   @Modifying
   @Query(
-          """
+      """
           UPDATE UserEntity u
           SET u.tariffPlan = :plan,
               u.tariffStartDate = :startDate,
@@ -54,12 +54,12 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
           WHERE u.id = :userId
           """)
   void updateTariff(
-          @Param("userId") UUID userId,
-          @Param("plan") TariffPlan plan,
-          @Param("startDate") LocalDateTime startDate,
-          @Param("endDate") LocalDateTime endDate,
-          @Param("autoRenew") boolean autoRenew,
-          @Param("storageLimit") Long storageLimit);
+      @Param("userId") UUID userId,
+      @Param("plan") TariffPlan plan,
+      @Param("startDate") LocalDateTime startDate,
+      @Param("endDate") LocalDateTime endDate,
+      @Param("autoRenew") boolean autoRenew,
+      @Param("storageLimit") Long storageLimit);
 
   @Modifying
   @Query("UPDATE UserEntity u SET u.tariffEndDate = :newEndDate WHERE u.id = :userId")
@@ -93,10 +93,10 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
       @Param("endDate") LocalDateTime endDate);
 
   @Query(
-          "SELECT u.usedStorage as usedStorage, " +
-                  "u.freeStorageLimit as freeStorageLimit, " +
-                  "u.paidStorageLimit as paidStorageLimit " +
-                  "FROM UserEntity u WHERE u.id = :userId")
+      "SELECT u.usedStorage as usedStorage, "
+          + "u.freeStorageLimit as freeStorageLimit, "
+          + "u.paidStorageLimit as paidStorageLimit "
+          + "FROM UserEntity u WHERE u.id = :userId")
   Optional<StorageUsageProjection> findStorageUsageById(@Param("userId") UUID userId);
 
   @Query(

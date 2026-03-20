@@ -13,55 +13,55 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ShareRecipientRepositoryAdapter {
 
-    private final ShareRecipientJpaRepository jpaRepository;
+  private final ShareRecipientJpaRepository jpaRepository;
 
-    @Transactional
-    public ShareRecipient save(ShareRecipient recipient) {
-        return jpaRepository.save(recipient);
-    }
+  @Transactional
+  public ShareRecipient save(ShareRecipient recipient) {
+    return jpaRepository.save(recipient);
+  }
 
-    @Transactional
-    public void delete(ShareRecipient recipient) {
-        jpaRepository.delete(recipient);
-    }
+  @Transactional
+  public void delete(ShareRecipient recipient) {
+    jpaRepository.delete(recipient);
+  }
 
-    @Transactional(readOnly = true)
-    public Optional<ShareRecipient> findById(ShareRecipientId id) {
-        return jpaRepository.findById(id);
-    }
+  @Transactional(readOnly = true)
+  public Optional<ShareRecipient> findById(ShareRecipientId id) {
+    return jpaRepository.findById(id);
+  }
 
-    @Transactional(readOnly = true)
-    public List<ShareRecipient> findByShareId(UUID shareId) {
-        return jpaRepository.findByShareId(shareId);
-    }
+  @Transactional(readOnly = true)
+  public List<ShareRecipient> findByShareId(UUID shareId) {
+    return jpaRepository.findByShareId(shareId);
+  }
 
-    @Transactional(readOnly = true)
-    public List<ShareRecipient> findByUserId(UUID userId) {
-        return jpaRepository.findByUserId(userId);
-    }
+  @Transactional(readOnly = true)
+  public List<ShareRecipient> findByUserId(UUID userId) {
+    return jpaRepository.findByUserId(userId);
+  }
 
-    @Transactional(readOnly = true)
-    public boolean existsByShareIdAndUserId(UUID shareId, UUID userId) {
-        return jpaRepository.existsByShareIdAndUserId(shareId, userId);
-    }
+  @Transactional(readOnly = true)
+  public boolean existsByShareIdAndUserId(UUID shareId, UUID userId) {
+    return jpaRepository.existsByShareIdAndUserId(shareId, userId);
+  }
 
-    @Transactional
-    public void deleteByShareId(UUID shareId) {
-        jpaRepository.deleteByShareId(shareId);
-    }
+  @Transactional
+  public void deleteByShareId(UUID shareId) {
+    jpaRepository.deleteByShareId(shareId);
+  }
 
-    @Transactional
-    public void deleteByShareIdAndUserId(UUID shareId, UUID userId) {
-        jpaRepository.deleteByShareIdAndUserId(shareId, userId);
-    }
+  @Transactional
+  public void deleteByShareIdAndUserId(UUID shareId, UUID userId) {
+    jpaRepository.deleteByShareIdAndUserId(shareId, userId);
+  }
 
-    @Transactional(readOnly = true)
-    public String findPermissionByShareIdAndUserId(UUID shareId, UUID userId) {
-        return jpaRepository.findPermissionByShareIdAndUserId(shareId, userId);
-    }
+  @Transactional(readOnly = true)
+  public String findPermissionByShareIdAndUserId(UUID shareId, UUID userId) {
+    return jpaRepository.findPermissionByShareIdAndUserId(shareId, userId);
+  }
 
-    @Transactional(readOnly = true)
-    public List<ShareRecipient> findByUserIdAndPermission(UUID userId, String permission) {
-        return jpaRepository.findByUserIdAndPermission(userId, permission);
-    }
+  @Transactional(readOnly = true)
+  public List<ShareRecipient> findByUserIdAndPermission(UUID userId, String permission) {
+    return jpaRepository.findByUserIdAndPermission(userId, permission);
+  }
 }

@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 public class SslContextFactory {
 
   public SslContext createFromResources() {
-    try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) { // TODO: hardcoding
+    try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) { // TODO: hardcoded
       log.info("Loading SSL from PKCS12 file");
 
       KeyStore keyStore = KeyStore.getInstance("PKCS12");

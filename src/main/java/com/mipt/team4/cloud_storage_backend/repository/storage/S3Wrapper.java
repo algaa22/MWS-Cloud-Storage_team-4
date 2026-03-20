@@ -107,7 +107,6 @@ public class S3Wrapper {
       int httpStatus = s3Ex.statusCode();
       return httpStatus >= 500 || httpStatus == HttpStatus.SC_TOO_MANY_REQUESTS;
     }
-
     return false;
   }
 }

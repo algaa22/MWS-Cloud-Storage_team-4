@@ -6,6 +6,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 public class TestUtils {
+  public static final int S3_INTERNAL_PORT = 8333;
+
   public static PostgreSQLContainer<?> createPostgresContainer() {
     return new PostgreSQLContainer<>("postgres:18.0")
         .withDatabaseName("test_db")
@@ -15,10 +17,10 @@ public class TestUtils {
 
   public static GenericContainer<?> createS3Container() {
     return new GenericContainer<>("chrislusf/seaweedfs:latest")
-        .withExposedPorts(8333)
+        .withExposedPorts(S3_INTERNAL_PORT)
         .withCommand(
             "server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json")
         .withClasspathResourceMapping("s3.json", "/etc/seaweedfs/s3.json", BindMode.READ_ONLY)
-        .waitingFor(Wait.forHttp("/").forStatusCode(200).forStatusCode(403).forPort(8333));
+        .waitingFor(Wait.forHttp("/").forStatusCode(200).forStatusCode(403).forPort(S3_INTERNAL_PORT));
   }
 }

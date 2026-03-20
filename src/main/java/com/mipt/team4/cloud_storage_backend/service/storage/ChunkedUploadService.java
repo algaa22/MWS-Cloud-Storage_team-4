@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectPartNumberException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
@@ -49,7 +49,7 @@ public class ChunkedUploadService {
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
-  private final S3Config s3Config;
+  private final StorageConfig storageConfig;
 
   @Transactional
   public StartChunkedUploadResponse startChunkedUpload(StartChunkedUploadRequest request) {
@@ -61,8 +61,8 @@ public class ChunkedUploadService {
       throw new TariffAccessDeniedException();
     }
 
-    if (request.totalParts() > s3Config.limits().maxPartsNum()) {
-      throw new TooManyPartsException(s3Config.limits().maxPartsNum());
+    if (request.totalParts() > storageConfig.s3().limits().maxPartsNum()) {
+      throw new TooManyPartsException(storageConfig.s3().limits().maxPartsNum());
     }
 
     storageRepository
@@ -197,8 +197,8 @@ public class ChunkedUploadService {
   }
 
   private void validatePartSize(long partSize, int partNumber, int totalParts) {
-    if (partNumber < totalParts && partSize < s3Config.limits().minFilePartSize()) {
-      throw new TooSmallFilePartException(s3Config.limits().minFilePartSize());
+    if (partNumber < totalParts && partSize < storageConfig.s3().limits().minFilePartSize()) {
+      throw new TooSmallFilePartException(storageConfig.s3().limits().minFilePartSize());
     }
   }
 

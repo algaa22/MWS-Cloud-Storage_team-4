@@ -12,9 +12,7 @@ public record StorageConfig(
     FailsafeRetry failsafeRetry,
     Trash trash,
     S3 s3) {
-  public record Rest(
-      int maxAggregatedContentLength,
-      int fileDownloadChunkSize) {}
+  public record Rest(int maxAggregatedContentLength, int fileDownloadChunkSize) {}
 
   public record Auth(
       String jwtSecretKey, long accessTokenExpirationSec, long refreshTokenExpirationSec) {}
@@ -35,7 +33,10 @@ public record StorageConfig(
       String accessKey,
       String secretKey,
       String region,
-      UserDataBucket userDataBucket) {
+      UserDataBucket userDataBucket,
+      Limits limits) {
     public record UserDataBucket(String name) {}
+
+    public record Limits(long minFilePartSize, long maxFilePartSize, int maxPartsNum) {}
   }
 }

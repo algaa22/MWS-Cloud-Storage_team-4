@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
-import com.mipt.team4.cloud_storage_backend.config.props.S3Config;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadContextException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadPartsException;
@@ -39,7 +39,7 @@ import org.springframework.stereotype.Controller;
 @Slf4j
 public class ChunkedUploadController {
   private final ChunkedUploadService uploadService;
-  private final S3Config s3Config;
+  private final StorageConfig storageConfig;
 
   public void startUploadSession(ChannelHandlerContext ctx, StartChunkedUploadRequest request) {
     StartChunkedUploadResponse response = uploadService.startChunkedUpload(request);
@@ -120,9 +120,9 @@ public class ChunkedUploadController {
     try {
       if (chunk.isReadable()) {
         if (accumulator.readableBytes() + chunk.readableBytes()
-            > s3Config.limits().maxFilePartSize()) {
+            > storageConfig.s3().limits().maxFilePartSize()) {
           resetCurrentPart(ctx, accumulator);
-          throw new TooLargeFilePartException(s3Config.limits().maxFilePartSize());
+          throw new TooLargeFilePartException(storageConfig.s3().limits().maxFilePartSize());
         }
 
         accumulator.addComponent(true, chunk.retain());

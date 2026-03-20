@@ -15,6 +15,13 @@ storage:
   failsafe-retry:
     max-attempts: 1
   s3:
+    url: http://localhost:9000
+    access-key: test-key
+    secret-key: test-secret
     region: eu-central-1
     user-data-bucket:
       name: test-bucket
+    limits:
+      min-file-part-size: 5242880 # 5mb
+      max-file-part-size: 33554432 # 32mb
+      max-parts-num: 10000

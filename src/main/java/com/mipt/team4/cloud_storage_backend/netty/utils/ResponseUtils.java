@@ -15,10 +15,14 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
+import lombok.extern.slf4j.Slf4j;
+
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.function.Function;
 
+@Slf4j
 public class ResponseUtils {
 
   public static void sendInternalServerErrorAndClose(ChannelHandlerContext ctx) {
@@ -140,5 +144,51 @@ public class ResponseUtils {
     root.put("id", entityId.toString());
 
     ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, root);
+  }
+
+  public static void sendFile(ChannelHandlerContext ctx,
+                              byte[] fileData,
+                              String filename,
+                              String mimeType) {
+    try {
+      log.info("sendFile called with filename: {}, size: {}", filename, fileData.length);
+
+      // Кодируем имя файла для безопасной передачи в HTTP заголовках
+      String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8)
+              .replace("+", "%20");
+
+      // Создаем полный HTTP ответ с данными файла
+      FullHttpResponse response = new DefaultFullHttpResponse(
+              HttpVersion.HTTP_1_1,
+              HttpResponseStatus.OK,
+              Unpooled.wrappedBuffer(fileData)
+      );
+
+      response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173");
+      response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, OPTIONS");
+      response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS, "X-Auth-Token, X-Share-Password, Content-Type");
+      response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
+
+      // Устанавливаем заголовки для скачивания
+      response.headers().set(HttpHeaderNames.CONTENT_TYPE,
+              mimeType != null && !mimeType.isEmpty() ? mimeType : "application/octet-stream");
+      response.headers().set(HttpHeaderNames.CONTENT_DISPOSITION,
+              "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
+      response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileData.length);
+      response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
+      response.headers().set(HttpHeaderNames.PRAGMA, "no-cache");
+      response.headers().set(HttpHeaderNames.EXPIRES, "0");
+
+      log.info("Response headers set, sending...");
+
+      // Отправляем ответ и закрываем соединение
+      ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+
+      log.info("File sent successfully");
+
+    } catch (Exception e) {
+      log.error("Error sending file", e);
+      sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error sending file: " + e.getMessage());
+    }
   }
 }

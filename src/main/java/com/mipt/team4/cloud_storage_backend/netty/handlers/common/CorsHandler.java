@@ -47,10 +47,12 @@ public class CorsHandler extends ChannelDuplexHandler {
           "X-File-New-Visibility",
           "X-File-New-Tags",
           "X-Payment-Token",
-          "X-Payment-Method");
+          "X-Payment-Method",
+              "X-Share-Password",
+              "X-Share-Token");
 
   private static final String EXPOSE_HEADERS =
-      String.join(", ", "X-File-Name", "X-File-Size", "X-File-Path");
+      String.join(", ", "X-File-Name", "X-File-Size", "X-File-Path", "X-Share-Url", "X-Share-Token");
 
   private static final String CACHE_CONTROL =
       String.join(", ", "no-store", "no-cache", "must-revalidate");

@@ -1,4 +1,6 @@
 export const BASE = "https://localhost:8443/api";
+export const API_BASE = "https://localhost:8443/api";
+export const PUBLIC_BASE = "https://localhost:8443";
 
 async function parseJsonSafe(res) {
   try {
@@ -752,6 +754,240 @@ export const updateUserInfo = async (token, updates) => {
     console.error("Update error:", error);
     throw error;
   }
+};
+
+export const createShareLink = async (token, fileId, options = {}) => {
+  console.log("=== CREATE SHARE LINK ===");
+  console.log("Token provided:", token ? "yes" : "no");
+
+  const {
+    shareType = 'PUBLIC',
+    expiresAt = null,
+    maxDownloads = null,
+    password = null,
+    recipientUserIds = []
+  } = options;
+
+  const params = new URLSearchParams();
+  params.append('fileId', fileId);
+  params.append('shareType', shareType);
+  if (expiresAt) params.append('expiresAt', expiresAt);
+  if (maxDownloads) params.append('maxDownloads', maxDownloads);
+  if (password) params.append('password', password);
+  recipientUserIds.forEach(id => params.append('recipientUserIds', id));
+
+  const url = `${BASE}/shares?${params.toString()}`;
+  console.log("Request URL:", url);
+
+  const response = await fetchWithTokenRefresh(url, {
+    method: "POST",
+    headers: {
+      "Accept": "application/json"
+    }
+  }, token);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to create share: ${response.status} ${errorText}`);
+  }
+
+  return await response.json();
+};
+
+export const getShareInfo = async (token, shareToken) => {
+  console.log("=== GET SHARE INFO ===");
+
+  const url = `${BASE}/api/shares/info/${shareToken}`;
+  console.log("Request URL:", url);
+
+  const response = await fetchWithTokenRefresh(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json"
+    }
+  }, token);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to get share info: ${response.status} ${errorText}`);
+  }
+
+  return await response.json();
+};
+
+export const downloadSharedFile = async (shareToken, password = null) => {
+  console.log("=== DOWNLOAD SHARED FILE ===");
+  console.log("Share token:", shareToken);
+  console.log("PUBLIC_BASE:", PUBLIC_BASE);
+
+  const url = `${PUBLIC_BASE}/s/${shareToken}`;
+  console.log("Request URL:", url);
+
+  const headers = {};
+  if (password) {
+    headers['X-Share-Password'] = password;
+  }
+  console.log("Request headers:", headers);
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+      credentials: 'omit'
+    });
+
+    console.log("Response status:", response.status);
+    console.log("Response status text:", response.statusText);
+    console.log("Response headers:", [...response.headers.entries()]);
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.log("Password required");
+        throw new Error('PASSWORD_REQUIRED');
+      }
+      if (response.status === 403) {
+        console.log("Invalid password");
+        throw new Error('INVALID_PASSWORD');
+      }
+      if (response.status === 404) {
+        console.log("Share not found");
+        throw new Error('NOT_FOUND');
+      }
+
+      const errorText = await response.text();
+      console.error("Error response:", errorText);
+      throw new Error(`Failed to download: ${response.status} ${errorText}`);
+    }
+
+    const contentType = response.headers.get('Content-Type');
+    console.log("Content-Type:", contentType);
+
+    if (contentType && contentType.includes('application/json')) {
+      const json = await response.json();
+      console.error("Server returned JSON instead of file:", json);
+      throw new Error('Invalid response format - server returned JSON');
+    }
+
+    const blob = await response.blob();
+    console.log("Blob received, size:", blob.size);
+
+    if (blob.size === 0) {
+      console.error("Blob is empty!");
+      throw new Error('Empty file received');
+    }
+
+    const contentDisposition = response.headers.get('Content-Disposition');
+    console.log("Content-Disposition:", contentDisposition);
+
+    let filename = 'download';
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '');
+        try {
+          filename = decodeURIComponent(filename);
+        } catch (e) {
+          console.warn("Could not decode filename:", filename);
+        }
+      }
+    }
+
+    console.log("Filename:", filename);
+
+    return { blob, filename };
+
+  } catch (error) {
+    console.error("Download error:", error);
+    throw error;
+  }
+};
+
+export const validateSharePassword = async (shareToken, password) => {
+  console.log("=== VALIDATE SHARE PASSWORD ===");
+
+  const params = new URLSearchParams();
+  params.append('shareToken', shareToken);
+
+  const url = `${BASE}/api/shares/validate?${params.toString()}`;
+  console.log("Request URL:", url);
+
+  const response = await fetchWithTokenRefresh(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ password })
+  }, null); // Не требует токена
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Password validation failed: ${response.status} ${errorText}`);
+  }
+
+  return await response.json();
+};
+
+export const deactivateShare = async (token, shareId) => {
+  console.log("=== DEACTIVATE SHARE ===");
+
+  const url = `${BASE}/api/shares/${shareId}`;
+  console.log("Request URL:", url);
+
+  const response = await fetchWithTokenRefresh(url, {
+    method: "DELETE",
+    headers: {
+      "Accept": "application/json"
+    }
+  }, token);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to deactivate share: ${response.status} ${errorText}`);
+  }
+
+  return await response.json();
+};
+
+export const getUserShares = async (token) => {
+  console.log("=== GET USER SHARES ===");
+
+  const url = `${BASE}/api/shares/user`;
+  console.log("Request URL:", url);
+
+  const response = await fetchWithTokenRefresh(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json"
+    }
+  }, token);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to get user shares: ${response.status} ${errorText}`);
+  }
+
+  return await response.json();
+};
+
+export const getFileShares = async (token, fileId) => {
+  console.log("=== GET FILE SHARES ===");
+
+  const url = `${BASE}/api/shares/file/${fileId}`;
+  console.log("Request URL:", url);
+
+  const response = await fetchWithTokenRefresh(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json"
+    }
+  }, token);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to get file shares: ${response.status} ${errorText}`);
+  }
+
+  return await response.json();
 };
 
 export async function refreshTokenRequest(refreshToken) {

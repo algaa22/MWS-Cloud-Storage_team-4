@@ -135,19 +135,15 @@ public class UserJpaRepositoryAdapter {
     return jpaRepository
             .findStorageUsageById(userId)
             .map(projection -> {
-              // Безопасное получение usedStorage
               long used = projection.getUsedStorage() != null ?
                       projection.getUsedStorage() : 0L;
 
-              // Безопасное получение freeStorageLimit (по умолчанию 5GB)
               long freeLimit = projection.getFreeStorageLimit() != null ?
                       projection.getFreeStorageLimit() : 5L * 1024 * 1024 * 1024;
 
-              // Безопасное получение paidStorageLimit (по умолчанию 0)
               long paidLimit = projection.getPaidStorageLimit() != null ?
                       projection.getPaidStorageLimit() : 0L;
 
-              // Общий лимит = бесплатный + платный
               long totalLimit = freeLimit + paidLimit;
 
               return new StorageUsage(used, totalLimit);

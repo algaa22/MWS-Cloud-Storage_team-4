@@ -99,7 +99,6 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
                   "FROM UserEntity u WHERE u.id = :userId")
   Optional<StorageUsageProjection> findStorageUsageById(@Param("userId") UUID userId);
 
-  // Поиск пользователей с истекающим тарифом по статусу
   @Query(
       "SELECT u FROM UserEntity u WHERE u.tariffEndDate BETWEEN :from AND :to AND u.userStatus = :status")
   List<UserEntity> findAllByTariffEndDateBetweenAndUserStatus(
@@ -107,23 +106,18 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
       @Param("to") LocalDateTime to,
       @Param("status") UserStatus status);
 
-  // Поиск пользователей с истекшим тарифом по статусу
   @Query("SELECT u FROM UserEntity u WHERE u.tariffEndDate < :now AND u.userStatus = :status")
   List<UserEntity> findAllByTariffEndDateBeforeAndUserStatus(
       @Param("now") LocalDateTime now, @Param("status") UserStatus status);
 
-  // Поиск пользователей по статусу и дате удаления
   List<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
       @Param("status") UserStatus status, @Param("date") LocalDateTime date);
 
-  // Поиск пользователей с истекшим триалом и без купленного тарифа
   @Query("SELECT u FROM UserEntity u WHERE u.trialEndDate < :now AND u.tariffPlan IS NULL")
   List<UserEntity> findAllByTrialEndDateBeforeAndTariffPlanIsNull(@Param("now") LocalDateTime now);
 
-  // Поиск пользователей с триалом, начавшимся в определенный период
   List<UserEntity> findAllByTrialStartDateBetween(LocalDateTime start, LocalDateTime end);
 
-  // Для обратной совместимости, если нужны старые методы
   @Deprecated
   List<UserEntity> findAllByTariffEndDateBetweenAndIsActiveTrue(
       LocalDateTime from, LocalDateTime to);

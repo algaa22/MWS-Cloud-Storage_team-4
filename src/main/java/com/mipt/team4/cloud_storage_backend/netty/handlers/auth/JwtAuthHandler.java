@@ -26,6 +26,8 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
       Set.of(ApiEndpoints.AUTH_REGISTER, ApiEndpoints.AUTH_LOGIN, ApiEndpoints.AUTH_REFRESH);
 
   private static final String AUTH_HEADER = "X-Auth-Token";
+  private static final Set<String> PUBLIC_PATHS =
+          Set.of("/s/");
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -35,13 +37,21 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
     }
 
     String path = request.uri().split("\\?")[0];
+    System.out.println("=== JwtAuthHandler processing path: " + path);
 
     if (AUTH_WHITELIST.contains(path)) {
+      System.out.println("Path in whitelist, allowing without token");
+      ctx.fireChannelRead(request);
+      return;
+    }
+    if (isPublicPath(path)) {
+      System.out.println("Public path /s/, allowing without token");
       ctx.fireChannelRead(request);
       return;
     }
 
     String token = request.headers().get(AUTH_HEADER);
+    System.out.println("Token present: " + (token != null && !token.isBlank()));
     if (token == null || token.isBlank()) {
       throw new MissingAuthTokenException();
     }
@@ -54,5 +64,8 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
     UUID userId = sessionDto.get().userId();
     ctx.channel().attr(NettyAttributes.USER_ID).set(userId);
     ctx.fireChannelRead(request);
+  }
+  private boolean isPublicPath(String path) {
+    return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
   }
 }

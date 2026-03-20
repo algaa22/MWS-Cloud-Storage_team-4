@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
+import ShareModal from './ShareModal';
+import { createShareLink, getFileShares, deactivateShare } from "../api";
 
 import {
   getFiles,
@@ -62,6 +64,9 @@ export default function FileBrowser() {
   const [trashFiles, setTrashFiles] = useState([]);
   const [trashLoading, setTrashLoading] = useState(false);
   const [selectedTrashItems, setSelectedTrashItems] = useState(new Set());
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shares, setShares] = useState([]);
+  const [showSharesList, setShowSharesList] = useState(false);
 
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
@@ -108,7 +113,6 @@ export default function FileBrowser() {
     loadData();
   }, [token, currentPath]);
 
-// Добавьте этот useEffect для обновления при возвращении на страницу
 useEffect(() => {
   const handleFocus = () => {
     console.log("Window focused, refreshing user info...");
@@ -122,7 +126,6 @@ useEffect(() => {
   };
 }, [token]);
 
-// Добавьте этот useEffect для проверки sessionStorage при монтировании
 useEffect(() => {
   const shouldRefresh = sessionStorage.getItem('refreshStorage');
   if (shouldRefresh === 'true') {
@@ -132,23 +135,20 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  // Регистрируем метод для доступа из других компонентов
   window.refreshStorageInfo = refreshStorageInfo;
   console.log("✅ refreshStorageInfo registered globally");
 
   return () => {
-    // Очищаем при размонтировании
     delete window.refreshStorageInfo;
     console.log("❌ refreshStorageInfo unregistered");
   };
-}, [token]); // Важно: зависимость от token
+}, [token]);
 
 useEffect(() => {
   const handleStorageUpdate = async (event) => {
     console.log("📡 Received storage-updated event", event.detail);
 
     if (event.detail && event.detail.usedStorage !== undefined) {
-      // Обновляем storageInfo из события
       const userData = event.detail;
       const totalStorageLimit = userData.totalStorageLimit ||
                                 (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
@@ -164,10 +164,8 @@ useEffect(() => {
       });
       console.log("✅ Storage info updated from event:", { usedStorage, totalStorageLimit });
 
-      // Также обновляем список файлов
       await fetchFiles();
     } else {
-      // Если данных нет, просто обновляем через API
       await refreshStorageInfo();
       await fetchFiles();
     }
@@ -190,25 +188,22 @@ useEffect(() => {
     delete window.refreshStorageInfo;
     console.log("❌ Global storage methods unregistered");
   };
-}, [token, files]); // Добавили files в зависимости
+}, [token, files]);
 
 useEffect(() => {
-  // Регистрируем методы для доступа из других компонентов
   window.refreshStorageInfo = refreshStorageInfo;
   window.refreshStorageFromFiles = refreshStorageFromFiles;
-  window.forceStorageUpdate = forceStorageUpdate; // Добавьте эту строку
+  window.forceStorageUpdate = forceStorageUpdate;
   console.log("✅ Global storage methods registered");
 
   return () => {
-    // Очищаем при размонтировании
     delete window.refreshStorageInfo;
     delete window.refreshStorageFromFiles;
-    delete window.forceStorageUpdate; // Добавьте эту строку
+    delete window.forceStorageUpdate;
     console.log("❌ Global storage methods unregistered");
   };
 }, [token]);
 
-// Добавьте после других useEffect в FileBrowser.js
 useEffect(() => {
   console.log("📊 Current storage info:", storageInfo);
   console.log("📁 Current files:", files.length, "files, total size:",
@@ -255,7 +250,6 @@ const refreshStorageFromFiles = () => {
     }
   };
 
-  // Функция удаления тега
   const handleRemoveSearchTag = (tagToRemove) => {
     setSearchTags(searchTags.filter(tag => tag !== tagToRemove));
   };
@@ -379,7 +373,6 @@ const refreshStorageInfo = async () => {
     if (userData.storageInfo) {
       setStorageInfo(userData.storageInfo);
     } else {
-      // Если нет storageInfo, вычисляем вручную
       const totalStorageLimit = userData.totalStorageLimit ||
                                 (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
                                 (userData.paidStorageLimit || 0);
@@ -600,9 +593,9 @@ const handleSoftDelete = async (item) => {
       } else {
         await softDeleteFile(token, item.id);
       }
-      await fetchFiles(); // Обновляем список файлов
-      await loadStorageInfo(); // Обновляем информацию о хранилище
-      await loadTrashFiles(); // ← Добавьте эту строку для обновления корзины
+      await fetchFiles();
+      await loadStorageInfo();
+      await loadTrashFiles();
       setSuccess(`"${itemName}" перемещен(а) в корзину`);
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
@@ -612,12 +605,11 @@ const handleSoftDelete = async (item) => {
   }
 };
 
-// Обработчик восстановления из корзины
 const handleRestoreFromTrash = async (id) => {
   try {
     await restoreFile(token, id);
-    await loadTrashFiles(); // Обновляем корзину
-    await fetchFiles(); // Обновляем основное хранилище
+    await loadTrashFiles();
+    await fetchFiles();
     setSuccess("Файл восстановлен");
     setTimeout(() => setSuccess(""), 2000);
   } catch (err) {
@@ -640,12 +632,11 @@ const loadTrashFiles = async () => {
   }
 };
 
-// Обработчик безвозвратного удаления
 const handlePermanentDelete = async (id) => {
   if (window.confirm("Удалить файл безвозвратно? Это действие нельзя отменить!")) {
     try {
       await permanentDeleteFile(token, id);
-      await loadTrashFiles(); // Обновляем корзину
+      await loadTrashFiles();
       setSuccess("Файл удален навсегда");
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
@@ -655,12 +646,11 @@ const handlePermanentDelete = async (id) => {
   }
 };
 
-// Обработчик очистки корзины
 const handleEmptyTrash = async () => {
   if (window.confirm("Очистить корзину? Все файлы будут удалены безвозвратно!")) {
     try {
       const result = await emptyTrash(token);
-      await loadTrashFiles(); // Обновляем корзину
+      await loadTrashFiles();
       setSuccess(`Корзина очищена. Удалено: ${result.success} файлов`);
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
@@ -670,7 +660,6 @@ const handleEmptyTrash = async () => {
   }
 };
 
-// Обработчик выбора всех файлов в корзине
 const handleSelectAllTrash = () => {
   if (selectedTrashItems.size === trashFiles.length) {
     setSelectedTrashItems(new Set());
@@ -679,7 +668,6 @@ const handleSelectAllTrash = () => {
   }
 };
 
-// Обработчик выбора файла в корзине
 const handleSelectTrashItem = (id) => {
   const newSelected = new Set(selectedTrashItems);
   if (newSelected.has(id)) {
@@ -690,7 +678,6 @@ const handleSelectTrashItem = (id) => {
   setSelectedTrashItems(newSelected);
 };
 
-// Обработчик восстановления выбранных
 const handleRestoreSelected = async () => {
   if (selectedTrashItems.size === 0) return;
 
@@ -709,7 +696,6 @@ const handleRestoreSelected = async () => {
   }
 };
 
-// Обработчик удаления выбранных
 const handleDeleteSelected = async () => {
   if (selectedTrashItems.size === 0) return;
 
@@ -762,8 +748,8 @@ const handleDeleteSelected = async () => {
               }
                 const trashCheck = await getTrashFiles(token);
                 console.log("Files in trash after delete:", trashCheck);
-              await fetchFiles(); // обновляем список файлов
-              await loadStorageInfo(); // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+              await fetchFiles();
+              await loadStorageInfo();
               await loadTrashFiles();
               setSuccess(`"${itemName}" перемещен(а) в корзину`);
               setTimeout(() => setSuccess(""), 2000);
@@ -841,7 +827,6 @@ const handleDeleteSelected = async () => {
     }
   };
 
-// Добавьте этот метод в компонент FileBrowser
 const refreshUserInfo = async () => {
   if (!token) return;
   setStorageLoading(true);
@@ -852,7 +837,6 @@ const refreshUserInfo = async () => {
     if (userData.storageInfo) {
       setStorageInfo(userData.storageInfo);
     } else {
-      // Если нет storageInfo, вычисляем вручную
       const totalStorageLimit = userData.totalStorageLimit ||
                                 (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
                                 (userData.paidStorageLimit || 0);
@@ -1060,7 +1044,6 @@ const refreshUserInfo = async () => {
                         ) : (
                           <button
                             onClick={() => {
-                              // Переходим к выбранной папке
                               const newHistory = navHistory.slice(0, index + 1);
                               setNavHistory(newHistory);
                               setCurrentPath(folder.id);
@@ -1563,25 +1546,40 @@ const refreshUserInfo = async () => {
                 </div>
               ))}
 
-              {files.map((file) => (
-                <div
-                  key={file.id || file.fullPath}
-                  onClick={(e) => handleItemClick(file, e)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setSelectedItem(file);
-                    setShowItemMenu(true);
-                    setItemMenuPosition({ x: e.clientX, y: e.clientY });
-                  }}
-                  className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group"
-                >
-                  <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">
-                    {getFileIcon(file)}
-                  </div>
-                  <p className="truncate text-sm font-medium">{file.name}</p>
-                  <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
-                </div>
-              ))}
+{files.map((file) => (
+  <div
+    key={file.id || file.fullPath}
+    onClick={(e) => handleItemClick(file, e)}
+    onContextMenu={(e) => {
+      e.preventDefault();
+      setSelectedItem(file);
+      setShowItemMenu(true);
+      setItemMenuPosition({ x: e.clientX, y: e.clientY });
+    }}
+    className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group relative"
+  >
+    <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">
+      {getFileIcon(file)}
+    </div>
+    <p className="truncate text-sm font-medium">{file.name}</p>
+    <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
+
+    {/* Кнопка шаринга */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setSelectedItem(file);
+        setShowShareModal(true);
+      }}
+      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-500/20 hover:bg-blue-500/30 p-1.5 rounded-lg"
+      title="Поделиться"
+    >
+      <svg className="w-4 h-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+      </svg>
+    </button>
+  </div>
+))}
             </div>
           </>
         )}
@@ -1972,6 +1970,45 @@ const refreshUserInfo = async () => {
           </div>
         </>
       )}
-    </div>
-  );
-}
+
+  {showShareModal && selectedItem && (
+            <ShareModal
+              file={selectedItem}
+              token={token}
+              onClose={() => {
+                setShowShareModal(false);
+                setSelectedItem(null);
+              }}
+              onShareCreated={(share) => {
+                console.log('Share created:', share);
+                setSuccess('Ссылка создана!');
+                setTimeout(() => setSuccess(''), 2000);
+              }}
+            />
+          )}
+
+        {showItemMenu && selectedItem && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowItemMenu(false)} />
+            <div className="fixed bg-gray-800 rounded-xl shadow-2xl py-2 z-50 min-w-[200px]" style={{ left: itemMenuPosition.x, top: itemMenuPosition.y }}>
+              {selectedItem.type === "file" && (
+                <button onClick={() => handleFileAction("download")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
+                  📥 Скачать
+                </button>
+              )}
+              <button onClick={() => handleFileAction("info")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
+                ℹ️ Информация
+              </button>
+              <div className="border-t border-white/20 my-1" />
+              <button
+                onClick={() => handleFileAction("delete")}
+                className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
+              >
+                {selectedItem.type === "folder" ? "🗑️ Удалить папку" : "🗑️ Удалить файл"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }

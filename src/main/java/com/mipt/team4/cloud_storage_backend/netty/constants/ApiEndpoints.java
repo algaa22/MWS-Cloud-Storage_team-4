@@ -9,7 +9,7 @@ public class ApiEndpoints {
   public static final String USERS_PREFIX = API_PREFIX + "/users";
   public static final String AUTH_PREFIX = USERS_PREFIX + "/auth";
   public static final String TARIFF_PREFIX = USERS_PREFIX + "/tariff";
-
+  public static final String SHARES_PREFIX = API_PREFIX + "/shares";
   // Files (Aggregated)
   public static final String FILES_SIMPLE_UPLOAD = FILES_PREFIX + "/upload";
   public static final String FILES_CHUNKED_UPLOAD = FILES_SIMPLE_UPLOAD + "/chunked";
@@ -36,4 +36,13 @@ public class ApiEndpoints {
   public static final String TARIFF_UPDATE_PAYMENT = TARIFF_PREFIX + "/update-payment";
   public static final String TARIFF_INFO = TARIFF_PREFIX + "/info";
   public static final String TARIFF_PLANS = TARIFF_PREFIX + "/plans";
+
+  // Shares
+  public static final String SHARES_CREATE = SHARES_PREFIX;
+  public static final String SHARES_GET_INFO = SHARES_PREFIX + "/info/{token}";
+  public static final String SHARES_DOWNLOAD = "/s/{token}";
+  public static final String SHARES_VALIDATE_PASSWORD = SHARES_PREFIX + "/validate";
+  public static final String SHARES_DEACTIVATE = SHARES_PREFIX + "/{shareId}";
+  public static final String SHARES_USER = SHARES_PREFIX + "/user";
+  public static final String SHARES_FILE = SHARES_PREFIX + "/file/{fileId}";
 }

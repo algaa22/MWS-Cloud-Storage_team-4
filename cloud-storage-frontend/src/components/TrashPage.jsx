@@ -43,7 +43,6 @@ export default function TrashPage() {
   const refreshStorage = async () => {
     console.log("🔄 Refreshing storage from TrashPage");
 
-    // Способ 1: через глобальный метод forceStorageUpdate
     if (window.forceStorageUpdate) {
       console.log("Calling window.forceStorageUpdate from TrashPage");
       await window.forceStorageUpdate();
@@ -51,13 +50,11 @@ export default function TrashPage() {
       return;
     }
 
-    // Способ 2: через getUserInfo и событие
     try {
       console.log("Getting user info for storage update...");
       const userData = await getUserInfo(token);
       console.log("User data received:", userData);
 
-      // Отправляем событие с данными
       window.dispatchEvent(new CustomEvent('storage-updated', {
         detail: userData
       }));
@@ -65,7 +62,6 @@ export default function TrashPage() {
     } catch (err) {
       console.error("Failed to get user info:", err);
 
-      // Способ 3: через refreshStorageInfo
       if (window.refreshStorageInfo) {
         console.log("Falling back to refreshStorageInfo");
         window.refreshStorageInfo();
@@ -99,7 +95,6 @@ export default function TrashPage() {
       await restoreFile(token, id);
       console.log("✅ File restored successfully");
 
-      // Оптимистичное обновление UI
       setFiles(prevFiles => prevFiles.filter(f => f.id !== id));
       setSelectedFiles(prev => {
         const newSet = new Set(prev);
@@ -107,7 +102,6 @@ export default function TrashPage() {
         return newSet;
       });
 
-      // Обновляем информацию о хранилище
       await refreshStorage();
 
       setSuccess("Файл восстановлен");
@@ -130,7 +124,6 @@ export default function TrashPage() {
       setActionInProgress(true);
       console.log(`🔄 Restoring ${idsToRestore.length} files...`);
 
-      // Оптимистичное обновление UI
       setFiles(prevFiles => prevFiles.filter(f => !idsToRestore.includes(f.id)));
       setSelectedFiles(new Set());
 
@@ -147,7 +140,6 @@ export default function TrashPage() {
 
       console.log(`✅ Restored ${successCount} files`);
 
-      // Обновляем информацию о хранилище
       await refreshStorage();
 
       setSuccess(`Восстановлено ${successCount} файлов`);
@@ -168,7 +160,6 @@ export default function TrashPage() {
     try {
       setActionInProgress(true);
 
-      // Оптимистичное удаление из UI
       setFiles(prevFiles => prevFiles.filter(f => f.id !== id));
       setSelectedFiles(prev => {
         const newSet = new Set(prev);
@@ -207,7 +198,6 @@ export default function TrashPage() {
     try {
       setActionInProgress(true);
 
-      // Оптимистичное удаление из UI
       setFiles(prevFiles => prevFiles.filter(f => !idsToDelete.includes(f.id)));
       setSelectedFiles(new Set());
 
@@ -254,7 +244,6 @@ export default function TrashPage() {
     try {
       setActionInProgress(true);
 
-      // Оптимистичное удаление из UI
       setFiles([]);
       setSelectedFiles(new Set());
 

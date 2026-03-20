@@ -59,11 +59,13 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
     """)
   void softDeleteRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
-  @Query(
-      "UPDATE StorageEntity s SET s.isDeleted = false, s.deletedAt = NULL, s.updatedAt = CURRENT_TIMESTAMP "
-          + "WHERE s.id = :id AND s.userId = :userId")
-  void restore(@Param("userId") UUID userId, @Param("id") UUID id);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(nativeQuery = true, value = """
+    UPDATE files 
+    SET is_deleted = false, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP 
+    WHERE id = :id AND user_id = :userId
+""")
+    void restore(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(

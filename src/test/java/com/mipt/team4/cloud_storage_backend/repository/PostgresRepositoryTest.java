@@ -1,8 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.repository;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
@@ -27,6 +24,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @Tag("integration")
 @DataJpaTest
@@ -100,6 +99,21 @@ public class PostgresRepositoryTest extends BasePostgresTest {
         return directoryEntity;
     }
 
+    private void assertEntityIsDeleted(StorageEntity entity) {
+        assertTrue(entity.isDeleted());
+        assertNotNull(entity.getDeletedAt());
+    }
+
+    private void assertEntityIsActive(StorageEntity entity) {
+        assertFalse(entity.isDeleted());
+        assertNull(entity.getDeletedAt());
+    }
+
+    private StorageEntity refresh(StorageEntity entity) {
+        return storageJpaRepositoryAdapter.getIncludeDeleted(entity.getUserId(), entity.getId())
+                .orElseThrow(() -> new AssertionError("Entity not found: " + entity.getId()));
+    }
+
   @Test
   void fileExists_ShouldReturnTrue_WhenFileExists() {
     assertTrue(
@@ -132,21 +146,16 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     assertFalse(storageJpaRepositoryAdapter.exists(testFileEntity.getUserId(), null, uniqueName));
   }
 
-
     @Test
     public void shouldSoftDeleteFile() {
         StorageEntity testFileEntity = addTestFile(null, "test-name");
-        assertFalse(testFileEntity.isDeleted());
+        assertEntityIsActive(testFileEntity);
 
         storageJpaRepositoryAdapter.softDelete(testFileEntity.getUserId(), testFileEntity.getId(), testFileEntity.isDirectory());
 
-        StorageEntity updatedEntity = storageJpaRepositoryAdapter.getIncludeDeleted(
-                testFileEntity.getUserId(),
-                testFileEntity.getId()
-        ).orElseThrow();
+        testFileEntity = refresh(testFileEntity);
 
-        assertTrue(updatedEntity.isDeleted());
-        Assertions.assertNotNull(updatedEntity.getDeletedAt());
+        assertEntityIsDeleted(testFileEntity);
     }
 
     @Test
@@ -160,28 +169,60 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
         storageJpaRepositoryAdapter.softDelete(testDirectoryEntity.getUserId(), testDirectoryEntity.getId(), testDirectoryEntity.isDirectory());
 
-        StorageEntity updatedFileEntity = storageJpaRepositoryAdapter.getIncludeDeleted(
-                testFileEntity.getUserId(),
-                testFileEntity.getId()
-        ).orElseThrow();
+        testFileEntity = refresh(testFileEntity);
+        testDirectoryEntity = refresh(testDirectoryEntity);
+        otherFileEntity = refresh(otherFileEntity);
 
-        StorageEntity updatedDirectoryEntity = storageJpaRepositoryAdapter.getIncludeDeleted(
-                testDirectoryEntity.getUserId(),
-                testDirectoryEntity.getId()
-        ).orElseThrow();
+        assertEntityIsDeleted(testFileEntity);
+        assertEntityIsDeleted(testDirectoryEntity);
+        assertEntityIsActive(otherFileEntity);
+    }
 
-        StorageEntity updatedOtherFileEntity = storageJpaRepositoryAdapter.getIncludeDeleted(
-                otherFileEntity.getUserId(),
-                otherFileEntity.getId()
-        ).orElseThrow();
+    @Test
+    public void shouldRestoreFile() {
+        StorageEntity testFileEntity = addTestFile(null, "test-name");
+        assertEntityIsActive(testFileEntity);
+        storageJpaRepositoryAdapter.softDelete(testFileEntity.getUserId(), testFileEntity.getId(), testFileEntity.isDirectory());
 
-        assertTrue(updatedFileEntity.isDeleted());
-        Assertions.assertNotNull(updatedFileEntity.getDeletedAt());
+        testFileEntity = refresh(testFileEntity);
 
-        assertTrue(updatedDirectoryEntity.isDeleted());
-        Assertions.assertNotNull(updatedDirectoryEntity.getDeletedAt());
+        assertEntityIsDeleted(testFileEntity);
+        storageJpaRepositoryAdapter.restore(testFileEntity.getUserId(), testFileEntity.getId(), testFileEntity.isDirectory());
 
-        assertFalse(updatedOtherFileEntity.isDeleted());
+        testFileEntity = refresh(testFileEntity);
+
+        assertEntityIsActive(testFileEntity);
+    }
+
+    @Test
+    public void shouldRestoreDirectory() {
+        StorageEntity testDirectoryEntity = addTestDirectory(null, "test-dir");
+
+        StorageEntity testFileEntity = addTestFile(testDirectoryEntity.getId(), "test-name");
+        assertEntityIsActive(testFileEntity);
+
+        StorageEntity otherFileEntity = addTestFile(null, "other-name");
+
+        storageJpaRepositoryAdapter.softDelete(testDirectoryEntity.getUserId(), testDirectoryEntity.getId(), testDirectoryEntity.isDirectory());
+
+        testFileEntity = refresh(testFileEntity);
+        testDirectoryEntity = refresh(testDirectoryEntity);
+        otherFileEntity = refresh(otherFileEntity);
+
+        assertEntityIsDeleted(testFileEntity);
+        assertEntityIsDeleted(testDirectoryEntity);
+        assertEntityIsActive(otherFileEntity);
+
+        storageJpaRepositoryAdapter.restore(testDirectoryEntity.getUserId(), testDirectoryEntity.getId(), testDirectoryEntity.isDirectory());
+        storageJpaRepositoryAdapter.softDelete(otherFileEntity.getUserId(), otherFileEntity.getId(), otherFileEntity.isDirectory());
+
+        testFileEntity = refresh(testFileEntity);
+        testDirectoryEntity = refresh(testDirectoryEntity);
+        otherFileEntity = refresh(otherFileEntity);
+
+        assertEntityIsActive(testFileEntity);
+        assertEntityIsActive(testDirectoryEntity);
+        assertEntityIsDeleted(otherFileEntity);
     }
 
   @Test
@@ -199,7 +240,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
 
     assertTrue(storageJpaRepositoryAdapter.isDescendant(folder.getId(), childFile.getId()));
-
     assertFalse(storageJpaRepositoryAdapter.isDescendant(childFile.getId(), folder.getId()));
   }
 }

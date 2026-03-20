@@ -76,7 +76,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .build();
 
     storageJpaRepositoryAdapter.addFile(fileEntity);
-
     return fileEntity;
   }
 

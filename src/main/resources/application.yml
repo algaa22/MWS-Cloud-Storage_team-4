@@ -47,21 +47,20 @@ cors:
     allow-credentials: true
     max-age: 3600
 
-s3:
-  url: ${MINIO_URL}
-  username: ${MINIO_USERNAME}
-  password: ${MINIO_PASSWORD}
-  region: "eu-central-1"
-
-  limits:
-    min-file-part-size: 5242880 # 5mb
-    max-file-part-size: 33554432 # 32mb
-    max-parts-num: 10000
-
-  user-data-bucket:
-    name: user-data
-
 storage:
+  s3:
+    url: ${S3_URL}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
+    region: ${S3_REGION:eu-central-1}
+    user-data-bucket:
+      name: ${S3_BUCKET_NAME:user-data}
+    limits:
+      min-file-part-size: 5242880 # 5mb
+      max-file-part-size: 33554432 # 32mb
+      max-parts-num: 10000
+
+
   rest:
     max-aggregated-content-length: 1048576 # 1mb
     file-download-chunk-size: 65536 # 64 kb

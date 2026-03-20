@@ -8,7 +8,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      seaweedfs:
         condition: service_healthy
       notification-service:
         condition: service_started
@@ -17,9 +17,9 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: super_secret_password_123
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      MINIO_URL: ${MINIO_URL}
-      MINIO_USERNAME: ${MINIO_USERNAME}
-      MINIO_PASSWORD: ${MINIO_PASSWORD}
+      S3_URL: ${S3_URL}
+      S3_USERNAME: ${S3_USERNAME}
+      S3_PASSWORD: ${S3_PASSWORD}
       NOTIFICATION_SERVICE_URL: http://notification-service:8082
     networks:
       - cloud-network
@@ -59,28 +59,36 @@ services:
     networks:
       - cloud-network
 
-  minio:
-    image: minio/minio:latest
-    container_name: cloud-storage-minio
-    command: server /fileStream --console-address ":9001"
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: cloud-storage-seaweed
     environment:
-      - MINIO_ROOT_USER=${MINIO_USERNAME}
-      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
+      - WEED_S3_KEY=${S3_ACCESS_KEY}
+      - WEED_S3_SECRET=${S3_SECRET_KEY}
+    command: >
+      server -dir="/data"
+      -s3 -s3.port=8333 
+      -master.port=9333 
+      -volume.port=8080
+      -filer.port=8888
     ports:
-      - "9000:9000"  # S3 API
-      - "9001:9001"  # Admin Console
+      - "8333:8333" # S3 API
+      - "9333:9333" # Master Console / API
+      - "8888:8888" # Filer UI
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8333/"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - cloud-network
+    volumes:
+      - seaweed-data:/data
 
 volumes:
   postgres-data:
   file-storage:
-  minio-data:
+  seaweed-data:
 
 networks:
   cloud-network:

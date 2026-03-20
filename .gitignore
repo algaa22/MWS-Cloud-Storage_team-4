@@ -56,3 +56,5 @@ node_modules/
 /src/main/resources/ssl/server.csr
 /src/main/resources/ssl/server.key
 /src/main/resources/ssl/server.p12
+
+/etc/seaweedfs/s3.json

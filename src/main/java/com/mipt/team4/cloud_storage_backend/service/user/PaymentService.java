@@ -30,9 +30,7 @@ public class PaymentService {
       throw new InvalidPaymentTokenException("Payment token is required");
     }
 
-    // Здесь должна быть интеграция с платежным шлюзом
     try {
-      // Имитация вызова платежного шлюза
       boolean paymentSuccessful = simulatePaymentGatewayCall(userId, plan, paymentToken);
 
       if (!paymentSuccessful) {
@@ -43,7 +41,6 @@ public class PaymentService {
 
       log.info("Payment successful for user: {}", userId);
     } catch (PaymentException e) {
-      // Пробрасываем PaymentException дальше
       throw e;
     } catch (Exception e) {
       log.error("Payment processing failed for user: {}", userId, e);
@@ -74,7 +71,6 @@ public class PaymentService {
     }
 
     try {
-      // Имитация вызова платежного шлюза для автопродления
       boolean paymentSuccessful = simulateAutoRenewalCall(userId, plan, paymentMethodId);
 
       if (!paymentSuccessful) {
@@ -88,7 +84,6 @@ public class PaymentService {
           plan,
           paymentMethodId);
     } catch (PaymentException e) {
-      // Пробрасываем PaymentException дальше
       throw e;
     } catch (Exception e) {
       log.error("Auto-renewal failed for user: {}", userId, e);
@@ -98,27 +93,15 @@ public class PaymentService {
   }
 
   private boolean simulatePaymentGatewayCall(UUID userId, TariffPlan plan, String paymentToken) {
-    // Имитация успешного платежа
     log.debug(
         "Simulating payment gateway call for user: {}, amount: {} rub", userId, plan.getPriceRub());
-
-    // Для тестирования можно добавить случайные ошибки
-    // if (Math.random() < 0.1) {
-    //     return false;
-    // }
 
     return true;
   }
 
   private boolean simulateAutoRenewalCall(UUID userId, TariffPlan plan, String paymentMethodId) {
-    // Имитация успешного автопродления
     log.debug(
         "Simulating auto-renewal call for user: {}, amount: {} rub", userId, plan.getPriceRub());
-
-    // Для тестирования можно добавить случайные ошибки
-    // if (Math.random() < 0.1) {
-    //     return false;
-    // }
 
     return true;
   }

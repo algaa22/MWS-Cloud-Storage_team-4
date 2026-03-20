@@ -42,13 +42,11 @@ public class TariffService {
     UserEntity user =
         userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
-    // Проверяем, покупал ли пользователь когда-либо тариф
     if (user.getTariffPlan() != null) {
       log.info("User {} already purchased a tariff before, no trial period", userId);
       return;
     }
 
-    // Проверяем, не было ли уже пробного периода
     if (user.getTrialStartDate() != null) {
       log.info("User {} already had a trial period", userId);
       return;
@@ -71,18 +69,13 @@ public class TariffService {
     LocalDateTime now = LocalDateTime.now();
     LocalDateTime endDate = now.plusDays(plan.getDurationDays());
 
-    // Проверяем, покупает ли пользователь тариф впервые
     boolean isFirstPurchase = userEntity.getTariffPlan() == null;
-
-    // ВАЖНО: убираем рекурсивный вызов setupTrialPeriod здесь!
-    // Пробный период должен быть установлен ДО покупки, а не во время
 
     paymentService.processPayment(userId, plan, request.paymentToken());
 
     userRepository.updateTariff(
         userId, plan, now, endDate, request.autoRenew(), plan.getStorageLimit());
 
-    // Если это первая покупка, очищаем пробный период (если он был)
     if (isFirstPurchase && userEntity.getTrialEndDate() != null) {
       userRepository.updateTrialDates(userId, null, null);
     }
@@ -91,7 +84,6 @@ public class TariffService {
       userRepository.updatePaymentMethod(userId, request.paymentMethod());
     }
 
-    // Восстанавливаем полный доступ если пользователь был ограничен
     if (userEntity.getUserStatus() != UserStatus.ACTIVE) {
       userRepository.updateUserStatus(userId, UserStatus.ACTIVE);
       userRepository.updateScheduledDeletionDate(userId, null);
@@ -138,7 +130,6 @@ public class TariffService {
       daysLeft = (int) ChronoUnit.DAYS.between(LocalDateTime.now(), endDate);
     }
 
-    // Пробный период активен только если нет купленного тарифа
     boolean hasActiveTrial =
         userEntity.getTariffPlan() == null
             && userEntity.getTrialEndDate() != null
@@ -174,21 +165,17 @@ public class TariffService {
     return userEntity.getUserStatus() == UserStatus.ACTIVE;
   }
 
-  // Проверка просроченных подписок - запускается ежедневно
   @Scheduled(cron = "0 0 0 * * *") // Каждый день в полночь
   @Transactional
   public void checkExpiredSubscriptions() {
     LocalDateTime now = LocalDateTime.now();
 
-    // Находим пользователей с истекшим тарифом
     List<UserEntity> expiredUsers = userRepository.getUsersWithExpiredTariff(now);
 
     for (UserEntity user : expiredUsers) {
-      // Если включен автоплатеж - пробуем списать средства
       if (user.isAutoRenew() && user.getPaymentMethodId() != null) {
         try {
           paymentService.processAutoRenewal(user.getId(), user.getTariffPlan());
-          // Продлеваем подписку
           LocalDateTime newEndDate = now.plusDays(user.getTariffPlan().getDurationDays());
           userRepository.updateTariffEndDate(user.getId(), newEndDate);
           notificationClient.notifyTariffRenewed(
@@ -199,10 +186,8 @@ public class TariffService {
         }
       }
 
-      // Если не удалось списать - ограничиваем доступ
       userRepository.updateUserStatus(user.getId(), UserStatus.RESTRICTED);
 
-      // Устанавливаем дату удаления через 30 дней
       LocalDateTime deletionDate = now.plusDays(30);
       userRepository.updateScheduledDeletionDate(user.getId(), deletionDate);
 
@@ -215,7 +200,6 @@ public class TariffService {
     }
   }
 
-  // Проверка пользователей, ожидающих удаления - запускается ежедневно
   @Scheduled(cron = "0 0 1 * * *") // Каждый день в 1:00
   @Transactional
   public void processPendingDeletions() {
@@ -226,13 +210,11 @@ public class TariffService {
             UserStatus.RESTRICTED, now);
 
     for (UserEntity user : usersToDelete) {
-      // Удаляем файлы до размера бесплатного лимита (5GB), начиная с самых старых
       long filesToDeleteSize = user.getUsedStorage() - FREE_STORAGE_LIMIT;
       if (filesToDeleteSize > 0) {
         fileCleanupService.deleteOldestFiles(user.getId(), filesToDeleteSize);
       }
 
-      // Очищаем данные тарифа
       userRepository.updateTariff(user.getId(), null, null, null, false, null);
       userRepository.updateUserStatus(user.getId(), UserStatus.ACTIVE);
       userRepository.updateScheduledDeletionDate(user.getId(), null);
@@ -242,7 +224,6 @@ public class TariffService {
     }
   }
 
-  // Проверка завершения пробного периода
   @Scheduled(cron = "0 0 2 * * *") // Каждый день в 2:00
   @Transactional
   public void checkExpiredTrials() {
@@ -252,7 +233,6 @@ public class TariffService {
         userRepository.findAllByTrialEndDateBeforeAndTariffPlanIsNull(now);
 
     for (UserEntity user : expiredTrialUsers) {
-      // Очищаем данные триала
       userRepository.updateTrialDates(user.getId(), null, null);
 
       notificationClient.notifyTrialExpired(user.getEmail(), user.getUsername());
@@ -260,14 +240,12 @@ public class TariffService {
     }
   }
 
-  // Добавьте этот метод в TariffService.java
   @Transactional(readOnly = true)
   public boolean hasAccess(UUID userId) {
     try {
       UserEntity userEntity =
           userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
-      // Пользователь имеет доступ если он активен и его тариф не истек
       return userEntity.getUserStatus() == UserStatus.ACTIVE
           && (userEntity.getTariffEndDate() == null
               || userEntity.getTariffEndDate().isAfter(LocalDateTime.now()));

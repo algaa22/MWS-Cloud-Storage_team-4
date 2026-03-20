@@ -19,6 +19,10 @@ public class TestUtils {
         .withCommand(
             "server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json")
         .withClasspathResourceMapping("s3.json", "/etc/seaweedfs/s3.json", BindMode.READ_ONLY)
-        .waitingFor(Wait.forHttp("/").forStatusCode(200).forStatusCode(403).forPort(TestConstants.S3_INTERNAL_PORT));
+        .waitingFor(
+            Wait.forHttp("/")
+                .forStatusCode(200)
+                .forStatusCode(403)
+                .forPort(TestConstants.S3_INTERNAL_PORT));
   }
 }

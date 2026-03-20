@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.hc.core5.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -53,7 +52,8 @@ public class S3ContentRepository implements FileContentRepository {
             s3Client.headBucket(HeadBucketRequest.builder().bucket(bucketName).build());
             return true;
           } catch (S3Exception e) {
-            if (e.statusCode() == HttpStatus.SC_NOT_FOUND || e.statusCode() == HttpStatus.SC_FORBIDDEN) {
+            if (e.statusCode() == HttpStatus.SC_NOT_FOUND
+                || e.statusCode() == HttpStatus.SC_FORBIDDEN) {
               return false;
             }
             throw e;
@@ -67,10 +67,7 @@ public class S3ContentRepository implements FileContentRepository {
         () ->
             s3Client
                 .createMultipartUpload(
-                    CreateMultipartUploadRequest.builder()
-                        .bucket(bucketName)
-                        .key(s3Key)
-                        .build())
+                    CreateMultipartUploadRequest.builder().bucket(bucketName).key(s3Key).build())
                 .uploadId());
   }
 
@@ -138,9 +135,7 @@ public class S3ContentRepository implements FileContentRepository {
   @Override
   public InputStream downloadObject(String s3Key) {
     return wrapper.execute(
-        () ->
-            s3Client.getObject(
-                GetObjectRequest.builder().bucket(bucketName).key(s3Key).build()));
+        () -> s3Client.getObject(GetObjectRequest.builder().bucket(bucketName).key(s3Key).build()));
   }
 
   @Override
@@ -148,8 +143,7 @@ public class S3ContentRepository implements FileContentRepository {
     return wrapper.execute(
         () -> {
           try {
-            s3Client.headObject(
-                HeadObjectRequest.builder().bucket(bucketName).key(s3Key).build());
+            s3Client.headObject(HeadObjectRequest.builder().bucket(bucketName).key(s3Key).build());
             return true;
           } catch (NoSuchKeyException e) {
             return false;

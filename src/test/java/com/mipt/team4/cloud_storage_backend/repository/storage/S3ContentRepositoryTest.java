@@ -63,7 +63,8 @@ class S3ContentRepositoryTest {
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    String s3Url = "http://" + S3.getHost() + ":" + S3.getMappedPort(TestConstants.S3_INTERNAL_PORT);
+    String s3Url =
+        "http://" + S3.getHost() + ":" + S3.getMappedPort(TestConstants.S3_INTERNAL_PORT);
 
     registry.add("storage.s3.url", () -> s3Url);
     registry.add("storage.s3.access-key", () -> "test-key");

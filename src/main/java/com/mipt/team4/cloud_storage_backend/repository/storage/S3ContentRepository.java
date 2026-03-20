@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.hc.core5.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -17,11 +19,9 @@ import software.amazon.awssdk.services.s3.model.*;
 @Repository
 public class S3ContentRepository implements FileContentRepository {
 
-  private static final Multimap<String, String> EMPTY_MAP = ImmutableMultimap.of();
   private final StorageConfig storageConfig;
   private final S3Wrapper wrapper;
   private final String bucketName;
-  private final String region;
 
   private final S3Client s3Client;
 
@@ -31,12 +31,7 @@ public class S3ContentRepository implements FileContentRepository {
     this.wrapper = wrapper;
 
     this.bucketName = storageConfig.s3().userDataBucket().name();
-    this.region = storageConfig.s3().region();
     this.s3Client = s3Client;
-  }
-
-  private String getBucketName() {
-    return storageConfig.s3().userDataBucket().name();
   }
 
   @PostConstruct
@@ -63,7 +58,7 @@ public class S3ContentRepository implements FileContentRepository {
             s3Client.headBucket(HeadBucketRequest.builder().bucket(bucketName).build());
             return true;
           } catch (S3Exception e) {
-            if (e.statusCode() == 404 || e.statusCode() == 403) {
+            if (e.statusCode() == HttpStatus.SC_NOT_FOUND || e.statusCode() == HttpStatus.SC_FORBIDDEN) {
               return false;
             }
             throw e;
@@ -78,7 +73,7 @@ public class S3ContentRepository implements FileContentRepository {
             s3Client
                 .createMultipartUpload(
                     CreateMultipartUploadRequest.builder()
-                        .bucket(getBucketName())
+                        .bucket(bucketName)
                         .key(s3Key)
                         .build())
                 .uploadId());
@@ -91,7 +86,7 @@ public class S3ContentRepository implements FileContentRepository {
         () -> {
           UploadPartRequest uploadPartRequest =
               UploadPartRequest.builder()
-                  .bucket(getBucketName())
+                  .bucket(bucketName)
                   .key(s3Key)
                   .uploadId(uploadId)
                   .partNumber(partNum)
@@ -125,7 +120,7 @@ public class S3ContentRepository implements FileContentRepository {
 
           s3Client.completeMultipartUpload(
               CompleteMultipartUploadRequest.builder()
-                  .bucket(getBucketName())
+                  .bucket(bucketName)
                   .key(s3Key)
                   .uploadId(uploadId)
                   .multipartUpload(completedUpload)
@@ -139,7 +134,7 @@ public class S3ContentRepository implements FileContentRepository {
     wrapper.execute(
         () -> {
           s3Client.putObject(
-              PutObjectRequest.builder().bucket(getBucketName()).key(s3Key).build(),
+              PutObjectRequest.builder().bucket(bucketName).key(s3Key).build(),
               RequestBody.fromBytes(data));
           return null;
         });
@@ -150,7 +145,7 @@ public class S3ContentRepository implements FileContentRepository {
     return wrapper.execute(
         () ->
             s3Client.getObject(
-                GetObjectRequest.builder().bucket(getBucketName()).key(s3Key).build()));
+                GetObjectRequest.builder().bucket(bucketName).key(s3Key).build()));
   }
 
   @Override
@@ -159,7 +154,7 @@ public class S3ContentRepository implements FileContentRepository {
         () -> {
           try {
             s3Client.headObject(
-                HeadObjectRequest.builder().bucket(getBucketName()).key(s3Key).build());
+                HeadObjectRequest.builder().bucket(bucketName).key(s3Key).build());
             return true;
           } catch (NoSuchKeyException e) {
             return false;
@@ -172,7 +167,7 @@ public class S3ContentRepository implements FileContentRepository {
     wrapper.execute(
         () -> {
           s3Client.deleteObject(
-              DeleteObjectRequest.builder().bucket(getBucketName()).key(s3Key).build());
+              DeleteObjectRequest.builder().bucket(bucketName).key(s3Key).build());
           return null;
         });
   }

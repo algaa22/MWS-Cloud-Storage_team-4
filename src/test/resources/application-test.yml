@@ -14,9 +14,6 @@ storage:
   failsafe-retry:
     max-attempts: 1
   s3:
-    url: http://localhost:9000
-    access-key: test-key
-    secret-key: test-secret
     region: eu-central-1
     user-data-bucket:
       name: test-bucket

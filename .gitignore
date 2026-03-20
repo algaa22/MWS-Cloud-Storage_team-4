@@ -56,3 +56,6 @@ node_modules/
 /src/main/resources/ssl/server.csr
 /src/main/resources/ssl/server.key
 /src/main/resources/ssl/server.p12
+
+/src/test/resources/s3.json
+

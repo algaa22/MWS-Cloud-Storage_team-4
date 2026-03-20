@@ -7,6 +7,8 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotF
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+
+import org.apache.hc.core5.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
@@ -60,7 +62,7 @@ public class S3Wrapper {
 
       if (e instanceof NoSuchKeyException
           || e instanceof NoSuchBucketException
-          || s3Ex.statusCode() == 404) {
+          || s3Ex.statusCode() == HttpStatus.SC_NOT_FOUND) {
         return new StorageObjectNotFoundException("S3 object or bucket not found", e);
       }
 
@@ -68,7 +70,7 @@ public class S3Wrapper {
         return new UploadSessionNotFoundException(new RecoverableStorageException(e));
       }
 
-      if (s3Ex.statusCode() == 403) {
+      if (s3Ex.statusCode() == HttpStatus.SC_FORBIDDEN) {
         return new FatalStorageException("S3 Access Denied (check credentials/permissions)", e);
       }
     }
@@ -103,7 +105,7 @@ public class S3Wrapper {
 
     if (e instanceof S3Exception s3Ex) {
       int httpStatus = s3Ex.statusCode();
-      return httpStatus >= 500 || httpStatus == 429;
+      return httpStatus >= 500 || httpStatus == HttpStatus.SC_TOO_MANY_REQUESTS;
     }
 
     return false;

@@ -15,6 +15,8 @@ import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAda
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -79,6 +81,25 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     return fileEntity;
   }
 
+    private StorageEntity addTestDirectory(UUID parentId, String name)
+            throws StorageFileAlreadyExistsException {
+        StorageEntity directoryEntity =
+                StorageEntity.builder()
+                        .id(UUID.randomUUID())
+                        .userId(testUserUuid)
+                        .parentId(parentId)
+                        .name(name)
+                        .mimeType("application/directory")
+                        .size(42L)
+                        .isDirectory(true)
+                        .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
+                        .tags(List.of("some directory"))
+                        .build();
+
+        storageJpaRepositoryAdapter.addFile(directoryEntity);
+        return directoryEntity;
+    }
+
   @Test
   void fileExists_ShouldReturnTrue_WhenFileExists() {
     assertTrue(
@@ -110,6 +131,58 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     storageJpaRepositoryAdapter.hardDelete(testFileEntity.getUserId(), testFileEntity.getId());
     assertFalse(storageJpaRepositoryAdapter.exists(testFileEntity.getUserId(), null, uniqueName));
   }
+
+
+    @Test
+    public void shouldSoftDeleteFile() {
+        StorageEntity testFileEntity = addTestFile(null, "test-name");
+        assertFalse(testFileEntity.isDeleted());
+
+        storageJpaRepositoryAdapter.softDelete(testFileEntity.getUserId(), testFileEntity.getId(), testFileEntity.isDirectory());
+
+        StorageEntity updatedEntity = storageJpaRepositoryAdapter.getIncludeDeleted(
+                testFileEntity.getUserId(),
+                testFileEntity.getId()
+        ).orElseThrow();
+
+        assertTrue(updatedEntity.isDeleted());
+        Assertions.assertNotNull(updatedEntity.getDeletedAt());
+    }
+
+    @Test
+    public void shouldSoftDeleteDirectory() {
+        StorageEntity testDirectoryEntity = addTestDirectory(null, "test-dir");
+
+        StorageEntity testFileEntity = addTestFile(testDirectoryEntity.getId(), "test-name");
+        assertFalse(testFileEntity.isDeleted());
+
+        StorageEntity otherFileEntity = addTestFile(null, "other-name");
+
+        storageJpaRepositoryAdapter.softDelete(testDirectoryEntity.getUserId(), testDirectoryEntity.getId(), testDirectoryEntity.isDirectory());
+
+        StorageEntity updatedFileEntity = storageJpaRepositoryAdapter.getIncludeDeleted(
+                testFileEntity.getUserId(),
+                testFileEntity.getId()
+        ).orElseThrow();
+
+        StorageEntity updatedDirectoryEntity = storageJpaRepositoryAdapter.getIncludeDeleted(
+                testDirectoryEntity.getUserId(),
+                testDirectoryEntity.getId()
+        ).orElseThrow();
+
+        StorageEntity updatedOtherFileEntity = storageJpaRepositoryAdapter.getIncludeDeleted(
+                otherFileEntity.getUserId(),
+                otherFileEntity.getId()
+        ).orElseThrow();
+
+        assertTrue(updatedFileEntity.isDeleted());
+        Assertions.assertNotNull(updatedFileEntity.getDeletedAt());
+
+        assertTrue(updatedDirectoryEntity.isDeleted());
+        Assertions.assertNotNull(updatedDirectoryEntity.getDeletedAt());
+
+        assertFalse(updatedOtherFileEntity.isDeleted());
+    }
 
   @Test
   void hierarchyTest_ShouldDetectDescendant() throws StorageFileAlreadyExistsException {

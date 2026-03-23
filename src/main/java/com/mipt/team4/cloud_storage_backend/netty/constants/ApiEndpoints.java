@@ -10,6 +10,9 @@ public class ApiEndpoints {
   public static final String AUTH_PREFIX = USERS_PREFIX + "/auth";
   public static final String TARIFF_PREFIX = USERS_PREFIX + "/tariff";
 
+  // Infrastructure
+    public static final String HEALTHCHECK = "/health";
+
   // Files (Aggregated)
   public static final String FILES_SIMPLE_UPLOAD = FILES_PREFIX + "/upload";
   public static final String FILES_RESTORE = FILES_PREFIX + "/restore";

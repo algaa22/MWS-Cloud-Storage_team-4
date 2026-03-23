@@ -59,13 +59,16 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
     """)
   void softDeleteRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(nativeQuery = true, value = """
-    UPDATE files 
-    SET is_deleted = false, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP 
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      nativeQuery = true,
+      value =
+          """
+    UPDATE files
+    SET is_deleted = false, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
     WHERE id = :id AND user_id = :userId
 """)
-    void    restore(@Param("userId") UUID userId, @Param("id") UUID id);
+  void restore(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
@@ -96,11 +99,11 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   List<StorageEntity> findTrashByParentId(
       @Param("userId") UUID userId, @Param("parentId") UUID parentId);
 
-    @Query(
-            nativeQuery = true,
-            value = "SELECT * FROM files WHERE id = CAST(:id AS uuid) AND user_id = CAST(:userId AS uuid) AND is_deleted = true"
-    )
-    Optional<StorageEntity> findDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
+  @Query(
+      nativeQuery = true,
+      value =
+          "SELECT * FROM files WHERE id = CAST(:id AS uuid) AND user_id = CAST(:userId AS uuid) AND is_deleted = true")
+  Optional<StorageEntity> findDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying(flushAutomatically = true)
   @Query(

@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.user;
 
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageUsageProjection;
+import com.mipt.team4.cloud_storage_backend.model.storage.projection.StorageUsageProjection;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import java.time.LocalDateTime;

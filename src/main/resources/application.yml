@@ -24,6 +24,11 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+jackson:
+  max-nesting-depth: 32
+  max-string-length: 1048576 # 1 mb
+  max-number-length: 1000
+
 netty:
   enable-logging: false
   enable-https: true

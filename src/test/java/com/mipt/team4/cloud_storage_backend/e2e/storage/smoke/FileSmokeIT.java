@@ -125,25 +125,26 @@ public class FileSmokeIT extends BaseStorageIT {
     assertFileNotFound(currentUserToken, fileId);
   }
 
-    @Test
-    public void shouldSoftDeleteAndRestoreFile() throws IOException, InterruptedException {
-        UUID fileId = simpleUploadFile("restore-test-" + UUID.randomUUID() + ".txt");
-        byte[] content = TestFiles.SMALL_FILE.getData();
+  @Test
+  public void shouldSoftDeleteAndRestoreFile() throws IOException, InterruptedException {
+    UUID fileId = simpleUploadFile("restore-test-" + UUID.randomUUID() + ".txt");
+    byte[] content = TestFiles.SMALL_FILE.getData();
 
-        HttpResponse<String> deleteResponse =
-                fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId, false);
-        assertEquals(HttpStatus.SC_OK, deleteResponse.statusCode());
+    HttpResponse<String> deleteResponse =
+        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId, false);
+    assertEquals(HttpStatus.SC_OK, deleteResponse.statusCode());
 
-        FileChunkedTransferITUtils.DownloadResult downloadResult = chunkedITUtils.sendDownloadRequest(BaseIT.apacheClient, currentUserToken, fileId);
-        assertTrue(downloadResult.statusCode() >= 400);
+    FileChunkedTransferITUtils.DownloadResult downloadResult =
+        chunkedITUtils.sendDownloadRequest(BaseIT.apacheClient, currentUserToken, fileId);
+    assertTrue(downloadResult.statusCode() >= 400);
 
-        HttpResponse<String> restoreResponse =
-                fileOperationsITUtils.sendRestoreFileRequest(client, currentUserToken, fileId);
+    HttpResponse<String> restoreResponse =
+        fileOperationsITUtils.sendRestoreFileRequest(client, currentUserToken, fileId);
 
-        assertEquals(HttpStatus.SC_OK, restoreResponse.statusCode());
+    assertEquals(HttpStatus.SC_OK, restoreResponse.statusCode());
 
-        checkDownloadFile(fileId, content);
-    }
+    checkDownloadFile(fileId, content);
+  }
 
   @Test
   public void shouldChangeFilePath() throws IOException, InterruptedException {

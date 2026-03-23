@@ -7,16 +7,16 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Re
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestHeader;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.UserId;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 
 @RequestMapping(method = "POST", path = ApiEndpoints.FILES_SIMPLE_UPLOAD)
 public record SimpleUploadRequest(
     @UserId UUID userId,
-    @NotBlank
+    @Size(min = 1, max = 100) // TODO: cfg
         @Pattern(
             regexp = ValidationPatterns.FILE_NAME_REGEXP,
             message = ValidationPatterns.FILE_NAME_ERROR)

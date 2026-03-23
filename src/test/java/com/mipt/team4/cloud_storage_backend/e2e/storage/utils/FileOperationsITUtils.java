@@ -5,15 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import java.io.IOException;
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import io.netty.handler.codec.http.HttpHeaderNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -88,7 +85,8 @@ public class FileOperationsITUtils {
       throws IOException, InterruptedException {
     HttpRequest request =
         itUtils
-            .createRequest(itUtils.fillQuery("/api/files?id=%s&permanent=%b", targetFileId, isPermanent))
+            .createRequest(
+                itUtils.fillQuery("/api/files?id=%s&permanent=%s", targetFileId, isPermanent))
             .header("X-Auth-Token", userToken)
             .DELETE()
             .build();
@@ -96,17 +94,18 @@ public class FileOperationsITUtils {
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-    public HttpResponse<String> sendRestoreFileRequest(HttpClient client, String userToken, UUID fileId)
-            throws IOException, InterruptedException {
+  public HttpResponse<String> sendRestoreFileRequest(
+      HttpClient client, String userToken, UUID fileId) throws IOException, InterruptedException {
 
-        HttpRequest request = itUtils
-                .createRequest(itUtils.fillQuery("/api/files/restore?id=%s", fileId))
-                .header("X-Auth-Token", userToken)
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .build();
+    HttpRequest request =
+        itUtils
+            .createRequest(itUtils.fillQuery("/api/files/restore?id=%s", fileId))
+            .header("X-Auth-Token", userToken)
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
 
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
-    }
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
 
   public HttpResponse<String> sendChangeFilePathRequest(
       HttpClient client, String userToken, UUID targetFileId, String newTargetFileName)

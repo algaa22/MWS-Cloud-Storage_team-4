@@ -11,7 +11,7 @@ public class ApiEndpoints {
   public static final String TARIFF_PREFIX = USERS_PREFIX + "/tariff";
 
   // Infrastructure
-    public static final String HEALTHCHECK = "/health";
+  public static final String HEALTHCHECK = "/health";
 
   // Files (Aggregated)
   public static final String FILES_SIMPLE_UPLOAD = FILES_PREFIX + "/upload";

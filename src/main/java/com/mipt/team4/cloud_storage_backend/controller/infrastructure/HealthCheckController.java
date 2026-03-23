@@ -16,57 +16,56 @@ import software.amazon.awssdk.services.s3.S3Client;
 @Controller
 @RequiredArgsConstructor
 public class HealthCheckController {
-    private final JdbcTemplate jdbcTemplate;
-    private final S3Client s3Client;
-    private final ObjectMapper objectMapper;
+  private final JdbcTemplate jdbcTemplate;
+  private final S3Client s3Client;
+  private final ObjectMapper objectMapper;
 
-    public void healthCheck(ChannelHandlerContext ctx, HealthCheckRequest request) {
-        String dbStatus = "OK";
-        String s3Status = "OK";
-        String memoryStatus = "OK";
-        String overallStatus = "UP";
-        boolean isDown = false;
+  public void healthCheck(ChannelHandlerContext ctx, HealthCheckRequest request) {
+    String dbStatus = "OK";
+    String s3Status = "OK";
+    String memoryStatus = "OK";
+    String overallStatus = "UP";
+    boolean isDown = false;
 
-        try {
-            jdbcTemplate.queryForObject("SELECT 1", Integer.class);
-        } catch (Exception e) {
-            log.error("HealthCheck: Database is down.", e);
-            dbStatus = "ERROR";
-            overallStatus = "DOWN";
-            isDown = true;
-        }
-
-        try {
-            s3Client.listBuckets();
-        } catch (Exception e) {
-            log.error("HealthCheck: S3 is down.", e);
-            s3Status = "ERROR";
-            overallStatus = "DOWN";
-            isDown = true;
-        }
-
-        Runtime runtime = Runtime.getRuntime();
-        long freeMemory = runtime.freeMemory();
-        long totalMemory = runtime.totalMemory();
-
-        if ((double) freeMemory / totalMemory < 0.10) {
-            log.warn("HealthCheck: Low memory detected.");
-            memoryStatus = "LOW";
-        }
-
-        HealthCheckResponse responseDto = new HealthCheckResponse(
-                overallStatus, dbStatus, s3Status, memoryStatus
-        );
-
-        if (isDown) {
-            try {
-                String jsonResponse = objectMapper.writeValueAsString(responseDto);
-                ResponseUtils.sendJson(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, jsonResponse);
-            } catch (Exception e) {
-                ResponseUtils.sendError(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, "Service Unavailable");
-            }
-        } else {
-            ResponseUtils.send(ctx, responseDto);
-        }
+    try {
+      jdbcTemplate.queryForObject("SELECT 1", Integer.class);
+    } catch (Exception e) {
+      log.error("HealthCheck: Database is down.", e);
+      dbStatus = "ERROR";
+      overallStatus = "DOWN";
+      isDown = true;
     }
+
+    try {
+      s3Client.listBuckets();
+    } catch (Exception e) {
+      log.error("HealthCheck: S3 is down.", e);
+      s3Status = "ERROR";
+      overallStatus = "DOWN";
+      isDown = true;
+    }
+
+    Runtime runtime = Runtime.getRuntime();
+    long freeMemory = runtime.freeMemory();
+    long totalMemory = runtime.totalMemory();
+
+    if ((double) freeMemory / totalMemory < 0.10) {
+      log.warn("HealthCheck: Low memory detected.");
+      memoryStatus = "LOW";
+    }
+
+    HealthCheckResponse responseDto =
+        new HealthCheckResponse(overallStatus, dbStatus, s3Status, memoryStatus);
+
+    if (isDown) {
+      try {
+        String jsonResponse = objectMapper.writeValueAsString(responseDto);
+        ResponseUtils.sendJson(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, jsonResponse);
+      } catch (Exception e) {
+        ResponseUtils.sendError(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, "Service Unavailable");
+      }
+    } else {
+      ResponseUtils.send(ctx, responseDto);
+    }
+  }
 }

@@ -1,5 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.StreamReadConstraints;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mipt.team4.cloud_storage_backend.config.props.JacksonConfig;
 import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig.FailsafeRetry;
@@ -12,6 +16,7 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
 import dev.failsafe.RetryPolicy;
 import java.net.URI;
 import java.security.SecureRandom;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +26,10 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @Configuration
+@RequiredArgsConstructor
 public class ApplicationConfig {
+  private final JacksonConfig jacksonConfig;
+
   @Bean
   public SecureRandom secureRandom() {
     return new SecureRandom();
@@ -80,5 +88,21 @@ public class ApplicationConfig {
         .withMaxRetries(retry.maxAttempts())
         .withJitter(retry.jitter())
         .build();
+  }
+
+  @Bean
+  public ObjectMapper objectMapper() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.deactivateDefaultTyping();
+
+    JsonFactory factory = mapper.getFactory();
+    factory.setStreamReadConstraints(
+        StreamReadConstraints.builder()
+            .maxNestingDepth(jacksonConfig.maxNestingLength())
+            .maxStringLength(jacksonConfig.maxStringLength())
+            .maxNumberLength(jacksonConfig.maxNumberLength())
+            .build());
+
+    return mapper;
   }
 }

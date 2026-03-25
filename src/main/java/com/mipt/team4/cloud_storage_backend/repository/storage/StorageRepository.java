@@ -36,13 +36,14 @@ public class StorageRepository {
         });
   }
 
-  public void startMultipartUpload(StorageEntity fileEntity, ChunkedUploadSessionEntity session) {
-    wrapper.initiateStep(
-        fileEntity,
+  public void startChunkedUpload(StorageEntity entity, ChunkedUploadSessionEntity session) {
+    wrapper.initiateNewFileStep(
+        entity,
         FileOperationType.UPLOAD,
         () -> {
-          String uploadId = contentRepository.startMultipartUpload(fileEntity.getS3Key());
+          metadataRepository.addFile(entity);
 
+          String uploadId = contentRepository.startMultipartUpload(entity.getS3Key());
           session.setUploadId(uploadId);
           uploadRepository.addSession(session);
 

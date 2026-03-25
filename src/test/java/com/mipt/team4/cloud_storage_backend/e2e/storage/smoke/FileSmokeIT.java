@@ -119,10 +119,31 @@ public class FileSmokeIT extends BaseStorageIT {
     UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
 
     HttpResponse<String> deletedResponse =
-        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId);
+        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId, true);
     assertEquals(HttpStatus.SC_OK, deletedResponse.statusCode());
 
     assertFileNotFound(currentUserToken, fileId);
+  }
+
+  @Test
+  public void shouldSoftDeleteAndRestoreFile() throws IOException, InterruptedException {
+    UUID fileId = simpleUploadFile("restore-test-" + UUID.randomUUID() + ".txt");
+    byte[] content = TestFiles.SMALL_FILE.getData();
+
+    HttpResponse<String> deleteResponse =
+        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId, false);
+    assertEquals(HttpStatus.SC_OK, deleteResponse.statusCode());
+
+    FileChunkedTransferITUtils.DownloadResult downloadResult =
+        chunkedITUtils.sendDownloadRequest(BaseIT.apacheClient, currentUserToken, fileId);
+    assertTrue(downloadResult.statusCode() >= 400);
+
+    HttpResponse<String> restoreResponse =
+        fileOperationsITUtils.sendRestoreFileRequest(client, currentUserToken, fileId);
+
+    assertEquals(HttpStatus.SC_OK, restoreResponse.statusCode());
+
+    checkDownloadFile(fileId, content);
   }
 
   @Test

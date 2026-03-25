@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,6 +31,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
           AND f.name = :name
           AND (:onlyReady = false OR f.status = 'READY')
           AND (f.parentId = :parentId OR (:parentId IS NULL AND f.parentId IS NULL))
+          AND f.isDeleted = false
     """)
   boolean existsFile(
       @Param("userId") UUID userId,
@@ -37,13 +39,13 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       @Param("name") String name,
       @Param("onlyReady") boolean onlyReady);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
   @Query(
       "UPDATE StorageEntity s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP, s.updatedAt = CURRENT_TIMESTAMP "
           + "WHERE s.id = :id AND s.userId = :userId")
   void softDelete(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
   @Query(
       nativeQuery = true,
       value =
@@ -59,13 +61,34 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
     """)
   void softDeleteRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
   @Query(
-      "UPDATE StorageEntity s SET s.isDeleted = false, s.deletedAt = NULL, s.updatedAt = CURRENT_TIMESTAMP "
-          + "WHERE s.id = :id AND s.userId = :userId")
+      nativeQuery = true,
+      value =
+          """
+    UPDATE files
+    SET is_deleted = false, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
+    WHERE id = :id AND user_id = :userId
+""")
   void restore(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
+  @Query(
+      """
+    UPDATE StorageEntity s
+    SET s.status = :status,
+        s.retryCount = :retryCount,
+        s.updatedAt = CURRENT_TIMESTAMP,
+        s.operationType = :opType
+    WHERE s.id = :id
+""")
+  void syncLifecycleMetadata(
+      @Param("id") UUID id,
+      @Param("status") FileStatus status,
+      @Param("retryCount") int retryCount,
+      @Param("opType") FileOperationType opType);
+
+  @Modifying(flushAutomatically = true)
   @Query(
       nativeQuery = true,
       value =
@@ -96,7 +119,8 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
 
   @Query(
       nativeQuery = true,
-      value = "SELECT * FROM files WHERE id = :id AND user_id = :userId AND is_deleted = true")
+      value =
+          "SELECT * FROM files WHERE id = CAST(:id AS uuid) AND user_id = CAST(:userId AS uuid) AND is_deleted = true")
   Optional<StorageEntity> findDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying(flushAutomatically = true)
@@ -186,10 +210,14 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       nativeQuery = true)
   List<String> getFullPathNodes(@Param("fileId") UUID fileId);
 
-  Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID fileId);
+  @Query(
+      "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.id = :id AND s.isDeleted = false")
+  Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID id);
+
+  @Query(
+      "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.parentId = :parentId AND s.name = :name AND s.isDeleted = false")
+  Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 
   List<StorageEntity> findByStatusInAndUpdatedAtBefore(
       List<FileStatus> statuses, LocalDateTime threshold);
-
-  Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 }

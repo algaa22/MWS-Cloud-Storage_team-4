@@ -30,7 +30,7 @@ public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
     UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
 
     HttpResponse<String> response =
-        operationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId);
+        operationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId, true);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
     simpleUploadFile(DEFAULT_FILE_TARGET_NAME);

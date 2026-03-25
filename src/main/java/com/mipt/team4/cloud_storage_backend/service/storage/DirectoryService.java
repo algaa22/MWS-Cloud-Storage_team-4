@@ -67,7 +67,6 @@ public class DirectoryService {
     }
 
     dirEntity.setName(newName);
-    metadataRepository.updateFile(dirEntity);
   }
 
   @Transactional

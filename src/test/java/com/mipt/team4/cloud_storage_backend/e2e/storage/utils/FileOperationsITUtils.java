@@ -81,13 +81,27 @@ public class FileOperationsITUtils {
   }
 
   public HttpResponse<String> sendDeleteFileRequest(
-      HttpClient client, String userToken, UUID targetFileId)
+      HttpClient client, String userToken, UUID targetFileId, boolean isPermanent)
       throws IOException, InterruptedException {
     HttpRequest request =
         itUtils
-            .createRequest(itUtils.fillQuery("/api/files?id=%s&permanent=true", targetFileId))
+            .createRequest(
+                itUtils.fillQuery("/api/files?id=%s&permanent=%s", targetFileId, isPermanent))
             .header("X-Auth-Token", userToken)
             .DELETE()
+            .build();
+
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  public HttpResponse<String> sendRestoreFileRequest(
+      HttpClient client, String userToken, UUID fileId) throws IOException, InterruptedException {
+
+    HttpRequest request =
+        itUtils
+            .createRequest(itUtils.fillQuery("/api/files/restore?id=%s", fileId))
+            .header("X-Auth-Token", userToken)
+            .POST(HttpRequest.BodyPublishers.noBody())
             .build();
 
     return client.send(request, HttpResponse.BodyHandlers.ofString());

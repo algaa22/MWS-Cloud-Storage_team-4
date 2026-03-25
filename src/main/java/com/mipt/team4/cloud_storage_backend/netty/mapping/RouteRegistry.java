@@ -25,14 +25,6 @@ public class RouteRegistry {
     return routes.get(getRouteKey(method, path));
   }
 
-  public boolean isRegisteredDto(Object msg) {
-    if (msg instanceof RoutedMessage routedMsg) {
-      return routes.containsValue(routedMsg.dto().getClass());
-    }
-
-    return false;
-  }
-
   private void scanAndRegisterRoutes() {
     ClassPathScanningCandidateComponentProvider scanner =
         new ClassPathScanningCandidateComponentProvider(false);

@@ -30,7 +30,7 @@ public class HealthMonitorService {
   private final JdbcTemplate jdbcTemplate;
   private final S3Client s3Client;
   private final StorageConfig storageConfig;
-  
+
   private final long checkIntervalSeconds = storageConfig.healthCheck().checkIntervalSeconds();
 
   private final AtomicReference<HealthCheckResponse> currentHealth =

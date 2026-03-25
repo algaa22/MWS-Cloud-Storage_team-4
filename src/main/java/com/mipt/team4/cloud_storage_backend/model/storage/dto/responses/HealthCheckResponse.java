@@ -13,6 +13,4 @@ public record HealthCheckResponse(
     @ResponseBodyParam HealthComponentStatus database,
     @ResponseBodyParam HealthComponentStatus s3,
     @ResponseBodyParam HealthMemoryStatus memory,
-    @ResponseBodyParam String timestamp) {
-
-}
+    @ResponseBodyParam String timestamp) {}

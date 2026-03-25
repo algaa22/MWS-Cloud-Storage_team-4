@@ -31,8 +31,6 @@ public class HealthMonitorService {
   private final S3Client s3Client;
   private final StorageConfig storageConfig;
 
-  private final long checkIntervalSeconds = storageConfig.healthCheck().checkIntervalSeconds();
-
   private final AtomicReference<HealthCheckResponse> currentHealth =
       new AtomicReference<>(
           new HealthCheckResponse(
@@ -47,6 +45,8 @@ public class HealthMonitorService {
 
   @PostConstruct
   public void startMonitoring() {
+    final long checkIntervalSeconds = storageConfig.healthCheck().checkIntervalSeconds();
+
     scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory());
 
     scheduler.scheduleWithFixedDelay(

@@ -45,5 +45,6 @@ public record StorageConfig(
       long intervalSeconds,
       int dbTimeoutSeconds,
       int s3TimeoutSeconds,
-      double minFreeMemoryPercent) {}
+      double minFreeMemoryPercent,
+      long checkIntervalSeconds) {}
 }

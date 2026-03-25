@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
 
 import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.exception.netty.MissingHostHeaderException;
+import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
@@ -14,6 +15,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +25,8 @@ import org.springframework.stereotype.Component;
 public class HttpsRedirectHandler extends ChannelInboundHandlerAdapter {
   private final NettyConfig nettyConfig;
 
+  private static final Set<String> REDIRECT_WHITELIST = Set.of(ApiEndpoints.HEALTHCHECK);
+
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {
     if (!nettyConfig.httpsRedirect() || !nettyConfig.enableHttps()) {
@@ -30,25 +34,35 @@ public class HttpsRedirectHandler extends ChannelInboundHandlerAdapter {
       return;
     }
 
+    if (!(msg instanceof HttpRequest request)) {
+      ctx.fireChannelRead(msg);
+      return;
+    }
+
+    String path = request.uri().split("\\?")[0];
+
+    if (REDIRECT_WHITELIST.contains(path)) {
+      ctx.fireChannelRead(msg);
+      return;
+    }
+
     try {
-      if (msg instanceof HttpRequest request) {
-        String host = request.headers().get(HttpHeaderNames.HOST);
+      String host = request.headers().get(HttpHeaderNames.HOST);
 
-        if (host == null) {
-          throw new MissingHostHeaderException();
-        }
-
-        String newHost = host.split(":")[0] + ":" + nettyConfig.httpsPort();
-        String newUrl = "https://" + newHost + request.uri();
-
-        FullHttpResponse response =
-            new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.MOVED_PERMANENTLY);
-
-        response.headers().set(HttpHeaderNames.LOCATION, newUrl);
-        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, 0);
-
-        ResponseUtils.send(ctx, response).addListener(ChannelFutureListener.CLOSE);
+      if (host == null) {
+        throw new MissingHostHeaderException();
       }
+
+      String newHost = host.split(":")[0] + ":" + nettyConfig.httpsPort();
+      String newUrl = "https://" + newHost + request.uri();
+
+      FullHttpResponse response =
+          new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.MOVED_PERMANENTLY);
+
+      response.headers().set(HttpHeaderNames.LOCATION, newUrl);
+      response.headers().set(HttpHeaderNames.CONTENT_LENGTH, 0);
+
+      ResponseUtils.send(ctx, response).addListener(ChannelFutureListener.CLOSE);
     } finally {
       ReferenceCountUtil.release(msg);
     }

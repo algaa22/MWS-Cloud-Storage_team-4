@@ -21,6 +21,6 @@ public class Http2StreamInitializer extends ChannelInitializer<Channel> {
     pipeline.addLast(
         PipelineHandlerNames.HTTP2_STREAM_FRAME_TO_OBJECT,
         new Http2StreamFrameToHttpObjectCodec(true));
-    pipelineBuilder.finalizeHttpPipeline(pipeline);
+    pipelineBuilder.finalizePipeline(pipeline);
   }
 }

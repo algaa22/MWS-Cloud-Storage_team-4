@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.netty.constants;
 
 public class ApiEndpoints {
 
-  // Префиксы модулей
+  // Prefixes
   public static final String API_PREFIX = "/api";
   public static final String FILES_PREFIX = API_PREFIX + "/files";
   public static final String DIRECTORIES_PREFIX = API_PREFIX + "/directories";

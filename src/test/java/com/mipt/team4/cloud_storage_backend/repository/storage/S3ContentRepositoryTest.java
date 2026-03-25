@@ -44,7 +44,8 @@ class S3ContentRepositoryTest {
   static class S3TestConfig {
     @Bean
     public S3Client s3Client(StorageConfig config) {
-      var s3Props = config.s3();
+      StorageConfig.S3 s3Props = config.s3();
+
       return S3Client.builder()
           .endpointOverride(java.net.URI.create(s3Props.url()))
           .region(software.amazon.awssdk.regions.Region.of(s3Props.region()))

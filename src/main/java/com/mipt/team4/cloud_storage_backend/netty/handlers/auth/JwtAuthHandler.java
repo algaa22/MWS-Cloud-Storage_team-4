@@ -23,7 +23,11 @@ public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
   private final UserSessionService userSessionService;
 
   private static final Set<String> AUTH_WHITELIST =
-      Set.of(ApiEndpoints.AUTH_REGISTER, ApiEndpoints.AUTH_LOGIN, ApiEndpoints.AUTH_REFRESH);
+      Set.of(
+          ApiEndpoints.AUTH_REGISTER,
+          ApiEndpoints.AUTH_LOGIN,
+          ApiEndpoints.AUTH_REFRESH,
+          ApiEndpoints.HEALTHCHECK);
 
   private static final String AUTH_HEADER = "X-Auth-Token";
 

@@ -1,6 +1,10 @@
 FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
 COPY pom.xml .
 RUN mvn dependency:go-offline
 

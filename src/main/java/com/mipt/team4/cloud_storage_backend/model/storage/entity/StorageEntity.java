@@ -18,7 +18,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.*;
-import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Метаданные объекта хранения (файла или директории).
@@ -29,7 +28,6 @@ import org.hibernate.annotations.SQLRestriction;
  */
 @Entity
 @Table(name = "files")
-@SQLRestriction("is_deleted = false")
 @Getter
 @Setter
 @Builder
@@ -78,7 +76,7 @@ public class StorageEntity {
   @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private FileStatus status = FileStatus.READY;
+  private FileStatus status = FileStatus.PENDING;
 
   /**
    * Счетчик ретраев для текущей операции. Используется {@code FileCleanupService} для

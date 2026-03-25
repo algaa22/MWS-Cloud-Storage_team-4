@@ -20,7 +20,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPa
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
@@ -81,7 +80,6 @@ public class ChunkedUploadService {
             .name(name)
             .isDirectory(false)
             .tags(request.fileTags())
-            .status(FileStatus.READY)
             .updatedAt(LocalDateTime.now())
             .size(request.fileSize())
             .build();
@@ -97,7 +95,7 @@ public class ChunkedUploadService {
             .build();
 
     userRepository.increaseUsedStorage(userId, request.fileSize());
-    storageRepository.startMultipartUpload(fileEntity, session);
+    storageRepository.startChunkedUpload(fileEntity, session);
 
     return new StartChunkedUploadResponse(sessionId);
   }

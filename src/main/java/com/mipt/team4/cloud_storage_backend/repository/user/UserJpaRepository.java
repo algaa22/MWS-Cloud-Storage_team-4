@@ -15,14 +15,14 @@ import org.springframework.data.repository.query.Param;
 public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
   Optional<UserEntity> findByEmail(String email);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query(
       "UPDATE UserEntity u SET u.usedStorage = "
           + "CASE WHEN (u.usedStorage + :delta) < 0 THEN 0 ELSE (u.usedStorage + :delta) END "
           + "WHERE u.id = :id")
   void updateUsedStorage(@Param("id") UUID id, @Param("delta") long delta);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query(
       value =
           """
@@ -37,11 +37,11 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
       nativeQuery = true)
   void syncAllUsersStorage();
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query("UPDATE UserEntity u SET u.autoRenew = :autoRenew WHERE u.id = :userId")
   void updateAutoRenew(@Param("userId") UUID userId, @Param("autoRenew") boolean autoRenew);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query(
       """
         UPDATE UserEntity u
@@ -60,17 +60,17 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
       @Param("autoRenew") boolean autoRenew,
       @Param("storageLimit") long storageLimit);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query("UPDATE UserEntity u SET u.tariffEndDate = :newEndDate WHERE u.id = :userId")
   void updateTariffEndDate(
       @Param("userId") UUID userId, @Param("newEndDate") LocalDateTime newEndDate);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query("UPDATE UserEntity u SET u.paymentMethodId = :paymentMethodId WHERE u.id = :userId")
   void updatePaymentMethod(
       @Param("userId") UUID userId, @Param("paymentMethodId") String paymentMethodId);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query("UPDATE UserEntity u SET u.isActive = :isActive WHERE u.id = :userId")
   void updateActiveStatus(@Param("userId") UUID userId, @Param("isActive") boolean isActive);
 

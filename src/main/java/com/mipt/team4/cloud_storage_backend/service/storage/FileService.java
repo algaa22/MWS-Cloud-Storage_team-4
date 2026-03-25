@@ -14,7 +14,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileLi
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
@@ -79,7 +78,6 @@ public class FileService {
             .name(name)
             .isDirectory(false)
             .tags(request.tags())
-            .status(FileStatus.READY)
             .updatedAt(LocalDateTime.now())
             .build();
 

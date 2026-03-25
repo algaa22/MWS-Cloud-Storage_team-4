@@ -12,12 +12,10 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationTyp
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
-import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Обертка-фасад для управления жизненным циклом операций над файлами и директориями.
@@ -43,10 +41,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
   private final StorageJpaRepositoryAdapter metadataRepository;
-  private final TransactionTemplate transactionTemplate;
   private final StorageConfig storageConfig;
   private final RetryPolicy<Object> retryPolicy;
-  private final EntityManager entityManager;
 
   /**
    * Выполняет обновление существующего файла.
@@ -58,7 +54,7 @@ public class StorageRepositoryWrapper {
   public <T> void wrapUpdate(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsReady(entity);
-    prepareEntityToPending(entity, operationType);
+    syncEntityWithDatabase(entity, operationType, FileStatus.PENDING, 0);
     finalizeOperation(entity, operationType, operation);
   }
 
@@ -69,21 +65,19 @@ public class StorageRepositoryWrapper {
    */
   public <T> void wrapNewEntityTask(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
+    markAsPending(entity, operationType);
     finalizeOperation(entity, operationType, operation);
   }
 
   /**
    * Начинает сложную операцию.
    *
-   * <p>Для вызова требуется статус READY. <br>
-   * Перед выполнением операции сам создает файл и переводит статус в {@code PENDING}
+   * <p>Просто вызывает переданный метод
    */
-  public <T> T initiateStep(
+  public <T> void initiateNewFileStep(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
-    checkIfStatusIsReady(entity);
-    prepareEntityToPending(entity, operationType);
-
-    return executeOperation(entity, operationType, operation);
+    markAsPending(entity, operationType);
+    executeOperation(entity, operationType, operation);
   }
 
   /**
@@ -92,17 +86,14 @@ public class StorageRepositoryWrapper {
    * <p>Для вызова требуется статус PENDING. <br>
    * Статус файла в конце НЕ меняет. Подходит для промежуточных этапов вроде загрузки чанков.
    */
-  public <T> T processStep(
+  public <T> void processStep(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsPending(entity);
-
-    T result = executeOperation(entity, operationType, operation);
+    executeOperation(entity, operationType, operation);
 
     if (shouldThrottledUpdate(entity)) {
       syncEntityWithDatabase(entity, operationType, FileStatus.PENDING);
     }
-
-    return result;
   }
 
   /**
@@ -112,10 +103,10 @@ public class StorageRepositoryWrapper {
    * Блокирует строку в БД, выполняет операцию и переводит файл в {@code READY}.<br>
    * Автоматически сохраняет любые изменения {@code entity}, сделанные в лямбде.
    */
-  public <T> T completeStep(
+  public <T> void completeStep(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsPending(entity);
-    return finalizeOperation(entity, operationType, operation);
+    finalizeOperation(entity, operationType, operation);
   }
 
   /** Принудительно помечает операцию как {@code READY} и устанавливает {@code retry_count = 0}. */
@@ -123,10 +114,10 @@ public class StorageRepositoryWrapper {
     syncEntityWithDatabase(entity, FileOperationType.CHANGE_METADATA, FileStatus.READY, 0);
   }
 
-  private <T> T executeOperation(
+  private <T> void executeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     try {
-      return Failsafe.with(retryPolicy).get(operation::apply);
+      Failsafe.with(retryPolicy).get(operation::apply);
     } catch (BaseStorageException exception) {
       handleException(exception, entity, operationType);
 
@@ -139,12 +130,10 @@ public class StorageRepositoryWrapper {
     }
   }
 
-  private <T> T finalizeOperation(
+  private <T> void finalizeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
-    T result = executeOperation(entity, operationType, operation);
+    executeOperation(entity, operationType, operation);
     syncEntityWithDatabase(entity, operationType, FileStatus.READY);
-
-    return result;
   }
 
   private void checkIfStatusIsReady(StorageEntity entity) {
@@ -161,11 +150,11 @@ public class StorageRepositoryWrapper {
     }
   }
 
-  private void prepareEntityToPending(StorageEntity entity, FileOperationType operationType) {
+  private void markAsPending(StorageEntity entity, FileOperationType operationType) {
+    entity.setStatus(FileStatus.PENDING);
     entity.setOperationType(operationType);
     entity.setStartedAt(LocalDateTime.now());
-
-    syncEntityWithDatabase(entity, operationType, FileStatus.PENDING, 0);
+    entity.setRetryCount(0);
   }
 
   private boolean shouldThrottledUpdate(StorageEntity entity) {
@@ -268,40 +257,15 @@ public class StorageRepositoryWrapper {
       FileOperationType operationType,
       FileStatus newStatus,
       int newRetryCount) {
-    transactionTemplate.execute(
-        status -> {
-          if (operationType == FileOperationType.DELETE) {
-            return null;
-          }
-
-          StorageEntity managedEntity = syncToPersistenceContext(entity);
-
-          managedEntity.setStatus(newStatus);
-          managedEntity.setRetryCount(newRetryCount);
-
-          if (newStatus == FileStatus.PENDING || newStatus == FileStatus.READY) {
-            managedEntity.setUpdatedAt(LocalDateTime.now());
-          }
-
-          if (newStatus == FileStatus.READY) {
-            managedEntity.setOperationType(null);
-          }
-
-          metadataRepository.updateFile(managedEntity);
-
-          return null;
-        });
-  }
-
-  private StorageEntity syncToPersistenceContext(StorageEntity entity) {
-    StorageEntity managed = entityManager.find(StorageEntity.class, entity.getId());
-
-    if (managed == null) {
-      entityManager.persist(entity);
-      return entity;
+    if (operationType == FileOperationType.DELETE) {
+      return;
     }
 
-    return entityManager.merge(entity);
+    metadataRepository.syncLifecycleMetadata(
+        entity.getId(),
+        newStatus,
+        newRetryCount,
+        (newStatus == FileStatus.READY ? null : operationType));
   }
 
   @FunctionalInterface

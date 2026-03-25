@@ -11,6 +11,7 @@ import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
 import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +37,8 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
   @Autowired private StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
   @Autowired private UserJpaRepositoryAdapter userRepository;
+  @Autowired private EntityManager entityManager;
+
   private StorageEntity commonFileEntity;
   private UUID testUserUuid;
 
@@ -43,74 +46,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   void beforeEach() {
     testUserUuid = addTestUser();
     commonFileEntity = addTestFile(null, "root-file.xml");
-  }
-
-  private UUID addTestUser() throws UserAlreadyExistsException {
-    UserEntity user =
-        UserEntity.builder()
-            .username("name")
-            .email("test-" + UUID.randomUUID() + "@email.com")
-            .passwordHash("password")
-            .storageLimit(10737418240L)
-            .createdAt(LocalDateTime.now())
-            .build();
-
-    userRepository.addUser(user);
-    return user.getId();
-  }
-
-  private StorageEntity addTestFile(UUID parentId, String name)
-      throws StorageFileAlreadyExistsException {
-    StorageEntity fileEntity =
-        StorageEntity.builder()
-            .id(UUID.randomUUID())
-            .userId(testUserUuid)
-            .parentId(parentId)
-            .name(name)
-            .mimeType("application/xml")
-            .size(42L)
-            .isDirectory(false)
-            .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
-            .tags(List.of("some xml"))
-            .build();
-
-    storageJpaRepositoryAdapter.addFile(fileEntity);
-    return fileEntity;
-  }
-
-  private StorageEntity addTestDirectory(UUID parentId, String name)
-      throws StorageFileAlreadyExistsException {
-    StorageEntity directoryEntity =
-        StorageEntity.builder()
-            .id(UUID.randomUUID())
-            .userId(testUserUuid)
-            .parentId(parentId)
-            .name(name)
-            .mimeType("application/directory")
-            .size(42L)
-            .isDirectory(true)
-            .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
-            .tags(List.of("some directory"))
-            .build();
-
-    storageJpaRepositoryAdapter.addFile(directoryEntity);
-    return directoryEntity;
-  }
-
-  private void assertEntityIsDeleted(StorageEntity entity) {
-    assertTrue(entity.isDeleted());
-    assertNotNull(entity.getDeletedAt());
-  }
-
-  private void assertEntityIsActive(StorageEntity entity) {
-    assertFalse(entity.isDeleted());
-    assertNull(entity.getDeletedAt());
-  }
-
-  private StorageEntity refresh(StorageEntity entity) {
-    return storageJpaRepositoryAdapter
-        .getIncludeDeleted(entity.getUserId(), entity.getId())
-        .orElseThrow(() -> new AssertionError("Entity not found: " + entity.getId()));
   }
 
   @Test
@@ -253,5 +188,78 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
     assertTrue(storageJpaRepositoryAdapter.isDescendant(folder.getId(), childFile.getId()));
     assertFalse(storageJpaRepositoryAdapter.isDescendant(childFile.getId(), folder.getId()));
+  }
+
+  private UUID addTestUser() throws UserAlreadyExistsException {
+    UserEntity user =
+        UserEntity.builder()
+            .username("name")
+            .email("test-" + UUID.randomUUID() + "@email.com")
+            .passwordHash("password")
+            .storageLimit(10737418240L)
+            .createdAt(LocalDateTime.now())
+            .build();
+
+    userRepository.addUser(user);
+    return user.getId();
+  }
+
+  private StorageEntity addTestFile(UUID parentId, String name)
+      throws StorageFileAlreadyExistsException {
+    StorageEntity fileEntity =
+        StorageEntity.builder()
+            .id(UUID.randomUUID())
+            .userId(testUserUuid)
+            .parentId(parentId)
+            .name(name)
+            .mimeType("application/xml")
+            .size(42L)
+            .isDirectory(false)
+            .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
+            .tags(List.of("some xml"))
+            .build();
+
+    storageJpaRepositoryAdapter.addFile(fileEntity);
+    return fileEntity;
+  }
+
+  private StorageEntity addTestDirectory(UUID parentId, String name)
+      throws StorageFileAlreadyExistsException {
+    StorageEntity directoryEntity =
+        StorageEntity.builder()
+            .id(UUID.randomUUID())
+            .userId(testUserUuid)
+            .parentId(parentId)
+            .name(name)
+            .mimeType("application/directory")
+            .size(42L)
+            .isDirectory(true)
+            .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
+            .tags(List.of("some directory"))
+            .build();
+
+    storageJpaRepositoryAdapter.addFile(directoryEntity);
+    return directoryEntity;
+  }
+
+  private void assertEntityIsDeleted(StorageEntity entity) {
+    assertTrue(entity.isDeleted());
+    assertNotNull(entity.getDeletedAt());
+  }
+
+  private void assertEntityIsActive(StorageEntity entity) {
+    assertFalse(entity.isDeleted());
+    assertNull(entity.getDeletedAt());
+  }
+
+  private StorageEntity refresh(StorageEntity entity) {
+    StorageEntity managedEntity = entityManager.find(StorageEntity.class, entity.getId());
+
+    if (managedEntity != null) {
+      entityManager.refresh(managedEntity);
+      return managedEntity;
+    }
+
+    throw new AssertionError("Entity with ID " + entity.getId() + " not found even in DB");
   }
 }

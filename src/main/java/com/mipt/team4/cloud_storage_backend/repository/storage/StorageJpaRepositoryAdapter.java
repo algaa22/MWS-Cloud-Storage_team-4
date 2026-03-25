@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
@@ -10,9 +11,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class StorageJpaRepositoryAdapter {
@@ -51,8 +54,9 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional
-  public void updateFile(StorageEntity entity) {
-    jpaRepository.saveAndFlush(entity);
+  public void syncLifecycleMetadata(
+      UUID fileId, FileStatus status, int retryCount, FileOperationType opType) {
+    jpaRepository.syncLifecycleMetadata(fileId, status, retryCount, opType);
   }
 
   @Transactional(readOnly = true)

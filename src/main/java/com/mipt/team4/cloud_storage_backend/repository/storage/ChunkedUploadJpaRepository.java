@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ChunkedUploadJpaRepository
     extends JpaRepository<ChunkedUploadSessionEntity, UUID> {
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query(
       value =
           """
@@ -30,11 +30,11 @@ public interface ChunkedUploadJpaRepository
       @Param("partSize") long partSize,
       @Param("etag") String eTag);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
   @Query("DELETE FROM ChunkedUploadSessionEntity s WHERE s.id = :id")
   void deleteSessionById(@Param("id") UUID id);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query(
       "UPDATE ChunkedUploadSessionEntity s SET s.status = :newStatus "
           + "WHERE s.id = :id AND s.status = :oldStatus")
@@ -43,7 +43,7 @@ public interface ChunkedUploadJpaRepository
       @Param("oldStatus") ChunkedUploadStatus oldStatus,
       @Param("newStatus") ChunkedUploadStatus newStatus);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query(
       "UPDATE ChunkedUploadSessionEntity s SET s.currentSize = s.currentSize + :delta WHERE s.id = :id")
   void incrementCurrentSize(@Param("id") UUID id, @Param("delta") long delta);

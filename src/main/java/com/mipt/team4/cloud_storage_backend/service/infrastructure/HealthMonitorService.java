@@ -2,9 +2,9 @@ package com.mipt.team4.cloud_storage_backend.service.infrastructure;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.HealthCheckResponse;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.ComponentStatus;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.MemoryStatus;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.OverallStatus;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.HealthComponentStatus;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.HealthMemoryStatus;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.HealthOverallStatus;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -39,10 +39,10 @@ public class HealthMonitorService {
       new AtomicReference<>(
           new HealthCheckResponse(
               HttpResponseStatus.OK,
-              OverallStatus.STARTING,
-              ComponentStatus.UNKNOWN,
-              ComponentStatus.UNKNOWN,
-              MemoryStatus.UNKNOWN,
+              HealthOverallStatus.STARTING,
+              HealthComponentStatus.UNKNOWN,
+              HealthComponentStatus.UNKNOWN,
+              HealthMemoryStatus.UNKNOWN,
               Instant.now().toString()));
 
   private ScheduledExecutorService scheduler;
@@ -69,10 +69,10 @@ public class HealthMonitorService {
     StorageConfig.HealthCheck config = storageConfig.healthCheck();
 
     HttpResponseStatus httpStatus = HttpResponseStatus.OK;
-    ComponentStatus dbStatus = ComponentStatus.OK;
-    ComponentStatus s3Status = ComponentStatus.OK;
-    MemoryStatus memoryStatus = MemoryStatus.OK;
-    OverallStatus overallStatus = OverallStatus.UP;
+    HealthComponentStatus dbStatus = HealthComponentStatus.OK;
+    HealthComponentStatus s3Status = HealthComponentStatus.OK;
+    HealthMemoryStatus memoryStatus = HealthMemoryStatus.OK;
+    HealthOverallStatus overallStatus = HealthOverallStatus.UP;
 
     try {
       jdbcTemplate.execute(
@@ -83,8 +83,8 @@ public class HealthMonitorService {
               });
     } catch (Exception e) {
       log.error("Background HealthCheck: Database is down: {}", e.getMessage());
-      dbStatus = ComponentStatus.ERROR;
-      overallStatus = OverallStatus.DOWN;
+      dbStatus = HealthComponentStatus.ERROR;
+      overallStatus = HealthOverallStatus.DOWN;
     }
 
     try {
@@ -97,8 +97,8 @@ public class HealthMonitorService {
               .build());
     } catch (Exception e) {
       log.error("Background HealthCheck: S3 is down: {}", e.getMessage());
-      s3Status = ComponentStatus.ERROR;
-      overallStatus = OverallStatus.DOWN;
+      s3Status = HealthComponentStatus.ERROR;
+      overallStatus = HealthOverallStatus.DOWN;
     }
 
     Runtime runtime = Runtime.getRuntime();
@@ -112,9 +112,9 @@ public class HealthMonitorService {
     if ((double) actualFreeMemory / maxMemory
         < storageConfig.healthCheck().minFreeMemoryPercent()) {
       log.warn("Background HealthCheck: Low memory detected.");
-      memoryStatus = MemoryStatus.LOW;
+      memoryStatus = HealthMemoryStatus.LOW;
     }
-    if (overallStatus == OverallStatus.DOWN) {
+    if (overallStatus == HealthOverallStatus.DOWN) {
       httpStatus = HttpResponseStatus.SERVICE_UNAVAILABLE;
     }
 

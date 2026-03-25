@@ -30,10 +30,10 @@ public class PipelineBuilder {
   public void buildHttp11Pipeline(ChannelPipeline pipeline) {
     pipeline.addLast(PipelineHandlerNames.HTTP_SERVER_CODEC, new HttpServerCodec());
     pipeline.addLast(PipelineHandlerNames.HTTPS_REDIRECT, httpsRedirectHandler);
-    finalizeHttpPipeline(pipeline);
+    finalizePipeline(pipeline);
   }
 
-  public void finalizeHttpPipeline(ChannelPipeline pipeline) {
+  public void finalizePipeline(ChannelPipeline pipeline) {
     pipeline.addLast(PipelineHandlerNames.HEAD_GLOBAL_ERROR, globalErrorHandlers);
     pipeline.addLast(PipelineHandlerNames.CORS, corsHandler);
     pipeline.addLast(PipelineHandlerNames.DTO_TO_RESPONSE, dtoToResponseEncoder);

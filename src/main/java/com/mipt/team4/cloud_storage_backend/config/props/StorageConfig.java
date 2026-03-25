@@ -11,7 +11,8 @@ public record StorageConfig(
     StateMachine stateMachine,
     FailsafeRetry failsafeRetry,
     Trash trash,
-    S3 s3) {
+    S3 s3,
+    HealthCheck healthCheck) {
   public record Rest(int maxAggregatedContentLength, int fileDownloadChunkSize) {}
 
   public record Auth(
@@ -39,4 +40,11 @@ public record StorageConfig(
 
     public record Limits(long minFilePartSize, long maxFilePartSize, int maxPartsNum) {}
   }
+
+  public record HealthCheck(
+      long intervalSeconds,
+      int dbTimeoutSeconds,
+      int s3TimeoutSeconds,
+      double minFreeMemoryPercent,
+      long checkIntervalSeconds) {}
 }

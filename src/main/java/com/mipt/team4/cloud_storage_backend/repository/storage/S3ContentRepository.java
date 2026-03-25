@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -13,12 +14,12 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
+@Slf4j
 @Repository
 public class S3ContentRepository implements FileContentRepository {
   private final S3Wrapper wrapper;
-  private final String bucketName;
-
   private final S3Client s3Client;
+  private final String bucketName;
 
   @Autowired
   public S3ContentRepository(StorageConfig storageConfig, S3Wrapper wrapper, S3Client s3Client) {

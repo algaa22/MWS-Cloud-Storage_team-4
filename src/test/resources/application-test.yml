@@ -25,3 +25,8 @@ storage:
       min-file-part-size: 5242880 # 5mb
       max-file-part-size: 33554432 # 32mb
       max-parts-num: 10000
+  health-check:
+    interval-seconds: 10
+    db-timeout-seconds: 2
+    s3-timeout-seconds: 2
+    min-free-memory-percent: 0.10

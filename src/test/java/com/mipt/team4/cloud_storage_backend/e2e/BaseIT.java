@@ -43,5 +43,10 @@ public class BaseIT {
     registry.add(
         "storage.auth.jwt-secret-key",
         () -> "Y29tZS12ZXJ5LWxvbmctYW5kLXNlY3VyZS10ZXN0LXNlY3V0ZS1rZXktMzItY2hhcnM=");
+
+    registry.add("storage.health-check.interval-seconds", () -> 10);
+    registry.add("storage.health-check.db-timeout-seconds", () -> 2);
+    registry.add("storage.health-check.s3-timeout-seconds", () -> 2);
+    registry.add("storage.health-check.min-free-memory-percent", () -> 0.10);
   }
 }

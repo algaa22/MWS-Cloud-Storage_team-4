@@ -78,6 +78,12 @@ storage:
     file-stale-time-min: 60
     file-throttled-update-interval-sec: 15
 
+  health-check:
+    interval-seconds: 10
+    db-timeout-seconds: 2
+    s3-timeout-seconds: 2
+    min-free-memory-percent: 0.10
+
   failsafe-retry:
     max-attempts: 3
     delay-factor: 2.0

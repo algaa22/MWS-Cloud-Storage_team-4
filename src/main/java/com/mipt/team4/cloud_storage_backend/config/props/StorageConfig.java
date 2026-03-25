@@ -41,5 +41,9 @@ public record StorageConfig(
     public record Limits(long minFilePartSize, long maxFilePartSize, int maxPartsNum) {}
   }
 
-  public record HealthCheck(float lowMemoryLimit) {}
+  public record HealthCheck(
+      long intervalSeconds,
+      int dbTimeoutSeconds,
+      int s3TimeoutSeconds,
+      double minFreeMemoryPercent) {}
 }

@@ -76,6 +76,8 @@ public class BatchProcessor {
           log.error("[{}] Failed to process item {}", taskName, idExtractor.apply(item), e);
         }
       }
+
+      pageable = slice.nextPageable();
     } while (slice.hasNext());
   }
 

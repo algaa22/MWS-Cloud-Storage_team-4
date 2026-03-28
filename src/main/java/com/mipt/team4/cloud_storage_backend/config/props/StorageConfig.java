@@ -12,7 +12,8 @@ public record StorageConfig(
     FailsafeRetry failsafeRetry,
     Trash trash,
     S3 s3,
-    HealthCheck healthCheck) {
+    HealthCheck healthCheck,
+    Scheduling scheduling) {
   public record Rest(int maxAggregatedContentLength, int fileDownloadChunkSize) {}
 
   public record Auth(
@@ -47,4 +48,6 @@ public record StorageConfig(
       int s3TimeoutSeconds,
       double minFreeMemoryPercent,
       long checkIntervalSeconds) {}
+
+  public record Scheduling(int pageSize) {}
 }

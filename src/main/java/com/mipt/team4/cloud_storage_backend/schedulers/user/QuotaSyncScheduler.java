@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.service.user.schedulers;
+package com.mipt.team4.cloud_storage_backend.schedulers.user;
 
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import lombok.RequiredArgsConstructor;

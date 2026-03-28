@@ -5,10 +5,11 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageUsage;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,20 +88,14 @@ public class UserJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public List<UserEntity> getUsersWithTariffEndingBetween(LocalDateTime from, LocalDateTime to) {
-    return jpaRepository.findAllByTariffEndDateBetweenAndIsActiveTrue(from, to);
+  public Slice<UserEntity> getUsersWithTariffEndingBetween(
+      LocalDateTime from, LocalDateTime to, Pageable pageable) {
+    return jpaRepository.findAllByTariffEndDateBetweenAndIsActiveTrue(from, to, pageable);
   }
 
   @Transactional(readOnly = true)
-  public List<UserEntity> getUsersWithExpiredTariff(LocalDateTime now) {
-    return jpaRepository.findAllByTariffEndDateBeforeAndIsActiveTrue(now);
-  }
-
-  @Transactional(readOnly = true)
-  public List<UserEntity> getUsersWithTrialStartedToday() {
-    LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
-    LocalDateTime endOfDay = startOfDay.plusDays(1);
-    return jpaRepository.findAllByTrialStartDateBetween(startOfDay, endOfDay);
+  public Slice<UserEntity> getUsersWithExpiredTariff(LocalDateTime now, Pageable pageable) {
+    return jpaRepository.findAllByTariffEndDateBeforeAndIsActiveTrue(now, pageable);
   }
 
   @Transactional(readOnly = true)

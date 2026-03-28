@@ -7,6 +7,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -112,10 +115,9 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
     WHERE user_id = :userId
       AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
       AND is_deleted = true
-    ORDER BY is_directory DESC, name ASC
 """)
-  List<StorageEntity> findTrashByParentId(
-      @Param("userId") UUID userId, @Param("parentId") UUID parentId);
+  Page<StorageEntity> findTrashByParentId(
+      @Param("userId") UUID userId, @Param("parentId") UUID parentId, Pageable pageable);
 
   @Query(
       nativeQuery = true,
@@ -176,19 +178,20 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       nativeQuery = true,
       value =
           """
-    WITH RECURSIVE folder_tree AS (
-        SELECT * FROM files WHERE id = :id AND user_id = :userId
-        UNION ALL
-        SELECT f.* FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
-    )
-    SELECT * FROM folder_tree WHERE is_directory = false
-""")
+      WITH RECURSIVE folder_tree AS (
+          SELECT * FROM files WHERE id = :id AND user_id = :userId
+          UNION ALL
+          SELECT f.* FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
+      )
+      SELECT * FROM folder_tree
+  """)
   List<StorageEntity> findAllFilesDescendants(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Query(
       nativeQuery = true,
       value = "SELECT * FROM files WHERE is_deleted = true AND deleted_at < :threshold")
-  List<StorageEntity> findStaleDeletedFiles(@Param("threshold") LocalDateTime threshold);
+  Slice<StorageEntity> findStaleDeletedFiles(
+      @Param("threshold") LocalDateTime threshold, Pageable pageable);
 
   @Query(
       value =
@@ -218,6 +221,6 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.parentId = :parentId AND s.name = :name AND s.isDeleted = false")
   Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 
-  List<StorageEntity> findByStatusInAndUpdatedAtBefore(
-      List<FileStatus> statuses, LocalDateTime threshold);
+  Slice<StorageEntity> findByStatusInAndUpdatedAtBefore(
+      List<FileStatus> statuses, LocalDateTime threshold, Pageable pageable);
 }

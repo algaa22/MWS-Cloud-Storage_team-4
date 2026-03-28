@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.controller.storage.aggregated;
 
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedResponse;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
+import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
@@ -15,31 +16,33 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
 import io.netty.channel.ChannelHandlerContext;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 
 @Controller
 @RequiredArgsConstructor
-public class AggregatedFileController {
+public class FileController {
   private final FileService fileService;
 
   public void getFileList(ChannelHandlerContext ctx, GetFileListRequest request) {
-    List<StorageEntity> files = fileService.getFileList(request);
+    Page<StorageEntity> files = fileService.getFileList(request);
 
     FileListResponse response =
-        new FileListResponse(files.stream().map(FileInfoResponse::from).toList());
+        new FileListResponse(
+            PaginationMapper.toResponse(
+                files, files.stream().map(FileInfoResponse::from).toList()));
 
     ResponseUtils.send(ctx, response);
   }
 
   public void getTrashFileList(ChannelHandlerContext ctx, TrashFileListRequest request) {
-    List<StorageEntity> trashFiles =
-        fileService.getTrashFileList(
-            new GetFileListRequest(request.userId(), request.parentId(), false, false, null));
+    Page<StorageEntity> trashFiles = fileService.getTrashFileList(request);
     FileListResponse response =
-        new FileListResponse(trashFiles.stream().map(FileInfoResponse::from).toList());
+        new FileListResponse(
+            PaginationMapper.toResponse(
+                trashFiles, trashFiles.stream().map(FileInfoResponse::from).toList()));
     ResponseUtils.send(ctx, response);
   }
 

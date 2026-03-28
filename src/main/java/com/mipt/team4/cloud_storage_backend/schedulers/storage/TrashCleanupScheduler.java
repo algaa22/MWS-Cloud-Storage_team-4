@@ -1,11 +1,11 @@
-package com.mipt.team4.cloud_storage_backend.service.storage.schedulers;
+package com.mipt.team4.cloud_storage_backend.schedulers.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileErasureService;
+import com.mipt.team4.cloud_storage_backend.utils.BatchProcessor;
 import java.time.LocalDateTime;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -33,6 +33,9 @@ public class TrashCleanupScheduler {
   private final StorageJpaRepositoryAdapter metadataRepository;
   private final FileErasureService erasureService;
   private final StorageConfig storageConfig;
+  private final BatchProcessor batchProcessor;
+
+  private static final String TASK_NAME = "Trash Cleanup";
 
   /**
    * Очистка файлов, которые были удалены пользователем (Soft Delete) более N дней назад.
@@ -42,29 +45,12 @@ public class TrashCleanupScheduler {
   public void cleanupTrash() {
     int daysToKeep = storageConfig.trash().retentionDays();
     LocalDateTime threshold = LocalDateTime.now().minusDays(daysToKeep);
-    List<StorageEntity> staleDeletedFiles = metadataRepository.getStaleDeletedFiles(threshold);
 
-    if (staleDeletedFiles.isEmpty()) {
-      return;
-    }
-
-    log.info("Trash Cleanup: Found {} items to be permanently removed", staleDeletedFiles.size());
-
-    for (StorageEntity entity : staleDeletedFiles) {
-      try {
-        hardDelete(entity);
-      } catch (Exception e) {
-        log.error("Trash Cleanup: Failed to delete file {}", entity.getId(), e);
-      }
-    }
-  }
-
-  private void hardDelete(StorageEntity entity) {
-    erasureService.hardDelete(entity);
-
-    log.info(
-        "Trash Cleanup: Permanently deleted file {} (owner: {})",
-        entity.getId(),
-        entity.getUserId());
+    batchProcessor.scoop(
+        TASK_NAME,
+        pageable -> metadataRepository.getStaleDeletedFiles(threshold, pageable),
+        StorageEntity::getId,
+        erasureService::hardDelete);
+    ;
   }
 }

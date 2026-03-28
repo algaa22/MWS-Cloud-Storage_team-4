@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.user.payment.PaymentException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenewRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -122,5 +124,42 @@ public class TariffService {
 
     return userEntity.getTariffEndDate() == null
         || !userEntity.getTariffEndDate().isBefore(LocalDateTime.now());
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void autoRenew(UserEntity user) {
+    log.info("Processing auto-renew for user: {}", user.getId());
+
+    try {
+      paymentService.autoRenewTariff(user.getId());
+
+      LocalDateTime newEndDate =
+          LocalDateTime.now().plusDays(user.getTariffPlan().getDurationDays());
+
+      userRepository.updateTariffEndDate(user.getId(), newEndDate);
+      notificationClient.notifyTariffRenewed(user.getEmail(), user.getUsername(), newEndDate);
+
+      log.info("Auto-renew successful for user: {}, new end date: {}", user.getId(), newEndDate);
+
+    } catch (PaymentException e) {
+      log.error("Auto-renew failed for user: {}", user.getId(), e);
+      deactivateUser(user);
+      throw e;
+    }
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void deactivateUser(UserEntity user) {
+    log.info("Deactivating user {} due to expired tariff", user.getId());
+
+    userRepository.deactivateUser(user.getId());
+
+    try {
+      notificationClient.notifyTariffExpired(user.getEmail(), user.getUsername());
+    } catch (Exception e) {
+      log.error("Failed to send expiration notification to user {}", user.getId(), e);
+    }
+
+    log.info("User {} deactivated due to expired tariff", user.getId());
   }
 }

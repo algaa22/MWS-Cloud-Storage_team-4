@@ -36,7 +36,15 @@ public class SafeParser {
   public static Object parseEnum(String field, String value, Class<?> type) {
     try {
       return Enum.valueOf((Class<? extends Enum>) type, value.toUpperCase().trim());
-    } catch (IllegalArgumentException | NullPointerException e) {
+    } catch (IllegalArgumentException e) {
+      Object[] constants = type.getEnumConstants();
+
+      for (Object constant : constants) {
+        if (constant.toString().equalsIgnoreCase(value.trim())) {
+          return constant;
+        }
+      }
+
       throw new ParseException(field, type, value);
     }
   }

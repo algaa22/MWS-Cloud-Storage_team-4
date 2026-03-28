@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
+import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -95,7 +97,9 @@ public class StorageRepository {
                 metadataRepository.findAllDescendants(entity.getUserId(), entity.getId());
 
             for (StorageEntity file : descendants) {
-              contentRepository.hardDelete(file.getS3Key());
+              if (file.getS3Key() != null) {
+                contentRepository.hardDelete(file.getS3Key());
+              }
             }
           }
 
@@ -142,8 +146,8 @@ public class StorageRepository {
     uploadRepository.updateSessionStatus(session.getId(), session.getStatus(), newStatus);
   }
 
-  public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
-    return metadataRepository.getTrashFileList(userId, parentId);
+  public Page<StorageEntity> getTrashFileList(UUID userId, UUID parentId, PageQuery pageQuery) {
+    return metadataRepository.getTrashFileList(userId, parentId, pageQuery);
   }
 
   public InputStream download(StorageEntity entity) {
@@ -174,8 +178,8 @@ public class StorageRepository {
     return metadataRepository.exists(userId, parentId, name);
   }
 
-  public List<StorageEntity> getFileList(FileListFilter filter) {
-    return metadataRepository.getFileList(filter);
+  public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
+    return metadataRepository.getFileList(filter, pageQuery);
   }
 
   public String getFullFilePath(UUID fileId) {

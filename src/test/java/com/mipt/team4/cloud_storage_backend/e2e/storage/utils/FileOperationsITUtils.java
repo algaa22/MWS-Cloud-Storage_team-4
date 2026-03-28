@@ -33,7 +33,7 @@ public class FileOperationsITUtils {
             client, userToken, includeDirectories, recursive, searchDirectoryId);
     assertEquals(HttpStatus.SC_OK, response.statusCode());
 
-    JsonNode filesNode = itUtils.getRootNodeFromResponse(response).get("files");
+    JsonNode filesNode = itUtils.getRootNodeFromResponse(response).get("page").get("content");
     List<String> responseFiles = new ArrayList<>();
 
     for (int i = 0; i < filesNode.size(); i++) {
@@ -55,7 +55,8 @@ public class FileOperationsITUtils {
       throws IOException, InterruptedException {
     String endpoint =
         itUtils.fillQuery(
-            "/api/files/list?includeDirectories=%b&recursive=%b", includeDirectories, recursive);
+            "/api/files/list?includeDirectories=%s&recursive=%s&page=%s&size=%s&direction=%s&sort_by=%s",
+            includeDirectories, recursive, 0, 100, "asc", "name");
 
     if (searchDirectoryId != null) {
       endpoint += itUtils.fillQuery("&parentId=%s", searchDirectoryId);

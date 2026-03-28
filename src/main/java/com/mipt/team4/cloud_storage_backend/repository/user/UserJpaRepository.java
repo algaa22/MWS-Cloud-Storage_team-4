@@ -4,9 +4,10 @@ import com.mipt.team4.cloud_storage_backend.model.storage.projection.StorageUsag
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -26,14 +27,16 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
   @Query(
       value =
           """
-        UPDATE users u
-        SET used_storage = COALESCE(
-            (SELECT SUM(size)
-             FROM files f
-             WHERE f.user_id = u.id
-               AND f.is_deleted = FALSE),
-            0)
-        """,
+              UPDATE users u
+              SET used_storage = s.total_size
+              FROM (
+                  SELECT user_id, COALESCE(SUM(size), 0) as total_size
+                  FROM files
+                  WHERE is_deleted = FALSE
+                  GROUP BY user_id
+              ) s
+              WHERE u.id = s.user_id;
+              """,
       nativeQuery = true)
   void syncAllUsersStorage();
 
@@ -78,10 +81,9 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
       "SELECT u.usedStorage as usedStorage, u.storageLimit as storageLimit FROM UserEntity u WHERE u.id = :userId")
   Optional<StorageUsageProjection> findStorageUsageById(@Param("userId") UUID userId);
 
-  List<UserEntity> findAllByTariffEndDateBetweenAndIsActiveTrue(
-      LocalDateTime from, LocalDateTime to);
+  Slice<UserEntity> findAllByTariffEndDateBetweenAndIsActiveTrue(
+      LocalDateTime from, LocalDateTime to, Pageable pageable);
 
-  List<UserEntity> findAllByTariffEndDateBeforeAndIsActiveTrue(LocalDateTime now);
-
-  List<UserEntity> findAllByTrialStartDateBetween(LocalDateTime start, LocalDateTime end);
+  Slice<UserEntity> findAllByTariffEndDateBeforeAndIsActiveTrue(
+      LocalDateTime now, Pageable pageable);
 }

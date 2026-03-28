@@ -99,6 +99,9 @@ storage:
   trash:
     retention-days: 30
 
+  scheduling:
+    page-size: 100
+
 notification:
   tariff:
     days-before-expiry: [ 7, 3, 1 ]

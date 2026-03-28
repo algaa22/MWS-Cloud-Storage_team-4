@@ -63,6 +63,7 @@ public class DtoAssembler {
             case AUTH -> getAuthAttribute(ctx, param);
             case BODY_PARAM -> parseBodyParam(rootNode, param);
             case BODY -> parseBody(request, param);
+            case NESTED_DTO -> assemble(ctx, param.type(), request);
             default ->
                 throw new UnknownRequestSourceTypeException(param.mappedName(), param.source());
           };

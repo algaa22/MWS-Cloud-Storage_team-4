@@ -4,6 +4,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlready
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
+import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
@@ -13,6 +14,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileIn
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
@@ -24,10 +26,10 @@ import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -156,18 +158,20 @@ public class FileService {
   }
 
   @Transactional(readOnly = true)
-  public List<StorageEntity> getTrashFileList(GetFileListRequest request) {
-    return storageRepository.getTrashFileList(request.userId(), request.parentId());
+  public Page<StorageEntity> getTrashFileList(TrashFileListRequest request) {
+    return storageRepository.getTrashFileList(
+        request.userId(), request.parentId(), PaginationMapper.toPageQuery(request.pagination()));
   }
 
   @Transactional(readOnly = true)
-  public List<StorageEntity> getFileList(GetFileListRequest request) {
+  public Page<StorageEntity> getFileList(GetFileListRequest request) {
     UUID parentId = request.parentId();
     UUID userId = request.userId();
 
     return storageRepository.getFileList(
         new FileListFilter(
-            userId, parentId, request.includeDirectories(), request.recursive(), request.tags()));
+            userId, parentId, request.includeDirectories(), request.recursive(), request.tags()),
+        PaginationMapper.toPageQuery(request.pagination()));
   }
 
   @Transactional(readOnly = true)

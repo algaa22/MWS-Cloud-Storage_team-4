@@ -18,7 +18,7 @@ public class GetFileListDetailedIT extends BaseDetailedFileIT {
   @Autowired private ITUtils itUtils;
 
   public GetFileListDetailedIT() {
-    super("/api/files/list", HttpMethod.GET.name(), PathParam.EXISTENT_DIRECTORY);
+    super("/api/files/list", HttpMethod.GET.name(), PathParam.EXISTENT_DIRECTORY, true);
   }
 
   @Test
@@ -28,7 +28,7 @@ public class GetFileListDetailedIT extends BaseDetailedFileIT {
             client, currentUserToken, false, true, null);
 
     JsonNode rootNode = itUtils.getRootNodeFromResponse(response);
-    assertFalse(rootNode.get("files").elements().hasNext());
+    assertFalse(rootNode.get("page").get("content").elements().hasNext());
   }
 
   // TODO: тест на параметр includeDirectories

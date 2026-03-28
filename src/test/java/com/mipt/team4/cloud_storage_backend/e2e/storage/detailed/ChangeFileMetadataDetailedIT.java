@@ -25,7 +25,7 @@ public class ChangeFileMetadataDetailedIT extends BaseDetailedFileIT {
   @Autowired private FileOperationsITUtils fileOperationsITUtils;
 
   public ChangeFileMetadataDetailedIT() {
-    super("/api/files", HttpMethod.PUT.name(), PathParam.EXISTENT_FILE);
+    super("/api/files", HttpMethod.PUT.name(), PathParam.EXISTENT_FILE, false);
   }
 
   @Test

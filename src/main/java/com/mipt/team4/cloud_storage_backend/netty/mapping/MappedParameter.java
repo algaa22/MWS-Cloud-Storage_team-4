@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.mapping;
 
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.NestedDto;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.QueryParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestBody;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestBodyParam;
@@ -26,11 +27,13 @@ public record MappedParameter(
     BODY_PARAM,
     BODY,
     AUTH,
-    STATUS
+    STATUS,
+    NESTED_DTO
   }
 
   public static MappedParameter from(Parameter parameter) {
     return Stream.<Function<Parameter, Optional<MappedParameter>>>of(
+            MappedParameter::tryUserId,
             MappedParameter::tryQueryParam,
             MappedParameter::tryRequestHeader,
             MappedParameter::tryRequestBodyParam,
@@ -38,7 +41,7 @@ public record MappedParameter(
             MappedParameter::tryResponseHeader,
             MappedParameter::tryResponseBodyParam,
             MappedParameter::tryResponseStatus,
-            MappedParameter::tryUserId)
+            MappedParameter::tryNestedDto)
         .map(func -> func.apply(parameter))
         .flatMap(Optional::stream)
         .findFirst()
@@ -115,6 +118,13 @@ public record MappedParameter(
   private static Optional<MappedParameter> tryResponseStatus(Parameter parameter) {
     return Optional.ofNullable(parameter.getAnnotation(ResponseStatus.class))
         .map(annotation -> create(parameter, null, SourceType.STATUS, null, false));
+  }
+
+  private static Optional<MappedParameter> tryNestedDto(Parameter parameter) {
+    return Optional.ofNullable(parameter.getAnnotation(NestedDto.class))
+        .map(
+            annotation ->
+                create(parameter, null, SourceType.NESTED_DTO, null, annotation.required()));
   }
 
   private static MappedParameter create(

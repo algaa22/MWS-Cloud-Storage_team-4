@@ -7,4 +7,5 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Qu
 import jakarta.validation.constraints.NotBlank;
 
 public record UserPaginationParams(
-    @NestedDto CommonPaginationParams commonParams, @NotBlank @QueryParam UserSortBy sortBy) {}
+    @NestedDto CommonPaginationParams commonParams,
+    @NotBlank @QueryParam(defaultValue = UserSortBy.DEFAULT_VALUE) UserSortBy sortBy) {}

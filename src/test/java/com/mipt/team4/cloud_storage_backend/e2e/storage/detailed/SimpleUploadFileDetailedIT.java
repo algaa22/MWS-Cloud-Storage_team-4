@@ -22,7 +22,7 @@ public class SimpleUploadFileDetailedIT extends BaseDetailedFileIT {
   @Autowired private FileSimpleTransferITUtils transferITUtils;
 
   public SimpleUploadFileDetailedIT() {
-    super("/api/files/upload", HttpMethod.POST.name(), PathParam.NEW_ENTITY);
+    super("/api/files/upload", HttpMethod.POST.name(), PathParam.NEW_ENTITY, false);
   }
 
   @Test

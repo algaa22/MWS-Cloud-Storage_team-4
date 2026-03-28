@@ -6,6 +6,8 @@ public enum PaginationDirection {
   ASC("asc"),
   DESC("desc");
 
+  public static final String DEFAULT_VALUE = "desc";
+
   @Getter private final String name;
 
   PaginationDirection(String name) {

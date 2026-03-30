@@ -93,6 +93,17 @@ public class StorageRepository {
         });
   }
 
+  public void abortMultipartUpload(StorageEntity entity, UUID sessionId, String uploadId) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.UPLOAD,
+        () -> {
+          contentRepository.abortMultipartUpload(entity.getS3Key(), uploadId);
+          uploadRepository.deleteSession(sessionId);
+          return null;
+        });
+  }
+
   public void hardDelete(StorageEntity entity) {
     wrapper.wrapUpdate(
         entity,
@@ -146,10 +157,18 @@ public class StorageRepository {
         });
   }
 
-  public int updateUploadSessionStatus(
-      ChunkedUploadSessionEntity session, ChunkedUploadStatus newStatus) {
+  public void tryUpdateUploadSessionStatus(
+      ChunkedUploadSessionEntity session,
+      ChunkedUploadStatus expectedOldStatus,
+      ChunkedUploadStatus newStatus) {
     session.setStatus(newStatus);
-    return uploadRepository.updateSessionStatus(session.getId(), session.getStatus(), newStatus);
+
+    int updatedRows =
+        uploadRepository.updateSessionStatus(session.getId(), expectedOldStatus, newStatus);
+
+    if (updatedRows == 0) {
+      throw new IncorrectUploadStatusException(expectedOldStatus);
+    }
   }
 
   public int touchUploadSessionStatus(UUID sessionId, ChunkedUploadStatus expectedStatus) {

@@ -21,10 +21,12 @@ public class ApiEndpoints {
   public static final String FILES_INFO = FILES_PREFIX + "/info";
 
   // Files (Chunked)
-  public static final String FILES_CHUNKED_UPLOAD = FILES_SIMPLE_UPLOAD + "/chunked";
-  public static final String FILES_CHUNKED_UPLOAD_PART = FILES_CHUNKED_UPLOAD + "/part";
-  public static final String FILES_CHUNKED_UPLOAD_START = FILES_CHUNKED_UPLOAD + "/start";
-  public static final String FILES_CHUNKED_UPLOAD_COMPLETE = FILES_CHUNKED_UPLOAD + "/complete";
+  public static final String FILES_CHUNKED_UPLOAD_PREFIX = FILES_SIMPLE_UPLOAD + "/chunked";
+  public static final String FILES_CHUNKED_UPLOAD_PART = FILES_CHUNKED_UPLOAD_PREFIX + "/part";
+  public static final String FILES_CHUNKED_UPLOAD_START = FILES_CHUNKED_UPLOAD_PREFIX + "/start";
+  public static final String FILES_CHUNKED_UPLOAD_COMPLETE =
+      FILES_CHUNKED_UPLOAD_PREFIX + "/complete";
+  public static final String FILES_CHUNKED_UPLOAD_ABORT = FILES_CHUNKED_UPLOAD_PREFIX + "/abort";
   public static final String FILES_DOWNLOAD = FILES_PREFIX + "/download";
 
   // Users & Auth

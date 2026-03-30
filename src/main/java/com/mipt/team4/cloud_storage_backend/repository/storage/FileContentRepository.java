@@ -13,6 +13,8 @@ public interface FileContentRepository {
 
   void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags);
 
+  void abortMultipartUpload(String s3Key, String uploadId);
+
   void createBucket(String bucketName);
 
   void putObject(String s3Key, byte[] data);

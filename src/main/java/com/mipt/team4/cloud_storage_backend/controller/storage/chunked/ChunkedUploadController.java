@@ -9,6 +9,7 @@ import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedRe
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartContext;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartDto;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.AbortUploadSessionRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedUploadPartRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CompleteChunkedUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
@@ -44,6 +45,12 @@ public class ChunkedUploadController {
   public void startUploadSession(ChannelHandlerContext ctx, StartChunkedUploadRequest request) {
     StartChunkedUploadResponse response = uploadService.startChunkedUpload(request);
     ResponseUtils.send(ctx, response);
+  }
+
+  public void abortUploadSession(ChannelHandlerContext ctx, AbortUploadSessionRequest request) {
+    uploadService.abortChunkedUpload(request);
+    ResponseUtils.send(ctx, new SuccessResponse("Upload successfully aborted"))
+        .addListener(ChannelFutureListener.CLOSE);
   }
 
   public void startPartUploading(ChannelHandlerContext ctx, ChunkedUploadPartRequest request) {
@@ -145,7 +152,8 @@ public class ChunkedUploadController {
               currentPart.checksum(),
               accumulator.readableBytes(),
               new ByteBufInputStream(accumulator)));
-      ResponseUtils.send(ctx, new SuccessResponse("Part successfully uploaded"));
+      ResponseUtils.send(ctx, new SuccessResponse("Part successfully uploaded"))
+          .addListener(ChannelFutureListener.CLOSE);
     } catch (UploadRetriableException e) {
       ResponseUtils.send(
           ctx, new UploadPartRetryResponse("RETRY_PART", e.getMessage(), currentPart.partNumber()));
@@ -154,15 +162,15 @@ public class ChunkedUploadController {
     }
   }
 
-  private Attribute<ChunkedUploadPartContext> getPartAttribute(ChannelHandlerContext ctx) {
-    return ctx.channel().attr(NettyAttributes.CHUNKED_UPLOAD_PART_INFO);
-  }
-
   private void resetCurrentPart(ChannelHandlerContext ctx, CompositeByteBuf accumulator) {
     if (accumulator.refCnt() > 0) {
       accumulator.release();
     }
 
     getPartAttribute(ctx).set(null);
+  }
+
+  private Attribute<ChunkedUploadPartContext> getPartAttribute(ChannelHandlerContext ctx) {
+    return ctx.channel().attr(NettyAttributes.CHUNKED_UPLOAD_PART_INFO);
   }
 }

@@ -123,6 +123,23 @@ public class S3ContentRepository implements FileContentRepository {
   }
 
   @Override
+  public void abortMultipartUpload(String s3Key, String uploadId) {
+    wrapper.execute(
+        () -> {
+          AbortMultipartUploadRequest abortRequest =
+              AbortMultipartUploadRequest.builder()
+                  .bucket(bucketName)
+                  .key(s3Key)
+                  .uploadId(uploadId)
+                  .build();
+
+          s3Client.abortMultipartUpload(abortRequest);
+
+          return null;
+        });
+  }
+
+  @Override
   public void putObject(String s3Key, byte[] data) {
     wrapper.execute(
         () -> {

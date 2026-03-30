@@ -137,7 +137,7 @@ public class ChunkedUploadService {
   public UUID completeChunkedUpload(CompleteChunkedUploadRequest request) {
     ChunkedUploadSessionEntity session = getSession(request.sessionId());
 
-    storageRepository.updateUploadSessionStatus(session, ChunkedUploadStatus.COMPLETING);
+    tryUpdateSessionStatus(session, ChunkedUploadStatus.UPLOADING, ChunkedUploadStatus.COMPLETING);
 
     try {
       StorageEntity fileEntity = session.getFile();
@@ -152,9 +152,14 @@ public class ChunkedUploadService {
 
       return fileEntity.getId();
     } catch (Exception e) {
-      storageRepository.updateUploadSessionStatus(session, ChunkedUploadStatus.UPLOADING);
+      tryUpdateSessionStatus(
+          session, ChunkedUploadStatus.COMPLETING, ChunkedUploadStatus.UPLOADING);
       throw e;
     }
+  }
+
+  public boolean isPartAlreadyUploaded(ChunkedUploadPartRequest request) {
+    return storageRepository.isPartAlreadyUploaded(request.sessionId(), request.part());
   }
 
   private ChunkedUploadSessionEntity getSession(UUID sessionId) {
@@ -168,6 +173,17 @@ public class ChunkedUploadService {
     }
 
     return session;
+  }
+
+  private void tryUpdateSessionStatus(
+      ChunkedUploadSessionEntity session,
+      ChunkedUploadStatus expectedStatus,
+      ChunkedUploadStatus newStatus) {
+    int updatedRows = storageRepository.updateUploadSessionStatus(session, newStatus);
+
+    if (updatedRows == 0) {
+      throw new IncorrectUploadStatusException(expectedStatus, session.getStatus());
+    }
   }
 
   private Map<Integer, String> collectETagsIntoMap(List<ChunkedUploadPartEntity> parts) {
@@ -219,9 +235,5 @@ public class ChunkedUploadService {
 
       throw new MissingUploadPartsException(partsBitSet);
     }
-  }
-
-  public boolean isPartAlreadyUploaded(ChunkedUploadPartRequest request) {
-    return storageRepository.isPartAlreadyUploaded(request.sessionId(), request.part());
   }
 }

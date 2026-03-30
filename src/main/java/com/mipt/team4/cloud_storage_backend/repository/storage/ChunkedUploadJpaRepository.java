@@ -38,10 +38,19 @@ public interface ChunkedUploadJpaRepository
   @Query(
       "UPDATE ChunkedUploadSessionEntity s SET s.status = :newStatus "
           + "WHERE s.id = :id AND s.status = :oldStatus")
-  void updateStatus(
+  int updateStatus(
       @Param("id") UUID id,
       @Param("oldStatus") ChunkedUploadStatus oldStatus,
       @Param("newStatus") ChunkedUploadStatus newStatus);
+
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query(
+      """
+        UPDATE ChunkedUploadSessionEntity s
+        SET s.status = :status
+        WHERE s.id = :id AND s.status = :status
+        """)
+  int touchStatus(@Param("id") UUID id, @Param("status") ChunkedUploadStatus status);
 
   @Modifying(flushAutomatically = true)
   @Query(

@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
@@ -66,6 +67,11 @@ public class StorageRepository {
           String eTag =
               contentRepository.uploadPart(
                   uploadId, fileEntity.getS3Key(), part.getNumber(), inputStream, part.getSize());
+
+          int updatedRows = touchUploadSessionStatus(sessionId, ChunkedUploadStatus.UPLOADING);
+          if (updatedRows == 0) {
+            throw new IncorrectUploadStatusException(ChunkedUploadStatus.UPLOADING);
+          }
 
           part.setETag(eTag);
           uploadRepository.upsertPart(part);
@@ -140,10 +146,14 @@ public class StorageRepository {
         });
   }
 
-  public void updateUploadSessionStatus(
+  public int updateUploadSessionStatus(
       ChunkedUploadSessionEntity session, ChunkedUploadStatus newStatus) {
     session.setStatus(newStatus);
-    uploadRepository.updateSessionStatus(session.getId(), session.getStatus(), newStatus);
+    return uploadRepository.updateSessionStatus(session.getId(), session.getStatus(), newStatus);
+  }
+
+  public int touchUploadSessionStatus(UUID sessionId, ChunkedUploadStatus expectedStatus) {
+    return uploadRepository.touchSessionStatus(sessionId, expectedStatus);
   }
 
   public Page<StorageEntity> getTrashFileList(UUID userId, UUID parentId, PageQuery pageQuery) {

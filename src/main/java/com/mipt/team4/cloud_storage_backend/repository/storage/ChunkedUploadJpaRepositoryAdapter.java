@@ -31,9 +31,14 @@ public class ChunkedUploadJpaRepositoryAdapter {
   }
 
   @Transactional
-  public void updateSessionStatus(
+  public int updateSessionStatus(
       UUID sessionId, ChunkedUploadStatus oldStatus, ChunkedUploadStatus newStatus) {
-    jpaRepository.updateStatus(sessionId, oldStatus, newStatus);
+    return jpaRepository.updateStatus(sessionId, oldStatus, newStatus);
+  }
+
+  @Transactional
+  public int touchSessionStatus(UUID sessionId, ChunkedUploadStatus expectedStatus) {
+    return jpaRepository.touchStatus(sessionId, expectedStatus);
   }
 
   @Transactional

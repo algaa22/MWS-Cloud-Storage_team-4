@@ -4,7 +4,7 @@ import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileErasureService;
-import com.mipt.team4.cloud_storage_backend.utils.BatchProcessor;
+import com.mipt.team4.cloud_storage_backend.utils.wrapper.BatchProcessor;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +41,7 @@ public class TrashCleanupScheduler {
    * Очистка файлов, которые были удалены пользователем (Soft Delete) более N дней назад.
    * Выполняется раз в сутки (в 2 часа ночи).
    */
-  @Scheduled(cron = "0 0 2 * * *")
+  @Scheduled(cron = "${storage.scheduling.cron.trash-cleanup}")
   public void cleanupTrash() {
     int daysToKeep = storageConfig.trash().retentionDays();
     LocalDateTime threshold = LocalDateTime.now().minusDays(daysToKeep);

@@ -65,7 +65,6 @@ storage:
       max-file-part-size: 33554432 # 32mb
       max-parts-num: 10000
 
-
   rest:
     max-aggregated-content-length: 1048576 # 1mb
     file-download-chunk-size: 65536 # 64 kb
@@ -80,7 +79,6 @@ storage:
 
   state-machine:
     max-retry-count: 3
-    file-stale-time-min: 60
     file-throttled-update-interval-sec: 15
 
   health-check:
@@ -101,6 +99,17 @@ storage:
 
   scheduling:
     page-size: 100
+
+    stale-time-min:
+      file: 60
+      upload: 45
+
+    cron:
+      stale-file-cleanup: "0 0 1 * * *"
+      stale-upload-cleanup: "0 0 2 * * *"
+      trash-cleanup: "0 0 3 * * *"
+      check-tariff: "0 0 4 * * *"
+      quota-sync: "0 0 5 * * *"
 
 notification:
   tariff:

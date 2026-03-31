@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig.S3;
 import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
@@ -39,25 +40,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 @EnableConfigurationProperties(StorageConfig.class)
 @Tag("integration")
 class S3ContentRepositoryTest {
-
-  @TestConfiguration
-  static class S3TestConfig {
-    @Bean
-    public S3Client s3Client(StorageConfig config) {
-      StorageConfig.S3 s3Props = config.s3();
-
-      return S3Client.builder()
-          .endpointOverride(java.net.URI.create(s3Props.url()))
-          .region(software.amazon.awssdk.regions.Region.of(s3Props.region()))
-          .credentialsProvider(
-              software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
-                  software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
-                      s3Props.accessKey(), s3Props.secretKey())))
-          .forcePathStyle(true)
-          .build();
-    }
-  }
-
   private static final GenericContainer<?> S3 = TestUtils.createS3Container();
 
   @Autowired private S3ContentRepository repository;
@@ -162,4 +144,22 @@ class S3ContentRepositoryTest {
   }
 
   private record TestFileDto(String s3Key, byte[] data) {}
+
+  @TestConfiguration
+  static class S3TestConfig {
+    @Bean
+    public S3Client s3Client(StorageConfig config) {
+      StorageConfig.S3 s3Props = config.s3();
+
+      return S3Client.builder()
+          .endpointOverride(java.net.URI.create(s3Props.url()))
+          .region(software.amazon.awssdk.regions.Region.of(s3Props.region()))
+          .credentialsProvider(
+              software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                  software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
+                      s3Props.accessKey(), s3Props.secretKey())))
+          .forcePathStyle(true)
+          .build();
+    }
+  }
 }

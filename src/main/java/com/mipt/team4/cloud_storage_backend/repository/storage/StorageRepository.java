@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
+import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
@@ -67,6 +68,11 @@ public class StorageRepository {
               contentRepository.uploadPart(
                   uploadId, fileEntity.getS3Key(), part.getNumber(), inputStream, part.getSize());
 
+          int updatedRows = touchUploadSessionStatus(sessionId, ChunkedUploadStatus.UPLOADING);
+          if (updatedRows == 0) {
+            throw new IncorrectUploadStatusException(ChunkedUploadStatus.UPLOADING);
+          }
+
           part.setETag(eTag);
           uploadRepository.upsertPart(part);
           uploadRepository.incrementCurrentSize(sessionId, part.getSize());
@@ -83,6 +89,18 @@ public class StorageRepository {
         () -> {
           contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
           uploadRepository.deleteSession(sessionId);
+          return null;
+        });
+  }
+
+  public void abortMultipartUpload(StorageEntity entity, UUID sessionId, String uploadId) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.UPLOAD,
+        () -> {
+          contentRepository.abortMultipartUpload(entity.getS3Key(), uploadId);
+          uploadRepository.deleteSession(sessionId);
+          metadataRepository.hardDelete(entity.getUserId(), entity.getId());
           return null;
         });
   }
@@ -140,22 +158,34 @@ public class StorageRepository {
         });
   }
 
-  public void updateUploadSessionStatus(
-      ChunkedUploadSessionEntity session, ChunkedUploadStatus newStatus) {
+  public void tryUpdateUploadSessionStatus(
+      ChunkedUploadSessionEntity session,
+      ChunkedUploadStatus expectedOldStatus,
+      ChunkedUploadStatus newStatus) {
+    int updatedRows =
+        uploadRepository.updateSessionStatus(session.getId(), expectedOldStatus, newStatus);
+
+    if (updatedRows == 0) {
+      throw new IncorrectUploadStatusException(expectedOldStatus);
+    }
+
     session.setStatus(newStatus);
-    uploadRepository.updateSessionStatus(session.getId(), session.getStatus(), newStatus);
+  }
+
+  public int touchUploadSessionStatus(UUID sessionId, ChunkedUploadStatus expectedStatus) {
+    return uploadRepository.touchSessionStatus(sessionId, expectedStatus);
   }
 
   public Page<StorageEntity> getTrashFileList(UUID userId, UUID parentId, PageQuery pageQuery) {
     return metadataRepository.getTrashFileList(userId, parentId, pageQuery);
   }
 
-  public InputStream download(StorageEntity entity) {
+  public InputStream download(StorageEntity entity, String range) {
     if (entity.getStatus() != FileStatus.READY) {
       throw new DownloadNonReadyFileException(entity.getId());
     }
 
-    return contentRepository.downloadObject(entity.getS3Key());
+    return contentRepository.downloadObject(entity.getS3Key(), range);
   }
 
   public Optional<StorageEntity> get(UUID userId, UUID fileId) {

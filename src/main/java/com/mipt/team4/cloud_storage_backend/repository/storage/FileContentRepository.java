@@ -4,14 +4,15 @@ import java.io.InputStream;
 import java.util.Map;
 
 public interface FileContentRepository {
-
-  InputStream downloadObject(String s3key);
+  InputStream downloadObject(String s3key, String range);
 
   String startMultipartUpload(String s3Key);
 
   String uploadPart(String uploadId, String s3Key, int partNum, InputStream inputStream, long size);
 
   void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags);
+
+  void abortMultipartUpload(String s3Key, String uploadId);
 
   void createBucket(String bucketName);
 
@@ -22,4 +23,8 @@ public interface FileContentRepository {
   boolean bucketExists(String bucketName);
 
   boolean objectExists(String s3Key);
+
+  default InputStream downloadObject(String s3key) {
+    return downloadObject(s3key, null);
+  }
 }

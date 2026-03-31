@@ -5,7 +5,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
-import com.mipt.team4.cloud_storage_backend.utils.BatchProcessor;
+import com.mipt.team4.cloud_storage_backend.utils.wrapper.BatchProcessor;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ public class TariffScheduler {
 
   private static final String TASK_NAME = "Tariff Scheduler";
 
-  @Scheduled(cron = "0 0 4 * * *")
+  @Scheduled(cron = "${storage.scheduling.cron.check-tariff}")
   public void checkTariffs() {
     log.info("[{}] Starting", TASK_NAME);
 

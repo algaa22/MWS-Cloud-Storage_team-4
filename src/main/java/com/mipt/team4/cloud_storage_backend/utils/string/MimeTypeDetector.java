@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.utils;
+package com.mipt.team4.cloud_storage_backend.utils.string;
 
 import java.io.IOException;
 import java.nio.file.Files;

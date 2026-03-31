@@ -21,8 +21,7 @@ public record StorageConfig(
 
   public record Quotas(long defaultStorageLimit) {}
 
-  public record StateMachine(
-      int maxRetryCount, int fileStaleTimeMin, int fileThrottledUpdateIntervalSec) {}
+  public record StateMachine(int maxRetryCount, int fileThrottledUpdateIntervalSec) {}
 
   public record FailsafeRetry(
       int maxAttempts, double delayFactor, Duration firstDelay, Duration maxDelay, double jitter) {}
@@ -49,5 +48,14 @@ public record StorageConfig(
       double minFreeMemoryPercent,
       long checkIntervalSeconds) {}
 
-  public record Scheduling(int pageSize) {}
+  public record Scheduling(int pageSize, StaleTimeMin staleTimeMin, Cron cron) {
+    public record StaleTimeMin(int file, int upload) {}
+
+    public record Cron(
+        String staleFileCleanup,
+        String staleUploadCleanup,
+        String trashCleanup,
+        String checkTariff,
+        String quotaSync) {}
+  }
 }

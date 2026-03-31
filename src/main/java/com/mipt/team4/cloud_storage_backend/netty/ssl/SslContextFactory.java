@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.ssl;
 
 import com.mipt.team4.cloud_storage_backend.exception.netty.SslLoadingException;
-import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+import com.mipt.team4.cloud_storage_backend.utils.file.FileLoader;
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.IdentityCipherSuiteFilter;

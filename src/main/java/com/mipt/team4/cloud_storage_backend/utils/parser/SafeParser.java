@@ -1,8 +1,9 @@
-package com.mipt.team4.cloud_storage_backend.utils;
+package com.mipt.team4.cloud_storage_backend.utils.parser;
 
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.UnknownParamTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
+import com.mipt.team4.cloud_storage_backend.utils.converter.StringListConverter;
 import java.util.List;
 import java.util.UUID;
 

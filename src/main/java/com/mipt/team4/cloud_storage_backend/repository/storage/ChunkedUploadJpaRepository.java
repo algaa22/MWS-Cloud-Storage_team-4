@@ -2,8 +2,11 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -38,10 +41,19 @@ public interface ChunkedUploadJpaRepository
   @Query(
       "UPDATE ChunkedUploadSessionEntity s SET s.status = :newStatus "
           + "WHERE s.id = :id AND s.status = :oldStatus")
-  void updateStatus(
+  int updateStatus(
       @Param("id") UUID id,
       @Param("oldStatus") ChunkedUploadStatus oldStatus,
       @Param("newStatus") ChunkedUploadStatus newStatus);
+
+  @Modifying(flushAutomatically = true)
+  @Query(
+      """
+        UPDATE ChunkedUploadSessionEntity s
+        SET s.status = :status
+        WHERE s.id = :id AND s.status = :status
+        """)
+  int touchStatus(@Param("id") UUID id, @Param("status") ChunkedUploadStatus status);
 
   @Modifying(flushAutomatically = true)
   @Query(
@@ -54,4 +66,7 @@ public interface ChunkedUploadJpaRepository
   @Query(
       "SELECT COUNT(p) > 0 FROM ChunkedUploadPartEntity p WHERE p.session.id = :sid AND p.number = :pNum")
   boolean existsPart(@Param("sid") UUID sessionId, @Param("pNum") int partNumber);
+
+  Slice<ChunkedUploadSessionEntity> findByFile_UpdatedAtBefore(
+      LocalDateTime threshold, Pageable pageable);
 }

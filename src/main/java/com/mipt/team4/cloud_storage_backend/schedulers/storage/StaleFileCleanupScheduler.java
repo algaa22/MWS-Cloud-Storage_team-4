@@ -5,7 +5,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepositoryWrapper;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileErasureService;
-import com.mipt.team4.cloud_storage_backend.utils.BatchProcessor;
+import com.mipt.team4.cloud_storage_backend.utils.wrapper.BatchProcessor;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,7 @@ public class StaleFileCleanupScheduler {
   private final StorageConfig storageConfig;
   private final BatchProcessor batchProcessor;
 
-  private static final String TASK_NAME = "Stale Cleanup";
+  private static final String TASK_NAME = "Stale File Cleanup";
 
   /**
    * Периодическая задача по поиску и обработке "протухших" (stale) файлов.
@@ -36,9 +36,9 @@ public class StaleFileCleanupScheduler {
    * <p>Выполняется раз в сутки (в 1 час ночи). Файл считается stale, если его последнее обновление
    * ({@code updatedAt}) было произведено ранее, чем {@code now() - staleTimeThreshold}.
    */
-  @Scheduled(cron = "0 0 1 * * *")
+  @Scheduled(cron = "${storage.scheduling.cron.stale-file-cleanup}")
   public void cleanupStaleFiles() {
-    int staleTime = storageConfig.stateMachine().fileStaleTimeMin();
+    int staleTime = storageConfig.scheduling().staleTimeMin().file();
     LocalDateTime threshold = LocalDateTime.now().minusMinutes(staleTime);
 
     batchProcessor.scoop(

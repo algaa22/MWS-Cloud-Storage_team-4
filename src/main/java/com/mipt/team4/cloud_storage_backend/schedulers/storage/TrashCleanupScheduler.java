@@ -41,7 +41,7 @@ public class TrashCleanupScheduler {
    * Очистка файлов, которые были удалены пользователем (Soft Delete) более N дней назад.
    * Выполняется раз в сутки (в 2 часа ночи).
    */
-  @Scheduled(cron = "0 0 2 * * *")
+  @Scheduled(cron = "${storage.scheduling.cron.trash-cleanup}")
   public void cleanupTrash() {
     int daysToKeep = storageConfig.trash().retentionDays();
     LocalDateTime threshold = LocalDateTime.now().minusDays(daysToKeep);

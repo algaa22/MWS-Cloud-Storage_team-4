@@ -26,7 +26,7 @@ public class TariffScheduler {
 
   private static final String TASK_NAME = "Tariff Scheduler";
 
-  @Scheduled(cron = "0 0 4 * * *")
+  @Scheduled(cron = "${storage.scheduling.cron.check-tariff}")
   public void checkTariffs() {
     log.info("[{}] Starting", TASK_NAME);
 

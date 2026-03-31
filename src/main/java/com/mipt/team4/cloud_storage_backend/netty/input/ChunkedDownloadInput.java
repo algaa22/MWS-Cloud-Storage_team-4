@@ -7,9 +7,7 @@ import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.stream.ChunkedInput;
-import java.io.IOException;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.ScatteringByteChannel;
+import java.io.InputStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Scope;
@@ -20,10 +18,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Slf4j
 public class ChunkedDownloadInput implements ChunkedInput<HttpContent> {
-
-  private static final int EOF = -1;
-
-  private final ReadableByteChannel channel;
+  private final InputStream stream;
   private final int chunkSize;
   private final long totalSize;
 
@@ -37,21 +32,33 @@ public class ChunkedDownloadInput implements ChunkedInput<HttpContent> {
 
   @Override
   public HttpContent readChunk(ByteBufAllocator allocator) throws Exception {
-    if (isEndOfInput()) {
+    if (ended) {
       return null;
     }
 
-    ByteBuf buffer = allocator.buffer(chunkSize);
-    int localRead = readChannel(buffer);
+    long remaining = totalSize - bytesSent;
+    if (remaining <= 0) {
+      ended = true;
+      return LastHttpContent.EMPTY_LAST_CONTENT;
+    }
 
-    if (localRead == 0) {
+    int toRead = (int) Math.min(chunkSize, remaining);
+    ByteBuf buffer = allocator.buffer(toRead);
+    int localRead;
+
+    try {
+      localRead = buffer.writeBytes(stream, toRead);
+    } catch (Exception e) {
       buffer.release();
+      throw e;
+    }
 
-      if (ended) {
-        return LastHttpContent.EMPTY_LAST_CONTENT;
-      }
+    log.debug("sent: {}, total: {}, local: {}", bytesSent, totalSize, localRead);
 
-      return null;
+    if (localRead <= 0) {
+      buffer.release();
+      ended = true;
+      return LastHttpContent.EMPTY_LAST_CONTENT;
     }
 
     bytesSent += localRead;
@@ -61,12 +68,12 @@ public class ChunkedDownloadInput implements ChunkedInput<HttpContent> {
 
   @Override
   public void close() throws Exception {
-    channel.close();
+    stream.close();
   }
 
   @Override
   public boolean isEndOfInput() {
-    return ended || bytesSent >= totalSize;
+    return ended;
   }
 
   @Override
@@ -77,27 +84,5 @@ public class ChunkedDownloadInput implements ChunkedInput<HttpContent> {
   @Override
   public long progress() {
     return bytesSent;
-  }
-
-  private int readChannel(ByteBuf buffer) throws IOException {
-    int localRead = 0;
-
-    try {
-      while (localRead < chunkSize) {
-        int read = buffer.writeBytes((ScatteringByteChannel) channel, chunkSize - localRead);
-
-        if (read == EOF) {
-          ended = true;
-          break;
-        }
-
-        localRead += read;
-      }
-    } catch (Exception e) {
-      buffer.release();
-      throw e;
-    }
-
-    return localRead;
   }
 }

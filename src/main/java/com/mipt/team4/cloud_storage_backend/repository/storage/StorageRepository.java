@@ -100,6 +100,7 @@ public class StorageRepository {
         () -> {
           contentRepository.abortMultipartUpload(entity.getS3Key(), uploadId);
           uploadRepository.deleteSession(sessionId);
+          metadataRepository.hardDelete(entity.getUserId(), entity.getId());
           return null;
         });
   }
@@ -161,14 +162,14 @@ public class StorageRepository {
       ChunkedUploadSessionEntity session,
       ChunkedUploadStatus expectedOldStatus,
       ChunkedUploadStatus newStatus) {
-    session.setStatus(newStatus);
-
     int updatedRows =
         uploadRepository.updateSessionStatus(session.getId(), expectedOldStatus, newStatus);
 
     if (updatedRows == 0) {
       throw new IncorrectUploadStatusException(expectedOldStatus);
     }
+
+    session.setStatus(newStatus);
   }
 
   public int touchUploadSessionStatus(UUID sessionId, ChunkedUploadStatus expectedStatus) {

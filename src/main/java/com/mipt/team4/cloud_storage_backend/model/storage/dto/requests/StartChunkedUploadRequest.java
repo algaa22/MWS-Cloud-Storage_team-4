@@ -23,7 +23,7 @@ public record StartChunkedUploadRequest(
     @QueryParam(required = false) UUID parentId,
     @Positive @RequestHeader int totalParts,
     @Positive @RequestHeader long fileSize,
-    @Size @RequestHeader(value = "X-File-Tags", required = false)
+    @Size @RequestHeader(required = false)
         List<
                 @Pattern(
                     regexp = ValidationPatterns.SINGLE_TAG_REGEXP,

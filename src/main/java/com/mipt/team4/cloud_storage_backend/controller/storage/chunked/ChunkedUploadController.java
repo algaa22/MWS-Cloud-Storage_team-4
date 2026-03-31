@@ -98,7 +98,9 @@ public class ChunkedUploadController {
       ChannelHandlerContext ctx, CompleteChunkedUploadRequest request) {
     try {
       UUID createdId = uploadService.completeUpload(request);
-      ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"));
+      ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"))
+          .addListener(ChannelFutureListener.CLOSE);
+      ;
     } catch (UploadRetriableException e) {
       ResponseUtils.send(ctx, new CompleteUploadRetryResponse("RETRY_COMPLETE", e.getMessage()));
     } catch (MissingUploadPartsException e) {
@@ -167,8 +169,7 @@ public class ChunkedUploadController {
               currentPart.checksum(),
               accumulator.readableBytes(),
               new ByteBufInputStream(accumulator)));
-      ResponseUtils.send(ctx, new SuccessResponse("Part successfully uploaded"))
-          .addListener(ChannelFutureListener.CLOSE);
+      ResponseUtils.send(ctx, new SuccessResponse("Part successfully uploaded"));
     } catch (UploadRetriableException e) {
       ResponseUtils.send(
           ctx, new UploadPartRetryResponse("RETRY_PART", e.getMessage(), currentPart.partNumber()));

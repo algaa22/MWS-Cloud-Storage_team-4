@@ -3,9 +3,12 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,5 +57,11 @@ public class ChunkedUploadJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public boolean isPartAlreadyUploaded(UUID sessionId, int partNumber) {
     return jpaRepository.existsPart(sessionId, partNumber);
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<ChunkedUploadSessionEntity> getStaleSessions(
+      LocalDateTime threshold, Pageable pageable) {
+    return jpaRepository.findByFile_UpdatedAtBefore(threshold, pageable);
   }
 }

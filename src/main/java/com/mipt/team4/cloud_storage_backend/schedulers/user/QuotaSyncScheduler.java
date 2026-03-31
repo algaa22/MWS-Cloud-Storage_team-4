@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 public class QuotaSyncScheduler {
   private final UserJpaRepositoryAdapter userRepository;
 
-  @Scheduled(cron = "0 0 3 * * *")
+  @Scheduled(cron = "${storage.scheduling.cron.quota-sync}")
   public void recalculateRealStorageUsage() {
     log.info("Quota sync: Starting global storage quota synchronization...");
     userRepository.syncAllUsersStorage();

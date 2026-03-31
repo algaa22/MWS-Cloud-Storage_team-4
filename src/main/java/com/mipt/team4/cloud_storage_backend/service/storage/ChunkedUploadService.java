@@ -111,14 +111,20 @@ public class ChunkedUploadService {
         session, ChunkedUploadStatus.UPLOADING, ChunkedUploadStatus.ABORTING);
 
     try {
-      storageRepository.abortMultipartUpload(
-          session.getFile(), session.getId(), session.getUploadId());
-      userRepository.decreaseUsedStorage(request.userId(), session.getFile().getSize());
+      forceAbortUpload(session);
     } catch (Exception e) {
       storageRepository.tryUpdateUploadSessionStatus(
           session, ChunkedUploadStatus.ABORTING, ChunkedUploadStatus.UPLOADING);
       throw e;
     }
+  }
+
+  @Transactional
+  public void forceAbortUpload(ChunkedUploadSessionEntity session) {
+    StorageEntity fileEntity = session.getFile();
+
+    storageRepository.abortMultipartUpload(fileEntity, session.getId(), session.getUploadId());
+    userRepository.decreaseUsedStorage(fileEntity.getUserId(), fileEntity.getSize());
   }
 
   @Transactional

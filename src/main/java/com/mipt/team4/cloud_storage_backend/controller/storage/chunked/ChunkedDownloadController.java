@@ -15,7 +15,6 @@ import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
-import java.nio.channels.Channels;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Controller;
@@ -36,7 +35,7 @@ public class ChunkedDownloadController {
 
     ChunkedDownloadInput input =
         inputProvider.getObject(
-            Channels.newChannel(file.stream()),
+            file.stream(),
             storageConfig.rest().fileDownloadChunkSize(),
             getContentLength(file, isPartial));
 

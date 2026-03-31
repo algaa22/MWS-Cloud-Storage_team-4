@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.utils;
+package com.mipt.team4.cloud_storage_backend.utils.file;
 
 import com.mipt.team4.cloud_storage_backend.exception.utils.InputStreamNotFoundException;
 import java.io.FileInputStream;

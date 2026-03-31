@@ -27,8 +27,8 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
-import com.mipt.team4.cloud_storage_backend.utils.ChecksumUtils;
-import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
+import com.mipt.team4.cloud_storage_backend.utils.file.ChecksumUtils;
+import com.mipt.team4.cloud_storage_backend.utils.string.MimeTypeDetector;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.DigestInputStream;

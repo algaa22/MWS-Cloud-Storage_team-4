@@ -4,8 +4,7 @@ import java.io.InputStream;
 import java.util.Map;
 
 public interface FileContentRepository {
-
-  InputStream downloadObject(String s3key);
+  InputStream downloadObject(String s3key, String range);
 
   String startMultipartUpload(String s3Key);
 
@@ -24,4 +23,8 @@ public interface FileContentRepository {
   boolean bucketExists(String bucketName);
 
   boolean objectExists(String s3Key);
+
+  default InputStream downloadObject(String s3key) {
+    return downloadObject(s3key, null);
+  }
 }

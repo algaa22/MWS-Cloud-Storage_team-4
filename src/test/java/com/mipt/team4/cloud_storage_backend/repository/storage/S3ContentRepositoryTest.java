@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig.S3;
 import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
@@ -65,7 +66,10 @@ class S3ContentRepositoryTest {
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     String s3Url =
-        "http://" + S3.getHost() + ":" + S3.getMappedPort(TestConstants.S3_INTERNAL_PORT);
+        "http://"
+            + StorageConfig.S3.getHost()
+            + ":"
+            + StorageConfig.S3.getMappedPort(TestConstants.S3_INTERNAL_PORT);
 
     registry.add("storage.s3.url", () -> s3Url);
     registry.add("storage.s3.access-key", () -> "test-key");

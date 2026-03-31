@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
-import com.mipt.team4.cloud_storage_backend.utils.StoragePaths;
+import com.mipt.team4.cloud_storage_backend.utils.string.StoragePaths;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;

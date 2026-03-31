@@ -5,6 +5,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.ContentRangeDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
@@ -21,8 +22,9 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
-import com.mipt.team4.cloud_storage_backend.utils.ChecksumUtils;
-import com.mipt.team4.cloud_storage_backend.utils.MimeTypeDetector;
+import com.mipt.team4.cloud_storage_backend.utils.converter.ContentRangeConverter;
+import com.mipt.team4.cloud_storage_backend.utils.file.ChecksumUtils;
+import com.mipt.team4.cloud_storage_backend.utils.string.MimeTypeDetector;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -103,9 +105,16 @@ public class FileService {
             .get(userId, fileId)
             .orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
-    InputStream inputStream = storageRepository.download(fileEntity);
+    String rangeStr = request.range();
+    ContentRangeDto rangeDto =
+        rangeStr != null
+            ? ContentRangeConverter.fromClientRange(rangeStr, fileEntity.getSize())
+            : null;
 
-    return new FileDownloadInfoDto(fileEntity.getMimeType(), inputStream, fileEntity.getSize());
+    InputStream inputStream = storageRepository.download(fileEntity, rangeStr);
+
+    return new FileDownloadInfoDto(
+        fileEntity.getMimeType(), inputStream, rangeDto, fileEntity.getSize());
   }
 
   @Transactional

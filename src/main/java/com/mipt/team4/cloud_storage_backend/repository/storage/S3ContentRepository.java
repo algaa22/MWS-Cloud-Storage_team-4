@@ -151,9 +151,11 @@ public class S3ContentRepository implements FileContentRepository {
   }
 
   @Override
-  public InputStream downloadObject(String s3Key) {
+  public InputStream downloadObject(String s3Key, String range) {
     return wrapper.execute(
-        () -> s3Client.getObject(GetObjectRequest.builder().bucket(bucketName).key(s3Key).build()));
+        () ->
+            s3Client.getObject(
+                GetObjectRequest.builder().bucket(bucketName).key(s3Key).range(range).build()));
   }
 
   @Override

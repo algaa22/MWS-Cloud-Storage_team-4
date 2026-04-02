@@ -2,13 +2,12 @@ package com.mipt.team4.cloud_storage_backend.repository;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.mipt.team4.cloud_storage_backend.base.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager;
-import com.mipt.team4.cloud_storage_backend.repository.database.BasePostgresTest;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import jakarta.persistence.EntityManager;
@@ -19,22 +18,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
 
 @Tag("integration")
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@ActiveProfiles("test")
-@Transactional
-@Import({StorageJpaRepositoryAdapter.class, UserJpaRepositoryAdapter.class})
 public class PostgresRepositoryTest extends BasePostgresTest {
-  @MockitoBean private NettyServerManager nettyServerManager;
-
   @Autowired private StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
   @Autowired private UserJpaRepositoryAdapter userRepository;
   @Autowired private EntityManager entityManager;

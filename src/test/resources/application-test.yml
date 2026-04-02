@@ -13,7 +13,8 @@ netty:
 
 storage:
   failsafe-retry:
-    max-attempts: 1
+    max-attempts: 3
+    first-delay: 10ms
   s3:
     url: http://localhost:9000
     access-key: test-key

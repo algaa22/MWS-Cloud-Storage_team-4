@@ -44,7 +44,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
 
   @Modifying(flushAutomatically = true)
   @Query(
-      "UPDATE StorageEntity s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP, s.updatedAt = CURRENT_TIMESTAMP "
+      "UPDATE StorageEntity s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP "
           + "WHERE s.id = :id AND s.userId = :userId")
   void softDelete(@Param("userId") UUID userId, @Param("id") UUID id);
 
@@ -59,7 +59,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
             SELECT f.id FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
         )
         UPDATE files
-        SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP
         WHERE id IN (SELECT id FROM folder_tree)
     """)
   void softDeleteRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
@@ -70,7 +70,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       value =
           """
     UPDATE files
-    SET is_deleted = false, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
+    SET is_deleted = false, deleted_at = NULL
     WHERE id = :id AND user_id = :userId
 """)
   void restore(@Param("userId") UUID userId, @Param("id") UUID id);
@@ -78,18 +78,23 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Modifying(flushAutomatically = true)
   @Query(
       """
-    UPDATE StorageEntity s
-    SET s.status = :status,
-        s.retryCount = :retryCount,
-        s.updatedAt = CURRENT_TIMESTAMP,
-        s.operationType = :opType
-    WHERE s.id = :id
-""")
+        UPDATE StorageEntity s
+        SET s.status = :status,
+            s.retryCount = :retryCount,
+            s.updatedAt = :updatedAt,
+            s.startedAt = :startedAt,
+            s.operationType = :opType,
+            s.errorMessage = :errorMessage
+        WHERE s.id = :id
+    """)
   void syncLifecycleMetadata(
       @Param("id") UUID id,
       @Param("status") FileStatus status,
       @Param("retryCount") int retryCount,
-      @Param("opType") FileOperationType opType);
+      @Param("opType") FileOperationType opType,
+      @Param("startedAt") LocalDateTime startedAt,
+      @Param("updatedAt") LocalDateTime updatedAt,
+      @Param("errorMessage") String errorMessage);
 
   @Modifying(flushAutomatically = true)
   @Query(
@@ -102,7 +107,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
             SELECT f.id FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
         )
         UPDATE files
-        SET is_deleted = false, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
+        SET is_deleted = false, deleted_at = NULL
         WHERE id IN (SELECT id FROM folder_tree)
     """)
   void restoreRecursive(@Param("userId") UUID userId, @Param("id") UUID id);

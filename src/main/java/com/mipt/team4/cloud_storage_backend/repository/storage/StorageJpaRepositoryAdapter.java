@@ -87,8 +87,15 @@ public class StorageJpaRepositoryAdapter {
 
   @Transactional
   public void syncLifecycleMetadata(
-      UUID fileId, FileStatus status, int retryCount, FileOperationType opType) {
-    jpaRepository.syncLifecycleMetadata(fileId, status, retryCount, opType);
+      UUID id,
+      FileStatus status,
+      int retryCount,
+      FileOperationType operationType,
+      LocalDateTime startedAt,
+      LocalDateTime updatedAt,
+      String errorMessage) {
+    jpaRepository.syncLifecycleMetadata(
+        id, status, retryCount, operationType, startedAt, updatedAt, errorMessage);
   }
 
   @Transactional(readOnly = true)

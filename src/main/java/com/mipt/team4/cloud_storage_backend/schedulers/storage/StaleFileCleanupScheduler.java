@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.schedulers.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepositoryWrapper;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileErasureService;
@@ -73,7 +74,7 @@ public class StaleFileCleanupScheduler {
         log.info("[{}] Retried deletion for file {}", TASK_NAME, entity.getId());
       }
       case CHANGE_METADATA -> {
-        storageRepositoryWrapper.resetToReady(entity);
+        storageRepositoryWrapper.resetToReady(entity, FileOperationType.CHANGE_METADATA);
         log.info(
             "[{}] Forced rollback to stuck metadata operation for file {}",
             TASK_NAME,

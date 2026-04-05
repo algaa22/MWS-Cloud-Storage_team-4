@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getShareInfo, downloadSharedFile } from '../api';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 export default function SharedFilePage() {
   const location = useLocation();
-
   const queryParams = new URLSearchParams(location.search);
   const token = queryParams.get('shareToken');
 
@@ -28,8 +27,11 @@ export default function SharedFilePage() {
     try {
       const info = await getShareInfo(token);
       setFileInfo(info);
-      setRequiresPassword(info.hasPassword);
+      // Проверяем наличие пароля
+      const hasPassword = info.hasPassword || info.shareType === 'PROTECTED';
+      setRequiresPassword(hasPassword);
     } catch (err) {
+      console.error("Error fetching share info:", err);
       setError(err.status === 404 ? 'LINK_EXPIRED' : 'AUTH_REQUIRED');
     } finally {
       setLoading(false);
@@ -40,35 +42,51 @@ export default function SharedFilePage() {
     fetchInfo();
   }, [fetchInfo]);
 
+  // Единая функция для скачивания
   const handleDownload = async (e) => {
     if (e) e.preventDefault();
+
+    if (requiresPassword && !password) {
+      setError('PASSWORD_REQUIRED');
+      return;
+    }
+
     setDownloading(true);
     setError(null);
 
     try {
+      console.log("Downloading with password:", password ? "yes" : "no");
+
+      // Передаем пароль в функцию скачивания
       const { blob, filename } = await downloadSharedFile(token, password);
 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename || 'file');
+      link.setAttribute('download', filename || fileInfo?.fileName || 'file');
       document.body.appendChild(link);
       link.click();
 
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
 
+      setDownloading(false);
+
     } catch (err) {
       console.error("Download error:", err);
-      setError(err.status === 401 ? 'INVALID_PASSWORD' : 'DOWNLOAD_FAILED');
-    } finally {
       setDownloading(false);
+
+      if (err.status === 401) {
+        setError('INVALID_PASSWORD');
+      } else {
+        setError('DOWNLOAD_FAILED');
+      }
     }
   };
 
   if (loading) return <div className="p-20 text-center text-white">Загрузка...</div>;
 
-  if (error && !fileInfo && error !== 'INVALID_PASSWORD') {
+  if (error && !fileInfo && error !== 'INVALID_PASSWORD' && error !== 'PASSWORD_REQUIRED') {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
         <div className="bg-slate-800 p-10 rounded-2xl border border-red-500/30 text-center max-w-sm">
@@ -100,10 +118,17 @@ export default function SharedFilePage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={`w-full p-4 rounded-xl bg-slate-800 border ${error === 'INVALID_PASSWORD' ? 'border-red-500' : 'border-slate-700'} outline-none focus:border-blue-500`}
+                className={`w-full p-4 rounded-xl bg-slate-800 border ${
+                  error === 'INVALID_PASSWORD' ? 'border-red-500' : 'border-slate-700'
+                } outline-none focus:border-blue-500`}
                 placeholder="Введите пароль"
               />
-              {error === 'INVALID_PASSWORD' && <p className="text-red-500 text-xs">Неверный пароль!</p>}
+              {error === 'INVALID_PASSWORD' && (
+                <p className="text-red-500 text-xs mt-1">Неверный пароль!</p>
+              )}
+              {error === 'PASSWORD_REQUIRED' && (
+                <p className="text-red-500 text-xs mt-1">Введите пароль для скачивания</p>
+              )}
             </div>
           )}
 
@@ -112,7 +137,7 @@ export default function SharedFilePage() {
             disabled={downloading || (requiresPassword && !password)}
             className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 rounded-xl font-bold transition-all"
           >
-            {downloading ? 'Процесс...' : 'Скачать'}
+            {downloading ? 'Скачивание...' : 'Скачать'}
           </button>
         </form>
       </div>

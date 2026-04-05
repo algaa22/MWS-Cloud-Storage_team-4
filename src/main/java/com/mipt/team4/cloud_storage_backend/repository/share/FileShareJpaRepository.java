@@ -32,4 +32,16 @@ public interface FileShareJpaRepository extends JpaRepository<FileShare, UUID> {
 
   @Query("SELECT COUNT(fs) FROM FileShare fs WHERE fs.file.id = :fileId AND fs.isActive = true")
   long countActiveSharesByFileId(@Param("fileId") UUID fileId);
+
+  @Query("SELECT fs FROM FileShare fs WHERE fs.file.id = :fileId AND fs.createdBy.id = :userId AND fs.isActive = true AND fs.shareType = 'PUBLIC'")
+  Optional<FileShare> findByFileIdAndCreatedByIdAndIsActiveTrueAndShareTypePublic(
+      @Param("fileId") UUID fileId,
+      @Param("userId") UUID userId
+  );
+
+  @Query("SELECT fs FROM FileShare fs WHERE fs.file.id = :fileId AND fs.createdBy.id = :userId AND fs.isActive = true AND fs.shareType = 'PROTECTED'")
+  Optional<FileShare> findByFileIdAndCreatedByIdAndIsActiveTrueAndShareTypeProtected(
+      @Param("fileId") UUID fileId,
+      @Param("userId") UUID userId
+  );
 }

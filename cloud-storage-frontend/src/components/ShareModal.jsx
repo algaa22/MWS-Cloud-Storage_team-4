@@ -11,6 +11,13 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
+  const getFrontendBaseUrl = () => {
+    if (process.env.NODE_ENV === 'development') {
+      return 'http://localhost:5173';
+    }
+    return window.location.origin;
+  };
+
   const handleCreateShare = async () => {
     setLoading(true);
     setError('');
@@ -34,13 +41,6 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
       console.log("Creating share with options:", options);
       const response = await createShareLink(token, file.id, options);
       console.log("Share created response:", response);
-
-      const getFrontendBaseUrl = () => {
-        if (process.env.NODE_ENV === 'development') {
-          return 'http://localhost:5173';
-        }
-        return window.location.origin;
-      };
 
       const frontendBaseUrl = getFrontendBaseUrl();
       const fullUrl = `${frontendBaseUrl}/s?shareToken=${response.shareToken}`;
@@ -68,6 +68,13 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
   const handleClose = () => {
     setShareUrl(null);
     onClose();
+  };
+
+  // Форматирование даты
+  const formatDate = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   if (shareUrl) {
@@ -148,7 +155,6 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
           >
             <option value="PUBLIC" className="bg-gray-800 text-white">Публичный (любой по ссылке)</option>
             <option value="PROTECTED" className="bg-gray-800 text-white">Защищенный (с паролем)</option>
-            <option value="PRIVATE" className="bg-gray-800 text-white">Приватный (только для пользователей)</option>
           </select>
         </div>
 
@@ -172,15 +178,14 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
           <label className="block text-sm text-white/70 mb-2">
             Лимит скачиваний (оставьте пустым для безлимита):
           </label>
-          <form>
-            <input
-              type="number"
-              min="1"
-              value={maxDownloads}
-              onChange={(e) => setMaxDownloads(e.target.value)}
-              className="w-full p-3 rounded-xl bg-white/20 text-white"
-            />
-          </form>
+          <input
+            type="number"
+            min="1"
+            value={maxDownloads}
+            onChange={(e) => setMaxDownloads(e.target.value)}
+            className="w-full p-3 rounded-xl bg-white/20 text-white"
+            placeholder="Без лимита"
+          />
         </div>
 
         {shareType === 'PROTECTED' && (

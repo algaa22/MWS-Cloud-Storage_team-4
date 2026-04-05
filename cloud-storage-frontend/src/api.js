@@ -25,34 +25,50 @@ function pickTokenFromResponse(data) {
 export async function fetchWithTokenRefresh(url, options = {}, token) {
   let currentToken = token || localStorage.getItem("accessToken");
 
+  // Создаем headers только если есть токен
   const headers = {
-    ...options.headers,
-    "X-Auth-Token": currentToken || ""
+    ...options.headers
   };
+
+  // Добавляем токен ТОЛЬКО если он существует
+  if (currentToken) {
+    headers["X-Auth-Token"] = currentToken;
+  }
+
+  console.log("fetchWithTokenRefresh - URL:", url);
+  console.log("fetchWithTokenRefresh - Has token:", !!currentToken);
 
   try {
     const res = await fetch(url, { ...options, headers });
+    console.log("Response status:", res.status);
 
     if (res.status === 401) {
-      // Обычная логика рефреша для личного кабинета
+      console.log("Got 401, trying to refresh...");
       const refreshToken = localStorage.getItem("refreshToken");
       if (refreshToken) {
         try {
           const newAccessToken = await refreshTokenRequest(refreshToken);
           localStorage.setItem("accessToken", newAccessToken);
           headers["X-Auth-Token"] = newAccessToken;
+          console.log("Retrying request with new token");
           return await fetch(url, { ...options, headers });
         } catch (e) {
+          console.error("Refresh failed:", e);
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
           window.location.href = "/";
           throw e;
         }
       } else {
+        console.log("No refresh token, redirecting to login");
+        localStorage.removeItem("accessToken");
         window.location.href = "/";
         throw new Error("Unauthorized");
       }
     }
     return res;
   } catch (err) {
+    console.error("Fetch error:", err);
     throw err;
   }
 }
@@ -741,7 +757,6 @@ export const createShareLink = async (token, fileId, options = {}) => {
     expiresAt = null,
     maxDownloads = null,
     password = null,
-    recipientUserIds = []
   } = options;
 
   const params = new URLSearchParams();
@@ -750,7 +765,6 @@ export const createShareLink = async (token, fileId, options = {}) => {
   if (expiresAt) params.append('expiresAt', expiresAt);
   if (maxDownloads) params.append('maxDownloads', maxDownloads);
   if (password) params.append('password', password);
-  recipientUserIds.forEach(id => params.append('recipientUserIds', id));
 
   const url = `${BASE}/shares?${params.toString()}`;
   console.log("Request URL:", url);
@@ -784,59 +798,82 @@ export const getShareInfo = async (shareToken) => {
 };
 
 export const downloadSharedFile = async (shareToken, password = "") => {
-  let url = `${API_BASE}/shares/download?shareToken=${shareToken}`;
+  console.log("=== DOWNLOAD SHARED FILE ===");
+  console.log("Share token:", shareToken);
+  console.log("Password provided:", password ? "yes" : "no");
 
+  const url = `${API_BASE}/shares/download?shareToken=${shareToken}`;
+  console.log("URL:", url);
+
+  // Создаем заголовки
+  const headers = {};
+
+  // Используем X-Share-Password вместо sharePassword
   if (password) {
-    url += `&password=${encodeURIComponent(password)}`;
+    headers['X-Share-Password'] = password;
+    console.log("Adding password to header: X-Share-Password");
   }
 
-  const res = await fetch(url, { method: "GET" });
+  const response = await fetch(url, {
+    method: "GET",
+    headers: headers
+  });
 
-  if (!res.ok) {
+  if (!response.ok) {
+    console.error("Response status:", response.status);
+    const errorText = await response.text();
+    console.error("Error response:", errorText);
     const error = new Error('Download failed');
-    error.status = res.status;
+    error.status = response.status;
     throw error;
   }
 
-  const blob = await res.blob();
-  const contentDisposition = res.headers.get('Content-Disposition');
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get('Content-Disposition');
   let filename = 'file';
   if (contentDisposition && contentDisposition.includes('filename=')) {
     filename = decodeURIComponent(contentDisposition.split('filename=')[1].replace(/["']/g, ''));
   }
 
+  console.log("Download successful, filename:", filename);
   return { blob, filename };
 };
 
 export const validateSharePassword = async (shareToken, password) => {
   console.log("=== VALIDATE SHARE PASSWORD ===");
+  console.log("Share token:", shareToken);
 
-  const params = new URLSearchParams();
-  params.append('shareToken', shareToken);
-
-  const url = `${BASE}/api/shares/validate?${params.toString()}`;
+  const url = `${API_BASE}/shares/validate`;
   console.log("Request URL:", url);
 
-  const response = await fetchWithTokenRefresh(url, {
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ password })
-  }, null); // Не требует токена
+    body: JSON.stringify({
+      shareToken: shareToken,
+      password: password
+    })
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Password validation failed: ${response.status} ${errorText}`);
+    console.error("Validation error response:", errorText);
+    const error = new Error('Password validation failed');
+    error.status = response.status;
+    throw error;
   }
 
-  return await response.json();
+  const result = await response.json();
+  console.log("Validation success:", result);
+  return result;
 };
 
 export const deactivateShare = async (token, shareId) => {
   console.log("=== DEACTIVATE SHARE ===");
 
-  const url = `${BASE}/api/shares/${shareId}`;
+  const url = `${BASE}/shares/${shareId}`;
   console.log("Request URL:", url);
 
   const response = await fetchWithTokenRefresh(url, {
@@ -857,7 +894,7 @@ export const deactivateShare = async (token, shareId) => {
 export const getUserShares = async (token) => {
   console.log("=== GET USER SHARES ===");
 
-  const url = `${BASE}/api/shares/user`;
+  const url = `${BASE}/shares/user`;
   console.log("Request URL:", url);
 
   const response = await fetchWithTokenRefresh(url, {
@@ -877,8 +914,11 @@ export const getUserShares = async (token) => {
 
 export const getFileShares = async (token, fileId) => {
   console.log("=== GET FILE SHARES ===");
+  console.log("Token provided:", token ? "yes" : "no");
+  console.log("File ID:", fileId);
 
-  const url = `${BASE}/api/shares/file/${fileId}`;
+  // Исправлено: fileId как query parameter, а не в пути
+  const url = `${BASE}/shares/file?fileId=${fileId}`;
   console.log("Request URL:", url);
 
   const response = await fetchWithTokenRefresh(url, {
@@ -890,56 +930,14 @@ export const getFileShares = async (token, fileId) => {
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error("Error response:", errorText);
     throw new Error(`Failed to get file shares: ${response.status} ${errorText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  console.log("File shares response:", data);
+  return data;
 };
-
-export async function refreshTokenRequest(refreshToken) {
-  try {
-    console.log("Refresh token request");
-
-    const res = await fetch(`${BASE}/users/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Refresh-Token": refreshToken
-      }
-    });
-
-    console.log("Refresh response status:", res.status, res.statusText);
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "(no body)");
-      console.error("Refresh error:", res.status, text);
-      throw new Error(`Token refresh failed: ${res.status} ${text}`);
-    }
-
-    const data = await parseJsonSafe(res);
-    console.log("Refresh response:", data);
-
-    const newAccessToken = data?.accessToken || data?.AccessToken || data?.token;
-    const newRefreshToken = data?.refreshToken || data?.RefreshToken || refreshToken;
-
-    if (!newAccessToken) {
-      throw new Error("No new access token received");
-    }
-
-    localStorage.setItem("accessToken", newAccessToken);
-    if (newRefreshToken && newRefreshToken !== refreshToken) {
-      localStorage.setItem("refreshToken", newRefreshToken);
-    }
-
-    return newAccessToken;
-
-  } catch (error) {
-    console.error("Refresh token request failed:", error);
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    throw error;
-  }
-}
 
 export const uploadFileWithTags = async (token, file, parentId = null, onProgress, tags = []) => {
   console.log("=== UPLOAD FILE WITH TAGS ===");

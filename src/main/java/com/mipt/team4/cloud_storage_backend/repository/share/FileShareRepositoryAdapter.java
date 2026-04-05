@@ -87,4 +87,13 @@ public class FileShareRepositoryAdapter {
   public long countActiveSharesByFileId(UUID fileId) {
     return jpaRepository.countActiveSharesByFileId(fileId);
   }
+
+  @Transactional
+  public Optional<FileShare> findExistingActiveShareByType(UUID fileId, UUID userId, FileShare.ShareType shareType) {
+    if (shareType == FileShare.ShareType.PUBLIC) {
+      return jpaRepository.findByFileIdAndCreatedByIdAndIsActiveTrueAndShareTypePublic(fileId, userId);
+    } else {
+      return jpaRepository.findByFileIdAndCreatedByIdAndIsActiveTrueAndShareTypeProtected(fileId, userId);
+    }
+  }
 }

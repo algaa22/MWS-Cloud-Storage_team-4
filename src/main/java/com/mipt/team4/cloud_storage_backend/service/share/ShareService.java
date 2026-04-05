@@ -5,12 +5,9 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoun
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.share.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
-import com.mipt.team4.cloud_storage_backend.model.share.entity.ShareRecipient;
-import com.mipt.team4.cloud_storage_backend.model.share.entity.ShareRecipientId;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.share.FileShareRepositoryAdapter;
-import com.mipt.team4.cloud_storage_backend.repository.share.ShareRecipientRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.security.PasswordHasher;
@@ -21,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShareService {
 
   private final FileShareRepositoryAdapter shareRepository;
-  private final ShareRecipientRepositoryAdapter recipientRepository;
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final PasswordHasher passwordHasher;
@@ -50,48 +47,62 @@ public class ShareService {
   public ShareCreatedResponse createShare(UUID userId, CreateShareRequest request) {
     log.info("Creating share for file: {} by user: {}", request.fileId(), userId);
 
-    StorageEntity file =
-        storageRepository
-            .get(userId, request.fileId())
-            .orElseThrow(() -> new StorageFileNotFoundException(request.fileId()));
+    FileShare.ShareType shareType = request.shareType() != null
+        ? request.shareType()
+        : FileShare.ShareType.PUBLIC;
 
-    UserEntity user =
-        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+    boolean hasPassword = request.password() != null && !request.password().isEmpty();
+    if (hasPassword) {
+      shareType = FileShare.ShareType.PROTECTED;
+    }
+
+    Optional<FileShare> existingShare = shareRepository
+        .findExistingActiveShareByType(request.fileId(), userId, shareType);
+
+    if (existingShare.isPresent()) {
+      FileShare activeShare = existingShare.get();
+
+      if (!activeShare.isExpired() &&
+          (activeShare.getMaxDownloads() == null ||
+              activeShare.getDownloadCount() < activeShare.getMaxDownloads())) {
+
+        log.info("Returning existing active {} share for file: {}", shareType, request.fileId());
+        return ShareCreatedResponse.fromShare(activeShare, baseUrl);
+      } else {
+        activeShare.setIsActive(false);
+        shareRepository.save(activeShare);
+        log.info("Deactivated expired/used {} share for file: {}", shareType, request.fileId());
+      }
+    }
+
+    StorageEntity file = storageRepository
+        .get(userId, request.fileId())
+        .orElseThrow(() -> new StorageFileNotFoundException(request.fileId()));
+
+    UserEntity user = userRepository
+        .getUserById(userId)
+        .orElseThrow(() -> new UserNotFoundException(userId));
 
     String token = generateUniqueToken();
 
-    FileShare share =
-        FileShare.builder()
-            .shareToken(token)
-            .file(file)
-            .createdBy(user)
-            .shareType(
-                request.shareType() != null ? request.shareType() : FileShare.ShareType.PUBLIC)
-            .maxDownloads(request.maxDownloads())
-            .downloadCount(0)
-            .isActive(true)
-            .build();
+    FileShare share = FileShare.builder()
+        .shareToken(token)
+        .file(file)
+        .createdBy(user)
+        .shareType(shareType)
+        .maxDownloads(request.maxDownloads())
+        .downloadCount(0)
+        .isActive(true)
+        .build();
 
-    if (request.expiresAt() != null && !request.expiresAt().isEmpty()) {
-      try {
-        share.setExpiresAt(LocalDateTime.parse(request.expiresAt()));
-      } catch (DateTimeParseException e) {
-        share.setExpiresAt(LocalDateTime.now().plusDays(DEFAULT_EXPIRY_DAYS));
-      }
-    } else {
-      share.setExpiresAt(LocalDateTime.now().plusDays(DEFAULT_EXPIRY_DAYS));
-    }
+    setExpirationDate(share, request.expiresAt());
 
-    if (request.password() != null && !request.password().isEmpty()) {
+    if (hasPassword) {
       share.setPasswordHash(passwordHasher.hash(request.password()));
-      share.setShareType(FileShare.ShareType.PROTECTED);
     }
 
     FileShare savedShare = shareRepository.save(share);
-
-    if (request.shareType() == FileShare.ShareType.PRIVATE && request.recipientUserIds() != null) {
-      saveRecipients(savedShare, request.recipientUserIds(), request.permission());
-    }
+    log.info("New {} share created successfully with token: {}", shareType, token);
 
     return ShareCreatedResponse.fromShare(savedShare, baseUrl);
   }
@@ -213,25 +224,6 @@ public class ShareService {
     return share;
   }
 
-  private void saveRecipients(FileShare share, List<UUID> recipientIds, String permission) {
-    for (UUID recipientId : recipientIds) {
-      UserEntity recipientUser =
-          userRepository
-              .getUserById(recipientId)
-              .orElseThrow(() -> new UserNotFoundException(recipientId));
-
-      ShareRecipient recipient =
-          ShareRecipient.builder()
-              .id(new ShareRecipientId(share.getId(), recipientId))
-              .share(share)
-              .user(recipientUser)
-              .permission(permission != null ? permission : "READ")
-              .build();
-
-      recipientRepository.save(recipient);
-    }
-  }
-
   private String generateUniqueToken() {
     SecureRandom random = new SecureRandom();
     byte[] bytes = new byte[TOKEN_BYTES];
@@ -249,6 +241,21 @@ public class ShareService {
     } catch (IOException e) {
       log.error("Failed to read file data for: {}", file.getName(), e);
       throw new RuntimeException("Failed to read file data", e);
+    }
+  }
+
+  private void setExpirationDate(FileShare share, String expiresAt) {
+    if (expiresAt != null && !expiresAt.isEmpty()) {
+      try {
+        share.setExpiresAt(LocalDateTime.parse(expiresAt));
+        log.info("Share expiration set to: {}", expiresAt);
+      } catch (DateTimeParseException e) {
+        log.warn("Invalid expiration date format: {}, using default", expiresAt);
+        share.setExpiresAt(LocalDateTime.now().plusDays(DEFAULT_EXPIRY_DAYS));
+      }
+    } else {
+      share.setExpiresAt(LocalDateTime.now().plusDays(DEFAULT_EXPIRY_DAYS));
+      log.info("Share expiration set to default: {} days", DEFAULT_EXPIRY_DAYS);
     }
   }
 }

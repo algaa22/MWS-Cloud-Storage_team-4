@@ -57,8 +57,7 @@ public class FileShare {
 
   public enum ShareType {
     PUBLIC,
-    PROTECTED,
-    PRIVATE
+    PROTECTED
   }
 
   @PrePersist

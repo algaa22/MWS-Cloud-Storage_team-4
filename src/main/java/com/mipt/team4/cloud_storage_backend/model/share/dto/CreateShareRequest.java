@@ -15,11 +15,6 @@ public record CreateShareRequest(
     @QueryParam(required = false) FileShare.ShareType shareType,
     @QueryParam(required = false) String expiresAt,
     @QueryParam(required = false) Integer maxDownloads,
-    @QueryParam(required = false) String password,
-    @QueryParam(required = false) List<UUID> recipientUserIds,
-    @QueryParam(required = false) String permission) {
+    @QueryParam(required = false) String password) {
 
-  public String getPermission() {
-    return permission != null ? permission : "READ";
-  }
 }

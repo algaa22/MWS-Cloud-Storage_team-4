@@ -25,12 +25,10 @@ function pickTokenFromResponse(data) {
 export async function fetchWithTokenRefresh(url, options = {}, token) {
   let currentToken = token || localStorage.getItem("accessToken");
 
-  // Создаем headers только если есть токен
   const headers = {
     ...options.headers
   };
 
-  // Добавляем токен ТОЛЬКО если он существует
   if (currentToken) {
     headers["X-Auth-Token"] = currentToken;
   }
@@ -196,7 +194,6 @@ export const getUserInfo = async (token) => {
     console.log("Parsed user data:", data);
     console.log("Data keys:", Object.keys(data));
 
-    // Используем новые поля из UserEntity
     const totalStorageLimit = data.totalStorageLimit ||
                               (data.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
                               (data.paidStorageLimit || 0);
@@ -231,7 +228,7 @@ export const getUserInfo = async (token) => {
       freeStorageLimit: freeStorageLimit,
       paidStorageLimit: paidStorageLimit,
       totalStorageLimit: totalStorageLimit,
-      storageLimit: totalStorageLimit, // ← ДОБАВЬТЕ ЭТУ СТРОКУ для совместимости
+      storageLimit: totalStorageLimit,
       createdAt: data.createdAt,
       isActive: data.isActive !== undefined ? data.isActive : true,
       activeTariff: data.activeTariff || null,
@@ -265,7 +262,7 @@ export const getUserInfo = async (token) => {
       freeStorageLimit: 5 * 1024 * 1024 * 1024,
       paidStorageLimit: 0,
       totalStorageLimit: 5 * 1024 * 1024 * 1024,
-      storageLimit: 5 * 1024 * 1024 * 1024, // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+      storageLimit: 5 * 1024 * 1024 * 1024,
       activeTariff: null,
       isActive: true,
       storageInfo: defaultStorage
@@ -399,7 +396,6 @@ export const getTrashFiles = async (token) => {
 
   if (!token) throw new Error("Требуется авторизация");
 
-  // parentId больше не нужен!
   const url = `${BASE}/files/trash`;
   console.log("Request URL:", url);
 
@@ -419,7 +415,6 @@ export const getTrashFiles = async (token) => {
     const data = await response.json();
     console.log("Raw trash data:", data);
 
-    // Сервер может вернуть массив сразу или объект с полем files
     const files = Array.isArray(data) ? data : (data.files || []);
     console.log(`Found ${files.length} files in trash`);
 
@@ -441,7 +436,6 @@ export const getTrashFiles = async (token) => {
 export const softDeleteFile = async (token, id) => {
   console.log("softDeleteFile request (to trash):", { id });
 
-  // Убедитесь, что permanent=false
   const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=false`;
 
   const res = await fetchWithTokenRefresh(url, {
@@ -458,7 +452,6 @@ export const softDeleteFile = async (token, id) => {
     throw new Error(`Soft delete failed: ${res.status} ${responseText}`);
   }
 
-  // Прочитайте ответ сервера
   const responseText = await res.text();
   console.log("softDeleteFile response:", responseText);
 
@@ -518,7 +511,6 @@ export const permanentDeleteFile = async (token, id) => {
 
     console.log("permanentDeleteFile status:", res.status, res.statusText);
 
-    // 404 - это нормально, файл уже удален
     if (res.status === 404) {
       console.log("File already deleted (404), treating as success");
       return { success: true, id, alreadyDeleted: true };
@@ -530,7 +522,6 @@ export const permanentDeleteFile = async (token, id) => {
       throw new Error(`Permanent delete failed: ${res.status} ${txt}`);
     }
 
-    // Попытка прочитать ответ, если он есть
     let responseData;
     try {
       const responseText = await res.text();
@@ -559,7 +550,6 @@ export const emptyTrash = async (token) => {
     const successful = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.filter(r => r.status === 'rejected').length;
 
-    // Даже если были 404, считаем их успешными, так как файлы уже удалены
     const totalSuccess = trashFiles.length - failed;
 
     return {
@@ -805,10 +795,8 @@ export const downloadSharedFile = async (shareToken, password = "") => {
   const url = `${API_BASE}/shares/download?shareToken=${shareToken}`;
   console.log("URL:", url);
 
-  // Создаем заголовки
   const headers = {};
 
-  // Используем X-Share-Password вместо sharePassword
   if (password) {
     headers['X-Share-Password'] = password;
     console.log("Adding password to header: X-Share-Password");
@@ -872,23 +860,34 @@ export const validateSharePassword = async (shareToken, password) => {
 
 export const deactivateShare = async (token, shareId) => {
   console.log("=== DEACTIVATE SHARE ===");
+  console.log("Share ID:", shareId);
 
-  const url = `${BASE}/shares/${shareId}`;
+  const url = `${BASE}/shares?shareId=${shareId}`;
   console.log("Request URL:", url);
 
-  const response = await fetchWithTokenRefresh(url, {
-    method: "DELETE",
-    headers: {
-      "Accept": "application/json"
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "X-Auth-Token": token,
+        "Accept": "application/json"
+      }
+    });
+
+    console.log("Response status:", response.status);
+    const responseText = await response.text();
+    console.log("Response body:", responseText);
+
+    if (!response.ok) {
+      throw new Error(`Failed: ${response.status}`);
     }
-  }, token);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to deactivate share: ${response.status} ${errorText}`);
+    return { success: true };
+
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
   }
-
-  return await response.json();
 };
 
 export const getUserShares = async (token) => {
@@ -917,7 +916,6 @@ export const getFileShares = async (token, fileId) => {
   console.log("Token provided:", token ? "yes" : "no");
   console.log("File ID:", fileId);
 
-  // Исправлено: fileId как query parameter, а не в пути
   const url = `${BASE}/shares/file?fileId=${fileId}`;
   console.log("Request URL:", url);
 
@@ -1085,6 +1083,38 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
     xhr.send(formData);
   });
+};
+
+export const deleteSharePermanently = async (token, shareId) => {
+  console.log("=== DELETE SHARE PERMANENTLY ===");
+  console.log("Share ID:", shareId);
+
+  const url = `${BASE}/shares/permanent?shareId=${shareId}`;
+  console.log("Request URL:", url);
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "X-Auth-Token": token,
+        "Accept": "application/json"
+      }
+    });
+
+    console.log("Response status:", response.status);
+    const responseText = await response.text();
+    console.log("Response body:", responseText);
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete share: ${response.status}`);
+    }
+
+    return { success: true };
+
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
 };
 
 export const getFileTags = async (token, id) => {
@@ -1280,10 +1310,9 @@ export const getTariffInfo = async (token) => {
 
     if (!text || text.trim() === '') {
       console.warn("Empty tariff info response from server");
-      // Возвращаем тестовые данные с новой структурой
       return {
         activeTariff: null,
-        totalStorageLimit: 5 * 1024 * 1024 * 1024, // 5GB
+        totalStorageLimit: 5 * 1024 * 1024 * 1024,
         freeStorageLimit: 5 * 1024 * 1024 * 1024,
         usedStorage: 0,
         tariffStartDate: null,
@@ -1299,7 +1328,6 @@ export const getTariffInfo = async (token) => {
     const data = JSON.parse(text);
     console.log("Tariff info:", data);
 
-    // Преобразуем данные в удобный формат для фронтенда
     return {
       activeTariff: data.activeTariff || data.tariffPlan || null,
       totalStorageLimit: data.totalStorageLimit || (5 * 1024 * 1024 * 1024),
@@ -1316,10 +1344,9 @@ export const getTariffInfo = async (token) => {
 
   } catch (error) {
     console.error("Error getting tariff info:", error);
-    // Возвращаем тестовые данные при ошибке
     return {
       activeTariff: null,
-      totalStorageLimit: 5 * 1024 * 1024 * 1024, // 5GB
+      totalStorageLimit: 5 * 1024 * 1024 * 1024,
       freeStorageLimit: 5 * 1024 * 1024 * 1024,
       usedStorage: 0,
       tariffStartDate: null,
@@ -1343,11 +1370,11 @@ export const purchaseTariff = async (token, plan, paymentToken = 'test', autoRen
 
   const headers = {
     "X-Auth-Token": token,
-    "X-Payment-Token": paymentToken  // Исправлено: было X-Payment-Token, должно быть Payment-Token
+    "X-Payment-Token": paymentToken
   };
 
   if (paymentMethod) {
-    headers["X-Payment-Method"] = paymentMethod;  // Исправлено: было X-Payment-Method, должно быть Payment-Method
+    headers["X-Payment-Method"] = paymentMethod;
   }
 
   try {
@@ -1367,6 +1394,45 @@ export const purchaseTariff = async (token, plan, paymentToken = 'test', autoRen
   } catch (error) {
     console.error("Error purchasing tariff:", error);
     throw error;
+  }
+};
+
+export const getPaymentHistory = async (token) => {
+  console.log("=== GET PAYMENT HISTORY ===");
+
+  const url = `${BASE}/payments/history`;
+  console.log("Request URL:", url);
+
+  const response = await fetchWithTokenRefresh(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json"
+    }
+  }, token);
+
+  console.log("Response status:", response.status);
+  console.log("Response headers:", response.headers.get('content-type'));
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to get payment history: ${response.status} ${errorText}`);
+  }
+
+  const text = await response.text();
+  console.log("Raw response text:", text);
+
+  if (!text || text.trim() === '') {
+    console.log("Empty response, returning empty history");
+    return { transactions: [] };
+  }
+
+  try {
+    const data = JSON.parse(text);
+    console.log("Payment history response:", data);
+    return data;
+  } catch (e) {
+    console.error("Failed to parse JSON:", e);
+    return { transactions: [] };
   }
 };
 
@@ -1395,4 +1461,4 @@ export const setAutoRenew = async (token, enabled) => {
     console.error(`Error ${enabled ? 'enabling' : 'disabling'} auto-renew:`, error);
     throw error;
   }
-  };
+};

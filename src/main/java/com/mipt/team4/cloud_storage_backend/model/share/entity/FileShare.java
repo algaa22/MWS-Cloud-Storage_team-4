@@ -72,13 +72,6 @@ public class FileShare {
     return expiresAt != null && expiresAt.isBefore(LocalDateTime.now());
   }
 
-  public boolean canDownload() {
-    if (!isActive) return false;
-    if (isExpired()) return false;
-    if (maxDownloads != null && downloadCount >= maxDownloads) return false;
-    return true;
-  }
-
   public void incrementDownloadCount() {
     this.downloadCount = (this.downloadCount == null ? 1 : this.downloadCount + 1);
   }

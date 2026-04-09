@@ -70,7 +70,6 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
     onClose();
   };
 
-  // Форматирование даты
   const formatDate = (date) => {
     if (!date) return null;
     const d = new Date(date);

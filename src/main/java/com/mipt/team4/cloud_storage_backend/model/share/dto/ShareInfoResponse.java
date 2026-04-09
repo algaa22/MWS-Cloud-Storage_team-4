@@ -17,23 +17,39 @@ public record ShareInfoResponse(
     @ResponseBodyParam Integer maxDownloads,
     @ResponseBodyParam Integer downloadCount,
     @ResponseBodyParam Boolean isActive,
-    @ResponseBodyParam Boolean hasPassword) {
+    @ResponseBodyParam Boolean hasPassword,
+    @ResponseBodyParam Boolean isFileDeleted
+) {
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
   public static ShareInfoResponse fromShare(FileShare share, String baseUrl) {
+    boolean isFileDeleted = share.getFile() == null || share.getFile().isDeleted();
+
+    String fileName = "Файл удален";
+    Long fileSize = 0L;
+    String fileId = null;
+
+    if (share.getFile() != null && !share.getFile().isDeleted()) {
+      fileName = share.getFile().getName();
+      fileSize = share.getFile().getSize();
+      fileId = share.getFile().getId().toString();
+    }
+
     return new ShareInfoResponse(
         share.getId().toString(),
         baseUrl + "/s?shareToken=" + share.getShareToken(),
         share.getShareToken(),
-        share.getFile().getId().toString(),
-        share.getFile().getName(),
-        share.getFile().getSize(),
+        fileId,
+        fileName,
+        fileSize,
         share.getShareType() != null ? share.getShareType().name() : "PUBLIC",
         share.getCreatedAt() != null ? share.getCreatedAt().format(FORMATTER) : null,
         share.getExpiresAt() != null ? share.getExpiresAt().format(FORMATTER) : null,
         share.getMaxDownloads(),
         share.getDownloadCount(),
-        share.getIsActive(),
-        share.getPasswordHash() != null);
+        share.getIsActive() && !isFileDeleted,
+        share.getPasswordHash() != null,
+        isFileDeleted
+    );
   }
 }

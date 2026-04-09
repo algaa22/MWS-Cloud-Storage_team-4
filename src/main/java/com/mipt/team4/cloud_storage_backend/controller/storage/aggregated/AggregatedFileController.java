@@ -56,7 +56,7 @@ public class AggregatedFileController {
   public void deleteFile(ChannelHandlerContext ctx, DeleteFileRequest request) {
     System.out.println("=== DELETE CONTROLLER ===");
     System.out.println("File ID: " + request.id());
-    System.out.println("Permanent: " + request.permanent()); // Должно быть true!
+    System.out.println("Permanent: " + request.permanent());
 
     if (request.permanent()) {
       System.out.println("🔥 CALLING HARD DELETE");

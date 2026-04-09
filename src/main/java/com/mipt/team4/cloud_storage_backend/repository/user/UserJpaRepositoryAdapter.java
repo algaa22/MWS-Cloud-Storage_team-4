@@ -131,6 +131,12 @@ public class UserJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
+  public List<UserEntity> findAllByTariffEndDateBeforeAndUserStatus(
+      LocalDateTime now, UserStatus status) {
+    return jpaRepository.findAllByTariffEndDateBeforeAndUserStatus(now, status);
+  }
+
+  @Transactional(readOnly = true)
   public Optional<StorageUsage> getStorageUsage(UUID userId) {
     return jpaRepository
         .findStorageUsageById(userId)

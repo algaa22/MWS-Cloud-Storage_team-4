@@ -9,6 +9,8 @@ import SettingsPage from './components/SettingsPage';
 import TariffsPage from './components/TariffsPage';
 import TrashPage from './components/TrashPage';
 import SharedFilePage from './components/SharedFilePage';
+import PaymentHistoryPage from './components/PaymentHistoryPage';
+import MySharesPage from './components/MySharesPage';
 
 
 function PrivateRoute({ children }) {
@@ -50,6 +52,7 @@ function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/register" element={<Register />} />
             <Route path="/tariffs" element={<TariffsPage />} />
+            <Route path="/payments" element={<PaymentHistoryPage />} />
             <Route path="/s" element={<SharedFilePage />} />
 
             <Route
@@ -59,6 +62,15 @@ function App() {
                     <FileBrowser />
                   </PrivateRoute>
                 }
+            />
+
+            <Route
+              path="/shares"
+              element={
+                <PrivateRoute>
+                  <MySharesPage />
+                </PrivateRoute>
+              }
             />
 
             <Route path="*" element={<Navigate to="/" />} />

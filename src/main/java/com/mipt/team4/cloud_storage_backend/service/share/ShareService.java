@@ -47,24 +47,23 @@ public class ShareService {
   public ShareCreatedResponse createShare(UUID userId, CreateShareRequest request) {
     log.info("Creating share for file: {} by user: {}", request.fileId(), userId);
 
-    FileShare.ShareType shareType = request.shareType() != null
-        ? request.shareType()
-        : FileShare.ShareType.PUBLIC;
+    FileShare.ShareType shareType =
+        request.shareType() != null ? request.shareType() : FileShare.ShareType.PUBLIC;
 
     boolean hasPassword = request.password() != null && !request.password().isEmpty();
     if (hasPassword) {
       shareType = FileShare.ShareType.PROTECTED;
     }
 
-    Optional<FileShare> existingShare = shareRepository
-        .findExistingActiveShareByType(request.fileId(), userId, shareType);
+    Optional<FileShare> existingShare =
+        shareRepository.findExistingActiveShareByType(request.fileId(), userId, shareType);
 
     if (existingShare.isPresent()) {
       FileShare activeShare = existingShare.get();
 
-      if (!activeShare.isExpired() &&
-          (activeShare.getMaxDownloads() == null ||
-              activeShare.getDownloadCount() < activeShare.getMaxDownloads())) {
+      if (!activeShare.isExpired()
+          && (activeShare.getMaxDownloads() == null
+              || activeShare.getDownloadCount() < activeShare.getMaxDownloads())) {
 
         log.info("Returning existing active {} share for file: {}", shareType, request.fileId());
         return ShareCreatedResponse.fromShare(activeShare, baseUrl);
@@ -75,25 +74,26 @@ public class ShareService {
       }
     }
 
-    StorageEntity file = storageRepository
-        .get(userId, request.fileId())
-        .orElseThrow(() -> new StorageFileNotFoundException(request.fileId()));
+    StorageEntity file =
+        storageRepository
+            .get(userId, request.fileId())
+            .orElseThrow(() -> new StorageFileNotFoundException(request.fileId()));
 
-    UserEntity user = userRepository
-        .getUserById(userId)
-        .orElseThrow(() -> new UserNotFoundException(userId));
+    UserEntity user =
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
     String token = generateUniqueToken();
 
-    FileShare share = FileShare.builder()
-        .shareToken(token)
-        .file(file)
-        .createdBy(user)
-        .shareType(shareType)
-        .maxDownloads(request.maxDownloads())
-        .downloadCount(0)
-        .isActive(true)
-        .build();
+    FileShare share =
+        FileShare.builder()
+            .shareToken(token)
+            .file(file)
+            .createdBy(user)
+            .shareType(shareType)
+            .maxDownloads(request.maxDownloads())
+            .downloadCount(0)
+            .isActive(true)
+            .build();
 
     setExpirationDate(share, request.expiresAt());
 
@@ -167,13 +167,22 @@ public class ShareService {
       throw new SecurityException("Only owner can deactivate share");
     }
 
-    share.setIsActive(false);
-    shareRepository.save(share);
+    shareRepository.deactivateShare(shareId);
   }
 
   @Transactional(readOnly = true)
   public List<ShareInfoResponse> getUserSharesInfo(UUID userId) {
     return shareRepository.findByCreatedById(userId).stream()
+        .filter(share -> {
+          try {
+            StorageEntity file = share.getFile();
+            return file != null && !file.isDeleted()
+                && storageRepository.get(file.getUserId(), file.getId()).isPresent();
+          } catch (Exception e) {
+            log.warn("Skipping share {} because file no longer exists", share.getId());
+            return false;
+          }
+        })
         .map(share -> ShareInfoResponse.fromShare(share, baseUrl))
         .toList();
   }
@@ -185,6 +194,15 @@ public class ShareService {
         .orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
     return shareRepository.findByFileId(fileId).stream()
+        .filter(share -> {
+          try {
+            StorageEntity file = share.getFile();
+            return file != null && !file.isDeleted();
+          } catch (Exception e) {
+            log.warn("Skipping share {} because file no longer exists", share.getId());
+            return false;
+          }
+        })
         .map(share -> ShareInfoResponse.fromShare(share, baseUrl))
         .toList();
   }
@@ -219,6 +237,22 @@ public class ShareService {
 
     if (share.getMaxDownloads() != null && share.getDownloadCount() >= share.getMaxDownloads()) {
       throw new ShareLimitExceededException(token);
+    }
+
+    StorageEntity file = share.getFile();
+
+    if (storageRepository.getIncludeDeleted(file.getUserId(), file.getId()).isEmpty()) {
+      log.warn("Share {} points to deleted/non-existent file {}", token, file.getId());
+      share.setIsActive(false);
+      shareRepository.save(share);
+      throw new ShareFileDeletedException("The file has been deleted");
+    }
+
+    if (file.isDeleted()) {
+      log.warn("Share {} points to soft-deleted file {}, deactivating", token, file.getId());
+      share.setIsActive(false);
+      shareRepository.save(share);
+      throw new ShareFileDeletedException("The file has been deleted");
     }
 
     return share;
@@ -257,5 +291,18 @@ public class ShareService {
       share.setExpiresAt(LocalDateTime.now().plusDays(DEFAULT_EXPIRY_DAYS));
       log.info("Share expiration set to default: {} days", DEFAULT_EXPIRY_DAYS);
     }
+  }
+
+  @Transactional
+  public void deleteSharePermanently(UUID shareId, UUID userId) {
+    FileShare share = shareRepository.findById(shareId)
+        .orElseThrow(() -> new ShareNotFoundException(shareId));
+
+    if (!share.getCreatedBy().getId().equals(userId)) {
+      throw new SecurityException("Only owner can delete share");
+    }
+
+    shareRepository.deleteById(shareId);
+    log.info("Share {} permanently deleted by user {}", shareId, userId);
   }
 }

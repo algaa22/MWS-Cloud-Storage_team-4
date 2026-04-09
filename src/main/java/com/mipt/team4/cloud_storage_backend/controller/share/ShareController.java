@@ -1,10 +1,14 @@
 package com.mipt.team4.cloud_storage_backend.controller.share;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.share.dto.*;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.share.ShareService;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -40,10 +44,21 @@ public class ShareController {
   }
 
   public void getUserShares(ChannelHandlerContext ctx, GetUserSharesRequest request) {
-    ResponseUtils.send(ctx, shareService.getUserSharesInfo(request.userId()));
+    List<ShareInfoResponse> shares = shareService.getUserSharesInfo(request.userId());
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode json = mapper.valueToTree(new SharesListResponse(shares));
+
+    ResponseUtils.sendJson(ctx, HttpResponseStatus.OK, json);
   }
 
   public void getFileShares(ChannelHandlerContext ctx, GetFileSharesRequest request) {
-    ResponseUtils.send(ctx, shareService.getFileSharesInfo(request.fileId(), request.userId()));
+    List<ShareInfoResponse> shares = shareService.getFileSharesInfo(request.fileId(), request.userId());
+    ResponseUtils.send(ctx, new SharesListResponse(shares));
+  }
+
+  public void deleteSharePermanently(ChannelHandlerContext ctx, DeleteShareRequest request) {
+    shareService.deleteSharePermanently(request.shareId(), request.userId());
+    ResponseUtils.send(ctx, new SuccessResponse("Share permanently deleted"));
   }
 }

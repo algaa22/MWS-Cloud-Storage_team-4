@@ -1,8 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.controller.user;
 
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
+import com.mipt.team4.cloud_storage_backend.model.payment.dto.PaymentHistoryResponse;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.AvailableTariffsRequest;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.GetPaymentHistoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenewRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
@@ -16,8 +18,10 @@ import io.netty.channel.ChannelHandlerContext;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class TariffController {
@@ -48,6 +52,11 @@ public class TariffController {
     List<TariffPlanResponse> plans =
         Arrays.stream(TariffPlan.values()).map(TariffPlanResponse::from).toList();
     AvailableTariffsResponse response = new AvailableTariffsResponse(plans);
+    ResponseUtils.send(ctx, response);
+  }
+
+  public void getPaymentHistory(ChannelHandlerContext ctx, GetPaymentHistoryRequest request) {
+    PaymentHistoryResponse response = tariffService.getPaymentHistory(request.userId());
     ResponseUtils.send(ctx, response);
   }
 }

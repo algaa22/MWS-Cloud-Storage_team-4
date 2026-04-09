@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface FileShareJpaRepository extends JpaRepository<FileShare, UUID> {
 
@@ -33,15 +34,18 @@ public interface FileShareJpaRepository extends JpaRepository<FileShare, UUID> {
   @Query("SELECT COUNT(fs) FROM FileShare fs WHERE fs.file.id = :fileId AND fs.isActive = true")
   long countActiveSharesByFileId(@Param("fileId") UUID fileId);
 
-  @Query("SELECT fs FROM FileShare fs WHERE fs.file.id = :fileId AND fs.createdBy.id = :userId AND fs.isActive = true AND fs.shareType = 'PUBLIC'")
+  @Query(
+      "SELECT fs FROM FileShare fs WHERE fs.file.id = :fileId AND fs.createdBy.id = :userId AND fs.isActive = true AND fs.shareType = 'PUBLIC'")
   Optional<FileShare> findByFileIdAndCreatedByIdAndIsActiveTrueAndShareTypePublic(
-      @Param("fileId") UUID fileId,
-      @Param("userId") UUID userId
-  );
+      @Param("fileId") UUID fileId, @Param("userId") UUID userId);
 
-  @Query("SELECT fs FROM FileShare fs WHERE fs.file.id = :fileId AND fs.createdBy.id = :userId AND fs.isActive = true AND fs.shareType = 'PROTECTED'")
+  @Query(
+      "SELECT fs FROM FileShare fs WHERE fs.file.id = :fileId AND fs.createdBy.id = :userId AND fs.isActive = true AND fs.shareType = 'PROTECTED'")
   Optional<FileShare> findByFileIdAndCreatedByIdAndIsActiveTrueAndShareTypeProtected(
-      @Param("fileId") UUID fileId,
-      @Param("userId") UUID userId
-  );
+      @Param("fileId") UUID fileId, @Param("userId") UUID userId);
+
+  @Modifying
+  @Transactional
+  @Query("UPDATE FileShare fs SET fs.isActive = false WHERE fs.file.id = :fileId AND fs.isActive = true")
+  int deactivateAllByFileId(@Param("fileId") UUID fileId);
 }

@@ -1,6 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
+import com.mipt.team4.cloud_storage_backend.model.payment.dto.PaymentHistoryResponse;
+import com.mipt.team4.cloud_storage_backend.model.payment.dto.PaymentTransactionDto;
+import com.mipt.team4.cloud_storage_backend.model.payment.entity.PaymentTransaction;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenewRequest;
@@ -10,8 +13,10 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
+import com.mipt.team4.cloud_storage_backend.repository.payment.PaymentTransactionRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileCleanupService;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -31,8 +36,9 @@ public class TariffService {
   private final NotificationClient notificationClient;
   private final PaymentService paymentService;
   private final FileCleanupService fileCleanupService;
+  private final PaymentTransactionRepository paymentTransactionRepository;
 
-  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
+  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024;
   private static final int TRIAL_DAYS = 30;
 
   @Transactional
@@ -69,28 +75,66 @@ public class TariffService {
 
     boolean isFirstPurchase = userEntity.getTariffPlan() == null;
 
-    paymentService.processPayment(userId, plan, request.paymentToken());
+    BigDecimal amount = getTariffPrice(plan);
+    String paymentToken =
+        request.paymentToken() != null ? request.paymentToken() : "test_token_" + UUID.randomUUID();
 
-    userRepository.updateTariff(
-        userId, plan, now, endDate, request.autoRenew(), plan.getStorageLimit());
+    PaymentTransaction transaction =
+        PaymentTransaction.builder()
+            .userId(userId)
+            .tariffPlan(plan.name())
+            .amount(amount)
+            .paymentToken(paymentToken)
+            .status("PENDING")
+            .paymentMethod(request.paymentMethod())
+            .autoRenew(request.autoRenew())
+            .storageLimitGb(
+                plan.getStorageLimit() / (1024 * 1024 * 1024))
+            .price(amount)
+            .durationDays(plan.getDurationDays())
+            .build();
 
-    if (isFirstPurchase && userEntity.getTrialEndDate() != null) {
-      userRepository.updateTrialDates(userId, null, null);
+    paymentTransactionRepository.save(transaction);
+    log.info(
+        "Created payment transaction for user: {}, plan: {}, id: {}",
+        userId,
+        plan.name(),
+        transaction.getId());
+
+    try {
+      paymentService.processPayment(userId, plan, paymentToken);
+
+      transaction.complete();
+      paymentTransactionRepository.save(transaction);
+      log.info("Payment transaction completed: {}", transaction.getId());
+
+      userRepository.updateTariff(
+          userId, plan, now, endDate, request.autoRenew(), plan.getStorageLimit());
+
+      if (isFirstPurchase && userEntity.getTrialEndDate() != null) {
+        userRepository.updateTrialDates(userId, null, null);
+      }
+
+      if (request.paymentMethod() != null) {
+        userRepository.updatePaymentMethod(userId, request.paymentMethod());
+      }
+
+      if (userEntity.getUserStatus() != UserStatus.ACTIVE) {
+        userRepository.updateUserStatus(userId, UserStatus.ACTIVE);
+        userRepository.updateScheduledDeletionDate(userId, null);
+      }
+
+      notificationClient.notifyTariffPurchased(
+          userEntity.getEmail(), userEntity.getUsername(), plan.name(), endDate);
+
+      log.info("User {} purchased tariff: {}", userId, plan.name());
+
+    } catch (Exception e) {
+      transaction.fail();
+      paymentTransactionRepository.save(transaction);
+      log.error("Payment failed for user: {}, plan: {}", userId, plan.name(), e);
+      throw new RuntimeException("Payment processing failed: " + e.getMessage(), e);
     }
-
-    if (request.paymentMethod() != null) {
-      userRepository.updatePaymentMethod(userId, request.paymentMethod());
-    }
-
-    if (userEntity.getUserStatus() != UserStatus.ACTIVE) {
-      userRepository.updateUserStatus(userId, UserStatus.ACTIVE);
-      userRepository.updateScheduledDeletionDate(userId, null);
-    }
-
-    notificationClient.notifyTariffPurchased(
-        userEntity.getEmail(), userEntity.getUsername(), plan.name(), endDate);
-
-    log.info("User {} purchased tariff: {}", userId, plan.name());
   }
 
   @Transactional
@@ -163,12 +207,31 @@ public class TariffService {
     return userEntity.getUserStatus() == UserStatus.ACTIVE;
   }
 
-  @Scheduled(cron = "0 0 0 * * *") // Каждый день в полночь
+  @Transactional(readOnly = true)
+  public PaymentHistoryResponse getPaymentHistory(UUID userId) {
+    userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+
+    List<PaymentTransaction> transactions =
+        paymentTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId);
+
+    List<PaymentTransactionDto> dtos =
+        transactions.stream().map(PaymentTransactionDto::from).toList();
+
+    log.info("Retrieved {} payment transactions for user: {}", dtos.size(), userId);
+    return PaymentHistoryResponse.of(dtos);
+  }
+
+  private BigDecimal getTariffPrice(TariffPlan plan) {
+    return BigDecimal.valueOf(plan.getPriceRub());
+  }
+
+  @Scheduled(cron = "0 0 0 * * *")
   @Transactional
   public void checkExpiredSubscriptions() {
     LocalDateTime now = LocalDateTime.now();
 
-    List<UserEntity> expiredUsers = userRepository.getUsersWithExpiredTariff(now);
+    List<UserEntity> expiredUsers =
+        userRepository.findAllByTariffEndDateBeforeAndUserStatus(now, UserStatus.ACTIVE);
 
     for (UserEntity user : expiredUsers) {
       if (user.isAutoRenew() && user.getPaymentMethodId() != null) {
@@ -198,7 +261,7 @@ public class TariffService {
     }
   }
 
-  @Scheduled(cron = "0 0 1 * * *") // Каждый день в 1:00
+  @Scheduled(cron = "0 0 1 * * *")
   @Transactional
   public void processPendingDeletions() {
     LocalDateTime now = LocalDateTime.now();
@@ -222,7 +285,7 @@ public class TariffService {
     }
   }
 
-  @Scheduled(cron = "0 0 2 * * *") // Каждый день в 2:00
+  @Scheduled(cron = "0 0 2 * * *")
   @Transactional
   public void checkExpiredTrials() {
     LocalDateTime now = LocalDateTime.now();

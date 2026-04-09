@@ -27,7 +27,6 @@ export default function SharedFilePage() {
     try {
       const info = await getShareInfo(token);
       setFileInfo(info);
-      // Проверяем наличие пароля
       const hasPassword = info.hasPassword || info.shareType === 'PROTECTED';
       setRequiresPassword(hasPassword);
     } catch (err) {
@@ -42,7 +41,6 @@ export default function SharedFilePage() {
     fetchInfo();
   }, [fetchInfo]);
 
-  // Единая функция для скачивания
   const handleDownload = async (e) => {
     if (e) e.preventDefault();
 
@@ -57,7 +55,6 @@ export default function SharedFilePage() {
     try {
       console.log("Downloading with password:", password ? "yes" : "no");
 
-      // Передаем пароль в функцию скачивания
       const { blob, filename } = await downloadSharedFile(token, password);
 
       const url = window.URL.createObjectURL(blob);

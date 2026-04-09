@@ -355,16 +355,20 @@ export default function TariffsPage() {
               <div className="text-3xl font-bold text-yellow-300 mb-4">{tariff.price}</div>
               <div className="text-xl text-blue-300 mb-6">{tariff.storage}</div>
 
-              <ul className="space-y-3 mb-8">
-                {tariff.features.map((feature, index) => (
-                  <li key={index} className="flex items-center text-white/80">
-                    <svg className="w-5 h-5 mr-2 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
+              <ul className="space-y-3 mb-8 flex-grow">
+                  {tariff.features.map((feature, index) => (
+                    <li key={index} className="flex items-center text-white/80">
+                      {feature && (
+                        <>
+                          <svg className="w-5 h-5 mr-2 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>{feature}</span>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
 
               <button
                 onClick={() => handlePurchase(tariff.id)}

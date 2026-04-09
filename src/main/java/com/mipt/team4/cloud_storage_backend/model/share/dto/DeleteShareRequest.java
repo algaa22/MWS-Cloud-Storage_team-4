@@ -6,8 +6,8 @@ import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.Re
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.UserId;
 import java.util.UUID;
 
-@RequestMapping(method = "DELETE", path = ApiEndpoints.SHARES_PREFIX)
-public record DeactivateShareRequest(
+@RequestMapping(method = "DELETE", path = ApiEndpoints.SHARES_PREFIX + "/permanent")
+public record DeleteShareRequest(
     @UserId UUID userId,
     @QueryParam UUID shareId
 ) {}

@@ -14,6 +14,7 @@ import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionAlre
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
+import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
@@ -32,6 +33,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
+import com.mipt.team4.cloud_storage_backend.repository.share.FileShareRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepositoryWrapper;
@@ -62,16 +64,17 @@ public class FileService {
 
   private final StorageRepository storageRepository;
   private final StorageJpaRepositoryAdapter
-      storageJpaRepositoryAdapter; // ДЛЯ findOldestFilesByUserId
+      storageJpaRepositoryAdapter;
   private final StorageRepositoryWrapper
-      storageRepositoryWrapper; // ДЛЯ getFullFilePath и deleteFile
+      storageRepositoryWrapper;
   private final UserJpaRepositoryAdapter userRepository;
 
   private final NotificationClient notificationClient;
   private final NotificationConfig notificationConfig;
   private final MinioConfig minioConfig;
+  private final FileShareRepositoryAdapter shareRepository;
 
-  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
+  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024;
 
   @Transactional
   public ChunkedUploadInfoDto startChunkedUpload(StartChunkedUploadRequest request) {
@@ -256,6 +259,9 @@ public class FileService {
     System.out.println("File ID: " + fileId);
     System.out.println("User ID: " + userId);
 
+    int deactivatedShares = shareRepository.deactivateAllByFileId(fileId);
+    System.out.println("Deactivated " + deactivatedShares + " shares for file: " + fileId);
+
     Optional<StorageEntity> fileEntity = storageRepository.getIncludeDeleted(userId, fileId);
     if (fileEntity.isEmpty()) {
       System.out.println("File not found in DB at all!");
@@ -266,14 +272,13 @@ public class FileService {
     System.out.println("Found file: " + entity.getName());
     System.out.println("Is deleted: " + entity.isDeleted());
 
-    UserEntity user =
-        userRepository
-            .getUserById(userId)
-            .orElseThrow(() -> new UserNotFoundException(request.userId()));
+    UserEntity user = userRepository
+        .getUserById(userId)
+        .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
     erasureService.hardDelete(entity);
 
-    String fullPath = storageRepositoryWrapper.getFullFilePath(fileId); // ИСПРАВЛЕНО
+    String fullPath = storageRepositoryWrapper.getFullFilePath(fileId);
     notificationClient.notifyFileDeleted(user.getEmail(), user.getUsername(), fullPath, userId);
 
     System.out.println("Hard delete completed");
@@ -283,6 +288,8 @@ public class FileService {
   public void softDelete(DeleteFileRequest request) {
     UUID fileId = request.id();
     UUID userId = request.userId();
+
+    shareRepository.deactivateAllByFileId(fileId);
 
     StorageEntity fileEntity =
         storageRepository
@@ -324,6 +331,17 @@ public class FileService {
     System.out.println("Calling storageRepository.restore...");
     storageRepository.restore(fileEntity);
     userRepository.increaseUsedStorage(userId, fileEntity.getSize());
+
+    List<FileShare> shares = shareRepository.findByFileId(fileId);
+    for (FileShare share : shares) {
+      if (share.getIsActive() == false && share.getExpiresAt() != null
+          && share.getExpiresAt().isAfter(LocalDateTime.now())) {
+        share.setIsActive(true);
+        shareRepository.save(share);
+      }
+    }
+    log.info("Restored {} shares for file {}", shares.size(), fileId);
+
     System.out.println("✅ Increased usedStorage by: " + fileEntity.getSize());
     System.out.println("Restore completed");
   }
@@ -366,7 +384,6 @@ public class FileService {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
-    // Проверяем права на изменение метаданных
     if (!tariffService.canModifyFiles(userId)) {
       throw new TariffAccessDeniedException("Cannot modify files: subscription expired");
     }

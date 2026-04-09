@@ -18,13 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class FileCleanupService {
 
+  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
   private final StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
   private final StorageRepository storageRepository;
   private final StorageRepositoryWrapper storageRepositoryWrapper;
   private final UserJpaRepositoryAdapter userRepository;
   private final FileErasureService erasureService;
-
-  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
 
   /**
    * Удаляет самые старые файлы пользователя до достижения размера sizeToDelete Используется при

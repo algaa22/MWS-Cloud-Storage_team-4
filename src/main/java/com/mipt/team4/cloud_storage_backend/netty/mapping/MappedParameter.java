@@ -20,15 +20,6 @@ public record MappedParameter(
     SourceType source,
     String defaultValue,
     boolean required) {
-  public enum SourceType {
-    QUERY,
-    HEADER,
-    BODY_PARAM,
-    BODY,
-    AUTH,
-    STATUS
-  }
-
   public static MappedParameter from(Parameter parameter) {
     return Stream.<Function<Parameter, Optional<MappedParameter>>>of(
             MappedParameter::tryQueryParam,
@@ -153,5 +144,14 @@ public record MappedParameter(
     }
 
     return result.toString();
+  }
+
+  public enum SourceType {
+    QUERY,
+    HEADER,
+    BODY_PARAM,
+    BODY,
+    AUTH,
+    STATUS
   }
 }

@@ -53,7 +53,8 @@ public class ShareController {
   }
 
   public void getFileShares(ChannelHandlerContext ctx, GetFileSharesRequest request) {
-    List<ShareInfoResponse> shares = shareService.getFileSharesInfo(request.fileId(), request.userId());
+    List<ShareInfoResponse> shares =
+        shareService.getFileSharesInfo(request.fileId(), request.userId());
     ResponseUtils.send(ctx, new SharesListResponse(shares));
   }
 

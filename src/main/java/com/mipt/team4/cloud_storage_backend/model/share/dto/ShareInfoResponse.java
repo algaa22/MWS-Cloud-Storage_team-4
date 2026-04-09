@@ -18,8 +18,7 @@ public record ShareInfoResponse(
     @ResponseBodyParam Integer downloadCount,
     @ResponseBodyParam Boolean isActive,
     @ResponseBodyParam Boolean hasPassword,
-    @ResponseBodyParam Boolean isFileDeleted
-) {
+    @ResponseBodyParam Boolean isFileDeleted) {
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
   public static ShareInfoResponse fromShare(FileShare share, String baseUrl) {
@@ -49,7 +48,6 @@ public record ShareInfoResponse(
         share.getDownloadCount(),
         share.getIsActive() && !isFileDeleted,
         share.getPasswordHash() != null,
-        isFileDeleted
-    );
+        isFileDeleted);
   }
 }

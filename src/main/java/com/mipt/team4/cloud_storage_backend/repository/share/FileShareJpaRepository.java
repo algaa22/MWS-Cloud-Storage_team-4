@@ -46,6 +46,7 @@ public interface FileShareJpaRepository extends JpaRepository<FileShare, UUID> {
 
   @Modifying
   @Transactional
-  @Query("UPDATE FileShare fs SET fs.isActive = false WHERE fs.file.id = :fileId AND fs.isActive = true")
+  @Query(
+      "UPDATE FileShare fs SET fs.isActive = false WHERE fs.file.id = :fileId AND fs.isActive = true")
   int deactivateAllByFileId(@Param("fileId") UUID fileId);
 }

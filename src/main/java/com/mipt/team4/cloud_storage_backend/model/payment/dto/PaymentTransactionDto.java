@@ -17,8 +17,7 @@ public record PaymentTransactionDto(
     @ResponseBodyParam Boolean autoRenew,
     @ResponseBodyParam Long storageLimitGb,
     @ResponseBodyParam BigDecimal price,
-    @ResponseBodyParam Integer durationDays
-    ) {
+    @ResponseBodyParam Integer durationDays) {
   public static PaymentTransactionDto from(PaymentTransaction transaction) {
     return new PaymentTransactionDto(
         transaction.getId().toString(),

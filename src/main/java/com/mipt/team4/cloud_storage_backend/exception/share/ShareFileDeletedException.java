@@ -10,7 +10,8 @@ public class ShareFileDeletedException extends BaseStorageException {
   }
 
   public ShareFileDeletedException(String token, String fileId) {
-    super(String.format("File %s linked to share %s has been deleted", fileId, token),
+    super(
+        String.format("File %s linked to share %s has been deleted", fileId, token),
         HttpResponseStatus.NOT_FOUND);
   }
 

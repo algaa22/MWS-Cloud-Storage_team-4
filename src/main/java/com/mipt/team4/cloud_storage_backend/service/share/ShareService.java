@@ -32,16 +32,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ShareService {
 
+  private static final int TOKEN_BYTES = 24;
+  private static final int DEFAULT_EXPIRY_DAYS = 7;
   private final FileShareRepositoryAdapter shareRepository;
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final PasswordHasher passwordHasher;
-
   @Value("${app.base-url:https://localhost:8443}")
   private String baseUrl;
-
-  private static final int TOKEN_BYTES = 24;
-  private static final int DEFAULT_EXPIRY_DAYS = 7;
 
   @Transactional
   public ShareCreatedResponse createShare(UUID userId, CreateShareRequest request) {

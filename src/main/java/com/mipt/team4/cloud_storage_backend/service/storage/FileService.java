@@ -56,25 +56,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class FileService {
+  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024;
   // TODO: нужен Scheduler для очистки старых сессий загрузки
   private final Map<UUID, ChunkedUploadSession> activeUploads = new ConcurrentHashMap<>();
-
   private final FileErasureService erasureService;
   private final TariffService tariffService;
-
   private final StorageRepository storageRepository;
   private final StorageJpaRepositoryAdapter
       storageJpaRepositoryAdapter;
   private final StorageRepositoryWrapper
       storageRepositoryWrapper;
   private final UserJpaRepositoryAdapter userRepository;
-
   private final NotificationClient notificationClient;
   private final NotificationConfig notificationConfig;
   private final MinioConfig minioConfig;
   private final FileShareRepositoryAdapter shareRepository;
-
-  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024;
 
   @Transactional
   public ChunkedUploadInfoDto startChunkedUpload(StartChunkedUploadRequest request) {

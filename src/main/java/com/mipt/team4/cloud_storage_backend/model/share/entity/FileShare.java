@@ -55,11 +55,6 @@ public class FileShare {
   @Enumerated(EnumType.STRING)
   private ShareType shareType;
 
-  public enum ShareType {
-    PUBLIC,
-    PROTECTED
-  }
-
   @PrePersist
   protected void onCreate() {
     createdAt = LocalDateTime.now();
@@ -74,5 +69,10 @@ public class FileShare {
 
   public void incrementDownloadCount() {
     this.downloadCount = (this.downloadCount == null ? 1 : this.downloadCount + 1);
+  }
+
+  public enum ShareType {
+    PUBLIC,
+    PROTECTED
   }
 }

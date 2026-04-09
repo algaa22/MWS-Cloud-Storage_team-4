@@ -20,12 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TariffScheduler {
 
+  private static final int GRACE_PERIOD_DAYS = 30;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationClient notificationClient;
   private final PaymentService paymentService;
   private final NotificationConfig notificationConfig;
-
-  private static final int GRACE_PERIOD_DAYS = 30;
 
   /**
    * Основная проверка тарифов - запускается каждый день в 4:00 Проверяет: 1. Заканчивающиеся тарифы

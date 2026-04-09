@@ -32,14 +32,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TariffService {
 
+  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024;
+  private static final int TRIAL_DAYS = 30;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationClient notificationClient;
   private final PaymentService paymentService;
   private final FileCleanupService fileCleanupService;
   private final PaymentTransactionRepository paymentTransactionRepository;
-
-  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024;
-  private static final int TRIAL_DAYS = 30;
 
   @Transactional
   public void setupTrialPeriod(UUID userId) {

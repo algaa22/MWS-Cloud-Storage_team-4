@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
   private final UserJpaRepositoryAdapter userRepository;
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
@@ -42,8 +43,6 @@ public class UserService {
   private final StorageConfig storageConfig;
   private final TariffService tariffService;
   private final StorageJpaRepository storageRepository;
-
-  private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
 
   @Transactional(readOnly = true)
   public UserInfoResponse getUserInfo(UserInfoRequest request) {

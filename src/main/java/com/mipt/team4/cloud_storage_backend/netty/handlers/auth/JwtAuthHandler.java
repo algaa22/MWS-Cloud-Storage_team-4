@@ -20,14 +20,12 @@ import org.springframework.stereotype.Component;
 @Sharable
 @RequiredArgsConstructor
 public class JwtAuthHandler extends ChannelInboundHandlerAdapter {
-  private final UserSessionService userSessionService;
-
   private static final Set<String> AUTH_WHITELIST =
       Set.of(ApiEndpoints.AUTH_REGISTER, ApiEndpoints.AUTH_LOGIN, ApiEndpoints.AUTH_REFRESH);
-
   private static final String AUTH_HEADER = "X-Auth-Token";
   private static final Set<String> PUBLIC_PATHS =
       Set.of(ApiEndpoints.SHARES_DOWNLOAD, ApiEndpoints.SHARES_GET_INFO);
+  private final UserSessionService userSessionService;
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {

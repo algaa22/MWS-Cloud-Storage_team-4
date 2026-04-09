@@ -22,7 +22,7 @@ public class ChunkedUploadSession {
   private int totalParts = 0;
   private int partSize = 0;
   private int partNum = 0;
-  private String uploadId;
+  private final String uploadId;
 
   ChunkedUploadSession(StartChunkedUploadRequest request, String uploadId, StorageEntity entity) {
     this.request = request;

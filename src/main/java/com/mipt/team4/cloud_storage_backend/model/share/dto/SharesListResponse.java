@@ -5,8 +5,7 @@ import java.util.List;
 
 public class SharesListResponse {
 
-  @ResponseBodyParam
-  private List<ShareInfoResponse> shares;
+  @ResponseBodyParam private final List<ShareInfoResponse> shares;
 
   public SharesListResponse(List<ShareInfoResponse> shares) {
     this.shares = shares;

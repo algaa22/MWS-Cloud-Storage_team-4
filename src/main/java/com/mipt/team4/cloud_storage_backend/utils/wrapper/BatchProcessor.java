@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.utils.wrapper;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class BatchProcessor {
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
 
   public <T, ID> void scoop(
       String taskName,
@@ -82,6 +82,6 @@ public class BatchProcessor {
   }
 
   private Pageable createInitialPageable() {
-    return PageRequest.of(0, storageConfig.scheduling().pageSize());
+    return PageRequest.of(0, storageProps.scheduling().pageSize());
   }
 }

@@ -53,6 +53,8 @@ cors:
     max-age: 3600
 
 antivirus:
+  enabled: true
+
   rabbitmq:
     retry:
       max-attempts: 3

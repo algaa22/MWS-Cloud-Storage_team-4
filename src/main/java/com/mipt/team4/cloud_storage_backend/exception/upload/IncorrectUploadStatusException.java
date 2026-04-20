@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.exception.transfer;
+package com.mipt.team4.cloud_storage_backend.exception.upload;
 
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;

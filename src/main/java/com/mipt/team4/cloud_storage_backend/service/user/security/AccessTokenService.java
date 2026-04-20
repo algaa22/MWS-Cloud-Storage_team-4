@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user.security;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.TokenClaimsDto;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import io.jsonwebtoken.Claims;
@@ -26,9 +26,9 @@ public class AccessTokenService {
   private final long accessTokenExpirationSec;
   private final Key signingKey;
 
-  public AccessTokenService(StorageConfig storageConfig) {
-    String jwtSecretKey = storageConfig.auth().jwtSecretKey();
-    this.accessTokenExpirationSec = storageConfig.auth().accessTokenExpirationSec();
+  public AccessTokenService(StorageProps storageProps) {
+    String jwtSecretKey = storageProps.auth().jwtSecretKey();
+    this.accessTokenExpirationSec = storageProps.auth().accessTokenExpirationSec();
     this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecretKey));
   }
 

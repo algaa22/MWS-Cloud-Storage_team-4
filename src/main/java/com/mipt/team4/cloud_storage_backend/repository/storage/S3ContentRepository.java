@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
 import java.util.Comparator;
@@ -22,10 +22,10 @@ public class S3ContentRepository implements FileContentRepository {
   private final String bucketName;
 
   @Autowired
-  public S3ContentRepository(StorageConfig storageConfig, S3Wrapper wrapper, S3Client s3Client) {
+  public S3ContentRepository(StorageProps storageProps, S3Wrapper wrapper, S3Client s3Client) {
     this.wrapper = wrapper;
 
-    this.bucketName = storageConfig.s3().userDataBucket().name();
+    this.bucketName = storageProps.s3().userDataBucket().name();
     this.s3Client = s3Client;
   }
 

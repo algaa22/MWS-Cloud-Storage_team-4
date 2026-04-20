@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.IncorrectUploadStatusException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
@@ -86,6 +86,7 @@ public class StorageRepository {
     wrapper.completeStep(
         entity,
         FileOperationType.UPLOAD,
+        FileStatus.SCANNING,
         () -> {
           contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
           uploadRepository.deleteSession(sessionId);

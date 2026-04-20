@@ -1,10 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadContextException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadPartsException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TooLargeFilePartException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.MissingUploadContextException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.MissingUploadPartsException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.TooLargeFilePartException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedResponse;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartContext;
@@ -43,7 +43,7 @@ import org.springframework.stereotype.Controller;
 @Slf4j
 public class ChunkedUploadController {
   private final ChunkedUploadService uploadService;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
 
   public void startUploadSession(ChannelHandlerContext ctx, StartChunkedUploadRequest request) {
     StartChunkedUploadResponse response = uploadService.startUpload(request);
@@ -143,9 +143,9 @@ public class ChunkedUploadController {
     try {
       if (chunk.isReadable()) {
         if (accumulator.readableBytes() + chunk.readableBytes()
-            > storageConfig.s3().limits().maxFilePartSize()) {
+            > storageProps.s3().limits().maxFilePartSize()) {
           resetCurrentPart(ctx, accumulator);
-          throw new TooLargeFilePartException(storageConfig.s3().limits().maxFilePartSize());
+          throw new TooLargeFilePartException(storageProps.s3().limits().maxFilePartSize());
         }
 
         accumulator.addComponent(true, chunk.retain());

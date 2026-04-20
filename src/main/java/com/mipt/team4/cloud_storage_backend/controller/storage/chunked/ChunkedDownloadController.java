@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedDownloadRequest;
 import com.mipt.team4.cloud_storage_backend.netty.input.ChunkedDownloadInput;
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 public class ChunkedDownloadController {
   private final ObjectProvider<ChunkedDownloadInput> inputProvider;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
   private final FileService fileService;
 
   public void download(ChannelHandlerContext ctx, ChunkedDownloadRequest request) {
@@ -36,7 +36,7 @@ public class ChunkedDownloadController {
     ChunkedDownloadInput input =
         inputProvider.getObject(
             file.stream(),
-            storageConfig.rest().fileDownloadChunkSize(),
+            storageProps.rest().fileDownloadChunkSize(),
             getContentLength(file, isPartial));
 
     ResponseUtils.send(ctx, input).addListener(ChannelFutureListener.CLOSE);

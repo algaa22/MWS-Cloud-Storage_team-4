@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
@@ -41,7 +41,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StorageRepositoryWrapper {
   private final StorageJpaRepositoryAdapter metadataRepository;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
   private final RetryPolicy<Object> retryPolicy;
 
   /**
@@ -106,7 +106,10 @@ public class StorageRepositoryWrapper {
    * Автоматически сохраняет любые изменения {@code entity}, сделанные в лямбде.
    */
   public <T> T completeStep(
-      StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
+      StorageEntity entity,
+      FileOperationType operationType,
+      FileStatus finalStatus,
+      FileOperation<T> operation) {
     checkIfStatusIsPendingOrError(entity);
     return finalizeOperation(entity, operationType, operation);
   }
@@ -134,8 +137,16 @@ public class StorageRepositoryWrapper {
 
   private <T> T finalizeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
+    finalizeOperation(entity, operationType, operation, FileStatus.READY);
+  }
+
+  private <T> T finalizeOperation(
+      StorageEntity entity,
+      FileOperationType operationType,
+      FileOperation<T> operation,
+      FileStatus finalStatus) {
     T result = executeOperation(entity, operationType, operation);
-    syncEntityWithDatabase(entity, operationType, FileStatus.READY);
+    syncEntityWithDatabase(entity, operationType, finalStatus);
 
     return result;
   }
@@ -164,7 +175,7 @@ public class StorageRepositoryWrapper {
   }
 
   private boolean shouldThrottledUpdate(StorageEntity entity) {
-    int throttledUpdateInterval = storageConfig.stateMachine().fileThrottledUpdateIntervalSec();
+    int throttledUpdateInterval = storageProps.stateMachine().fileThrottledUpdateIntervalSec();
 
     return entity.getUpdatedAt() == null
         || entity
@@ -189,7 +200,7 @@ public class StorageRepositoryWrapper {
       RecoverableStorageException exception,
       StorageEntity entity,
       FileOperationType operationType) {
-    if (entity.getRetryCount() >= storageConfig.stateMachine().maxRetryCount()) {
+    if (entity.getRetryCount() >= storageProps.stateMachine().maxRetryCount()) {
       log.error(
           "FATAL: Max retry count reached for operation {}, userId: {}, fileId: {}",
           operationType,

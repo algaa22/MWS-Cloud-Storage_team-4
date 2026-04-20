@@ -28,4 +28,7 @@ public class ChunkedUploadPartEntity {
 
   @Column(name = "etag", nullable = false)
   private String eTag;
+
+  @Column(name = "hash")
+  private String hash;
 }

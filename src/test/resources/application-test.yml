@@ -11,6 +11,9 @@ netty:
   http-port: 8081
   worker-threads: 2
 
+antivirus:
+  enabled: false
+
 storage:
   failsafe-retry:
     max-attempts: 3

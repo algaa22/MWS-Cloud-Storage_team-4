@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.infrastructure;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig.HealthCheck;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps.HealthCheck;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.HealthCheckResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.HealthComponentStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.HealthMemoryStatus;
@@ -30,7 +30,7 @@ public class HealthMonitorService {
 
   private final JdbcTemplate jdbcTemplate;
   private final S3Client s3Client;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
 
   private final AtomicReference<HealthCheckResponse> currentHealth =
       new AtomicReference<>(
@@ -46,7 +46,7 @@ public class HealthMonitorService {
 
   @PostConstruct
   public void startMonitoring() {
-    final long checkIntervalSeconds = storageConfig.healthCheck().checkIntervalSeconds();
+    final long checkIntervalSeconds = storageProps.healthCheck().checkIntervalSeconds();
 
     scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory());
 
@@ -69,7 +69,7 @@ public class HealthMonitorService {
   }
 
   private void performChecks() {
-    StorageConfig.HealthCheck config = storageConfig.healthCheck();
+    StorageProps.HealthCheck config = storageProps.healthCheck();
 
     HealthComponentStatus dbStatus = HealthComponentStatus.OK;
     HealthComponentStatus s3Status = HealthComponentStatus.OK;
@@ -92,7 +92,7 @@ public class HealthMonitorService {
       overallStatus = HealthOverallStatus.DOWN;
     }
 
-    if (countMemoryUsagePercent() < storageConfig.healthCheck().minFreeMemoryPercent()) {
+    if (countMemoryUsagePercent() < storageProps.healthCheck().minFreeMemoryPercent()) {
       log.warn("Background HealthCheck: Low memory detected.");
       memoryStatus = HealthMemoryStatus.LOW;
     }

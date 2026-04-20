@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.schedulers.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.ChunkedUploadJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.storage.ChunkedUploadService;
@@ -16,13 +16,13 @@ public class StaleUploadCleanupScheduler {
   private final ChunkedUploadJpaRepositoryAdapter uploadRepository;
   private final ChunkedUploadService uploadService;
   private final BatchProcessor batchProcessor;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
 
   private static final String TASK_NAME = "Stale Upload Cleanup";
 
   @Scheduled(cron = "${storage.scheduling.cron.stale-upload-cleanup}")
   public void cleanupStaleUploads() {
-    int staleTime = storageConfig.scheduling().staleTimeMin().upload();
+    int staleTime = storageProps.scheduling().staleTimeMin().upload();
     LocalDateTime threshold = LocalDateTime.now().minusMinutes(staleTime);
 
     batchProcessor.scoop(

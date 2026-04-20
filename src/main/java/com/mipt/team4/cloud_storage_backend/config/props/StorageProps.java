@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "storage")
-public record StorageConfig(
+public record StorageProps(
     Rest rest,
     Auth auth,
     Quotas quotas,

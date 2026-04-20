@@ -5,8 +5,8 @@ import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.team4.cloud_storage_backend.config.props.JacksonConfig;
 import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig.FailsafeRetry;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps.FailsafeRetry;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.netty.channel.MainChannelInitializer;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.common.ProtocolNegotiationHandler;
@@ -64,8 +64,8 @@ public class ApplicationConfig {
   }
 
   @Bean
-  public S3Client s3Client(StorageConfig config) {
-    StorageConfig.S3 s3Props = config.s3();
+  public S3Client s3Client(StorageProps config) {
+    StorageProps.S3 s3Props = config.s3();
 
     AwsBasicCredentials credentials =
         AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey());
@@ -79,7 +79,7 @@ public class ApplicationConfig {
   }
 
   @Bean
-  public RetryPolicy<Object> retryPolicy(StorageConfig config) {
+  public RetryPolicy<Object> retryPolicy(StorageProps config) {
     FailsafeRetry retry = config.failsafeRetry();
 
     return RetryPolicy.builder()

@@ -1,12 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.utils.file;
 
-import com.mipt.team4.cloud_storage_backend.exception.transfer.ChecksumMismatchException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.ChecksumMismatchException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.UnknownChecksumAlgorithmException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-public class ChecksumUtils {
+public class HashUtils {
   private static final String SHA256_NAME = "SHA-256";
 
   public static MessageDigest createSha256() {
@@ -18,7 +18,7 @@ public class ChecksumUtils {
   }
 
   public static String calculateSha256(byte[] data) {
-    MessageDigest messageDigest = ChecksumUtils.createSha256();
+    MessageDigest messageDigest = HashUtils.createSha256();
     return encodeDigest(messageDigest.digest(data));
   }
 
@@ -30,7 +30,15 @@ public class ChecksumUtils {
     }
   }
 
-  private static String encodeDigest(byte[] digest) {
+  public static void update(MessageDigest digest, String hash) {
+    digest.update(decodeHash(hash));
+  }
+
+  public static String encodeDigest(byte[] digest) {
     return HexFormat.of().formatHex(digest);
+  }
+
+  public static byte[] decodeHash(String hash) {
+    return HexFormat.of().parseHex(hash);
   }
 }

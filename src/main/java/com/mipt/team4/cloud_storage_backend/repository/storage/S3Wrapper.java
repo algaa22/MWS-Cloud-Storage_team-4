@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.UploadSessionNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;

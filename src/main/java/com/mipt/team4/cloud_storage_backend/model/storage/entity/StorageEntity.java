@@ -66,6 +66,9 @@ public class StorageEntity {
   @Column(nullable = false)
   private String name;
 
+  @Column(name = "hash")
+  private String hash;
+
   @Column(name = "size")
   private long size;
 

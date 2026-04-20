@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.exception.transfer;
+package com.mipt.team4.cloud_storage_backend.exception.upload;
 
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import java.util.UUID;

@@ -23,7 +23,7 @@ import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAda
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.utils.converter.ContentRangeConverter;
-import com.mipt.team4.cloud_storage_backend.utils.file.ChecksumUtils;
+import com.mipt.team4.cloud_storage_backend.utils.file.HashUtils;
 import com.mipt.team4.cloud_storage_backend.utils.string.MimeTypeDetector;
 import java.io.InputStream;
 import java.security.MessageDigest;
@@ -68,8 +68,8 @@ public class FileService {
     byte[] data = request.data();
 
     if (request.checksum() != null) {
-      MessageDigest messageDigest = ChecksumUtils.createSha256();
-      ChecksumUtils.compareChecksums(request.checksum(), messageDigest.digest(data));
+      MessageDigest messageDigest = HashUtils.createSha256();
+      HashUtils.compareChecksums(request.checksum(), messageDigest.digest(data));
     }
 
     StorageEntity fileEntity =

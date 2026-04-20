@@ -35,7 +35,7 @@ public class FileSimpleTransferITUtils {
       String fileTags)
       throws IOException, InterruptedException {
     byte[] testFile = FileLoader.getInputStream(localFilePath).readAllBytes();
-    String checksum = ChecksumUtils.calculateMd5(testFile);
+    String checksum = ChecksumUtils.calculateSha256(testFile);
 
     String endpoint = itUtils.fillQuery("/api/files/upload?name=%s", targetFileName);
     if (parentId != null) {

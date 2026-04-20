@@ -100,7 +100,6 @@ public class ChunkedUploadController {
       UUID createdId = uploadService.completeUpload(request);
       ResponseUtils.send(ctx, new CreatedResponse(createdId, "File successfully uploaded"))
           .addListener(ChannelFutureListener.CLOSE);
-      ;
     } catch (UploadRetriableException e) {
       ResponseUtils.send(ctx, new CompleteUploadRetryResponse("RETRY_COMPLETE", e.getMessage()));
     } catch (MissingUploadPartsException e) {

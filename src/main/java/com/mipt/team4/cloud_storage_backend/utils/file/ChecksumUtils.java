@@ -7,18 +7,18 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 public class ChecksumUtils {
-  private static final String MD5_NAME = "MD5";
+  private static final String SHA256_NAME = "SHA-256";
 
-  public static MessageDigest createMD5() {
+  public static MessageDigest createSha256() {
     try {
-      return MessageDigest.getInstance(MD5_NAME);
+      return MessageDigest.getInstance(SHA256_NAME);
     } catch (NoSuchAlgorithmException e) {
       throw new UnknownChecksumAlgorithmException(e);
     }
   }
 
-  public static String calculateMd5(byte[] data) {
-    MessageDigest messageDigest = ChecksumUtils.createMD5();
+  public static String calculateSha256(byte[] data) {
+    MessageDigest messageDigest = ChecksumUtils.createSha256();
     return encodeDigest(messageDigest.digest(data));
   }
 

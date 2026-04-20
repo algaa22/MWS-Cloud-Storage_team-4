@@ -68,7 +68,7 @@ public class FileService {
     byte[] data = request.data();
 
     if (request.checksum() != null) {
-      MessageDigest messageDigest = ChecksumUtils.createMD5();
+      MessageDigest messageDigest = ChecksumUtils.createSha256();
       ChecksumUtils.compareChecksums(request.checksum(), messageDigest.digest(data));
     }
 

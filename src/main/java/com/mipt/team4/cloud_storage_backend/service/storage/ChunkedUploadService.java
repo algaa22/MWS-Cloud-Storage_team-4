@@ -143,7 +143,7 @@ public class ChunkedUploadService {
             .size(partDto.size())
             .build();
 
-    MessageDigest messageDigest = ChecksumUtils.createMD5();
+    MessageDigest messageDigest = ChecksumUtils.createSha256();
 
     try (InputStream inputStream =
         partDto.checksum() == null

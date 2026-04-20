@@ -68,6 +68,7 @@ antivirus:
       results: "antivirus.results.queue"
 
     routing-keys:
+      tasks: "scan.task.v1"
       results: "scan.result.v1"
 
 storage:

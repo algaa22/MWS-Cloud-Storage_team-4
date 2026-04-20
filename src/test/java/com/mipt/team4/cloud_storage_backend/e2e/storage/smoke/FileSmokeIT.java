@@ -62,7 +62,7 @@ public class FileSmokeIT extends BaseStorageIT {
     for (int i = 0; i < parts.size(); i++) {
       int partNumber = i + 1;
       byte[] partData = parts.get(i);
-      String checksum = ChecksumUtils.calculateMd5(partData);
+      String checksum = ChecksumUtils.calculateSha256(partData);
 
       UploadResult uploadPartResult =
           chunkedITUtils.uploadPart(

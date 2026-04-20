@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "antivirus")
 public record AntivirusProps(Rabbitmq rabbitmq) {
   public record Rabbitmq(RoutingKeys routingKeys, Exchanges exchanges, Queues queues) {
-    public record RoutingKeys(String results) {}
+    public record RoutingKeys(String tasks, String results) {}
 
     public record Exchanges(String tasks, String results) {}
 

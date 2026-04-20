@@ -88,6 +88,18 @@ services:
       - seaweed-data:/data
       - ./etc/seaweedfs:/etc/seaweedfs:ro
 
+  av-redis:
+    image: redis:7-alpine
+    container_name: av_redis
+    ports:
+      - "6379:6379"
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: clamav
+    ports:
+      - "3310:3310"
+
 volumes:
   postgres-data:
   file-storage:

@@ -52,6 +52,24 @@ cors:
     allow-credentials: true
     max-age: 3600
 
+antivirus:
+  rabbitmq:
+    retry:
+      max-attempts: 3
+      initial-interval-ms: 1
+      multiplier: 2.0
+      max-interval-ms: 10
+
+    exchanges:
+      tasks: "antivirus.tasks.direct"
+      results: "antivirus.results.direct"
+
+    queues:
+      results: "antivirus.results.queue"
+
+    routing-keys:
+      results: "scan.result.v1"
+
 storage:
   s3:
     url: ${S3_URL}

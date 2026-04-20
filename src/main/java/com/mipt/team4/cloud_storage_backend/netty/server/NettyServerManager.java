@@ -13,7 +13,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
 import jakarta.annotation.PreDestroy;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +40,6 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class NettyServerManager {
   private final AtomicBoolean stopping = new AtomicBoolean(false);
-  private final CountDownLatch startupLatch;
 
   private final MainChannelInitializer httpChannelInitializer;
   private final MainChannelInitializer httpsChannelInitializer;
@@ -59,9 +57,6 @@ public class NettyServerManager {
     this.httpChannelInitializer = httpChannelInitializer;
     this.httpsChannelInitializer = httpsChannelInitializer;
     this.nettyConfig = nettyConfig;
-
-    int serversCount = nettyConfig.enableHttps() ? 2 : 1;
-    startupLatch = new CountDownLatch(serversCount);
   }
 
   public void start() {
@@ -161,7 +156,6 @@ public class NettyServerManager {
     Channel channel = bootstrap.bind(port).sync().channel();
 
     log.info("{} server starting on port {}...", protocol.name(), port);
-    startupLatch.countDown();
 
     return channel;
   }

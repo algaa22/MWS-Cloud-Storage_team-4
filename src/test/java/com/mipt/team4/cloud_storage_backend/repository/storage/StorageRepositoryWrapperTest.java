@@ -9,7 +9,7 @@ import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ChangeMetadataRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileLockedByOtherOperationException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -192,7 +192,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       FileOperationType operationType = FileOperationType.CHANGE_METADATA;
 
       assertThrows(
-          StorageFileLockedException.class,
+          FileLockedByOtherOperationException.class,
           () -> wrapper.wrapUpdate(file, operationType, () -> null));
     }
 
@@ -311,7 +311,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       FileOperationType operationType = FileOperationType.UPLOAD;
 
       assertThrows(
-          StorageFileLockedException.class,
+          FileLockedByOtherOperationException.class,
           () -> wrapper.processStep(file, operationType, () -> null));
     }
   }
@@ -336,7 +336,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       FileOperationType operationType = FileOperationType.UPLOAD;
 
       assertThrows(
-          StorageFileLockedException.class,
+          FileLockedByOtherOperationException.class,
           () -> wrapper.completeStep(file, operationType, FileStatus.READY, () -> null));
     }
 

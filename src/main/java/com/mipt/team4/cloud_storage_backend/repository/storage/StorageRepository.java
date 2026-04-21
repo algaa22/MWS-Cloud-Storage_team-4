@@ -11,6 +11,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadSta
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -86,7 +87,6 @@ public class StorageRepository {
     wrapper.completeStep(
         entity,
         FileOperationType.UPLOAD,
-        FileStatus.SCANNING,
         () -> {
           contentRepository.completeMultipartUpload(entity.getS3Key(), uploadId, eTags);
           uploadRepository.deleteSession(sessionId);
@@ -107,23 +107,27 @@ public class StorageRepository {
   }
 
   public void hardDelete(StorageEntity entity) {
+    List<String> s3KeysToDelete = new ArrayList<>();
+
     wrapper.wrapUpdate(
         entity,
         FileOperationType.DELETE,
         () -> {
           if (entity.isDirectory()) {
             List<StorageEntity> descendants =
-                metadataRepository.findAllDescendants(entity.getUserId(), entity.getId());
+                metadataRepository.findAllFilesDescendants(entity.getUserId(), entity.getId());
 
             for (StorageEntity file : descendants) {
-              if (file.getS3Key() != null) {
-                contentRepository.hardDelete(file.getS3Key());
-              }
+              s3KeysToDelete.add(file.getS3Key());
             }
           }
 
-          contentRepository.hardDelete(entity.getS3Key());
+          s3KeysToDelete.add(entity.getS3Key());
           metadataRepository.hardDelete(entity.getUserId(), entity.getId());
+
+          for (String s3Key : s3KeysToDelete) {
+            contentRepository.hardDelete(s3Key);
+          }
 
           return null;
         });
@@ -223,6 +227,10 @@ public class StorageRepository {
 
   public boolean exists(UUID userId, UUID parentId, String name) {
     return metadataRepository.exists(userId, parentId, name);
+  }
+
+  public boolean hasLockedDescendants(UUID userId, UUID parentId) {
+    return metadataRepository.hasLockedDescendants(userId, parentId);
   }
 
   public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {

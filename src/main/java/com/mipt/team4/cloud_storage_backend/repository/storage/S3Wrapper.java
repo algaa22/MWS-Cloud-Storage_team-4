@@ -2,7 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.S3ObjectNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.upload.UploadSessionNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.Callable;
@@ -30,7 +30,7 @@ public class S3Wrapper {
    * @param operation лямбда или Callable, содержащий вызов S3Client.
    * @param <T> тип возвращаемого значения операции.
    * @return результат выполнения операции.
-   * @throws StorageObjectNotFoundException если объект не найден в бакете.
+   * @throws S3ObjectNotFoundException если объект не найден в бакете.
    * @throws RecoverableStorageException при временных сбоях (сеть, 5xx ошибки S3).
    * @throws FatalStorageException при критических ошибках (неверные credentials, 403 Forbidden).
    */
@@ -62,7 +62,7 @@ public class S3Wrapper {
       if (e instanceof NoSuchKeyException
           || e instanceof NoSuchBucketException
           || s3Ex.statusCode() == HttpStatus.SC_NOT_FOUND) {
-        return new StorageObjectNotFoundException("S3 object or bucket not found", e);
+        return new S3ObjectNotFoundException("S3 object or bucket not found", e);
       }
 
       if ("NoSuchUpload".equals(errorCode)) {

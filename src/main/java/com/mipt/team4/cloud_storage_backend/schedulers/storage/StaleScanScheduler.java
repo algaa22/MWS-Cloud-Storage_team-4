@@ -1,9 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.schedulers.storage;
 
-import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
+import com.mipt.team4.cloud_storage_backend.antivirus.service.AntivirusService;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.utils.wrapper.BatchProcessor;
 import java.time.LocalDateTime;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class StaleScanScheduler {
   private final StorageJpaRepositoryAdapter metadataRepository;
+  private final AntivirusService antivirusService;
   private final BatchProcessor batchProcessor;
   private final StorageProps storageProps;
 
@@ -29,9 +29,6 @@ public class StaleScanScheduler {
         TASK_NAME,
         pageable -> metadataRepository.getStaleScans(threshold, pageable),
         StorageEntity::getId,
-        entity -> {
-          entity.setStatus(FileStatus.READY);
-          entity.setScanVerdict(ScanVerdict.ERROR);
-        });
+        antivirusService::handleStaleScan);
   }
 }

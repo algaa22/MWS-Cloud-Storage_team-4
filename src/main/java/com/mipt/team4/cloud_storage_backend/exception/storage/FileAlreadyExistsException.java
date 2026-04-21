@@ -4,9 +4,9 @@ import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.UUID;
 
-public class StorageFileAlreadyExistsException extends BaseStorageException {
+public class FileAlreadyExistsException extends BaseStorageException {
 
-  public StorageFileAlreadyExistsException(UUID parentId, String name) {
+  public FileAlreadyExistsException(UUID parentId, String name) {
     super(
         "File already exists: parent_id=" + parentId + "; name=" + name,
         HttpResponseStatus.CONFLICT);

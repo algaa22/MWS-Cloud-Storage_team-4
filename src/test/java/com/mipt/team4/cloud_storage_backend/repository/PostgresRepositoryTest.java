@@ -3,8 +3,8 @@ package com.mipt.team4.cloud_storage_backend.repository;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.mipt.team4.cloud_storage_backend.base.BasePostgresTest;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
@@ -57,7 +57,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
 
   @Test
   void shouldAddAndDeleteFile_WithSameId()
-      throws StorageFileNotFoundException, StorageFileAlreadyExistsException {
+      throws FileNotFoundException, FileAlreadyExistsException {
     String uniqueName = "delete-me-" + UUID.randomUUID();
     StorageEntity testFileEntity = addTestFile(null, uniqueName);
     assertTrue(storageJpaRepositoryAdapter.exists(testFileEntity.getUserId(), null, uniqueName));
@@ -159,7 +159,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   }
 
   @Test
-  void hierarchyTest_ShouldDetectDescendant() throws StorageFileAlreadyExistsException {
+  void hierarchyTest_ShouldDetectDescendant() throws FileAlreadyExistsException {
     StorageEntity folder =
         StorageEntity.builder()
             .id(UUID.randomUUID())
@@ -190,8 +190,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
     return user.getId();
   }
 
-  private StorageEntity addTestFile(UUID parentId, String name)
-      throws StorageFileAlreadyExistsException {
+  private StorageEntity addTestFile(UUID parentId, String name) throws FileAlreadyExistsException {
     StorageEntity fileEntity =
         StorageEntity.builder()
             .id(UUID.randomUUID())
@@ -210,7 +209,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
   }
 
   private StorageEntity addTestDirectory(UUID parentId, String name)
-      throws StorageFileAlreadyExistsException {
+      throws FileAlreadyExistsException {
     StorageEntity directoryEntity =
         StorageEntity.builder()
             .id(UUID.randomUUID())

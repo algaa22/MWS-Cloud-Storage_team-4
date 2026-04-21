@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -187,13 +188,13 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       nativeQuery = true,
       value =
           """
-      WITH RECURSIVE folder_tree AS (
-          SELECT * FROM files WHERE id = :id AND user_id = :userId
-          UNION ALL
-          SELECT f.* FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
-      )
-      SELECT * FROM folder_tree
-  """)
+                  WITH RECURSIVE folder_tree AS (
+                      SELECT * FROM files WHERE id = :id AND user_id = :userId AND f.is_directory = false
+                      UNION ALL
+                      SELECT f.* FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id AND f.is_directory = false
+                  )
+                  SELECT * FROM folder_tree
+              """)
   List<StorageEntity> findAllFilesDescendants(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Query(
@@ -223,11 +224,36 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   List<String> getFullPathNodes(@Param("fileId") UUID fileId);
 
   @Query(
+      value =
+          """
+        WITH RECURSIVE descendants AS (
+            SELECT id, status, scan_verdict
+            FROM storage
+            WHERE parent_id = :parentId AND user_id = :userId
+
+            UNION ALL
+
+            SELECT s.id, s.status, s.scan_verdict
+            FROM storage s
+            INNER JOIN descendants d ON s.parent_id = d.id
+            WHERE s.user_id = :userId
+        )
+        SELECT EXISTS (
+            SELECT 1 FROM descendants
+            WHERE status = :#{#status.name()}
+               OR scan_verdict = :#{#verdict.name()}
+        )
+        """,
+      nativeQuery = true)
+  boolean existsLockedDescendants(
+      @Param("userId") UUID userId,
+      @Param("parentId") UUID parentId,
+      @Param("status") FileStatus status,
+      @Param("verdict") ScanVerdict verdict);
+
+  @Query(
       "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.id = :id AND s.isDeleted = false")
   Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID id);
-
-  @Query("SELECT s FROM StorageEntity s WHERE s.id = :id AND s.isDeleted = false")
-  Optional<StorageEntity> findById(UUID id);
 
   @Query(
       "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.parentId = :parentId AND s.name = :name AND s.isDeleted = false")
@@ -238,4 +264,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
 
   Slice<StorageEntity> findByStatusAndUpdatedAtBefore(
       FileStatus status, LocalDateTime threshold, Pageable pageable);
+
+  Slice<StorageEntity> findByScanVerdictAndUpdatedAtBefore(
+      ScanVerdict scanVerdict, LocalDateTime threshold, Pageable pageable);
 }

@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.exception.ScannedFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.exception.ScannedFileOwnerNotFoundException;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.mapper.ScanTaskMapper;
+import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
@@ -15,6 +16,7 @@ import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAda
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -28,7 +30,7 @@ public class AntivirusService {
   private final AntivirusTaskProducer taskProducer;
   private final AntivirusProps antivirusProps;
 
-  @Transactional
+  @Transactional(propagation = Propagation.MANDATORY)
   public void sendToScan(StorageEntity fileEntity) {
     if (!antivirusProps.enabled()) {
       return;
@@ -65,6 +67,17 @@ public class AntivirusService {
     }
 
     fileEntity.setStatus(FileStatus.READY);
+  }
+
+  @Transactional
+  public void handleStaleScan(StorageEntity fileEntity) {
+    fileEntity.setScanVerdict(ScanVerdict.ERROR);
+
+    UserEntity userEntity =
+        userRepository
+            .getUserById(fileEntity.getUserId())
+            .orElseThrow(() -> new UserNotFoundException(fileEntity.getUserId()));
+    notificationService.notifyScanError(fileEntity, userEntity);
   }
 
   private void handleDangerousFile(StorageEntity fileEntity, UserEntity userEntity) {

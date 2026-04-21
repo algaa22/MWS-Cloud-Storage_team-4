@@ -23,8 +23,10 @@ public class HashUtils {
   }
 
   public static void compareChecksums(String clientChecksum, byte[] serverDigest) {
-    String serverChecksum = encodeDigest(serverDigest);
+    compareChecksums(clientChecksum, encodeDigest(serverDigest));
+  }
 
+  public static void compareChecksums(String clientChecksum, String serverChecksum) {
     if (!clientChecksum.equals(serverChecksum)) {
       throw new ChecksumMismatchException();
     }

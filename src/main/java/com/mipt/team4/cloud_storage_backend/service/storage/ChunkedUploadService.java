@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 import com.mipt.team4.cloud_storage_backend.antivirus.config.props.AntivirusProps;
 import com.mipt.team4.cloud_storage_backend.antivirus.service.AntivirusService;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.upload.*;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartDto;
@@ -64,7 +64,7 @@ public class ChunkedUploadService {
         .getIncludeDeleted(userId, parentId)
         .ifPresent(
             entity -> {
-              throw new StorageFileAlreadyExistsException(parentId, name);
+              throw new FileAlreadyExistsException(parentId, name);
             });
 
     StorageEntity fileEntity =

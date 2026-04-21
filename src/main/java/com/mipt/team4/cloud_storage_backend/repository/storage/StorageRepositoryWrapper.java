@@ -6,7 +6,7 @@ import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ChangeMetadataRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileLockedByOtherOperationException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -106,12 +106,9 @@ public class StorageRepositoryWrapper {
    * Автоматически сохраняет любые изменения {@code entity}, сделанные в лямбде.
    */
   public <T> T completeStep(
-      StorageEntity entity,
-      FileOperationType operationType,
-      FileStatus finalStatus,
-      FileOperation<T> operation) {
+      StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     checkIfStatusIsPendingOrError(entity);
-    return finalizeOperation(entity, operationType, operation, finalStatus);
+    return finalizeOperation(entity, operationType, operation);
   }
 
   /** Принудительно помечает операцию как {@code READY} и устанавливает {@code retry_count = 0}. */
@@ -137,16 +134,8 @@ public class StorageRepositoryWrapper {
 
   private <T> T finalizeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
-    return finalizeOperation(entity, operationType, operation, FileStatus.READY);
-  }
-
-  private <T> T finalizeOperation(
-      StorageEntity entity,
-      FileOperationType operationType,
-      FileOperation<T> operation,
-      FileStatus finalStatus) {
     T result = executeOperation(entity, operationType, operation);
-    syncEntityWithDatabase(entity, operationType, finalStatus);
+    syncEntityWithDatabase(entity, operationType, FileStatus.READY);
 
     return result;
   }
@@ -163,7 +152,8 @@ public class StorageRepositoryWrapper {
     FileStatus status = entity.getStatus();
 
     if (status != expectedStatus && status != FileStatus.ERROR) {
-      throw new StorageFileLockedException(entity.getId(), expectedStatus, entity.getStatus());
+      throw new FileLockedByOtherOperationException(
+          entity.getId(), expectedStatus, entity.getStatus());
     }
   }
 

@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
 import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
@@ -20,14 +21,37 @@ public class NotificationService {
   private final NotificationConfig notificationConfig;
   private final StorageRepository storageRepository;
 
-  @Transactional
+  @Transactional(readOnly = true)
   public void notifyFileDeleted(UUID fileId, UserEntity userEntity) {
     String fullPath = storageRepository.getFullFilePath(fileId);
     notificationClient.notifyFileDeleted(
         userEntity.getEmail(), userEntity.getUsername(), fullPath, userEntity.getId());
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
+  public void notifyDangerousFile(StorageEntity fileEntity, UserEntity userEntity) {
+    String folderPath = storageRepository.getFullFolderPath(fileEntity);
+    notificationClient.notifyDangerousFile(
+        userEntity.getEmail(),
+        userEntity.getUsername(),
+        fileEntity.getName(),
+        folderPath,
+        fileEntity.getScanVerdict().name(),
+        userEntity.getId());
+  }
+
+  @Transactional(readOnly = true)
+  public void notifyScanError(StorageEntity fileEntity, UserEntity userEntity) {
+    String folderPath = storageRepository.getFullFolderPath(fileEntity);
+    notificationClient.notifyScanError(
+        userEntity.getEmail(),
+        userEntity.getUsername(),
+        fileEntity.getName(),
+        folderPath,
+        userEntity.getId());
+  }
+
+  @Transactional(readOnly = true)
   public void checkStorageUsageAndNotify(UUID userId) {
     userRepository
         .getStorageUsage(userId)

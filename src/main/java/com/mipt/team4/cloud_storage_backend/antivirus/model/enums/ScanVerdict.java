@@ -9,5 +9,9 @@ public enum ScanVerdict {
   PASSWORD_PROTECTED,
   RESOURCE_EXHAUSTED,
   CONTENT_MISMATCH,
-  ERROR
+  ERROR;
+
+  public boolean isCritical() {
+    return this == INFECTED || this == RESOURCE_EXHAUSTED || this == CONTENT_MISMATCH;
+  }
 }

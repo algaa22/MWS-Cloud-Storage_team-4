@@ -111,7 +111,7 @@ public class StorageRepositoryWrapper {
       FileStatus finalStatus,
       FileOperation<T> operation) {
     checkIfStatusIsPendingOrError(entity);
-    return finalizeOperation(entity, operationType, operation);
+    return finalizeOperation(entity, operationType, operation, finalStatus);
   }
 
   /** Принудительно помечает операцию как {@code READY} и устанавливает {@code retry_count = 0}. */
@@ -137,7 +137,7 @@ public class StorageRepositoryWrapper {
 
   private <T> T finalizeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
-    finalizeOperation(entity, operationType, operation, FileStatus.READY);
+    return finalizeOperation(entity, operationType, operation, FileStatus.READY);
   }
 
   private <T> T finalizeOperation(

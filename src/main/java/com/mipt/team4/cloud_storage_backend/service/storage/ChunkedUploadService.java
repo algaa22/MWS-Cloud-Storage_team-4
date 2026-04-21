@@ -1,8 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
 import com.mipt.team4.cloud_storage_backend.antivirus.config.props.AntivirusProps;
-import com.mipt.team4.cloud_storage_backend.antivirus.messaging.AntivirusTaskProducer;
-import com.mipt.team4.cloud_storage_backend.antivirus.model.mapper.ScanTaskMapper;
+import com.mipt.team4.cloud_storage_backend.antivirus.service.AntivirusService;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
 import com.mipt.team4.cloud_storage_backend.exception.upload.*;
@@ -35,8 +34,6 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +42,7 @@ public class ChunkedUploadService {
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
-  private final AntivirusTaskProducer antivirusTaskProducer;
+  private final AntivirusService antivirusService;
   private final StorageProps storageProps;
   private final AntivirusProps antivirusProps;
 
@@ -176,9 +173,8 @@ public class ChunkedUploadService {
 
       storageRepository.completeMultipartUpload(
           fileEntity, session.getId(), session.getUploadId(), partETags);
+      antivirusService.sendToScan(fileEntity);
       notificationService.checkStorageUsageAndNotify(fileEntity.getUserId());
-
-      sendAntivirusScanTask(fileEntity);
 
       return fileEntity.getId();
     } catch (Exception e) {
@@ -240,16 +236,6 @@ public class ChunkedUploadService {
     return storageRepository
         .getUploadSession(sessionId)
         .orElseThrow(UploadSessionNotFoundException::new);
-  }
-
-  private void sendAntivirusScanTask(StorageEntity fileEntity) {
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            antivirusTaskProducer.sendTask(ScanTaskMapper.toTask(fileEntity));
-          }
-        });
   }
 
   private Map<Integer, String> collectETagsIntoMap(List<ChunkedUploadPartEntity> parts) {

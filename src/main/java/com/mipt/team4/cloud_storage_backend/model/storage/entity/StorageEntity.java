@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
@@ -68,6 +69,11 @@ public class StorageEntity {
 
   @Column(name = "hash")
   private String hash;
+
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "scan_verdict")
+  private ScanVerdict scanVerdict = ScanVerdict.UNKNOWN;
 
   @Column(name = "size")
   private long size;

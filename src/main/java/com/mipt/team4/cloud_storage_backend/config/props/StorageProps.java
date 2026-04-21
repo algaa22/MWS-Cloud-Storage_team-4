@@ -48,12 +48,15 @@ public record StorageProps(
       double minFreeMemoryPercent,
       long checkIntervalSeconds) {}
 
-  public record Scheduling(int pageSize, StaleTimeMin staleTimeMin, Cron cron) {
-    public record StaleTimeMin(int file, int upload) {}
+  public record Scheduling(
+      int pageSize, int dangerousDeletionTimeDays, StaleTimeMin staleTimeMin, Cron cron) {
+    public record StaleTimeMin(int file, int upload, int scan) {}
 
     public record Cron(
+        String infectedFileCleanup,
         String staleFileCleanup,
         String staleUploadCleanup,
+        String staleScan,
         String trashCleanup,
         String checkTariff,
         String quotaSync) {}

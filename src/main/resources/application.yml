@@ -124,13 +124,18 @@ storage:
     stale-time-min:
       file: 60
       upload: 45
+      scan: 15
+
+    dangerous-deletion-time-days: 30
 
     cron:
+      stale-scan: "0 */5 * * * *"
       stale-file-cleanup: "0 0 1 * * *"
       stale-upload-cleanup: "0 0 2 * * *"
       trash-cleanup: "0 0 3 * * *"
       check-tariff: "0 0 4 * * *"
       quota-sync: "0 0 5 * * *"
+      dangerous-file-cleanup: "0 0 6 * * *"
 
 notification:
   tariff:

@@ -129,6 +129,18 @@ public class StorageRepository {
         });
   }
 
+  public void cleanupDangerousFile(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.DELETE,
+        () -> {
+          contentRepository.hardDelete(entity.getS3Key());
+          metadataRepository.updateStatus(entity.getId(), FileStatus.DANGEROUS);
+
+          return null;
+        });
+  }
+
   public void softDeleteEntity(StorageEntity entity) {
     wrapper.wrapUpdate(
         entity,
@@ -193,6 +205,10 @@ public class StorageRepository {
     return metadataRepository.get(userId, fileId);
   }
 
+  public Optional<StorageEntity> get(UUID fileId) {
+    return metadataRepository.get(fileId);
+  }
+
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
     return metadataRepository.getIncludeDeleted(userId, fileId);
   }
@@ -211,6 +227,16 @@ public class StorageRepository {
 
   public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
     return metadataRepository.getFileList(filter, pageQuery);
+  }
+
+  public String getFullFolderPath(StorageEntity fileEntity) {
+    UUID parentId = fileEntity.getParentId();
+
+    if (parentId == null) {
+      return "/";
+    }
+
+    return getFullFilePath(parentId);
   }
 
   public String getFullFilePath(UUID fileId) {

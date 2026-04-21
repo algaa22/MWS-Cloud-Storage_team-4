@@ -150,6 +150,10 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
               """)
   void upsertFile(@Param("f") StorageEntity file);
 
+  @Modifying(flushAutomatically = true)
+  @Query(value = "UPDATE files SET status = :newStatus WHERE id=:id")
+  void updateStatus(UUID id, FileStatus newStatus);
+
   @Modifying
   void deleteByUserIdAndId(UUID userId, UUID id);
 
@@ -222,10 +226,16 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.id = :id AND s.isDeleted = false")
   Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID id);
 
+  @Query("SELECT s FROM StorageEntity s WHERE s.id = :id AND s.isDeleted = false")
+  Optional<StorageEntity> findById(UUID id);
+
   @Query(
       "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.parentId = :parentId AND s.name = :name AND s.isDeleted = false")
   Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 
   Slice<StorageEntity> findByStatusInAndUpdatedAtBefore(
       List<FileStatus> statuses, LocalDateTime threshold, Pageable pageable);
+
+  Slice<StorageEntity> findByStatusAndUpdatedAtBefore(
+      FileStatus status, LocalDateTime threshold, Pageable pageable);
 }

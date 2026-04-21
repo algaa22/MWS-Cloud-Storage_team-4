@@ -98,6 +98,11 @@ public class StorageJpaRepositoryAdapter {
         id, status, retryCount, operationType, startedAt, updatedAt, errorMessage);
   }
 
+  @Transactional
+  public void updateStatus(UUID fileId, FileStatus newStatus) {
+    jpaRepository.updateStatus(fileId, newStatus);
+  }
+
   @Transactional(readOnly = true)
   public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
     QueryContext ctx = buildBaseQueryWithFilters(filter);
@@ -116,7 +121,18 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Slice<StorageEntity> getStaleFiles(LocalDateTime threshold, Pageable pageable) {
     return jpaRepository.findByStatusInAndUpdatedAtBefore(
-        List.of(FileStatus.PENDING, FileStatus.ERROR), threshold, pageable);
+        List.of(FileStatus.PENDING, FileStatus.ERROR, FileStatus.FATAL), threshold, pageable);
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<StorageEntity> getStaleScans(LocalDateTime threshold, Pageable pageable) {
+    return jpaRepository.findByStatusInAndUpdatedAtBefore(
+        List.of(FileStatus.SCANNING), threshold, pageable);
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<StorageEntity> getDangerousFiles(LocalDateTime threshold, Pageable pageable) {
+    return jpaRepository.findByStatusAndUpdatedAtBefore(FileStatus.DANGEROUS, threshold, pageable);
   }
 
   @Transactional(readOnly = true)
@@ -127,6 +143,11 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Optional<StorageEntity> get(UUID userId, UUID fileId) {
     return jpaRepository.findByUserIdAndId(userId, fileId);
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> get(UUID fileId) {
+    return jpaRepository.findById(fileId);
   }
 
   @Transactional(readOnly = true)

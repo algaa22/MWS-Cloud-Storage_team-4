@@ -323,7 +323,9 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       StorageEntity file = createAndSaveTestFile(FileStatus.PENDING);
       FileOperationType operationType = FileOperationType.UPLOAD;
 
-      assertTrue(wrapper.completeStep(file, operationType, () -> true), LAMBDA_NOT_EXECUTED);
+      assertTrue(
+          wrapper.completeStep(file, operationType, FileStatus.READY, () -> true),
+          LAMBDA_NOT_EXECUTED);
 
       assertReady(file, operationType);
     }
@@ -335,7 +337,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
 
       assertThrows(
           StorageFileLockedException.class,
-          () -> wrapper.completeStep(file, operationType, () -> null));
+          () -> wrapper.completeStep(file, operationType, FileStatus.READY, () -> null));
     }
 
     @Test

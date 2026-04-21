@@ -18,4 +18,15 @@ public interface NotificationClient {
   void notifyTariffExpired(String email, String name);
 
   void notifyTariffRenewed(String email, String name, LocalDateTime newEndDate);
+
+  void notifyDangerousFile(
+      String userEmail,
+      String userName,
+      String fileName,
+      String folderPath,
+      String verdict,
+      UUID userId);
+
+  void notifyScanError(
+      String userEmail, String userName, String fileName, String folderPath, UUID userId);
 }

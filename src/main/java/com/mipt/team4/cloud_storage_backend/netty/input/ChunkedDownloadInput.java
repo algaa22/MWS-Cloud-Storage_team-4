@@ -53,8 +53,6 @@ public class ChunkedDownloadInput implements ChunkedInput<HttpContent> {
       throw e;
     }
 
-    log.debug("sent: {}, total: {}, local: {}", bytesSent, totalSize, localRead);
-
     if (localRead <= 0) {
       buffer.release();
       ended = true;

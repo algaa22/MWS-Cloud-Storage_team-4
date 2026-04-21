@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
 import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
@@ -98,6 +99,11 @@ public class StorageJpaRepositoryAdapter {
         id, status, retryCount, operationType, startedAt, updatedAt, errorMessage);
   }
 
+  @Transactional
+  public void updateStatus(UUID fileId, FileStatus newStatus) {
+    jpaRepository.updateStatus(fileId, newStatus);
+  }
+
   @Transactional(readOnly = true)
   public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
     QueryContext ctx = buildBaseQueryWithFilters(filter);
@@ -116,7 +122,18 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Slice<StorageEntity> getStaleFiles(LocalDateTime threshold, Pageable pageable) {
     return jpaRepository.findByStatusInAndUpdatedAtBefore(
-        List.of(FileStatus.PENDING, FileStatus.ERROR), threshold, pageable);
+        List.of(FileStatus.PENDING, FileStatus.ERROR, FileStatus.FATAL), threshold, pageable);
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<StorageEntity> getStaleScans(LocalDateTime threshold, Pageable pageable) {
+    return jpaRepository.findByScanVerdictAndUpdatedAtBefore(
+        ScanVerdict.SCANNING, threshold, pageable);
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<StorageEntity> getDangerousFiles(LocalDateTime threshold, Pageable pageable) {
+    return jpaRepository.findByStatusAndUpdatedAtBefore(FileStatus.DANGEROUS, threshold, pageable);
   }
 
   @Transactional(readOnly = true)
@@ -127,6 +144,11 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Optional<StorageEntity> get(UUID userId, UUID fileId) {
     return jpaRepository.findByUserIdAndId(userId, fileId);
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> get(UUID fileId) {
+    return jpaRepository.findById(fileId);
   }
 
   @Transactional(readOnly = true)
@@ -150,6 +172,11 @@ public class StorageJpaRepositoryAdapter {
     return jpaRepository.findStaleDeletedFiles(threshold, pageable);
   }
 
+  public boolean hasLockedDescendants(UUID userId, UUID parentId) {
+    return jpaRepository.existsLockedDescendants(
+        userId, parentId, FileStatus.PENDING, ScanVerdict.SCANNING);
+  }
+
   @Transactional(readOnly = true)
   public boolean exists(UUID userId, UUID parentId, String name) {
     return exists(userId, parentId, name, true);
@@ -171,7 +198,7 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public List<StorageEntity> findAllDescendants(UUID userId, UUID id) {
+  public List<StorageEntity> findAllFilesDescendants(UUID userId, UUID id) {
     return jpaRepository.findAllFilesDescendants(userId, id);
   }
 

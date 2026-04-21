@@ -3,13 +3,13 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.mipt.team4.cloud_storage_backend.base.BasePostgresTest;
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.RecoverableStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.ChangeMetadataRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileLockedException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileLockedByOtherOperationException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -32,7 +32,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
   @Autowired private StorageRepositoryWrapper wrapper;
   @Autowired private StorageJpaRepositoryAdapter metadataRepository;
   @Autowired private UserJpaRepositoryAdapter userRepository;
-  @Autowired private StorageConfig storageConfig;
+  @Autowired private StorageProps storageProps;
   @Autowired private EntityManager entityManager;
 
   private static final String LAMBDA_NOT_EXECUTED =
@@ -52,7 +52,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       StorageEntity file = createAndSaveTestFile(FileStatus.READY);
       FileOperationType operationType = FileOperationType.UPLOAD;
 
-      final int RETRY_COUNT = storageConfig.failsafeRetry().maxAttempts() - 1;
+      final int RETRY_COUNT = storageProps.failsafeRetry().maxAttempts() - 1;
       AtomicInteger retryCounter = new AtomicInteger(0);
 
       assertTrue(
@@ -134,7 +134,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       StorageEntity file = createAndSaveTestFile(FileStatus.READY);
       FileOperationType operationType = FileOperationType.DELETE;
 
-      final int MAX_RETRY_COUNT = storageConfig.stateMachine().maxRetryCount();
+      final int MAX_RETRY_COUNT = storageProps.stateMachine().maxRetryCount();
       for (int i = 0; i < MAX_RETRY_COUNT; ++i) {
         simulateMaxFailsafeRetriesError(
             file,
@@ -192,7 +192,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       FileOperationType operationType = FileOperationType.CHANGE_METADATA;
 
       assertThrows(
-          StorageFileLockedException.class,
+          FileLockedByOtherOperationException.class,
           () -> wrapper.wrapUpdate(file, operationType, () -> null));
     }
 
@@ -294,13 +294,13 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       LocalDateTime currentUpdatedAt = getCurrentUpdatedAt(file);
       file.setUpdatedAt(
           currentUpdatedAt.minusSeconds(
-              storageConfig.stateMachine().fileThrottledUpdateIntervalSec() / 2));
+              storageProps.stateMachine().fileThrottledUpdateIntervalSec() / 2));
 
       performStepAndAssertNotChanged(file, operationType, currentUpdatedAt);
 
       file.setUpdatedAt(
           currentUpdatedAt.minusSeconds(
-              storageConfig.stateMachine().fileThrottledUpdateIntervalSec() + 1));
+              storageProps.stateMachine().fileThrottledUpdateIntervalSec() + 1));
 
       performStepAndAssertChanged(file, operationType, currentUpdatedAt);
     }
@@ -311,7 +311,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       FileOperationType operationType = FileOperationType.UPLOAD;
 
       assertThrows(
-          StorageFileLockedException.class,
+          FileLockedByOtherOperationException.class,
           () -> wrapper.processStep(file, operationType, () -> null));
     }
   }
@@ -334,7 +334,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       FileOperationType operationType = FileOperationType.UPLOAD;
 
       assertThrows(
-          StorageFileLockedException.class,
+          FileLockedByOtherOperationException.class,
           () -> wrapper.completeStep(file, operationType, () -> null));
     }
 

@@ -1,7 +1,15 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.antivirus.config.props.AntivirusProps;
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
+import com.mipt.team4.cloud_storage_backend.antivirus.service.AntivirusService;
+import com.mipt.team4.cloud_storage_backend.exception.storage.CannotDownloadDirectoryException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.DirectoryContainsLockedFilesException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileIsDangerousException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileUnderScanException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.MissingChecksumException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
@@ -17,13 +25,14 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFi
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.utils.converter.ContentRangeConverter;
-import com.mipt.team4.cloud_storage_backend.utils.file.ChecksumUtils;
+import com.mipt.team4.cloud_storage_backend.utils.file.HashUtils;
 import com.mipt.team4.cloud_storage_backend.utils.string.MimeTypeDetector;
 import java.io.InputStream;
 import java.security.MessageDigest;
@@ -40,7 +49,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class FileService {
   private final FileErasureService erasureService;
+  private final AntivirusService antivirusService;
   private final TariffService tariffService;
+  private final AntivirusProps antivirusProps;
 
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
@@ -56,20 +67,26 @@ public class FileService {
       throw new TariffAccessDeniedException();
     }
 
+    if (antivirusProps.enabled() && request.checksum() == null) {
+      throw new MissingChecksumException();
+    }
+
     storageRepository
         .getIncludeDeleted(userId, parentId, name)
         .ifPresent(
             entity -> {
-              throw new StorageFileAlreadyExistsException(parentId, name);
+              throw new FileAlreadyExistsException(parentId, name);
             });
 
     UUID fileId = UUID.randomUUID();
     String mimeType = MimeTypeDetector.detect(name);
     byte[] data = request.data();
+    String serverChecksum = null;
 
     if (request.checksum() != null) {
-      MessageDigest messageDigest = ChecksumUtils.createMD5();
-      ChecksumUtils.compareChecksums(request.checksum(), messageDigest.digest(data));
+      MessageDigest messageDigest = HashUtils.createSha256();
+      serverChecksum = HashUtils.encodeDigest(messageDigest.digest(data));
+      HashUtils.compareChecksums(request.checksum(), serverChecksum);
     }
 
     StorageEntity fileEntity =
@@ -83,15 +100,18 @@ public class FileService {
             .isDirectory(false)
             .tags(request.tags())
             .updatedAt(LocalDateTime.now())
+            .hash(serverChecksum)
             .build();
 
     userRepository.increaseUsedStorage(userId, data.length);
     storageRepository.add(fileEntity, data);
+    antivirusService.sendToScan(fileEntity);
     notificationService.checkStorageUsageAndNotify(userId);
 
     return fileId;
   }
 
+  @Transactional(readOnly = true)
   public FileDownloadInfoDto download(ChunkedDownloadRequest request) {
     UUID fileId = request.fileId();
     UUID userId = request.userId();
@@ -101,9 +121,13 @@ public class FileService {
     }
 
     StorageEntity fileEntity =
-        storageRepository
-            .get(userId, fileId)
-            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+        storageRepository.get(userId, fileId).orElseThrow(() -> new FileNotFoundException(fileId));
+
+    if (fileEntity.isDirectory()) {
+      throw new CannotDownloadDirectoryException(fileEntity.getId());
+    }
+
+    validateEntityNotLocked(fileEntity);
 
     String rangeStr = request.range();
     ContentRangeDto rangeDto =
@@ -125,7 +149,9 @@ public class FileService {
     StorageEntity fileEntity =
         storageRepository
             .getIncludeDeleted(userId, fileId)
-            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+            .orElseThrow(() -> new FileNotFoundException(fileId));
+
+    validateEntityNotLocked(fileEntity);
 
     UserEntity userEntity =
         userRepository
@@ -144,7 +170,7 @@ public class FileService {
     StorageEntity fileEntity =
         storageRepository
             .getIncludeDeleted(userId, fileId)
-            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+            .orElseThrow(() -> new FileNotFoundException(fileId));
 
     storageRepository.softDeleteEntity(fileEntity);
   }
@@ -157,10 +183,10 @@ public class FileService {
     StorageEntity fileEntity =
         storageRepository
             .getDeleted(userId, fileId)
-            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+            .orElseThrow(() -> new FileNotFoundException(fileId));
 
     if (storageRepository.exists(userId, fileEntity.getParentId(), fileEntity.getName())) {
-      throw new StorageFileAlreadyExistsException(fileEntity.getParentId(), fileEntity.getName());
+      throw new FileAlreadyExistsException(fileEntity.getParentId(), fileEntity.getName());
     }
 
     storageRepository.restore(fileEntity);
@@ -190,7 +216,7 @@ public class FileService {
 
     return storageRepository
         .get(userId, fileId)
-        .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+        .orElseThrow(() -> new FileNotFoundException(fileId));
   }
 
   @Transactional
@@ -199,17 +225,34 @@ public class FileService {
     UUID userId = request.userId();
 
     StorageEntity fileEntity =
-        storageRepository
-            .get(userId, fileId)
-            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+        storageRepository.get(userId, fileId).orElseThrow(() -> new FileNotFoundException(fileId));
 
     if (storageRepository.exists(userId, request.newParentId(), request.newName())) {
-      throw new StorageFileAlreadyExistsException(request.newParentId(), request.newName());
+      throw new FileAlreadyExistsException(request.newParentId(), request.newName());
     }
 
     if (request.newName() != null) fileEntity.setName(request.newName());
     if (request.newParentId() != null) fileEntity.setParentId(request.newParentId());
     if (request.newTags() != null) fileEntity.setTags(request.newTags());
     if (request.newVisibility() != null) fileEntity.setVisibility(request.newVisibility().name());
+  }
+
+  private void validateEntityNotLocked(StorageEntity fileEntity) {
+    if (fileEntity.getStatus() == FileStatus.DANGEROUS) {
+      throw new FileIsDangerousException(fileEntity.getId());
+    }
+
+    if (fileEntity.getScanVerdict() == ScanVerdict.SCANNING) {
+      throw new FileUnderScanException(fileEntity.getId());
+    }
+
+    if (fileEntity.isDirectory()) {
+      boolean hasLocked =
+          storageRepository.hasLockedDescendants(fileEntity.getUserId(), fileEntity.getId());
+
+      if (hasLocked) {
+        throw new DirectoryContainsLockedFilesException(fileEntity.getId());
+      }
+    }
   }
 }

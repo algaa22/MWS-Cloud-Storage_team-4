@@ -1,15 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectPartNumberException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.MissingUploadPartsException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TooManyPartsException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.TooSmallFilePartException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadPartIOException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSizeMismatchException;
+import com.mipt.team4.cloud_storage_backend.antivirus.config.props.AntivirusProps;
+import com.mipt.team4.cloud_storage_backend.antivirus.service.AntivirusService;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.*;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.UploadStatusDto;
@@ -27,18 +22,14 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
-import com.mipt.team4.cloud_storage_backend.utils.file.ChecksumUtils;
+import com.mipt.team4.cloud_storage_backend.utils.file.HashUtils;
 import com.mipt.team4.cloud_storage_backend.utils.string.MimeTypeDetector;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -51,7 +42,9 @@ public class ChunkedUploadService {
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
-  private final StorageConfig storageConfig;
+  private final AntivirusService antivirusService;
+  private final StorageProps storageProps;
+  private final AntivirusProps antivirusProps;
 
   @Transactional
   public StartChunkedUploadResponse startUpload(StartChunkedUploadRequest request) {
@@ -63,15 +56,15 @@ public class ChunkedUploadService {
       throw new TariffAccessDeniedException();
     }
 
-    if (request.totalParts() > storageConfig.s3().limits().maxPartsNum()) {
-      throw new TooManyPartsException(storageConfig.s3().limits().maxPartsNum());
+    if (request.totalParts() > storageProps.s3().limits().maxPartsNum()) {
+      throw new TooManyPartsException(storageProps.s3().limits().maxPartsNum());
     }
 
     storageRepository
         .getIncludeDeleted(userId, parentId)
         .ifPresent(
             entity -> {
-              throw new StorageFileAlreadyExistsException(parentId, name);
+              throw new FileAlreadyExistsException(parentId, name);
             });
 
     StorageEntity fileEntity =
@@ -131,6 +124,7 @@ public class ChunkedUploadService {
   public void uploadPart(ChunkedUploadPartDto partDto) {
     ChunkedUploadSessionEntity session = getUploadingSession(partDto.sessionId());
 
+    validateIfChecksumSpecified(partDto.checksum());
     validatePartNumber(partDto.partNumber(), session.getTotalParts());
     validatePartSize(partDto.size(), partDto.partNumber(), session.getTotalParts());
     validateCurrentFileSize(session.getCurrentSize(), partDto.size(), session.getFile().getSize());
@@ -141,9 +135,10 @@ public class ChunkedUploadService {
             .session(session)
             .number(partDto.partNumber())
             .size(partDto.size())
+            .hash(partDto.checksum())
             .build();
 
-    MessageDigest messageDigest = ChecksumUtils.createMD5();
+    MessageDigest messageDigest = HashUtils.createSha256();
 
     try (InputStream inputStream =
         partDto.checksum() == null
@@ -153,7 +148,7 @@ public class ChunkedUploadService {
           session.getFile(), session.getId(), session.getUploadId(), inputStream, partEntity);
 
       if (partDto.checksum() != null) {
-        ChecksumUtils.compareChecksums(partDto.checksum(), messageDigest.digest());
+        HashUtils.compareChecksums(partDto.checksum(), messageDigest.digest());
       }
     } catch (IOException e) {
       throw new UploadPartIOException(e);
@@ -174,8 +169,11 @@ public class ChunkedUploadService {
       checkMissingParts(session, partETags);
       validateFinalFileSize(session);
 
+      fileEntity.setHash(computeFinalFileHash(session.getParts()));
+
       storageRepository.completeMultipartUpload(
           fileEntity, session.getId(), session.getUploadId(), partETags);
+      antivirusService.sendToScan(fileEntity);
       notificationService.checkStorageUsageAndNotify(fileEntity.getUserId());
 
       return fileEntity.getId();
@@ -206,6 +204,24 @@ public class ChunkedUploadService {
     return storageRepository.isPartAlreadyUploaded(request.sessionId(), request.part());
   }
 
+  private String computeFinalFileHash(List<ChunkedUploadPartEntity> parts) {
+    for (ChunkedUploadPartEntity part : parts) {
+      if (part.getHash() == null) {
+        return null;
+      }
+    }
+
+    List<ChunkedUploadPartEntity> sortedParts =
+        parts.stream().sorted(Comparator.comparingInt(ChunkedUploadPartEntity::getNumber)).toList();
+    MessageDigest digest = HashUtils.createSha256();
+
+    for (ChunkedUploadPartEntity part : sortedParts) {
+      HashUtils.update(digest, part.getHash());
+    }
+
+    return HashUtils.encodeDigest(digest.digest());
+  }
+
   private ChunkedUploadSessionEntity getUploadingSession(UUID sessionId) {
     ChunkedUploadSessionEntity session = getSession(sessionId);
 
@@ -232,6 +248,12 @@ public class ChunkedUploadService {
                 TreeMap::new));
   }
 
+  private void validateIfChecksumSpecified(String checksum) {
+    if (antivirusProps.enabled() && checksum == null) {
+      throw new MissingChecksumException();
+    }
+  }
+
   private void validatePartNumber(int partNumber, int totalParts) {
     if (partNumber < 1 || partNumber > totalParts) {
       throw new IncorrectPartNumberException(partNumber, totalParts);
@@ -247,8 +269,8 @@ public class ChunkedUploadService {
   }
 
   private void validatePartSize(long partSize, int partNumber, int totalParts) {
-    if (partNumber < totalParts && partSize < storageConfig.s3().limits().minFilePartSize()) {
-      throw new TooSmallFilePartException(storageConfig.s3().limits().minFilePartSize());
+    if (partNumber < totalParts && partSize < storageProps.s3().limits().minFilePartSize()) {
+      throw new TooSmallFilePartException(storageProps.s3().limits().minFilePartSize());
     }
   }
 

@@ -1,9 +1,9 @@
 package com.mipt.team4.cloud_storage_backend.service.storage;
 
+import com.mipt.team4.cloud_storage_backend.exception.storage.DirectoryCycleException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.MoveDirectoryIntoItselfException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageDirectoryCycleException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.CreateDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteDirectoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.UpdateDirectoryRequest;
@@ -32,7 +32,7 @@ public class DirectoryService {
     String name = request.name();
 
     if (storageRepository.exists(userId, parentId, name)) {
-      throw new StorageFileAlreadyExistsException(parentId, name);
+      throw new FileAlreadyExistsException(parentId, name);
     }
 
     UUID directoryId = UUID.randomUUID();
@@ -63,7 +63,7 @@ public class DirectoryService {
     StorageEntity dirEntity = getDirectoryOrThrow(userId, directoryId);
 
     if (metadataRepository.exists(userId, dirEntity.getParentId(), newName)) {
-      throw new StorageFileAlreadyExistsException(dirEntity.getParentId(), newName);
+      throw new FileAlreadyExistsException(dirEntity.getParentId(), newName);
     }
 
     dirEntity.setName(newName);
@@ -82,11 +82,11 @@ public class DirectoryService {
     }
 
     if (metadataRepository.isDescendant(directoryId, newParentId)) {
-      throw new StorageDirectoryCycleException();
+      throw new DirectoryCycleException();
     }
 
     if (metadataRepository.exists(userId, newParentId, dir.getName())) {
-      throw new StorageFileAlreadyExistsException(newParentId, dir.getName());
+      throw new FileAlreadyExistsException(newParentId, dir.getName());
     }
 
     dir.setParentId(newParentId);
@@ -100,7 +100,7 @@ public class DirectoryService {
     StorageEntity directoryEntity = getDirectoryOrThrow(userId, directoryId);
     long freedSize = metadataRepository.calculateTotalSizeOfTree(directoryId);
 
-    metadataRepository.hardDelete(directoryEntity.getUserId(), directoryEntity.getId());
+    storageRepository.hardDelete(directoryEntity);
 
     if (freedSize > 0) {
       userRepository.decreaseUsedStorage(userId, freedSize);
@@ -110,6 +110,6 @@ public class DirectoryService {
   private StorageEntity getDirectoryOrThrow(UUID userId, UUID directoryId) {
     return metadataRepository
         .get(userId, directoryId)
-        .orElseThrow(() -> new StorageFileNotFoundException(directoryId));
+        .orElseThrow(() -> new FileNotFoundException(directoryId));
   }
 }

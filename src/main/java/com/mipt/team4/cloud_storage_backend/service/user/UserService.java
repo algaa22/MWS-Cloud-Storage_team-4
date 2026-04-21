@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.MissingOldPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
@@ -35,7 +35,7 @@ public class UserService {
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
   private final PasswordHasher passwordHasher;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
   private final TariffService tariffService;
 
   @Transactional
@@ -50,7 +50,7 @@ public class UserService {
             .username(request.username())
             .email(request.email())
             .passwordHash(hash)
-            .storageLimit(storageConfig.quotas().defaultStorageLimit())
+            .storageLimit(storageProps.quotas().defaultStorageLimit())
             .createdAt(LocalDateTime.now())
             .build();
 

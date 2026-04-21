@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.schedulers.storage;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
@@ -26,7 +26,7 @@ public class StaleFileCleanupScheduler {
   private final StorageRepositoryWrapper storageRepositoryWrapper;
   private final StorageJpaRepositoryAdapter metadataRepository;
   private final FileErasureService erasureService;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
   private final BatchProcessor batchProcessor;
 
   private static final String TASK_NAME = "Stale File Cleanup";
@@ -39,7 +39,7 @@ public class StaleFileCleanupScheduler {
    */
   @Scheduled(cron = "${storage.scheduling.cron.stale-file-cleanup}")
   public void cleanupStaleFiles() {
-    int staleTime = storageConfig.scheduling().staleTimeMin().file();
+    int staleTime = storageProps.scheduling().staleTimeMin().file();
     LocalDateTime threshold = LocalDateTime.now().minusMinutes(staleTime);
 
     batchProcessor.scoop(

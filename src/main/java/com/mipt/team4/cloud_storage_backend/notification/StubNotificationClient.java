@@ -32,4 +32,17 @@ public class StubNotificationClient implements NotificationClient {
 
   @Override
   public void notifyTariffRenewed(String email, String name, LocalDateTime newEndDate) {}
+
+  @Override
+  public void notifyDangerousFile(
+      String userEmail,
+      String userName,
+      String fileName,
+      String folderPath,
+      String verdict,
+      UUID userId) {}
+
+  @Override
+  public void notifyScanError(
+      String userEmail, String userName, String fileName, String folderPath, UUID userId) {}
 }

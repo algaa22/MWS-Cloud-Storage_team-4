@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.responses;
 
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseBodyParam;
 import com.mipt.team4.cloud_storage_backend.utils.converter.StringListConverter;
@@ -15,7 +16,8 @@ public record FileInfoResponse(
     @ResponseBodyParam String visibility,
     @ResponseBodyParam String updatedAt,
     @ResponseBodyParam boolean isDirectory,
-    @ResponseBodyParam boolean isDeleted) {
+    @ResponseBodyParam boolean isDeleted,
+    @ResponseBodyParam ScanVerdict scanVerdict) {
   public static FileInfoResponse from(StorageEntity entity) {
     return new FileInfoResponse(
         entity.getId(),
@@ -27,6 +29,7 @@ public record FileInfoResponse(
         entity.getVisibility(),
         entity.getUpdatedAt().toString(),
         entity.isDirectory(),
-        entity.isDeleted());
+        entity.isDeleted(),
+        entity.getScanVerdict());
   }
 }

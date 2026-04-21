@@ -1,6 +1,5 @@
 package com.mipt.team4.cloud_storage_backend.base.extensions;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig.S3;
 import com.mipt.team4.cloud_storage_backend.utils.TestUtils;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;

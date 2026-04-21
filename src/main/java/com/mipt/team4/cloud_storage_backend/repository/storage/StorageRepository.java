@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
-import com.mipt.team4.cloud_storage_backend.exception.transfer.IncorrectUploadStatusException;
+import com.mipt.team4.cloud_storage_backend.exception.upload.IncorrectUploadStatusException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
@@ -11,14 +11,19 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadSta
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class StorageRepository {
@@ -106,23 +111,49 @@ public class StorageRepository {
   }
 
   public void hardDelete(StorageEntity entity) {
+    List<String> s3KeysToDelete = new ArrayList<>();
+
     wrapper.wrapUpdate(
         entity,
         FileOperationType.DELETE,
         () -> {
           if (entity.isDirectory()) {
             List<StorageEntity> descendants =
-                metadataRepository.findAllDescendants(entity.getUserId(), entity.getId());
+                metadataRepository.findAllFilesDescendants(entity.getUserId(), entity.getId());
 
             for (StorageEntity file : descendants) {
-              if (file.getS3Key() != null) {
-                contentRepository.hardDelete(file.getS3Key());
-              }
+              s3KeysToDelete.add(file.getS3Key());
             }
           }
 
-          contentRepository.hardDelete(entity.getS3Key());
+          s3KeysToDelete.add(entity.getS3Key());
           metadataRepository.hardDelete(entity.getUserId(), entity.getId());
+
+          TransactionSynchronizationManager.registerSynchronization(
+              new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                  for (String s3Key : s3KeysToDelete) {
+                    try {
+                      contentRepository.hardDelete(s3Key);
+                    } catch (Exception e) {
+                      log.error("Failed to delete S3 key {} after commit", s3Key, e);
+                    }
+                  }
+                }
+              });
+
+          return null;
+        });
+  }
+
+  public void cleanupDangerousFile(StorageEntity entity) {
+    wrapper.wrapUpdate(
+        entity,
+        FileOperationType.DELETE,
+        () -> {
+          contentRepository.hardDelete(entity.getS3Key());
+          metadataRepository.updateStatus(entity.getId(), FileStatus.DANGEROUS);
 
           return null;
         });
@@ -192,6 +223,10 @@ public class StorageRepository {
     return metadataRepository.get(userId, fileId);
   }
 
+  public Optional<StorageEntity> get(UUID fileId) {
+    return metadataRepository.get(fileId);
+  }
+
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
     return metadataRepository.getIncludeDeleted(userId, fileId);
   }
@@ -208,8 +243,22 @@ public class StorageRepository {
     return metadataRepository.exists(userId, parentId, name);
   }
 
+  public boolean hasLockedDescendants(UUID userId, UUID parentId) {
+    return metadataRepository.hasLockedDescendants(userId, parentId);
+  }
+
   public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
     return metadataRepository.getFileList(filter, pageQuery);
+  }
+
+  public String getFullFolderPath(StorageEntity fileEntity) {
+    UUID parentId = fileEntity.getParentId();
+
+    if (parentId == null) {
+      return "/";
+    }
+
+    return getFullFilePath(parentId);
   }
 
   public String getFullFilePath(UUID fileId) {

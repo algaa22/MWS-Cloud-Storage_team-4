@@ -12,7 +12,7 @@ import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransfe
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils.UploadResult;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
-import com.mipt.team4.cloud_storage_backend.utils.file.ChecksumUtils;
+import com.mipt.team4.cloud_storage_backend.utils.file.HashUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
 import java.net.http.HttpResponse;
@@ -62,7 +62,7 @@ public class FileSmokeIT extends BaseStorageIT {
     for (int i = 0; i < parts.size(); i++) {
       int partNumber = i + 1;
       byte[] partData = parts.get(i);
-      String checksum = ChecksumUtils.calculateMd5(partData);
+      String checksum = HashUtils.calculateSha256(partData);
 
       UploadResult uploadPartResult =
           chunkedITUtils.uploadPart(

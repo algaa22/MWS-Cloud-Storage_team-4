@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
 import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
@@ -58,7 +58,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   private final AggregatedHttpHandler aggregatedHttpHandlerProvider;
   private final GlobalValidationHandler globalValidationHandler;
   private final RequestToDtoDecoder requestToDtoDecoder;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
 
   private PipelineType previousPipeline = null;
 
@@ -119,7 +119,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       addHandlerToPipeline(
           pipeline,
           PipelineHandlerNames.HTTP_OBJECT_AGGREGATOR,
-          new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
+          new HttpObjectAggregator(storageProps.rest().maxAggregatedContentLength()));
       addInitialRestHandlers(pipeline);
       addHandlerToPipeline(
           pipeline, PipelineHandlerNames.AGGREGATED_HTTP, aggregatedHttpHandlerProvider);

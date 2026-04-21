@@ -1,8 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.file.ChecksumUtils;
 import com.mipt.team4.cloud_storage_backend.utils.file.FileLoader;
+import com.mipt.team4.cloud_storage_backend.utils.file.HashUtils;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -35,7 +35,7 @@ public class FileSimpleTransferITUtils {
       String fileTags)
       throws IOException, InterruptedException {
     byte[] testFile = FileLoader.getInputStream(localFilePath).readAllBytes();
-    String checksum = ChecksumUtils.calculateMd5(testFile);
+    String checksum = HashUtils.calculateSha256(testFile);
 
     String endpoint = itUtils.fillQuery("/api/files/upload?name=%s", targetFileName);
     if (parentId != null) {

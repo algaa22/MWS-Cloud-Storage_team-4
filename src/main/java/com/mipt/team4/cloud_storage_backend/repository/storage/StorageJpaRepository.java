@@ -152,7 +152,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   void upsertFile(@Param("f") StorageEntity file);
 
   @Modifying(flushAutomatically = true)
-  @Query(value = "UPDATE files SET status = :newStatus WHERE id=:id")
+  @Query(value = "UPDATE StorageEntity s SET status = :newStatus WHERE id=:id")
   void updateStatus(UUID id, FileStatus newStatus);
 
   @Modifying
@@ -189,7 +189,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       value =
           """
                   WITH RECURSIVE folder_tree AS (
-                      SELECT * FROM files WHERE id = :id AND user_id = :userId AND f.is_directory = false
+                      SELECT * FROM files WHERE id = :id AND user_id = :userId AND is_directory = false
                       UNION ALL
                       SELECT f.* FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id AND f.is_directory = false
                   )

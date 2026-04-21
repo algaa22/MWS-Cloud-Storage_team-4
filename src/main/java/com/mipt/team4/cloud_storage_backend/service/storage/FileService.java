@@ -242,15 +242,15 @@ public class FileService {
       throw new FileIsDangerousException(fileEntity.getId());
     }
 
-    if (fileEntity.getScanVerdict() == ScanVerdict.UNKNOWN) {
+    if (fileEntity.getScanVerdict() == ScanVerdict.SCANNING) {
       throw new FileUnderScanException(fileEntity.getId());
     }
 
     if (fileEntity.isDirectory()) {
-      boolean hasUnsafe =
+      boolean hasLocked =
           storageRepository.hasLockedDescendants(fileEntity.getUserId(), fileEntity.getId());
 
-      if (hasUnsafe) {
+      if (hasLocked) {
         throw new DirectoryContainsLockedFilesException(fileEntity.getId());
       }
     }

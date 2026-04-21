@@ -17,9 +17,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class StorageRepository {
@@ -125,9 +129,19 @@ public class StorageRepository {
           s3KeysToDelete.add(entity.getS3Key());
           metadataRepository.hardDelete(entity.getUserId(), entity.getId());
 
-          for (String s3Key : s3KeysToDelete) {
-            contentRepository.hardDelete(s3Key);
-          }
+          TransactionSynchronizationManager.registerSynchronization(
+              new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                  for (String s3Key : s3KeysToDelete) {
+                    try {
+                      contentRepository.hardDelete(s3Key);
+                    } catch (Exception e) {
+                      log.error("Failed to delete S3 key {} after commit", s3Key, e);
+                    }
+                  }
+                }
+              });
 
           return null;
         });

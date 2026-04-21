@@ -20,7 +20,7 @@ public class StaleScanScheduler {
 
   private static final String TASK_NAME = "Stale Scan Scheduler";
 
-  @Scheduled(cron = "${storage.scheduling.cron.stale-scanning}")
+  @Scheduled(cron = "${storage.scheduling.cron.stale-scans}")
   public void handleStaleScans() {
     int staleTime = storageProps.scheduling().staleTimeMin().scan();
     LocalDateTime threshold = LocalDateTime.now().minusMinutes(staleTime);

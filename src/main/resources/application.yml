@@ -129,7 +129,7 @@ storage:
     dangerous-deletion-time-days: 30
 
     cron:
-      stale-scan: "0 */5 * * * *"
+      stale-scans: "0 */5 * * * *"
       stale-file-cleanup: "0 0 1 * * *"
       stale-upload-cleanup: "0 0 2 * * *"
       trash-cleanup: "0 0 3 * * *"

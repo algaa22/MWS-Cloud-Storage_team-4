@@ -128,7 +128,7 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Slice<StorageEntity> getStaleScans(LocalDateTime threshold, Pageable pageable) {
     return jpaRepository.findByScanVerdictAndUpdatedAtBefore(
-        ScanVerdict.UNKNOWN, threshold, pageable);
+        ScanVerdict.SCANNING, threshold, pageable);
   }
 
   @Transactional(readOnly = true)
@@ -174,7 +174,7 @@ public class StorageJpaRepositoryAdapter {
 
   public boolean hasLockedDescendants(UUID userId, UUID parentId) {
     return jpaRepository.existsLockedDescendants(
-        userId, parentId, FileStatus.PENDING, ScanVerdict.UNKNOWN);
+        userId, parentId, FileStatus.PENDING, ScanVerdict.SCANNING);
   }
 
   @Transactional(readOnly = true)

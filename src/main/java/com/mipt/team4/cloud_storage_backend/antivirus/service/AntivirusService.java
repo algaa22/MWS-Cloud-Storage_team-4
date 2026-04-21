@@ -36,6 +36,8 @@ public class AntivirusService {
       return;
     }
 
+    fileEntity.setScanVerdict(ScanVerdict.SCANNING);
+
     TransactionSynchronizationManager.registerSynchronization(
         new TransactionSynchronization() {
           @Override

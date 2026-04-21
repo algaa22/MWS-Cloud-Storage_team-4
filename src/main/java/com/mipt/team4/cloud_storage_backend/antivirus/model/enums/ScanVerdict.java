@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.antivirus.model.enums;
 
 public enum ScanVerdict {
   UNKNOWN,
+  SCANNING,
   CLEAN,
   INFECTED,
   EMPTY_FILE,

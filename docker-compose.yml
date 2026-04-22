@@ -12,6 +12,12 @@ services:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
+      av-redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       notification-service:
         condition: service_started
     healthcheck:
@@ -88,17 +94,49 @@ services:
       - seaweed-data:/data
       - ./etc/seaweedfs:/etc/seaweedfs:ro
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: cloud-storage-mq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cloud-network
+
   av-redis:
     image: redis:7-alpine
     container_name: av_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - cloud-network
 
   clamav:
     image: clamav/clamav:latest
     container_name: clamav
-    ports:
-      - "3310:3310"
+    expose:
+      - "3310"
+    healthcheck:
+      test: [ "CMD-SHELL", "echo PING | nc -w 2 localhost 3310 | grep -q PONG" ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - cloud-network
 
 volumes:
   postgres-data:

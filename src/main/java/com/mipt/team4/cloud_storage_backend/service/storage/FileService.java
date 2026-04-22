@@ -127,6 +127,10 @@ public class FileService {
       throw new CannotDownloadDirectoryException(fileEntity.getId());
     }
 
+    if (fileEntity.getStatus() == FileStatus.DANGEROUS) {
+      throw new FileIsDangerousException(fileEntity.getId());
+    }
+
     validateEntityNotLocked(fileEntity);
 
     String rangeStr = request.range();
@@ -238,10 +242,6 @@ public class FileService {
   }
 
   private void validateEntityNotLocked(StorageEntity fileEntity) {
-    if (fileEntity.getStatus() == FileStatus.DANGEROUS) {
-      throw new FileIsDangerousException(fileEntity.getId());
-    }
-
     if (fileEntity.getScanVerdict() == ScanVerdict.SCANNING) {
       throw new FileUnderScanException(fileEntity.getId());
     }

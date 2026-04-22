@@ -63,7 +63,6 @@ public class StorageJpaRepositoryAdapter {
       jpaRepository.restore(userId, fileId);
     }
 
-    // Проверим, что действительно обновилось
     Optional<StorageEntity> check = jpaRepository.findByIdIncludeDeleted(userId, fileId);
     if (check.isPresent()) {
       System.out.println("After restore - isDeleted: " + check.get().isDeleted());

@@ -29,6 +29,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileLi
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedDownloadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FilePreviewResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
@@ -57,6 +58,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class FileService {
   private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024;
+  private static final int PREVIEW_EXPIRY_SECONDS = 3600;
+
   // TODO: нужен Scheduler для очистки старых сессий загрузки
   private final Map<UUID, ChunkedUploadSession> activeUploads = new ConcurrentHashMap<>();
   private final FileErasureService erasureService;
@@ -314,10 +317,6 @@ public class FileService {
                   return new StorageFileNotFoundException(fileId);
                 });
 
-    System.out.println("Found file: " + fileEntity.getName());
-    System.out.println("Current deleted status: " + fileEntity.isDeleted());
-    System.out.println("Parent ID: " + fileEntity.getParentId());
-
     if (storageRepository.exists(userId, fileEntity.getParentId(), fileEntity.getName())) {
       System.out.println("Conflict! File already exists at destination");
       throw new StorageFileAlreadyExistsException(fileEntity.getParentId(), fileEntity.getName());
@@ -337,9 +336,6 @@ public class FileService {
       }
     }
     log.info("Restored {} shares for file {}", shares.size(), fileId);
-
-    System.out.println("✅ Increased usedStorage by: " + fileEntity.getSize());
-    System.out.println("Restore completed");
   }
 
   @Transactional(readOnly = true)
@@ -399,10 +395,6 @@ public class FileService {
     if (request.newVisibility() != null) fileEntity.setVisibility(request.newVisibility().name());
   }
 
-  /**
-   * Удаляет самые старые файлы пользователя до достижения размера sizeToDelete Используется при
-   * просрочке подписки
-   */
   private void uploadPart(ChunkedUploadSession uploadState) {
     String uploadId = uploadState.getUploadId();
     byte[] part = ChunkCombiner.combineChunksToPart(uploadState);
@@ -426,7 +418,6 @@ public class FileService {
                   fileEntity.getId(),
                   uploadState.getPartNum(),
                   part));
-      log.info("[CHUNK] Part #{} uploaded successfully. ETag: {}", uploadState.getPartNum(), eTag);
     } catch (UploadRetriableException exception) {
       log.warn(
           "[RETRY] Failed to upload part #{}. Session stopped for retry.",
@@ -442,6 +433,36 @@ public class FileService {
     uploadState.getETags().put(uploadState.getPartNum(), eTag);
     uploadState.addFileSize(part.length);
     uploadState.increaseTotalParts();
+  }
+
+  @Transactional(readOnly = true)
+  public FilePreviewResponse generatePreviewUrl(UUID fileId, UUID userId) {
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
+    }
+
+    StorageEntity fileEntity =
+        storageRepository
+            .get(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
+    boolean isPreviewable = isPreviewableMimeType(fileEntity.getMimeType());
+
+    String previewUrl = null;
+    if (isPreviewable) {
+      previewUrl = storageRepository.generatePresignedUrl(fileEntity, PREVIEW_EXPIRY_SECONDS);
+    }
+
+    return FilePreviewResponse.from(fileEntity, previewUrl);
+  }
+
+  private boolean isPreviewableMimeType(String mimeType) {
+    if (mimeType == null) return false;
+    return mimeType.startsWith("image/")
+        || mimeType.equals("application/pdf")
+        || mimeType.startsWith("video/")
+        || mimeType.equals("text/plain")
+        || mimeType.startsWith("text/");
   }
 
   private void checkStorageAndNotify(UUID userId) {

@@ -24,7 +24,8 @@ import {
   permanentDeleteFile,
   emptyTrash,
   softDeleteFile,
-  softDeleteFolder
+  softDeleteFolder,
+  getFilePreview
 } from "../api.js";
 
 export default function FileBrowser() {
@@ -67,6 +68,9 @@ export default function FileBrowser() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [shares, setShares] = useState([]);
   const [showSharesList, setShowSharesList] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
@@ -760,6 +764,10 @@ const handleDeleteSelected = async () => {
           }
           break;
 
+        case "preview":
+            await handlePreview(selectedItem);
+            break;
+
         case "info":
           const info = selectedItem.type === "file"
             ? await apiGetFileInfo(token, selectedItem.id)
@@ -1156,6 +1164,31 @@ const refreshUserInfo = async () => {
 
     return iconMap[extension] || "📄";
   };
+
+const handlePreview = async (file) => {
+  if (!file || file.type !== "file") return;
+
+  setPreviewLoading(true);
+  setShowPreviewModal(true);
+
+  try {
+    const data = await getFilePreview(token, file.id);
+    setPreviewData({
+      ...data,
+      file: file
+    });
+  } catch (error) {
+    console.error("Preview error:", error);
+    setError("Не удалось загрузить предпросмотр файла");
+  } finally {
+    setPreviewLoading(false);
+  }
+};
+
+const closePreviewModal = () => {
+  setShowPreviewModal(false);
+  setPreviewData(null);
+};
 
   const getProgressBarColor = (percentage) => {
     if (percentage < 50) return 'bg-green-500';
@@ -1572,6 +1605,7 @@ const refreshUserInfo = async () => {
                 </div>
               ))}
 
+
 {files.map((file) => (
   <div
     key={file.id || file.fullPath}
@@ -1590,7 +1624,22 @@ const refreshUserInfo = async () => {
     <p className="truncate text-sm font-medium">{file.name}</p>
     <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
 
-    {/* Кнопка шаринга */}
+    {/* Кнопка предпросмотра */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        handlePreview(file);
+      }}
+      className="absolute top-2 right-12 opacity-0 group-hover:opacity-100 transition-opacity bg-green-500/20 hover:bg-green-500/30 p-1.5 rounded-lg"
+      title="Предпросмотр"
+    >
+      <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      </svg>
+    </button>
+
+    {/* Кнопка шаринга (существующая) */}
     <button
       onClick={(e) => {
         e.stopPropagation();
@@ -1974,29 +2023,6 @@ const refreshUserInfo = async () => {
         </div>
       )}
 
-      {showItemMenu && selectedItem && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowItemMenu(false)} />
-          <div className="fixed bg-gray-800 rounded-xl shadow-2xl py-2 z-50 min-w-[200px]" style={{ left: itemMenuPosition.x, top: itemMenuPosition.y }}>
-            {selectedItem.type === "file" && (
-              <button onClick={() => handleFileAction("download")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
-                📥 Скачать
-              </button>
-            )}
-            <button onClick={() => handleFileAction("info")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
-              ℹ️ Информация
-            </button>
-            <div className="border-t border-white/20 my-1" />
-            <button
-              onClick={() => handleFileAction("delete")}
-              className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
-            >
-              {selectedItem.type === "folder" ? "🗑️ Удалить папку" : "🗑️ Удалить файл"}
-            </button>
-          </div>
-        </>
-      )}
-
   {showShareModal && selectedItem && (
             <ShareModal
               file={selectedItem}
@@ -2035,6 +2061,123 @@ const refreshUserInfo = async () => {
             </div>
           </>
         )}
+
+    {/* Модальное окно предпросмотра */}
+    {showPreviewModal && (
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="bg-gradient-to-br from-gray-900 to-blue-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-white/20 shadow-2xl">
+
+          {/* Заголовок */}
+          <div className="flex justify-between items-center p-4 border-b border-white/10">
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">{getFileIcon(previewData?.file || {})}</span>
+              <div>
+                <h3 className="font-bold text-white">{previewData?.fileName || previewData?.file?.name || "Предпросмотр"}</h3>
+                <p className="text-xs text-white/50">
+                  {previewData?.mimeType} • {formatFileSize(previewData?.fileSize || 0)}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={closePreviewModal}
+              className="text-white/70 hover:text-white bg-white/10 w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Содержимое предпросмотра */}
+          <div className="p-4 overflow-auto max-h-[70vh] flex items-center justify-center bg-black/30 min-h-[300px]">
+            {previewLoading ? (
+              <div className="flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mb-4"></div>
+                <p className="text-white/70">Загрузка предпросмотра...</p>
+              </div>
+            ) : previewData?.isPreviewable && previewData?.previewUrl ? (
+              <div className="w-full h-full flex items-center justify-center">
+                {previewData?.mimeType?.startsWith('image/') ? (
+                  <img
+                    src={previewData.previewUrl}
+                    alt={previewData.fileName}
+                    className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      setError("Не удалось загрузить изображение");
+                    }}
+                  />
+                ) : previewData?.mimeType === 'application/pdf' ? (
+                  <iframe
+                    src={previewData.previewUrl}
+                    className="w-full h-[60vh] rounded-lg"
+                    title={previewData.fileName}
+                  />
+                ) : previewData?.mimeType?.startsWith('video/') ? (
+                  <video
+                    src={previewData.previewUrl}
+                    controls
+                    className="max-w-full max-h-[60vh] rounded-lg"
+                    controlsList="nodownload"
+                  >
+                    Ваш браузер не поддерживает видео
+                  </video>
+                ) : previewData?.mimeType?.startsWith('text/') ? (
+                  <iframe
+                    src={previewData.previewUrl}
+                    className="w-full h-[60vh] rounded-lg bg-white"
+                    title={previewData.fileName}
+                  />
+                ) : (
+                  <div className="text-center">
+                    <div className="text-6xl mb-4">📄</div>
+                    <p className="text-white/70 mb-2">Предпросмотр недоступен для этого типа файлов</p>
+                    <button
+                      onClick={() => handleFileAction("download")}
+                      className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    >
+                      Скачать файл
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="text-6xl mb-4">🔒</div>
+                <p className="text-white/70 mb-2">Предпросмотр недоступен</p>
+                <p className="text-white/50 text-sm mb-4">Этот тип файлов нельзя просмотреть в браузере</p>
+                <button
+                  onClick={() => handleFileAction("download")}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  Скачать файл
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Кнопки действий внизу */}
+          <div className="flex justify-end space-x-3 p-4 border-t border-white/10">
+            <button
+              onClick={() => {
+                closePreviewModal();
+                handleFileAction("download");
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center space-x-2"
+            >
+              <span>📥</span>
+              <span>Скачать</span>
+            </button>
+            <button
+              onClick={closePreviewModal}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+            >
+              Закрыть
+            </button>
+          </div>
+
+        </div>
+      </div>
+    )}
+
       </div>
     );
   }

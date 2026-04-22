@@ -48,6 +48,7 @@ cors:
 
 minio:
   url: ${MINIO_URL}
+  external-url: ${MINIO_EXTERNAL_URL}
   username: ${MINIO_USERNAME}
   password: ${MINIO_PASSWORD}
 

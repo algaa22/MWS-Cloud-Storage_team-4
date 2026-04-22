@@ -40,7 +40,9 @@ public class ApiEndpoints {
   public static final String SHARES_VALIDATE_PASSWORD = SHARES_PREFIX + "/validate";
   public static final String SHARES_USER = SHARES_PREFIX + "/user";
   public static final String SHARES_FILE = SHARES_PREFIX + "/file";
-
+  // Payment
   public static final String PAYMENTS_PREFIX = API_PREFIX + "/payments";
   public static final String PAYMENTS_HISTORY = PAYMENTS_PREFIX + "/history";
+  // FilePreview
+  public static final String FILES_PREVIEW = FILES_PREFIX + "/preview";
 }

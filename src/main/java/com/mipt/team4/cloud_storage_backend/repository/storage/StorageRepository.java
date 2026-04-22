@@ -78,14 +78,11 @@ public class StorageRepository {
           contentRepository.hardDelete(entity.getS3Key());
           metadataRepository.hardDelete(entity.getUserId(), entity.getId());
 
-          // Проверка после удаления
           Optional<StorageEntity> check =
               metadataRepository.getIncludeDeleted(entity.getUserId(), entity.getId());
           if (check.isPresent()) {
-            System.out.println("❌ ERROR: File still exists after hard delete!");
             throw new RuntimeException("Hard delete failed");
           } else {
-            System.out.println("✅ File successfully deleted from DB");
           }
 
           return null;
@@ -163,5 +160,9 @@ public class StorageRepository {
 
   public String getFullFilePath(UUID fileId) {
     return metadataRepository.getFullFilePath(fileId);
+  }
+
+  public String generatePresignedUrl(StorageEntity entity, int expirySeconds) {
+    return contentRepository.generatePresignedUrl(entity.getS3Key(), expirySeconds);
   }
 }

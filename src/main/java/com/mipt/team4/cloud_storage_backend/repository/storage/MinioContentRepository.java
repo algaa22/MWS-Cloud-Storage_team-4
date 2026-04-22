@@ -6,13 +6,8 @@ import com.mipt.team4.cloud_storage_backend.config.props.MinioConfig;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.storage.StorageObjectNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.transfer.UploadSessionNotFoundException;
-import io.minio.BucketExistsArgs;
-import io.minio.GetObjectArgs;
-import io.minio.MakeBucketArgs;
-import io.minio.MinioAsyncClient;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
-import io.minio.StatObjectArgs;
+import io.minio.*;
+import io.minio.http.Method;
 import io.minio.messages.Part;
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
@@ -20,6 +15,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -32,6 +28,7 @@ public class MinioContentRepository implements FileContentRepository {
   private final String region;
 
   private MinioAsyncClient minioClient;
+  private MinioAsyncClient minioClientExternal;
 
   public MinioContentRepository(MinioConfig minioConfig, MinioWrapper wrapper) {
     this.minioConfig = minioConfig;
@@ -49,6 +46,18 @@ public class MinioContentRepository implements FileContentRepository {
               .endpoint(minioConfig.url())
               .credentials(minioConfig.username(), minioConfig.password())
               .build();
+
+      String externalUrl =
+          minioConfig.externalUrl() != null && !minioConfig.externalUrl().isBlank()
+              ? minioConfig.externalUrl()
+              : minioConfig.url();
+
+      minioClientExternal =
+          MinioAsyncClient.builder()
+              .endpoint(externalUrl)
+              .credentials(minioConfig.username(), minioConfig.password())
+              .build();
+
     } catch (Exception e) {
       throw new FatalStorageException("Failed to initialize MinIO", e);
     }
@@ -182,6 +191,38 @@ public class MinioContentRepository implements FileContentRepository {
 
           return null;
         });
+  }
+
+  @Override
+  public String generatePresignedUrl(String s3Key, int expirySeconds) {
+    System.out.println("=== GENERATE PRESIGNED URL ===");
+    System.out.println("s3Key: " + s3Key);
+    System.out.println("expirySeconds: " + expirySeconds);
+    System.out.println("bucketName: " + bucketName);
+
+    try {
+      System.out.println("Using minioClientExternal with endpoint...");
+
+      GetPresignedObjectUrlArgs args =
+          GetPresignedObjectUrlArgs.builder()
+              .method(Method.GET)
+              .bucket(bucketName)
+              .object(s3Key)
+              .expiry(expirySeconds, TimeUnit.SECONDS)
+              .build();
+
+      System.out.println("Args built successfully");
+
+      String url = minioClientExternal.getPresignedObjectUrl(args);
+
+      System.out.println("Generated URL: " + url);
+      return url;
+
+    } catch (Exception e) {
+      System.err.println("ERROR generating presigned URL: " + e.getMessage());
+      e.printStackTrace();
+      throw new RuntimeException("Failed to generate presigned URL", e);
+    }
   }
 
   private Part[] createPartArray(Map<Integer, String> eTags) {

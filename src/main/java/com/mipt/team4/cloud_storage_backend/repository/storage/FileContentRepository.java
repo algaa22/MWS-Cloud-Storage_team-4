@@ -11,6 +11,8 @@ public interface FileContentRepository {
 
   String uploadPart(String uploadId, String s3Key, int partNum, byte[] bytes);
 
+  String generatePresignedUrl(String s3Key, int expirySeconds);
+
   void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags);
 
   void createBucket(String bucketName);

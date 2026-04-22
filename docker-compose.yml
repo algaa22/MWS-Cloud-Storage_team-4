@@ -18,6 +18,7 @@ services:
       DB_PASSWORD: super_secret_password_123
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       MINIO_URL: ${MINIO_URL}
+      MINIO_EXTERNAL_URL: ${MINIO_EXTERNAL_URL}
       MINIO_USERNAME: ${MINIO_USERNAME}
       MINIO_PASSWORD: ${MINIO_PASSWORD}
       NOTIFICATION_SERVICE_URL: http://notification-service:8082

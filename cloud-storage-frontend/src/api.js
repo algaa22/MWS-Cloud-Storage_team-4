@@ -1462,3 +1462,38 @@ export const setAutoRenew = async (token, enabled) => {
     throw error;
   }
 };
+
+export const getFilePreview = async (token, fileId) => {
+  try {
+    const url = `${BASE}/files/preview?fileId=${fileId}`;
+    console.log("=== GET FILE PREVIEW ===");
+    console.log("URL:", url);
+    console.log("Token present:", !!token);
+
+    const response = await fetchWithTokenRefresh(
+      url,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      },
+      token
+    );
+
+    console.log("Response status:", response.status);
+    console.log("Response headers:", response.headers);
+
+    const text = await response.text();
+    console.log("Response body:", text);
+
+    if (!response.ok) {
+      throw new Error(`Failed to get preview URL: ${response.status} - ${text}`);
+    }
+
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Error getting file preview:', error);
+    throw error;
+  }
+};

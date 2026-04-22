@@ -53,7 +53,10 @@ public class StorageRepositoryWrapper {
    */
   public <T> T wrapUpdate(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
-    checkIfStatusIsReadyOrError(entity);
+    if (operationType != FileOperationType.DELETE && entity.getStatus() != FileStatus.DANGEROUS) {
+      checkIfStatusIsReadyOrError(entity);
+    }
+
     syncProcessingEntityWithDatabase(entity, operationType);
     return finalizeOperation(entity, operationType, operation);
   }

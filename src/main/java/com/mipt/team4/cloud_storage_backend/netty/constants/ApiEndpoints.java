@@ -38,9 +38,9 @@ public class ApiEndpoints {
   public static final String SHARES_GET_INFO = SHARES_PREFIX + "/info";
   public static final String SHARES_DOWNLOAD = SHARES_PREFIX + "/download";
   public static final String SHARES_VALIDATE_PASSWORD = SHARES_PREFIX + "/validate";
-  public static final String SHARES_DEACTIVATE = SHARES_PREFIX;
   public static final String SHARES_USER = SHARES_PREFIX + "/user";
   public static final String SHARES_FILE = SHARES_PREFIX + "/file";
+
   public static final String PAYMENTS_PREFIX = API_PREFIX + "/payments";
   public static final String PAYMENTS_HISTORY = PAYMENTS_PREFIX + "/history";
 }

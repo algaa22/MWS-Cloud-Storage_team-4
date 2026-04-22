@@ -258,8 +258,6 @@ export default function PaymentHistoryPage() {
                             )}
                             {transaction.completedAt && transaction.status === 'COMPLETED' && (
                               <div className="flex items-center gap-2 text-white/70">
-                                <span className="text-base">✅</span>
-                                <span>Завершён: <span className="text-white">{formatDateTime(transaction.completedAt)}</span></span>
                               </div>
                             )}
                           </div>

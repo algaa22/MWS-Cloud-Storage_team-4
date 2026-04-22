@@ -26,35 +26,22 @@ public class TariffScheduler {
   private final PaymentService paymentService;
   private final NotificationConfig notificationConfig;
 
-  /**
-   * Основная проверка тарифов - запускается каждый день в 4:00 Проверяет: 1. Заканчивающиеся тарифы
-   * (для уведомлений) 2. Истекшие тарифы (для ограничения доступа) 3. Пользователей в грас-периоде
-   * (для удаления файлов) 4. Истекшие пробные периоды
-   */
   @Scheduled(cron = "0 0 4 * * *")
   @Transactional
   public void checkTariffs() {
     log.info("Starting scheduled tariff check");
 
-    // 1. Уведомления о скором окончании тарифа
     checkUsersWithTariffEndingSoon();
 
-    // 2. Обработка истекших тарифов
     checkExpiredTariffs();
 
-    // 3. Проверка пользователей в грас-периоде
     checkUsersInGracePeriod();
 
-    // 4. Проверка истекших пробных периодов
     checkExpiredTrials();
 
     log.info("Scheduled tariff check completed");
   }
 
-  /**
-   * Проверка пользователей с тарифом, который скоро закончится Отправляет уведомления за указанное
-   * в конфиге количество дней
-   */
   private void checkUsersWithTariffEndingSoon() {
     List<Integer> notificationDays = notificationConfig.tariff().daysBeforeExpiry();
 
@@ -84,10 +71,6 @@ public class TariffScheduler {
     }
   }
 
-  /**
-   * Обработка истекших тарифов Переводит пользователей в статус RESTRICTED и устанавливает дату
-   * удаления
-   */
   private void checkExpiredTariffs() {
     LocalDateTime now = LocalDateTime.now();
     List<UserEntity> expiredUsers = userRepository.getUsersWithExpiredTariff(now);
@@ -101,16 +84,13 @@ public class TariffScheduler {
 
     for (UserEntity user : expiredUsers) {
       try {
-        // Проверяем возможность автопродления
         if (user.isAutoRenew() && user.getPaymentMethodId() != null) {
           handleAutoRenew(user);
         } else {
-          // Ограничиваем доступ и устанавливаем грас-период
           restrictUserAccess(user);
         }
       } catch (Exception e) {
         log.error("Failed to process expired tariff for user {}", user.getId(), e);
-        // В случае ошибки все равно ограничиваем доступ
         restrictUserAccess(user);
       }
     }
@@ -123,7 +103,6 @@ public class TariffScheduler {
     try {
       paymentService.processAutoRenewal(user.getId(), user.getTariffPlan());
 
-      // Успешное продление
       LocalDateTime newEndDate =
           LocalDateTime.now().plusDays(user.getTariffPlan().getDurationDays());
 
@@ -136,7 +115,6 @@ public class TariffScheduler {
 
     } catch (PaymentException e) {
       log.error("Auto-renew failed for user: {}", user.getId(), e);
-      // Если автопродление не удалось - ограничиваем доступ
       restrictUserAccess(user);
     }
   }
@@ -145,10 +123,8 @@ public class TariffScheduler {
   private void restrictUserAccess(UserEntity user) {
     log.info("Restricting access for user {} due to expired tariff", user.getId());
 
-    // Меняем статус на RESTRICTED
     userRepository.updateUserStatus(user.getId(), UserStatus.RESTRICTED);
 
-    // Устанавливаем дату удаления через 30 дней
     LocalDateTime deletionDate = LocalDateTime.now().plusDays(GRACE_PERIOD_DAYS);
     userRepository.updateScheduledDeletionDate(user.getId(), deletionDate);
 
@@ -179,15 +155,11 @@ public class TariffScheduler {
 
     for (UserEntity user : usersToDelete) {
       try {
-        // Здесь должен быть вызов метода удаления файлов
-        // fileService.deleteOldestFiles(user.getId(), ...);
 
-        // Очищаем данные пользователя
         userRepository.updateTariff(user.getId(), null, null, null, false, null);
         userRepository.updateUserStatus(user.getId(), UserStatus.ACTIVE);
         userRepository.updateScheduledDeletionDate(user.getId(), null);
 
-        // Очищаем пробный период если был
         userRepository.updateTrialDates(user.getId(), null, null);
 
         notificationClient.notifyFilesDeleted(user.getEmail(), user.getUsername());
@@ -216,7 +188,6 @@ public class TariffScheduler {
 
     for (UserEntity user : expiredTrialUsers) {
       try {
-        // Очищаем данные пробного периода
         userRepository.updateTrialDates(user.getId(), null, null);
 
         notificationClient.notifyTrialExpired(user.getEmail(), user.getUsername());

@@ -38,12 +38,12 @@ public class ShareService {
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final PasswordHasher passwordHasher;
+
   @Value("${app.base-url:https://localhost:8443}")
   private String baseUrl;
 
   @Transactional
   public ShareCreatedResponse createShare(UUID userId, CreateShareRequest request) {
-    log.info("Creating share for file: {} by user: {}", request.fileId(), userId);
 
     FileShare.ShareType shareType =
         request.shareType() != null ? request.shareType() : FileShare.ShareType.PUBLIC;
@@ -171,16 +171,18 @@ public class ShareService {
   @Transactional(readOnly = true)
   public List<ShareInfoResponse> getUserSharesInfo(UUID userId) {
     return shareRepository.findByCreatedById(userId).stream()
-        .filter(share -> {
-          try {
-            StorageEntity file = share.getFile();
-            return file != null && !file.isDeleted()
-                && storageRepository.get(file.getUserId(), file.getId()).isPresent();
-          } catch (Exception e) {
-            log.warn("Skipping share {} because file no longer exists", share.getId());
-            return false;
-          }
-        })
+        .filter(
+            share -> {
+              try {
+                StorageEntity file = share.getFile();
+                return file != null
+                    && !file.isDeleted()
+                    && storageRepository.get(file.getUserId(), file.getId()).isPresent();
+              } catch (Exception e) {
+                log.warn("Skipping share {} because file no longer exists", share.getId());
+                return false;
+              }
+            })
         .map(share -> ShareInfoResponse.fromShare(share, baseUrl))
         .toList();
   }
@@ -192,15 +194,16 @@ public class ShareService {
         .orElseThrow(() -> new StorageFileNotFoundException(fileId));
 
     return shareRepository.findByFileId(fileId).stream()
-        .filter(share -> {
-          try {
-            StorageEntity file = share.getFile();
-            return file != null && !file.isDeleted();
-          } catch (Exception e) {
-            log.warn("Skipping share {} because file no longer exists", share.getId());
-            return false;
-          }
-        })
+        .filter(
+            share -> {
+              try {
+                StorageEntity file = share.getFile();
+                return file != null && !file.isDeleted();
+              } catch (Exception e) {
+                log.warn("Skipping share {} because file no longer exists", share.getId());
+                return false;
+              }
+            })
         .map(share -> ShareInfoResponse.fromShare(share, baseUrl))
         .toList();
   }
@@ -293,8 +296,8 @@ public class ShareService {
 
   @Transactional
   public void deleteSharePermanently(UUID shareId, UUID userId) {
-    FileShare share = shareRepository.findById(shareId)
-        .orElseThrow(() -> new ShareNotFoundException(shareId));
+    FileShare share =
+        shareRepository.findById(shareId).orElseThrow(() -> new ShareNotFoundException(shareId));
 
     if (!share.getCreatedBy().getId().equals(userId)) {
       throw new SecurityException("Only owner can delete share");

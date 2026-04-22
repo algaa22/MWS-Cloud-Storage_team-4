@@ -134,8 +134,7 @@ public class ChunkedUploadController {
     }
     bar.append("]");
 
-    log.info(
-        String.format("%s %.2f%% (%d/%d bytes)", bar, percentage * 100, current, total));
+    log.info(String.format("%s %.2f%% (%d/%d bytes)", bar, percentage * 100, current, total));
   }
 
   private ChunkedUploadState getChannelUploadState(ChannelHandlerContext ctx) {

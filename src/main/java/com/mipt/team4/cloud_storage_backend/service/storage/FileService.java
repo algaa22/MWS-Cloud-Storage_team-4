@@ -62,10 +62,8 @@ public class FileService {
   private final FileErasureService erasureService;
   private final TariffService tariffService;
   private final StorageRepository storageRepository;
-  private final StorageJpaRepositoryAdapter
-      storageJpaRepositoryAdapter;
-  private final StorageRepositoryWrapper
-      storageRepositoryWrapper;
+  private final StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
+  private final StorageRepositoryWrapper storageRepositoryWrapper;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationClient notificationClient;
   private final NotificationConfig notificationConfig;
@@ -268,9 +266,10 @@ public class FileService {
     System.out.println("Found file: " + entity.getName());
     System.out.println("Is deleted: " + entity.isDeleted());
 
-    UserEntity user = userRepository
-        .getUserById(userId)
-        .orElseThrow(() -> new UserNotFoundException(request.userId()));
+    UserEntity user =
+        userRepository
+            .getUserById(userId)
+            .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
     erasureService.hardDelete(entity);
 
@@ -330,7 +329,8 @@ public class FileService {
 
     List<FileShare> shares = shareRepository.findByFileId(fileId);
     for (FileShare share : shares) {
-      if (share.getIsActive() == false && share.getExpiresAt() != null
+      if (share.getIsActive() == false
+          && share.getExpiresAt() != null
           && share.getExpiresAt().isAfter(LocalDateTime.now())) {
         share.setIsActive(true);
         shareRepository.save(share);

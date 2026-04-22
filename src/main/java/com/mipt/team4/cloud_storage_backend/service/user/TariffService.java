@@ -87,8 +87,7 @@ public class TariffService {
             .status("PENDING")
             .paymentMethod(request.paymentMethod())
             .autoRenew(request.autoRenew())
-            .storageLimitGb(
-                plan.getStorageLimit() / (1024 * 1024 * 1024))
+            .storageLimitGb(plan.getStorageLimit() / (1024 * 1024 * 1024))
             .price(amount)
             .durationDays(plan.getDurationDays())
             .build();
@@ -191,14 +190,6 @@ public class TariffService {
   }
 
   @Transactional(readOnly = true)
-  public boolean hasFullAccess(UUID userId) {
-    UserEntity userEntity =
-        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
-
-    return userEntity.getUserStatus() == UserStatus.ACTIVE;
-  }
-
-  @Transactional(readOnly = true)
   public boolean canModifyFiles(UUID userId) {
     UserEntity userEntity =
         userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
@@ -280,7 +271,6 @@ public class TariffService {
       userRepository.updateScheduledDeletionDate(user.getId(), null);
 
       notificationClient.notifyFilesDeleted(user.getEmail(), user.getUsername());
-      log.info("Excess files deleted for user: {}", user.getId());
     }
   }
 

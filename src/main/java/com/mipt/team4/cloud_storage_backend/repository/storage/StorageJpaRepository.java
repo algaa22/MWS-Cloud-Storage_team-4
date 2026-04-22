@@ -80,7 +80,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value =
-"""
+          """
     SELECT * FROM files
     WHERE user_id = :userId
       AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
@@ -148,7 +148,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value =
-"""
+          """
     WITH RECURSIVE folder_tree AS (
         SELECT id, size FROM files WHERE id = :directoryId
         UNION ALL
@@ -161,7 +161,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value =
-"""
+          """
     WITH RECURSIVE folder_tree AS (
         SELECT * FROM files WHERE id = :id AND user_id = :userId
         UNION ALL

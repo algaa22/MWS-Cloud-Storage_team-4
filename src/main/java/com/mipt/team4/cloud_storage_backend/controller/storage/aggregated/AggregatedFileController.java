@@ -59,10 +59,8 @@ public class AggregatedFileController {
     System.out.println("Permanent: " + request.permanent());
 
     if (request.permanent()) {
-      System.out.println("🔥 CALLING HARD DELETE");
       fileService.hardDelete(request);
     } else {
-      System.out.println("📦 CALLING SOFT DELETE");
       fileService.softDelete(request);
     }
 

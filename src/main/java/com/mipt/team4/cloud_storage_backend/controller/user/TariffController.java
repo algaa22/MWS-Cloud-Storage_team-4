@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.controller.user;
 
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.payment.dto.PaymentHistoryResponse;
-import com.mipt.team4.cloud_storage_backend.model.user.dto.TariffInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.AvailableTariffsRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.GetPaymentHistoryRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.PurchaseTariffRequest;
@@ -10,6 +9,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.SetAutoRenew
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.TariffInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.requests.UpdatePaymentMethodRequest;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.AvailableTariffsResponse;
+import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.TariffInfoResponse;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.responses.TariffPlanResponse;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
@@ -33,7 +33,7 @@ public class TariffController {
   }
 
   public void getTariffInfo(ChannelHandlerContext ctx, TariffInfoRequest request) {
-    TariffInfoDto info = tariffService.getTariffInfo(request);
+    TariffInfoResponse info = tariffService.getTariffInfo(request);
     ResponseUtils.send(ctx, info);
   }
 

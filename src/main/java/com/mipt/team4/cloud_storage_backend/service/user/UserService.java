@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.MissingOldPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
@@ -40,7 +40,7 @@ public class UserService {
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
   private final PasswordHasher passwordHasher;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
   private final TariffService tariffService;
   private final StorageJpaRepository storageRepository;
 
@@ -101,6 +101,7 @@ public class UserService {
 
     UserSessionDto session = userSessionService.createSession(userEntity);
     RefreshTokenDto refreshToken = refreshTokenService.create(userEntity.getId());
+    tariffService.setupTrialPeriod(userEntity.getId());
 
     return new TokenPairDto(session.token(), refreshToken.token());
   }
@@ -132,7 +133,7 @@ public class UserService {
     log.info("User logged out: {}", request.userId());
   }
 
-  @Transactional()
+  @Transactional
   public TokenPairDto refreshTokens(RefreshTokenRequest request) {
     RefreshTokenDto refreshToken = refreshTokenService.validate(request.refreshToken());
 
@@ -162,7 +163,6 @@ public class UserService {
             .getUserById(request.userId())
             .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
-    // Проверяем, не находится ли пользователь в ограниченном режиме
     if (userEntity.getUserStatus() != UserStatus.ACTIVE) {
       throw new IllegalStateException("Cannot update user info while account is restricted");
     }

@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
+import com.mipt.team4.cloud_storage_backend.utils.file.FileLoader;
 import java.io.IOException;
 
 public enum TestFiles {

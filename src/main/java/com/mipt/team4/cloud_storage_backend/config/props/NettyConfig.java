@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record NettyConfig(
     boolean enableLogging,
     boolean enableHttps,
+    boolean httpsRedirect,
     int httpPort,
     int httpsPort,
     int bossThreads,

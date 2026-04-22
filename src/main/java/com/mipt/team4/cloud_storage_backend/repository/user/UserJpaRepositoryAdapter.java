@@ -6,10 +6,11 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,7 +54,7 @@ public class UserJpaRepositoryAdapter {
       LocalDateTime startDate,
       LocalDateTime endDate,
       boolean autoRenew,
-      Long storageLimit) { // Изменено с long на Long для возможности null
+      Long storageLimit) {
     jpaRepository.updateTariff(userId, plan, startDate, endDate, autoRenew, storageLimit);
   }
 
@@ -103,8 +104,9 @@ public class UserJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public List<UserEntity> getUsersWithTariffEndingBetween(LocalDateTime from, LocalDateTime to) {
-    return jpaRepository.findAllByTariffEndDateBetweenAndUserStatus(from, to, UserStatus.ACTIVE);
+  public Slice<UserEntity> getUsersWithTariffEndingBetween(
+      LocalDateTime from, LocalDateTime to, Pageable pageable) {
+    return jpaRepository.findAllByTariffEndDateBetweenAndIsActiveTrue(from, to, pageable);
   }
 
   @Transactional(readOnly = true)

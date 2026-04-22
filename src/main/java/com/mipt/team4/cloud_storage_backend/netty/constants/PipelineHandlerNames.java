@@ -31,5 +31,6 @@ public final class PipelineHandlerNames {
   public static final String STORAGE_EXCEPTION = "storageExceptionHandler";
   public static final String HEAD_GLOBAL_ERROR = "headGlobalErrorHandler";
   public static final String TAIL_GLOBAL_ERROR = "tailGlobalErrorHandler";
+  public static final String HTTPS_REDIRECT = "httpsRedirectHandler";
   public static final String IDLE_TIMEOUT = "idleTimeoutHandler";
 }

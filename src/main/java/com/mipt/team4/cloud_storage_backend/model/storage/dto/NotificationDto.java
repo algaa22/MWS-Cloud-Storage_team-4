@@ -12,10 +12,14 @@ public class NotificationDto {
   private String userName;
   private UUID userId;
   private String fileName;
+  private String folderPath;
   private Long usedStorage;
   private Long storageLimit;
+  private UUID userId;
   private String tariffName;
+  private Integer daysLeft;
   private String endDate;
+  private String verdict;
   private String deletionDate;
   private Integer daysLeft;
 }

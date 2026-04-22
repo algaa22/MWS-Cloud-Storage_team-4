@@ -26,4 +26,15 @@ public interface NotificationClient {
   void notifyTrialExpired(String email, String name);
 
   void notifyTrialStarted(String email, String name, LocalDateTime trialEndDate);
+
+  void notifyDangerousFile(
+      String userEmail,
+      String userName,
+      String fileName,
+      String folderPath,
+      String verdict,
+      UUID userId);
+
+  void notifyScanError(
+      String userEmail, String userName, String fileName, String folderPath, UUID userId);
 }

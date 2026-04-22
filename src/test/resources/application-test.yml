@@ -7,9 +7,30 @@ spring:
 
 netty:
   enable-https: false
+  https-redirect: false
   http-port: 8081
   worker-threads: 2
 
+antivirus:
+  enabled: false
+
 storage:
   failsafe-retry:
-    max-attempts: 1
+    max-attempts: 3
+    first-delay: 10ms
+  s3:
+    url: http://localhost:9000
+    access-key: test-key
+    secret-key: test-secret
+    region: eu-central-1
+    user-data-bucket:
+      name: test-bucket
+    limits:
+      min-file-part-size: 5242880 # 5mb
+      max-file-part-size: 33554432 # 32mb
+      max-parts-num: 10000
+  health-check:
+    interval-seconds: 10
+    db-timeout-seconds: 2
+    s3-timeout-seconds: 2
+    min-free-memory-percent: 0.10

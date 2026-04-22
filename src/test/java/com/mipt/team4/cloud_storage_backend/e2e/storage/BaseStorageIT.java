@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
-import com.mipt.team4.cloud_storage_backend.e2e.BaseIT;
+import com.mipt.team4.cloud_storage_backend.base.BaseIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileSimpleTransferITUtils;
 import com.mipt.team4.cloud_storage_backend.e2e.user.utils.UserAuthUtils;

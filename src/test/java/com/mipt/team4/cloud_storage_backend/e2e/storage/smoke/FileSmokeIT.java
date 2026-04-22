@@ -6,12 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.HttpStatus;
-import com.mipt.team4.cloud_storage_backend.e2e.BaseIT;
+import com.mipt.team4.cloud_storage_backend.base.BaseIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.BaseStorageIT;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils;
+import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileChunkedTransferITUtils.UploadResult;
 import com.mipt.team4.cloud_storage_backend.e2e.storage.utils.FileOperationsITUtils;
-import com.mipt.team4.cloud_storage_backend.utils.TestConstants;
 import com.mipt.team4.cloud_storage_backend.utils.TestFiles;
+import com.mipt.team4.cloud_storage_backend.utils.file.HashUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.IOException;
 import java.net.http.HttpResponse;
@@ -40,19 +41,40 @@ public class FileSmokeIT extends BaseStorageIT {
 
   @Test
   public void shouldChunkedUploadAndDownloadFile() throws IOException {
-    byte[] fileData = TestFiles.BIG_FILE.getData();
+    final int partSize = 5 * 1024 * 1024;
 
-    FileChunkedTransferITUtils.UploadResult uploadResult =
-        chunkedITUtils.sendUploadRequest(
+    byte[] fileData = TestFiles.BIG_FILE.getData();
+    List<byte[]> parts = chunkedITUtils.splitData(fileData, partSize);
+
+    UploadResult startUploadResult =
+        chunkedITUtils.startUploadSession(
             apacheClient,
             currentUserToken,
             DEFAULT_FILE_TARGET_NAME,
-            TestConstants.BIG_FILE_LOCAL_PATH,
-            "",
-            fileData.length);
-    UUID fileId = itUtils.extractIdFromBody(uploadResult.body());
+            fileData.length,
+            parts.size());
+    assertEquals(HttpStatus.SC_OK, startUploadResult.statusCode());
 
-    assertEquals(HttpStatus.SC_CREATED, uploadResult.statusCode());
+    UUID sessionId =
+        UUID.fromString(
+            itUtils.getRootNodeFromBody(startUploadResult.body()).get("sessionId").asText());
+
+    for (int i = 0; i < parts.size(); i++) {
+      int partNumber = i + 1;
+      byte[] partData = parts.get(i);
+      String checksum = HashUtils.calculateSha256(partData);
+
+      UploadResult uploadPartResult =
+          chunkedITUtils.uploadPart(
+              apacheClient, currentUserToken, sessionId, partNumber, partData, checksum);
+      assertEquals(HttpStatus.SC_OK, uploadPartResult.statusCode());
+    }
+
+    UploadResult completeUploadResult =
+        chunkedITUtils.completeUploadSession(apacheClient, currentUserToken, sessionId);
+    assertEquals(HttpStatus.SC_CREATED, completeUploadResult.statusCode());
+
+    UUID fileId = itUtils.extractIdFromBody(completeUploadResult.body());
     checkDownloadFile(fileId, fileData);
   }
 
@@ -97,10 +119,31 @@ public class FileSmokeIT extends BaseStorageIT {
     UUID fileId = simpleUploadFile(DEFAULT_FILE_TARGET_NAME);
 
     HttpResponse<String> deletedResponse =
-        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId);
+        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId, true);
     assertEquals(HttpStatus.SC_OK, deletedResponse.statusCode());
 
     assertFileNotFound(currentUserToken, fileId);
+  }
+
+  @Test
+  public void shouldSoftDeleteAndRestoreFile() throws IOException, InterruptedException {
+    UUID fileId = simpleUploadFile("restore-test-" + UUID.randomUUID() + ".txt");
+    byte[] content = TestFiles.SMALL_FILE.getData();
+
+    HttpResponse<String> deleteResponse =
+        fileOperationsITUtils.sendDeleteFileRequest(client, currentUserToken, fileId, false);
+    assertEquals(HttpStatus.SC_OK, deleteResponse.statusCode());
+
+    FileChunkedTransferITUtils.DownloadResult downloadResult =
+        chunkedITUtils.sendDownloadRequest(BaseIT.apacheClient, currentUserToken, fileId);
+    assertTrue(downloadResult.statusCode() >= 400);
+
+    HttpResponse<String> restoreResponse =
+        fileOperationsITUtils.sendRestoreFileRequest(client, currentUserToken, fileId);
+
+    assertEquals(HttpStatus.SC_OK, restoreResponse.statusCode());
+
+    checkDownloadFile(fileId, content);
   }
 
   @Test

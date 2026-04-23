@@ -5,7 +5,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.utils.string.StoragePaths;
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
-import java.net.URI;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
@@ -14,12 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -34,21 +29,12 @@ public class S3ContentRepository implements FileContentRepository {
   private final S3Presigner s3Presigner;
 
   @Autowired
-  public S3ContentRepository(StorageProps storageProps, S3Wrapper wrapper, S3Client s3Client) {
+  public S3ContentRepository(
+      StorageProps storageProps, S3Wrapper wrapper, S3Client s3Client, S3Presigner s3Presigner) {
     this.wrapper = wrapper;
     this.bucketName = storageProps.s3().userDataBucket().name();
     this.s3Client = s3Client;
-
-    StorageProps.S3 s3Props = storageProps.s3();
-    this.s3Presigner =
-        S3Presigner.builder()
-            .endpointOverride(URI.create(s3Props.url()))
-            .region(Region.of(s3Props.region()))
-            .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
-            .credentialsProvider(
-                StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey())))
-            .build();
+    this.s3Presigner = s3Presigner;
   }
 
   @PostConstruct

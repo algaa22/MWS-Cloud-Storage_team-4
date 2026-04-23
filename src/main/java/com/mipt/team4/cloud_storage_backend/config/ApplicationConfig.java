@@ -18,15 +18,19 @@ import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
 import dev.failsafe.RetryPolicy;
 import java.net.URI;
 import java.security.SecureRandom;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.http.SdkHttpConfigurationOption;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.utils.AttributeMap;
 
 @Configuration
 @RequiredArgsConstructor
@@ -70,14 +74,21 @@ public class ApplicationConfig {
   public S3Client s3Client(StorageProps config) {
     StorageProps.S3 s3Props = config.s3();
 
-    AwsBasicCredentials credentials =
-        AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey());
-
     return S3Client.builder()
         .endpointOverride(URI.create(s3Props.url()))
         .region(Region.of(s3Props.region()))
-        .credentialsProvider(StaticCredentialsProvider.create(credentials))
+        .credentialsProvider(
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey())))
         .forcePathStyle(true)
+        .httpClient(
+            UrlConnectionHttpClient.builder()
+                .connectionTimeout(Duration.ofSeconds(s3Props.timeoutsSec().connection()))
+                .socketTimeout(Duration.ofSeconds(s3Props.timeoutsSec().socket()))
+                .buildWithDefaults(
+                    AttributeMap.builder()
+                        .put(SdkHttpConfigurationOption.TRUST_ALL_CERTIFICATES, true)
+                        .build()))
         .build();
   }
 
@@ -121,6 +132,10 @@ public class ApplicationConfig {
         .credentialsProvider(
             StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey())))
+        .serviceConfiguration(
+            software.amazon.awssdk.services.s3.S3Configuration.builder()
+                .pathStyleAccessEnabled(true)
+                .build())
         .build();
   }
 }

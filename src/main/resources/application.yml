@@ -36,6 +36,10 @@ management:
     prometheus:
       enabled: true
 
+  health:
+    defaults:
+      enabled: true
+
   metrics:
     tags:
       application: ${spring.application.name}

@@ -17,6 +17,7 @@ public record GetFileListRequest(
     @QueryParam(defaultValue = "false", required = false) boolean recursive,
     @QueryParam(defaultValue = "false", required = false) boolean includeDirectories,
     @NestedDto FilePaginationParams pagination,
+    @QueryParam(required = false) String query,
     @QueryParam(required = false)
         List<
                 @Pattern(

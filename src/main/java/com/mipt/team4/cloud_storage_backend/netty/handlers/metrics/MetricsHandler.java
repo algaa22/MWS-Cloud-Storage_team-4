@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.metrics;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.NettyMetrics;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.NettyMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.netty.channel.ChannelDuplexHandler;
@@ -30,7 +30,8 @@ public class MetricsHandler extends ChannelDuplexHandler {
       Timer.Sample sample = Timer.start(meterRegistry);
       ctx.channel().attr(TIMER_SAMPLE_KEY).set(sample);
 
-      ctx.channel().attr(URI_KEY).set(request.uri());
+      String uri = request.uri().split("\\?")[0];
+      ctx.channel().attr(URI_KEY).set(uri);
       ctx.channel().attr(METHOD_KEY).set(request.method().name());
     }
 

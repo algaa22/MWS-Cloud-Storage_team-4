@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.schedulers.storage;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.storage.StorageMetrics;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
@@ -7,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaReposit
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepositoryWrapper;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileErasureService;
 import com.mipt.team4.cloud_storage_backend.utils.wrapper.BatchProcessor;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ public class StaleFileCleanupScheduler {
   private final FileErasureService erasureService;
   private final StorageProps storageProps;
   private final BatchProcessor batchProcessor;
+  private final MeterRegistry meterRegistry;
 
   private static final String TASK_NAME = "Stale File Cleanup";
 
@@ -67,14 +70,17 @@ public class StaleFileCleanupScheduler {
     switch (entity.getOperationType()) {
       case UPLOAD -> {
         erasureService.hardDelete(entity);
+        incrementCleanupCount(FileOperationType.UPLOAD);
         log.info("[{}] Deleted stale upload for file {}", TASK_NAME, entity.getId());
       }
       case DELETE -> {
         erasureService.hardDelete(entity);
+        incrementCleanupCount(FileOperationType.DELETE);
         log.info("[{}] Retried deletion for file {}", TASK_NAME, entity.getId());
       }
       case CHANGE_METADATA -> {
         storageRepositoryWrapper.resetToReady(entity, FileOperationType.CHANGE_METADATA);
+        incrementCleanupCount(FileOperationType.CHANGE_METADATA);
         log.info(
             "[{}] Forced rollback to stuck metadata operation for file {}",
             TASK_NAME,
@@ -84,5 +90,11 @@ public class StaleFileCleanupScheduler {
           throw new IllegalStateException(
               "FATAL: Unknown operation type for file " + entity.getId());
     }
+  }
+
+  private void incrementCleanupCount(FileOperationType operationType) {
+    meterRegistry
+        .counter(StorageMetrics.CLEANUP_STALE_FILES, "operationType", operationType.name())
+        .increment();
   }
 }

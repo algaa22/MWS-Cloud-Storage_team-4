@@ -1,8 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.http;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.config.props.NettyProps;
 import com.mipt.team4.cloud_storage_backend.exception.netty.MissingHostHeaderException;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;

@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.controller.storage.chunked;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.retry.UploadRetriableException;
 import com.mipt.team4.cloud_storage_backend.exception.upload.MissingUploadContextException;
@@ -20,8 +22,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.MissingU
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.StartChunkedUploadResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.UploadPartRetryResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.UploadStatusResponse;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.ChunkedUploadService;

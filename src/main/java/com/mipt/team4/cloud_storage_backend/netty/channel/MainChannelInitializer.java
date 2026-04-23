@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.channel;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.config.props.NettyProps;
-import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.http.ProtocolNegotiationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;

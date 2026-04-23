@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.constants;
+package com.mipt.team4.cloud_storage_backend.config.constants.netty;
 
 public class ValidationPatterns {
   public static final String FILE_NAME_REGEXP = "^[^\\\\/:*?\"<>|]+$";

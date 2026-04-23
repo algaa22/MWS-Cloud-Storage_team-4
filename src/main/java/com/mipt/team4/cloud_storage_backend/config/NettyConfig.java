@@ -1,8 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.config;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.NettyMetrics;
 import com.mipt.team4.cloud_storage_backend.config.props.NettyProps;
 import com.mipt.team4.cloud_storage_backend.netty.channel.MainChannelInitializer;
-import com.mipt.team4.cloud_storage_backend.netty.constants.NettyMetrics;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.http.ProtocolNegotiationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
@@ -64,7 +64,7 @@ public class NettyConfig {
   public ChannelGroup allChannels(MeterRegistry meterRegistry) {
     ChannelGroup group = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
-    Gauge.builder(NettyMetrics.NETTY_CONNECTIONS_ACTIVE, group, ChannelGroup::size)
+    Gauge.builder(NettyMetrics.CONNECTIONS_ACTIVE, group, ChannelGroup::size)
         .description("Number of currently open TCP connections")
         .register(meterRegistry);
 

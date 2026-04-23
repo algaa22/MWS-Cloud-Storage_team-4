@@ -64,4 +64,9 @@ public class ChunkedUploadJpaRepositoryAdapter {
       LocalDateTime threshold, Pageable pageable) {
     return jpaRepository.findByFile_UpdatedAtBefore(threshold, pageable);
   }
+
+  @Transactional(readOnly = true)
+  public long count() {
+    return jpaRepository.count();
+  }
 }

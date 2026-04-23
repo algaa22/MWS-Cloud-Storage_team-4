@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;

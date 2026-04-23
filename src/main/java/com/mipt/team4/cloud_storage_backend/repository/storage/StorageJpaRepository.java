@@ -259,6 +259,9 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.parentId = :parentId AND s.name = :name AND s.isDeleted = false")
   Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 
+  @Query("SELECT COUNT(s) FROM StorageEntity s WHERE s.status=:status")
+  long countByStatus(FileStatus status);
+
   Slice<StorageEntity> findByStatusInAndUpdatedAtBefore(
       List<FileStatus> statuses, LocalDateTime threshold, Pageable pageable);
 

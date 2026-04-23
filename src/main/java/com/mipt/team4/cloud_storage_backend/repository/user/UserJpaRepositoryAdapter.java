@@ -6,6 +6,7 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -106,12 +107,14 @@ public class UserJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Slice<UserEntity> getUsersWithTariffEndingBetween(
       LocalDateTime from, LocalDateTime to, Pageable pageable) {
-    return jpaRepository.findAllByTariffEndDateBetweenAndIsActiveTrue(from, to, pageable);
+    return jpaRepository.findAllByTariffEndDateBetweenAndUserStatus(
+        from, to, UserStatus.ACTIVE, pageable);
   }
 
   @Transactional(readOnly = true)
-  public List<UserEntity> getUsersWithExpiredTariff(LocalDateTime now) {
-    return jpaRepository.findAllByTariffEndDateBeforeAndUserStatus(now, UserStatus.ACTIVE);
+  public Slice<UserEntity> getUsersWithExpiredTariff(LocalDateTime now, Pageable pageable) {
+    return jpaRepository.findAllByTariffEndDateBeforeAndUserStatus(
+        now, UserStatus.ACTIVE, pageable);
   }
 
   @Transactional(readOnly = true)

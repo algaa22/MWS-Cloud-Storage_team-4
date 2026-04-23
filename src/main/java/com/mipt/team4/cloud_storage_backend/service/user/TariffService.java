@@ -312,13 +312,14 @@ public class TariffService {
     log.info("Processing auto-renew for user: {}", user.getId());
 
     try {
-      paymentService.autoRenewTariff(user.getId());
+      paymentService.processAutoRenewal(user.getId(), user.getTariffPlan());
 
       LocalDateTime newEndDate =
           LocalDateTime.now().plusDays(user.getTariffPlan().getDurationDays());
 
       userRepository.updateTariffEndDate(user.getId(), newEndDate);
-      notificationClient.notifyTariffRenewed(user.getEmail(), user.getUsername(), newEndDate);
+      notificationClient.notifyTariffRenewed(
+          user.getEmail(), user.getUsername(), user.getTariffPlan().name(), newEndDate);
 
       log.info("Auto-renew successful for user: {}, new end date: {}", user.getId(), newEndDate);
 

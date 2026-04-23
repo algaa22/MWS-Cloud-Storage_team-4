@@ -5,8 +5,11 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -111,6 +114,10 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
   List<UserEntity> findAllByTariffEndDateBeforeAndUserStatus(
       @Param("now") LocalDateTime now, @Param("status") UserStatus status);
 
+  @Query("SELECT u FROM UserEntity u WHERE u.tariffEndDate < :now AND u.userStatus = :status")
+  Slice<UserEntity> findAllByTariffEndDateBeforeAndUserStatus(
+      @Param("now") LocalDateTime now, @Param("status") UserStatus status, Pageable pageable);
+
   List<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
       @Param("status") UserStatus status, @Param("date") LocalDateTime date);
 
@@ -125,4 +132,12 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
   @Deprecated
   List<UserEntity> findAllByTariffEndDateBeforeAndIsActiveTrue(LocalDateTime now);
+
+  @Query(
+      "SELECT u FROM UserEntity u WHERE u.tariffEndDate BETWEEN :from AND :to AND u.userStatus = :status")
+  Slice<UserEntity> findAllByTariffEndDateBetweenAndUserStatus(
+      @Param("from") LocalDateTime from,
+      @Param("to") LocalDateTime to,
+      @Param("status") UserStatus status,
+      Pageable pageable);
 }

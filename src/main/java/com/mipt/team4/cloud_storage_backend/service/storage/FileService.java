@@ -3,19 +3,13 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 import com.mipt.team4.cloud_storage_backend.antivirus.config.props.AntivirusProps;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.antivirus.service.AntivirusService;
-import com.mipt.team4.cloud_storage_backend.exception.storage.CannotDownloadDirectoryException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.DirectoryContainsLockedFilesException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileIsDangerousException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileUnderScanException;
+import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
+import com.mipt.team4.cloud_storage_backend.exception.storage.*;
 import com.mipt.team4.cloud_storage_backend.exception.upload.MissingChecksumException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
-import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadFileResponse;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
+import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ContentRangeDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
@@ -25,11 +19,9 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFil
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedDownloadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.StartChunkedUploadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FilePreviewResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUploadRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FilePreviewResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
@@ -44,22 +36,29 @@ import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.utils.converter.ContentRangeConverter;
 import com.mipt.team4.cloud_storage_backend.utils.file.HashUtils;
 import com.mipt.team4.cloud_storage_backend.utils.string.MimeTypeDetector;
+import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileService {
 
-    private static final int PREVIEW_EXPIRY_SECONDS = 3600;
+  private static final int PREVIEW_EXPIRY_SECONDS = 3600;
 
   private final FileErasureService erasureService;
   private final AntivirusService antivirusService;
@@ -71,6 +70,9 @@ public class FileService {
   private final StorageRepositoryWrapper storageRepositoryWrapper;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
+  private final FileShareRepositoryAdapter shareRepository;
+  private final NotificationConfig notificationConfig;
+  private final NotificationClient notificationClient;
 
   @Transactional
   public UUID simpleUpload(SimpleUploadRequest request) {
@@ -192,11 +194,11 @@ public class FileService {
         storageRepository
             .getIncludeDeleted(userId, fileId)
             .orElseThrow(() -> new FileNotFoundException(fileId));
-      userRepository.decreaseUsedStorage(userId, fileEntity.getSize());
+    userRepository.decreaseUsedStorage(userId, fileEntity.getSize());
 
     fileEntity.setDeleted(true);
     fileEntity.setDeletedAt(LocalDateTime.now());
-      storageRepository.softDeleteEntity(fileEntity);
+    storageRepository.softDeleteEntity(fileEntity);
   }
 
   @Transactional
@@ -266,7 +268,7 @@ public class FileService {
     UUID userId = request.userId();
 
     if (!tariffService.canModifyFiles(userId)) {
-      throw new TariffAccessDeniedException("Cannot modify files: subscription expired");
+      throw new TariffAccessDeniedException();
     }
 
     StorageEntity fileEntity =
@@ -297,68 +299,86 @@ public class FileService {
     }
   }
 
-    @Transactional(readOnly = true)
-    public FilePreviewResponse generatePreviewUrl(UUID fileId, UUID userId) {
-        if (!tariffService.hasAccess(userId)) {
-            throw new TariffAccessDeniedException("Your tariff has expired. Please renew to continue.");
-        }
-
-        StorageEntity fileEntity =
-                storageRepository
-                        .get(userId, fileId)
-                        .orElseThrow(() -> new StorageFileNotFoundException(fileId));
-
-        boolean isPreviewable = isPreviewableMimeType(fileEntity.getMimeType());
-
-        String previewUrl = null;
-        if (isPreviewable) {
-            previewUrl = storageRepository.generatePresignedUrl(fileEntity, PREVIEW_EXPIRY_SECONDS);
-        }
-
-        return FilePreviewResponse.from(fileEntity, previewUrl);
+  @Transactional(readOnly = true)
+  public FilePreviewResponse generatePreviewUrl(UUID fileId, UUID userId) {
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException();
     }
 
-    private boolean isPreviewableMimeType(String mimeType) {
-        if (mimeType == null) return false;
-        return mimeType.startsWith("image/")
-                || mimeType.equals("application/pdf")
-                || mimeType.startsWith("video/")
-                || mimeType.equals("text/plain")
-                || mimeType.startsWith("text/");
+    StorageEntity fileEntity =
+        storageRepository
+            .get(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
+    boolean isPreviewable = isPreviewableMimeType(fileEntity.getMimeType());
+
+    String previewUrl = null;
+    if (isPreviewable) {
+      previewUrl = storageRepository.generatePresignedUrl(fileEntity, PREVIEW_EXPIRY_SECONDS);
     }
 
-    private void checkStorageAndNotify(UUID userId) {
-        userRepository
-                .getStorageUsage(userId)
-                .ifPresent(
-                        usage -> {
-                            double ratio = usage.getRatio();
+    return FilePreviewResponse.from(fileEntity, previewUrl);
+  }
 
-                            log.info(
-                                    "Storage check for user {}: used={}, limit={}, {}%",
-                                    userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
+  private boolean isPreviewableMimeType(String mimeType) {
+    if (mimeType == null) return false;
+    return mimeType.startsWith("image/")
+        || mimeType.equals("application/pdf")
+        || mimeType.startsWith("video/")
+        || mimeType.equals("text/plain")
+        || mimeType.startsWith("text/");
+  }
 
-                            if (ratio >= notificationConfig.fullThreshold()) {
-                                userRepository
-                                        .getUserById(userId)
-                                        .ifPresent(
-                                                user ->
-                                                        notificationClient.notifyStorageFull(
-                                                                user.getEmail(), user.getUsername(), userId));
-                            } else if (ratio >= notificationConfig.almostFullThreshold()) {
-                                userRepository
-                                        .getUserById(userId)
-                                        .ifPresent(
-                                                user ->
-                                                        notificationClient.notifyStorageAlmostFull(
-                                                                user.getEmail(),
-                                                                user.getUsername(),
-                                                                usage.used(),
-                                                                usage.limit(),
-                                                                userId));
-                            }
-                        });
+  private void checkStorageAndNotify(UUID userId) {
+    userRepository
+        .getStorageUsage(userId)
+        .ifPresent(
+            usage -> {
+              double ratio = usage.getRatio();
+
+              log.info(
+                  "Storage check for user {}: used={}, limit={}, {}%",
+                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
+
+              if (ratio >= notificationConfig.fullThreshold()) {
+                userRepository
+                    .getUserById(userId)
+                    .ifPresent(
+                        user ->
+                            notificationClient.notifyStorageFull(
+                                user.getEmail(), user.getUsername(), userId));
+              } else if (ratio >= notificationConfig.almostFullThreshold()) {
+                userRepository
+                    .getUserById(userId)
+                    .ifPresent(
+                        user ->
+                            notificationClient.notifyStorageAlmostFull(
+                                user.getEmail(),
+                                user.getUsername(),
+                                usage.used(),
+                                usage.limit(),
+                                userId));
+              }
+            });
+  }
+
+  @GetMapping("/preview/content")
+  public ResponseEntity<byte[]> previewContent(
+      @RequestParam UUID fileId, @RequestParam UUID userId) {
+    StorageEntity fileEntity =
+        storageRepository
+            .get(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
+    InputStream inputStream = storageRepository.download(fileEntity, null);
+
+    try {
+      return ResponseEntity.ok()
+          .contentType(MediaType.parseMediaType(fileEntity.getMimeType()))
+          .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+          .body(inputStream.readAllBytes());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
-}
-
+  }
 }

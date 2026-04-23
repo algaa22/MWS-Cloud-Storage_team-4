@@ -1,8 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.utils.string.StoragePaths;
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
+import java.net.URI;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -10,9 +14,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 @Slf4j
 @Repository
@@ -20,13 +31,24 @@ public class S3ContentRepository implements FileContentRepository {
   private final S3Wrapper wrapper;
   private final S3Client s3Client;
   private final String bucketName;
+  private final S3Presigner s3Presigner;
 
   @Autowired
   public S3ContentRepository(StorageProps storageProps, S3Wrapper wrapper, S3Client s3Client) {
     this.wrapper = wrapper;
-
     this.bucketName = storageProps.s3().userDataBucket().name();
     this.s3Client = s3Client;
+
+    StorageProps.S3 s3Props = storageProps.s3();
+    this.s3Presigner =
+        S3Presigner.builder()
+            .endpointOverride(URI.create(s3Props.url()))
+            .region(Region.of(s3Props.region()))
+            .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey())))
+            .build();
   }
 
   @PostConstruct
@@ -179,5 +201,46 @@ public class S3ContentRepository implements FileContentRepository {
               DeleteObjectRequest.builder().bucket(bucketName).key(s3Key).build());
           return null;
         });
+  }
+
+  @Override
+  public String generatePresignedUrl(String s3Key, int expirySeconds) {
+    return wrapper.execute(
+        () -> {
+          try {
+            // 1. Указываем параметры ответа ПРЯМО ЗДЕСЬ, чтобы они вошли в подпись
+            GetObjectRequest getObjectRequest =
+                GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .responseContentDisposition("inline")
+                    .build();
+
+            // Создаем пресайнер с форсированным PathStyle (если это не сделано в бине)
+            // Лучше настроить S3Presigner один раз в конструкторе
+
+            GetObjectPresignRequest presignRequest =
+                GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofSeconds(expirySeconds))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            PresignedGetObjectRequest presignedRequest =
+                s3Presigner.presignGetObject(presignRequest);
+
+            // Теперь URL уже содержит правильную подпись и все параметры.
+            // Никаких url.replace() и ручных правок делать НЕЛЬЗЯ.
+            return presignedRequest.url().toString();
+
+          } catch (Exception e) {
+            log.error("Failed to generate presigned URL for key {}", s3Key, e);
+            return null;
+          }
+        });
+  }
+
+  public String generatePresignedUrl(StorageEntity fileEntity, int expirySeconds) {
+    String s3Key = StoragePaths.getS3Key(fileEntity.getUserId(), fileEntity.getId());
+    return generatePresignedUrl(s3Key, expirySeconds);
   }
 }

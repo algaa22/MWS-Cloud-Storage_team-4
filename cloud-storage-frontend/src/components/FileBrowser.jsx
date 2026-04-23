@@ -443,7 +443,7 @@ const refreshStorageInfo = async () => {
         return;
       }
 
-      const data = await getFiles(token, currentPath);
+      const data = await getFiles(token, currentPath, 0, 100);
       console.log("Raw getFiles data:", data);
 
       if (!Array.isArray(data)) {

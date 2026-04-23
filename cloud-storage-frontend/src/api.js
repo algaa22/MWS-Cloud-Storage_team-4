@@ -270,21 +270,23 @@ export const getUserInfo = async (token) => {
   }
 };
 
-export const getFiles = async (token, currentPath = "") => {
+export const getFiles = async (token, currentPath = "", page = 0, size = 20) => {
   console.log("=== GET FILES ===");
 
   if (!token) throw new Error("Требуется авторизация");
 
   const params = new URLSearchParams();
   params.append("includeDirectories", "true");
+  params.append("page", page.toString());
+  params.append("size", size.toString());
 
-  const pathParts = currentPath.split('/').filter(p => p && p !== '');
-  if (pathParts.length > 0) {
-    const parentId = pathParts[pathParts.length - 1];
-    params.append("parentId", parentId);
+  // Если currentPath передан и не пустой - используем как parentId
+  if (currentPath && currentPath !== "") {
+    params.append("parentId", currentPath);
   }
 
   const listUrl = `${BASE}/files/list?${params.toString()}`;
+  console.log("Request URL:", listUrl);
 
   try {
     const listResponse = await fetchWithTokenRefresh(listUrl, {
@@ -299,40 +301,42 @@ export const getFiles = async (token, currentPath = "") => {
     }
 
     const data = await listResponse.json();
-    const files = data?.files || data || [];
+    console.log("Raw server response:", data);
 
-    console.log(`Found ${files.length} items`);
-    console.log("Raw server response:", files);
+    // ИСПРАВЛЕНО: правильно извлекаем массив файлов
+    let filesArray = [];
 
-    const result = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const item = files[i];
-
-      let name = "Без имени";
-      if (item.name && item.name.trim() !== "") {
-        name = item.name;
-      }
-
-      let type = item.isDirectory ? "folder" : "file";
-
-      result.push({
-        name: name,
-        type: type,
-        size: item.size || 0,
-        id: item.id || Math.random().toString(),
-        _raw: item
-      });
-
-      console.log(`Processed ${i+1}/${files.length}:`, {
-        name: name,
-        type: type,
-        size: item.size || 0,
-        id: item.id
-      });
+    if (data.page && Array.isArray(data.page.content)) {
+      filesArray = data.page.content;
+      console.log("Extracted from page.content");
+    } else if (Array.isArray(data.content)) {
+      filesArray = data.content;
+      console.log("Extracted from content");
+    } else if (Array.isArray(data.files)) {
+      filesArray = data.files;
+      console.log("Extracted from files");
+    } else if (Array.isArray(data)) {
+      filesArray = data;
+      console.log("Data is already an array");
+    } else {
+      console.warn("Unexpected data structure:", data);
+      filesArray = [];
     }
 
-    console.log("Final result:", result);
+    console.log(`Found ${filesArray.length} items`);
+    console.log("Raw items:", filesArray);
+
+    const result = filesArray.map(item => ({
+      name: item.name || "Без имени",
+      type: item.isDirectory ? "folder" : "file",
+      size: item.size || 0,
+      id: item.id,
+      parentId: item.parentId,
+      tags: item.tags,
+      _raw: item
+    }));
+
+    console.log("Processed result:", result);
     return result;
 
   } catch (err) {
@@ -969,35 +973,34 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
   console.log("Using simple upload with tags");
 
   let url = `${BASE}/files/upload?name=${encodeURIComponent(file.name)}`;
-  if (parentId) {
-    url += `&parentId=${encodeURIComponent(parentId)}`;
-  }
+
 
   console.log("Upload URL:", url);
-  console.log("Tags:", tagsString);
+  console.log("File size:", file.size);
+  console.log("File type:", file.type);
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 30000);
+    // СОЗДАЁМ FormData для правильной передачи файла
+    const formData = new FormData();
+    formData.append('file', file);  // Добавляем файл в form-data
 
-    const headers = {
-      "Content-Type": file.type || "application/octet-stream"
-    };
-
-    if (tagsString && tagsString.trim() !== '') {
-      headers["X-File-Tags"] = tagsString;
+    if (parentId && parentId !== "") {
+      formData.append('parentId', parentId);
+      console.log("Adding parentId to formData:", parentId);
     }
+        if (tagsString && tagsString.trim() !== '') {
+      formData.append('tags', tagsString);
+    }
+    if (parentId) {
+      formData.append('parentId', parentId);
+    }
+    formData.append('name', file.name);
 
     const res = await fetchWithTokenRefresh(url, {
       method: "POST",
-      headers: headers,
-      body: file,
-      signal: controller.signal
+      // НЕ устанавливаем Content-Type - браузер сам добавит multipart/form-data с boundary
+      body: formData
     }, token);
-
-    clearTimeout(timeoutId);
 
     if (onProgress) onProgress(100);
 
@@ -1043,7 +1046,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && onProgress) {
         const progress = Math.round((event.loaded / event.total) * 100);
-        console.log(`Upload progress: ${progress}% (${event.loaded}/${event.total} bytes)`);
         onProgress(progress);
       }
     };
@@ -1078,10 +1080,19 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
     xhr.timeout = 300000;
 
+    // ИСПРАВЛЕНО: создаём FormData
     const formData = new FormData();
     formData.append('file', file);
 
-    xhr.send(formData);
+    // Добавляем остальные параметры в FormData, а не в URL
+    if (parentId) {
+      formData.append('parentId', parentId);
+    }
+    if (tagsString && tagsString.trim() !== '') {
+      formData.append('tags', tagsString);
+    }
+
+    xhr.send(formData);  // Отправляем FormData, а не file напрямую
   });
 };
 

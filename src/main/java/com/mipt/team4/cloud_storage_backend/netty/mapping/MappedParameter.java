@@ -164,13 +164,4 @@ public record MappedParameter(
 
     return result.toString();
   }
-
-  public enum SourceType {
-    QUERY,
-    HEADER,
-    BODY_PARAM,
-    BODY,
-    AUTH,
-    STATUS
-  }
 }

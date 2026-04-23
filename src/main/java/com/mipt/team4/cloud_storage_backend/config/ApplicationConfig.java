@@ -3,6 +3,8 @@ package com.mipt.team4.cloud_storage_backend.config;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mipt.team4.cloud_storage_backend.config.props.JacksonConfig;
 import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
@@ -24,6 +26,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Configuration
 @RequiredArgsConstructor
@@ -93,6 +96,8 @@ public class ApplicationConfig {
   @Bean
   public ObjectMapper objectMapper() {
     ObjectMapper mapper = new ObjectMapper();
+    mapper.registerModule(new JavaTimeModule());
+    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     mapper.deactivateDefaultTyping();
 
     JsonFactory factory = mapper.getFactory();
@@ -104,5 +109,18 @@ public class ApplicationConfig {
             .build());
 
     return mapper;
+  }
+
+  @Bean
+  public S3Presigner s3Presigner(StorageProps config) {
+    StorageProps.S3 s3Props = config.s3();
+
+    return S3Presigner.builder()
+        .endpointOverride(URI.create(s3Props.url()))
+        .region(Region.of(s3Props.region()))
+        .credentialsProvider(
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey())))
+        .build();
   }
 }

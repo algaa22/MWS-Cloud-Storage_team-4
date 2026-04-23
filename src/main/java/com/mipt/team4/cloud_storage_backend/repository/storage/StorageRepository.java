@@ -213,16 +213,16 @@ public class StorageRepository {
     return metadataRepository.getTrashFileList(userId, parentId, pageQuery);
   }
 
-  public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
-    return metadataRepository.getTrashFileList(userId, parentId);
-  }
-
-  public InputStream download(StorageEntity entity) {
+  public InputStream download(StorageEntity entity, String range) {
     if (entity.getStatus() != FileStatus.READY) {
       throw new DownloadNonReadyFileException(entity.getId());
     }
 
     return contentRepository.downloadObject(entity.getS3Key(), range);
+  }
+
+  public InputStream download(StorageEntity entity) {
+    return download(entity, null);
   }
 
   public Optional<StorageEntity> get(UUID userId, UUID fileId) {

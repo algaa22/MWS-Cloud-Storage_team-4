@@ -11,7 +11,6 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import jakarta.persistence.EntityManager;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -182,8 +181,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .username("name")
             .email("test-" + UUID.randomUUID() + "@email.com")
             .passwordHash("password")
-            .storageLimit(10737418240L)
-            .createdAt(LocalDateTime.now())
+            .paidStorageLimit(10737418240L)
             .build();
 
     userRepository.addUser(user);

@@ -6,14 +6,19 @@ import com.mipt.team4.cloud_storage_backend.netty.handlers.http.ProtocolNegotiat
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 
+@Sharable
+@RequiredArgsConstructor
 public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   private final ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers;
   private final PipelineBuilder pipelineBuilder;
@@ -21,22 +26,12 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
 
   private final NettyProps nettyConfig;
   private final ServerProtocol protocol;
-
-  public MainChannelInitializer(
-      PipelineBuilder pipelineBuilder,
-      SslContextFactory sslContextFactory,
-      ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers,
-      NettyProps nettyConfig,
-      ServerProtocol protocol) {
-    this.pipelineBuilder = pipelineBuilder;
-    this.sslContextFactory = sslContextFactory;
-    this.protocolNegotiationHandlers = protocolNegotiationHandlers;
-    this.nettyConfig = nettyConfig;
-    this.protocol = protocol;
-  }
+  private final ChannelGroup allChannels;
 
   @Override
   protected void initChannel(SocketChannel socketChannel) {
+    allChannels.add(socketChannel);
+
     ChannelPipeline pipeline = socketChannel.pipeline();
 
     if (nettyConfig.enableLogging()) {

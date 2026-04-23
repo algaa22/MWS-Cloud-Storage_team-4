@@ -1,8 +1,8 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.http;
 
-import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.props.NettyProps;
 import com.mipt.team4.cloud_storage_backend.exception.netty.MissingHostHeaderException;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 @Sharable
 @RequiredArgsConstructor
 public class HttpsRedirectHandler extends ChannelInboundHandlerAdapter {
-  private final NettyConfig nettyConfig;
+  private final NettyProps nettyConfig;
 
   private static final Set<String> REDIRECT_WHITELIST = Set.of(ApiEndpoints.HEALTHCHECK);
 

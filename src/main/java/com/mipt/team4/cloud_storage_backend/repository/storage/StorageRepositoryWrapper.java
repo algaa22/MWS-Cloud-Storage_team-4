@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.storage.StorageMetrics;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
 import com.mipt.team4.cloud_storage_backend.exception.FatalStorageException;
@@ -12,6 +13,11 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationTyp
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Counter.Builder;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +49,7 @@ public class StorageRepositoryWrapper {
   private final StorageJpaRepositoryAdapter metadataRepository;
   private final StorageProps storageProps;
   private final RetryPolicy<Object> retryPolicy;
+  private final MeterRegistry meterRegistry;
 
   /**
    * Выполняет обновление существующего файла.
@@ -121,8 +128,14 @@ public class StorageRepositoryWrapper {
 
   private <T> T executeOperation(
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
+    Timer.Sample timerSample = Timer.start(meterRegistry);
+    String status = "ERROR";
+
     try {
-      return Failsafe.with(retryPolicy).get(operation::apply);
+      T result = Failsafe.with(retryPolicy).get(operation::apply);
+      status = "SUCCESS";
+
+      return result;
     } catch (BaseStorageException exception) {
       handleException(exception, entity, operationType);
 
@@ -132,6 +145,8 @@ public class StorageRepositoryWrapper {
       handleException(fatalException, entity, operationType);
 
       throw fatalException;
+    } finally {
+      timerSample.stop(buildOperationDuration(operationType, status));
     }
   }
 
@@ -139,6 +154,10 @@ public class StorageRepositoryWrapper {
       StorageEntity entity, FileOperationType operationType, FileOperation<T> operation) {
     T result = executeOperation(entity, operationType, operation);
     syncEntityWithDatabase(entity, operationType, FileStatus.READY);
+
+    if (operationType == FileOperationType.UPLOAD) {
+      registerPayloadSize(entity.getSize());
+    }
 
     return result;
   }
@@ -178,14 +197,22 @@ public class StorageRepositoryWrapper {
 
   private void handleException(
       Throwable throwable, StorageEntity entity, FileOperationType operationType) {
+    Counter.Builder retryCounterBuilder = buildRetryCounter(throwable, operationType);
     setErrorMessage(entity, throwable);
 
-    if (throwable instanceof RecoverableStorageException exception) {
-      handleRecoverableException(exception, entity, operationType);
-    } else if (throwable instanceof FatalStorageException exception) {
-      handleFatalException(exception, entity, operationType);
-    } else {
-      handleBusinessException(entity, operationType);
+    try {
+      if (throwable instanceof RecoverableStorageException exception) {
+        retryCounterBuilder.tag("severity", "RECOVERABLE");
+        handleRecoverableException(exception, entity, operationType);
+      } else if (throwable instanceof FatalStorageException exception) {
+        retryCounterBuilder.tag("severity", "FATAL");
+        handleFatalException(exception, entity, operationType);
+      } else {
+        retryCounterBuilder.tag("severity", "UNKNOWN");
+        handleBusinessException(entity, operationType);
+      }
+    } finally {
+      retryCounterBuilder.register(meterRegistry).increment();
     }
   }
 
@@ -308,6 +335,27 @@ public class StorageRepositoryWrapper {
     }
 
     return entity.getStartedAt();
+  }
+
+  private Builder buildRetryCounter(Throwable throwable, FileOperationType operationType) {
+    return Counter.builder(StorageMetrics.RETRY_TOTAL)
+        .tag("operationType", operationType.name())
+        .tags("exception", throwable.getClass().getSimpleName())
+        .description("Total operation retry count");
+  }
+
+  private Timer buildOperationDuration(FileOperationType operationType, String status) {
+    return Timer.builder(StorageMetrics.OPERATION_DURATION)
+        .tag("operationType", operationType.name())
+        .tag("status", status)
+        .register(meterRegistry);
+  }
+
+  private void registerPayloadSize(long size) {
+    DistributionSummary.builder(StorageMetrics.PAYLOAD_SIZE_BYTES)
+        .baseUnit("bytes")
+        .register(meterRegistry)
+        .record(size);
   }
 
   @FunctionalInterface

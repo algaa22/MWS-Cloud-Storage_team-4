@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.schedulers.tariff;
 
-import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NotificationProps;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
@@ -20,7 +20,7 @@ public class TariffScheduler {
 
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationClient notificationClient;
-  private final NotificationConfig notificationConfig;
+  private final NotificationProps notificationConfig;
   private final TariffService tariffService;
   private final BatchProcessor batchProcessor;
 

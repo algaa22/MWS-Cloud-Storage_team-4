@@ -213,6 +213,11 @@ public class StorageJpaRepositoryAdapter {
     return String.join("/", nodes);
   }
 
+  @Transactional(readOnly = true)
+  public long countByStatus(FileStatus status) {
+    return jpaRepository.countByStatus(status);
+  }
+
   private void syncTags(UUID fileId, List<String> tags) {
     entityManager
         .createNativeQuery("DELETE FROM file_tags WHERE file_id = :fileId")

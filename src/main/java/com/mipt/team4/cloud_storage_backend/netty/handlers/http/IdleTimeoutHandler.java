@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.http;
 
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;

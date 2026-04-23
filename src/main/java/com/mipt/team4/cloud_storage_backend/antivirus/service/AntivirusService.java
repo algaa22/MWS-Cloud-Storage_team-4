@@ -7,6 +7,7 @@ import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.exception.ScannedFileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.exception.ScannedFileOwnerNotFoundException;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.mapper.ScanTaskMapper;
+import com.mipt.team4.cloud_storage_backend.config.constants.storage.StorageMetrics;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -14,6 +15,8 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -29,6 +32,7 @@ public class AntivirusService {
   private final UserJpaRepositoryAdapter userRepository;
   private final AntivirusTaskProducer taskProducer;
   private final AntivirusProps antivirusProps;
+  private final MeterRegistry meterRegistry;
 
   @Transactional(propagation = Propagation.MANDATORY)
   public void sendToScan(StorageEntity fileEntity) {
@@ -59,6 +63,8 @@ public class AntivirusService {
             .getUserById(fileEntity.getUserId())
             .orElseThrow(() -> new ScannedFileOwnerNotFoundException(fileEntity.getUserId()));
 
+    incrementScanCount(result.verdict());
+
     if (result.verdict().isCritical()) {
       handleDangerousFile(fileEntity, userEntity);
       return;
@@ -85,5 +91,13 @@ public class AntivirusService {
   private void handleDangerousFile(StorageEntity fileEntity, UserEntity userEntity) {
     storageRepository.cleanupDangerousFile(fileEntity);
     notificationService.notifyDangerousFile(fileEntity, userEntity);
+  }
+
+  private void incrementScanCount(ScanVerdict verdict) {
+    Counter.builder(StorageMetrics.ANTIVIRUS_SCAN_COUNT)
+        .tag("verdict", verdict.name())
+        .tag("critical", String.valueOf(verdict.isCritical()))
+        .register(meterRegistry)
+        .increment();
   }
 }

@@ -1,10 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.auth;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.exception.session.InvalidSessionException;
 import com.mipt.team4.cloud_storage_backend.exception.user.auth.MissingAuthTokenException;
 import com.mipt.team4.cloud_storage_backend.model.user.dto.UserSessionDto;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.service.user.UserSessionService;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;

@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.error;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelDuplexHandler;

@@ -108,7 +108,7 @@ public class StorageJpaRepositoryAdapter {
   public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
     QueryContext ctx = buildBaseQueryWithFilters(filter);
     long total = fetchTotalCount(ctx);
-    List<StorageEntity> content = fetchPageContent(ctx, pageQuery);
+    List<StorageEntity> content = fetchPageContent(ctx, pageQuery, filter.query());
 
     return new PageImpl<>(
         content, PageRequest.of(pageQuery.offset() / pageQuery.limit(), pageQuery.limit()), total);

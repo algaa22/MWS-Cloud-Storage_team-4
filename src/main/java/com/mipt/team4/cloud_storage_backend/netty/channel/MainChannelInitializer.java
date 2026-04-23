@@ -1,8 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.netty.channel;
 
-import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NettyProps;
 import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.ProtocolNegotiationHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.http.ProtocolNegotiationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.server.NettyServerManager.ServerProtocol;
 import com.mipt.team4.cloud_storage_backend.netty.ssl.SslContextFactory;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
@@ -19,14 +19,14 @@ public class MainChannelInitializer extends ChannelInitializer<SocketChannel> {
   private final PipelineBuilder pipelineBuilder;
   private final SslContextFactory sslContextFactory;
 
-  private final NettyConfig nettyConfig;
+  private final NettyProps nettyConfig;
   private final ServerProtocol protocol;
 
   public MainChannelInitializer(
       PipelineBuilder pipelineBuilder,
       SslContextFactory sslContextFactory,
       ObjectProvider<ProtocolNegotiationHandler> protocolNegotiationHandlers,
-      NettyConfig nettyConfig,
+      NettyProps nettyConfig,
       ServerProtocol protocol) {
     this.pipelineBuilder = pipelineBuilder;
     this.sslContextFactory = sslContextFactory;

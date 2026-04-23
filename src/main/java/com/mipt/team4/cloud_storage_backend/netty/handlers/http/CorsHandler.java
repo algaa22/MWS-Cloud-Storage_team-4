@@ -1,6 +1,6 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.http;
 
-import com.mipt.team4.cloud_storage_backend.config.props.CorsConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.CorsProps;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFutureListener;
@@ -57,7 +57,7 @@ public class CorsHandler extends ChannelDuplexHandler {
 
   private static final String PRAGMA = "no-cache";
 
-  private final CorsConfig corsConfig;
+  private final CorsProps corsConfig;
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {

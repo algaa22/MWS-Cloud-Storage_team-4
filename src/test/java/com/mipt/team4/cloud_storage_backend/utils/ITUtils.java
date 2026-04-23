@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.utils;
 
-import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NettyProps;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -20,7 +20,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 @Component
 @RequiredArgsConstructor
 public class ITUtils {
-  private final NettyConfig nettyConfig;
+  private final NettyProps nettyConfig;
 
   public String fillQuery(String endpoint, Object... objects) {
     Object[] encodedObjects = Arrays.stream(objects).map(this::toQueryParam).toArray();

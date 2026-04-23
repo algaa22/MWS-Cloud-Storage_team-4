@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.handlers.common;
+package com.mipt.team4.cloud_storage_backend.netty.handlers.http;
 
 import com.mipt.team4.cloud_storage_backend.netty.channel.Http2StreamInitializer;
 import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;

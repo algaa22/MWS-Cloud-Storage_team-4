@@ -209,7 +209,12 @@ public class FileService {
 
     return storageRepository.getFileList(
         new FileListFilter(
-            userId, parentId, request.includeDirectories(), request.recursive(), request.tags()),
+            userId,
+            parentId,
+            request.includeDirectories(),
+            request.recursive(),
+            request.query(),
+            request.tags()),
         PaginationMapper.toPageQuery(request.pagination()));
   }
 

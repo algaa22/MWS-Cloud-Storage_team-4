@@ -108,7 +108,7 @@ public class StorageJpaRepositoryAdapter {
   public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
     QueryContext ctx = buildBaseQueryWithFilters(filter);
     long total = fetchTotalCount(ctx);
-    List<StorageEntity> content = fetchPageContent(ctx, pageQuery);
+    List<StorageEntity> content = fetchPageContent(ctx, pageQuery, filter.query());
 
     return new PageImpl<>(
         content, PageRequest.of(pageQuery.offset() / pageQuery.limit(), pageQuery.limit()), total);
@@ -264,6 +264,14 @@ public class StorageJpaRepositoryAdapter {
       params.put("tagCount", filter.tags().size());
     }
 
+    if (filter.query() != null && !filter.query().isEmpty()) {
+      sql.append(
+          """
+              AND name % :query
+          """);
+      params.put("query", filter.query());
+    }
+
     return new QueryContext(sql, params);
   }
 
@@ -276,12 +284,19 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @SuppressWarnings("unchecked")
-  private List<StorageEntity> fetchPageContent(QueryContext ctx, PageQuery pageQuery) {
-    String finalSql =
-        ctx.sql()
-            + " ORDER BY is_directory DESC, %s %s"
-                .formatted(pageQuery.order(), pageQuery.direction())
-            + " LIMIT :limit OFFSET :offset";
+  private List<StorageEntity> fetchPageContent(
+      QueryContext ctx, PageQuery pageQuery, String searchQuery) {
+    StringBuilder orderClause = new StringBuilder(" ORDER BY ");
+
+    if (searchQuery != null && !searchQuery.isEmpty()) {
+      orderClause.append("similarity(name, :query) DESC, ");
+      ctx.params.put("query", searchQuery);
+    }
+
+    orderClause.append(
+        "is_directory DESC, %s %s".formatted(pageQuery.order(), pageQuery.direction()));
+
+    String finalSql = ctx.sql() + orderClause.toString() + " LIMIT :limit OFFSET :offset";
 
     Query query = entityManager.createNativeQuery(finalSql, StorageEntity.class);
     ctx.params().forEach(query::setParameter);

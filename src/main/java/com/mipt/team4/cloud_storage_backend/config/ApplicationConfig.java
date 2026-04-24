@@ -80,7 +80,12 @@ public class ApplicationConfig {
         .credentialsProvider(
             StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(s3Props.accessKey(), s3Props.secretKey())))
-        .forcePathStyle(true)
+        // .forcePathStyle(true)
+        .serviceConfiguration(
+            software.amazon.awssdk.services.s3.S3Configuration.builder()
+                .pathStyleAccessEnabled(true)
+                .chunkedEncodingEnabled(false)
+                .build())
         .httpClient(
             UrlConnectionHttpClient.builder()
                 .connectionTimeout(Duration.ofSeconds(s3Props.timeoutsSec().connection()))

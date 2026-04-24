@@ -13,14 +13,7 @@ import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ContentRangeDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedDownloadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUploadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FilePreviewResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -232,8 +225,19 @@ public class FileService {
 
   @Transactional(readOnly = true)
   public Page<StorageEntity> getTrashFileList(TrashFileListRequest request) {
-    return storageRepository.getTrashFileList(
-        request.userId(), request.parentId(), PaginationMapper.toPageQuery(request.pagination()));
+    Page<StorageEntity> result =
+        storageRepository.getTrashFileList(
+            request.userId(), PaginationMapper.toPageQuery(request.pagination()));
+
+    if (result.hasContent()) {
+      StorageEntity first = result.getContent().get(0);
+      log.info("First file deletedAt: {}", first.getDeletedAt());
+      log.info(
+          "First file deletedAt class: {}",
+          first.getDeletedAt() != null ? first.getDeletedAt().getClass() : "null");
+    }
+
+    return result;
   }
 
   @Transactional(readOnly = true)

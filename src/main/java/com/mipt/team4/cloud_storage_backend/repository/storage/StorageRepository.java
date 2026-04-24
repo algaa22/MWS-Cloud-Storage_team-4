@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
 import com.mipt.team4.cloud_storage_backend.exception.upload.IncorrectUploadStatusException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
+import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
@@ -49,8 +50,6 @@ public class StorageRepository {
         entity,
         FileOperationType.UPLOAD,
         () -> {
-          metadataRepository.addFile(entity);
-
           String uploadId = contentRepository.startMultipartUpload(entity.getS3Key());
           session.setUploadId(uploadId);
           uploadRepository.addSession(session);
@@ -209,10 +208,6 @@ public class StorageRepository {
     return uploadRepository.touchSessionStatus(sessionId, expectedStatus);
   }
 
-  public Page<StorageEntity> getTrashFileList(UUID userId, UUID parentId, PageQuery pageQuery) {
-    return metadataRepository.getTrashFileList(userId, parentId, pageQuery);
-  }
-
   public InputStream download(StorageEntity entity, String range) {
     if (entity.getStatus() != FileStatus.READY) {
       throw new DownloadNonReadyFileException(entity.getId());
@@ -235,6 +230,11 @@ public class StorageRepository {
 
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
     return metadataRepository.getIncludeDeleted(userId, fileId);
+  }
+
+  public Page<StorageEntity> getTrashFileList(UUID userId, PageQuery pageQuery) {
+    return metadataRepository.findAllDeletedByUserId(
+        userId, PaginationMapper.toPageable(pageQuery));
   }
 
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID parentId, String name) {
@@ -285,5 +285,13 @@ public class StorageRepository {
 
   public List<StorageEntity> getAllTrashFiles(UUID userId) {
     return metadataRepository.getAllTrashFiles(userId);
+  }
+
+  public void saveFile(StorageEntity entity) {
+    metadataRepository.saveFile(entity);
+  }
+
+  public Optional<ChunkedUploadSessionEntity> getUploadSessionByFileId(UUID fileId) {
+    return uploadRepository.getSessionByFileId(fileId);
   }
 }

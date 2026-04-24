@@ -69,4 +69,7 @@ public interface ChunkedUploadJpaRepository
 
   Slice<ChunkedUploadSessionEntity> findByFile_UpdatedAtBefore(
       LocalDateTime threshold, Pageable pageable);
+
+  @Query("SELECT s FROM ChunkedUploadSessionEntity s WHERE s.file.id = :fileId")
+  Optional<ChunkedUploadSessionEntity> findByFileId(@Param("fileId") UUID fileId);
 }

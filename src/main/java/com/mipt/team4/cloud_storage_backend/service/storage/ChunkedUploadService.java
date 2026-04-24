@@ -18,6 +18,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPa
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
@@ -56,17 +57,30 @@ public class ChunkedUploadService {
       throw new TariffAccessDeniedException();
     }
 
+    // Проверяем существующий файл
+    Optional<StorageEntity> existingFile =
+        storageRepository.getIncludeDeleted(userId, parentId, name);
+
+    if (existingFile.isPresent()) {
+      StorageEntity fileEntity = existingFile.get();
+      // Проверяем, есть ли сессия для этого файла
+      Optional<ChunkedUploadSessionEntity> existingSession =
+          storageRepository.getUploadSessionByFileId(fileEntity.getId());
+
+      if (existingSession.isPresent()) {
+        // Сессия есть - возвращаем её для продолжения загрузки
+        return new StartChunkedUploadResponse(existingSession.get().getId());
+      } else {
+        // Сессии нет - файл уже полностью загружен, нельзя перезаписать
+        throw new FileAlreadyExistsException(parentId, name);
+      }
+    }
+
     if (request.totalParts() > storageProps.s3().limits().maxPartsNum()) {
       throw new TooManyPartsException(storageProps.s3().limits().maxPartsNum());
     }
 
-    storageRepository
-        .getIncludeDeleted(userId, parentId)
-        .ifPresent(
-            entity -> {
-              throw new FileAlreadyExistsException(parentId, name);
-            });
-
+    // Создаем новый файл
     StorageEntity fileEntity =
         StorageEntity.builder()
             .id(UUID.randomUUID())
@@ -78,8 +92,13 @@ public class ChunkedUploadService {
             .tags(request.fileTags())
             .updatedAt(LocalDateTime.now())
             .size(request.fileSize())
+            .status(FileStatus.PENDING)
             .build();
 
+    // Сохраняем файл
+    storageRepository.saveFile(fileEntity);
+
+    // Создаем сессию
     UUID sessionId = UUID.randomUUID();
 
     ChunkedUploadSessionEntity session =
@@ -116,6 +135,11 @@ public class ChunkedUploadService {
   public void forceAbortUpload(ChunkedUploadSessionEntity session) {
     StorageEntity fileEntity = session.getFile();
 
+    // Сначала меняем статус файла на отмену
+    fileEntity.setStatus(FileStatus.ERROR);
+    storageRepository.saveFile(fileEntity);
+
+    // Потом прерываем загрузку
     storageRepository.abortMultipartUpload(fileEntity, session.getId(), session.getUploadId());
     userRepository.decreaseUsedStorage(fileEntity.getUserId(), fileEntity.getSize());
   }

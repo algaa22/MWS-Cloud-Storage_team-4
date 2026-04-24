@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
-import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
@@ -182,6 +181,11 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
+  public Page<StorageEntity> findAllDeletedByUserId(UUID userId, Pageable pageable) {
+    return jpaRepository.findAllDeletedByUserId(userId, pageable);
+  }
+
+  @Transactional(readOnly = true)
   public Optional<StorageEntity> getFileById(UUID fileId) {
     return jpaRepository.findById(fileId);
   }
@@ -189,12 +193,6 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID parentId, String name) {
     return jpaRepository.findByParentIdAndNameIncludeDeleted(userId, parentId, name);
-  }
-
-  @Transactional(readOnly = true)
-  public Page<StorageEntity> getTrashFileList(UUID userId, UUID parentId, PageQuery pageQuery) {
-    return jpaRepository.findTrashByParentId(
-        userId, parentId, PaginationMapper.toPageable(pageQuery));
   }
 
   @Transactional(readOnly = true)

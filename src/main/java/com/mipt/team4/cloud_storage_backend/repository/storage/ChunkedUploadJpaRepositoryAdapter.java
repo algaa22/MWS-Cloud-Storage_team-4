@@ -64,4 +64,8 @@ public class ChunkedUploadJpaRepositoryAdapter {
       LocalDateTime threshold, Pageable pageable) {
     return jpaRepository.findByFile_UpdatedAtBefore(threshold, pageable);
   }
+
+  public Optional<ChunkedUploadSessionEntity> getSessionByFileId(UUID fileId) {
+    return jpaRepository.findByFileId(fileId);
+  }
 }

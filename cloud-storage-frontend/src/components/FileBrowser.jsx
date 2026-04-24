@@ -25,7 +25,12 @@ import {
   emptyTrash,
   softDeleteFile,
   softDeleteFolder,
-  getFilePreview
+  getFilePreview,
+  getUploadStatus,
+    abortChunkedUpload,
+    saveUploadSession,
+    getSavedUploadSession,
+    removeUploadSession
 } from "../api.js";
 
 export default function FileBrowser() {
@@ -71,6 +76,11 @@ export default function FileBrowser() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingSession, setPendingSession] = useState(null);
+  const [pendingProgress, setPendingProgress] = useState(0);
+  const [selectedTags, setSelectedTags] = useState([]);
 
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
@@ -213,6 +223,55 @@ useEffect(() => {
   console.log("📁 Current files:", files.length, "files, total size:",
     files.reduce((sum, f) => sum + (f.size || 0), 0));
 }, [storageInfo, files]);
+
+useEffect(() => {
+  const checkPendingUploads = async () => {
+    const sessions = JSON.parse(localStorage.getItem('uploadSessions') || '{}');
+    console.log("🔍 Checking for pending uploads on page load:", sessions);
+
+    const sessionKeys = Object.keys(sessions);
+    if (sessionKeys.length === 0) return;
+
+    const firstKey = sessionKeys[0];
+    const session = sessions[firstKey];
+    const fileName = firstKey.substring(firstKey.indexOf('_') + 1);
+
+    console.log("Found pending upload:", { fileName, sessionId: session.sessionId });
+
+    try {
+      const status = await getUploadStatus(token, session.sessionId);
+      console.log("Upload status:", status);
+
+      if (status && status.currentParts && status.currentParts > 0) {
+        // 🔥 ИСПОЛЬЗУЕМ СОХРАНЕННЫЕ totalParts И fileSize 🔥
+        const totalParts = session.totalParts || status.totalParts || status.currentParts;
+        const percent = Math.round((status.currentParts / totalParts) * 100);
+
+        console.log(`📊 Pending upload: ${status.currentParts} of ${totalParts} parts (${percent}%)`);
+
+        const pendingFileObj = {
+          name: fileName,
+          size: session.fileSize || status.currentSize,
+          type: 'file'
+        };
+
+        setPendingFile(pendingFileObj);
+        setPendingSession(session.sessionId);
+        setPendingProgress(percent);
+        setShowResumeModal(true);
+      } else {
+        removeUploadSession(fileName, null);
+      }
+    } catch (err) {
+      console.error("Error checking pending upload:", err);
+      removeUploadSession(fileName, null);
+    }
+  };
+
+  if (token) {
+    checkPendingUploads();
+  }
+}, [token]);
 
 
 const refreshStorageFromFiles = () => {
@@ -987,31 +1046,175 @@ const refreshUserInfo = async () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    try {
+    console.log("=== HANDLE FILE UPLOAD CALLED ===");
+    console.log("File name:", file.name);
+    console.log("File size:", file.size);
+    console.log("Current path:", currentPath);
+
+    // Проверяем, есть ли сохраненный sessionId для продолжения
+    const resumeSessionId = sessionStorage.getItem('resumeSessionId');
+    const resumeFileName = sessionStorage.getItem('resumeFileName');
+
+    if (resumeSessionId && resumeFileName === file.name) {
+      sessionStorage.removeItem('resumeSessionId');
+      sessionStorage.removeItem('resumeFileName');
+
+      console.log("🔄 Resuming upload with session:", resumeSessionId);
+
       setUploading(true);
       setUploadProgress(0);
+      setError(null);
 
-      const parentId = currentPath || null;
+      try {
+        await uploadFileWithTags(token, file, currentPath, setUploadProgress, [], resumeSessionId);
+        await fetchFiles();
+        await loadStorageInfo();
+        setSuccess("Файл успешно загружен");
+        setTimeout(() => setSuccess(""), 2000);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+      return;
+    }
 
-      await uploadFileWithTags(token, file, parentId, (progress) => {
-        setUploadProgress(progress);
-      }, uploadTags);
+    setUploading(true);
+    setUploadProgress(0);
+    setError(null);
 
-      console.log("Upload completed successfully");
+    const parentId = currentPath && currentPath !== "" ? currentPath : null;
+    const savedSession = getSavedUploadSession(file.name, parentId);
+    console.log("Saved session from localStorage:", savedSession);
+
+    if (savedSession) {
+      try {
+        const status = await getUploadStatus(token, savedSession.sessionId);
+        console.log("Upload status from server:", status);
+
+        if (status && status.currentParts && status.currentParts > 0) {
+          // 🔥 ВЫЧИСЛЯЕМ ОБЩЕЕ КОЛИЧЕСТВО ЧАСТЕЙ 🔥
+          const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+          let totalParts = status.totalParts;
+
+          // Если totalParts нет, вычисляем из размера файла
+          if (!totalParts || totalParts === 0) {
+            totalParts = Math.ceil(file.size / CHUNK_SIZE);
+          }
+
+          // Если все еще нет, используем currentParts (но это не правильно)
+          if (!totalParts || totalParts === 0) {
+            totalParts = status.currentParts;
+          }
+
+          const percent = Math.round((status.currentParts / totalParts) * 100);
+
+          console.log(`✅ Already uploaded: ${status.currentParts} out of ${totalParts} parts`);
+          console.log(`📊 Progress: ${percent}%`);
+          console.log(`📁 File size: ${file.size}, CHUNK_SIZE: ${CHUNK_SIZE}, totalParts: ${totalParts}`);
+
+          setPendingFile(file);
+          setPendingSession(savedSession.sessionId);
+          setPendingProgress(percent);
+          setShowResumeModal(true);
+          setUploading(false);
+          return;
+        } else {
+          console.log("No uploaded parts found, removing session");
+          removeUploadSession(file.name, parentId);
+        }
+      } catch (err) {
+        console.error("Error checking existing upload:", err);
+        removeUploadSession(file.name, parentId);
+      }
+    }
+
+    // Новая загрузка
+    console.log("Starting new upload...");
+    try {
+      await uploadFileWithTags(token, file, currentPath, setUploadProgress, []);
       await fetchFiles();
       await loadStorageInfo();
-      setShowUploadModal(false);
-      setUploadTags([]);
-
+      setSuccess("Файл успешно загружен");
+      setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
-      console.error("Upload error:", err);
-      setError(`Ошибка при загрузке файла: ${err.message}`);
+      setError(err.message);
     } finally {
       setUploading(false);
       setUploadProgress(0);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
+
+const handleResumeUpload = async () => {
+  if (!pendingFile) return;
+
+  console.log("=== ПРОДОЛЖЕНИЕ ЗАГРУЗКИ ===");
+  console.log("Файл:", pendingFile.name);
+  console.log("Session:", pendingSession);
+  console.log("Progress:", pendingProgress);
+
+  setShowResumeModal(false);
+
+  // Сохраняем sessionId для продолжения
+  sessionStorage.setItem('resumeSessionId', pendingSession);
+  sessionStorage.setItem('resumeFileName', pendingFile.name);
+
+  // Очищаем состояние
+  setPendingFile(null);
+  setPendingSession(null);
+  setPendingProgress(0);
+
+  // Открываем диалог выбора файла
+  // Используем setTimeout чтобы дать время закрыться модальному окну
+  setTimeout(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    } else {
+      // Если ref не работает, показываем модальное окно загрузки
+      setShowUploadModal(true);
+    }
+  }, 200);
+};
+
+const handleCancelAndReupload = async () => {
+  if (!pendingFile) return;
+
+  console.log("=== ОТМЕНА ЗАГРУЗКИ ===");
+  console.log("Cancelling session:", pendingSession);
+
+  setShowResumeModal(false);
+  setUploading(true);
+  setError(null);
+
+  try {
+    // Просто отменяем загрузку на сервере
+    await abortChunkedUpload(token, pendingSession);
+    console.log("✅ Upload cancelled on server");
+
+    // Удаляем сессию из localStorage
+    removeUploadSession(pendingFile.name, currentPath);
+    console.log("✅ Session removed from localStorage");
+
+    setSuccess("Загрузка отменена");
+    setTimeout(() => setSuccess(""), 2000);
+
+  } catch (err) {
+    console.error("Error cancelling upload:", err);
+    setError(`Ошибка отмены: ${err.message}`);
+  } finally {
+    setUploading(false);
+    setPendingFile(null);
+    setPendingSession(null);
+    setPendingProgress(0);
+  }
+};
 
   const renderModernNavigation = () => {
     return (
@@ -2177,6 +2380,51 @@ const closePreviewModal = () => {
         </div>
       </div>
     )}
+
+{/* Модальное окно для продолжения загрузки */}
+{showResumeModal && pendingFile && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
+      <h3 className="text-xl font-bold mb-4 text-white">Незавершенная загрузка</h3>
+
+      <p className="text-gray-300 mb-2">
+        Файл: <span className="font-medium text-white">{pendingFile.name}</span>
+      </p>
+
+      <div className="mb-4">
+        <div className="flex justify-between text-sm text-gray-400 mb-1">
+          <span>Загружено:</span>
+          <span>{pendingProgress}%</span>
+        </div>
+        <div className="w-full bg-gray-700 rounded-full h-2">
+          <div
+            className="bg-blue-500 rounded-full h-2 transition-all duration-300"
+            style={{ width: `${pendingProgress}%` }}
+          />
+        </div>
+      </div>
+
+      <p className="text-gray-400 mb-6 text-sm">
+        Загрузка была прервана. Желаете продолжить с того места, где остановились?
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={handleResumeUpload}
+          className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-xl font-medium transition-colors text-white"
+        >
+          Продолжить
+        </button>
+        <button
+          onClick={handleCancelAndReupload}
+          className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-xl font-medium transition-colors text-white"
+        >
+          Остановить
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       </div>
     );

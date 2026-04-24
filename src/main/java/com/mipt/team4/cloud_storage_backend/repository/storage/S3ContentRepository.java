@@ -91,6 +91,7 @@ public class S3ContentRepository implements FileContentRepository {
                   .key(s3Key)
                   .uploadId(uploadId)
                   .partNumber(partNum)
+                  .contentLength(size)
                   .build();
 
           UploadPartResponse response =
@@ -152,7 +153,11 @@ public class S3ContentRepository implements FileContentRepository {
     wrapper.execute(
         () -> {
           s3Client.putObject(
-              PutObjectRequest.builder().bucket(bucketName).key(s3Key).build(),
+              PutObjectRequest.builder()
+                  .bucket(bucketName)
+                  .key(s3Key)
+                  .contentLength((long) data.length)
+                  .build(),
               RequestBody.fromBytes(data));
           return null;
         });

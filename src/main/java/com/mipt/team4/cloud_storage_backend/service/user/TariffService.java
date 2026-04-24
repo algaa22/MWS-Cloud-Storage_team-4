@@ -164,6 +164,14 @@ public class TariffService {
     UserEntity userEntity =
         userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
+    log.info("=== getTariffInfo ===");
+    log.info("User ID: {}", userId);
+    log.info(
+        "Used storage from entity: {} bytes ({} MB)",
+        userEntity.getUsedStorage(),
+        userEntity.getUsedStorage() / 1024 / 1024);
+    log.info("Total storage limit: {} bytes", userEntity.getTotalStorageLimit());
+
     TariffPlan tariffPlan = userEntity.getTariffPlan();
     LocalDateTime endDate = userEntity.getTariffEndDate();
 
@@ -177,18 +185,23 @@ public class TariffService {
             && userEntity.getTrialEndDate() != null
             && userEntity.getTrialEndDate().isAfter(LocalDateTime.now());
 
-    return new TariffInfoResponse(
-        tariffPlan,
-        userEntity.getTotalStorageLimit(),
-        userEntity.getUsedStorage(),
-        userEntity.getFreeStorageLimit(),
-        userEntity.getTariffStartDate(),
-        endDate,
-        userEntity.isAutoRenew(),
-        userEntity.getUserStatus() == UserStatus.ACTIVE,
-        daysLeft,
-        hasActiveTrial,
-        userEntity.getTrialEndDate());
+    TariffInfoResponse response =
+        new TariffInfoResponse(
+            tariffPlan,
+            userEntity.getTotalStorageLimit(),
+            userEntity.getUsedStorage(),
+            userEntity.getFreeStorageLimit(),
+            userEntity.getTariffStartDate(),
+            endDate,
+            userEntity.isAutoRenew(),
+            userEntity.getUserStatus() == UserStatus.ACTIVE,
+            daysLeft,
+            hasActiveTrial,
+            userEntity.getTrialEndDate());
+
+    log.info("Response usedStorage: {}", response.usedStorage());
+
+    return response;
   }
 
   @Transactional(readOnly = true)

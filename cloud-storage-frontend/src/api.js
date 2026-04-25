@@ -280,7 +280,6 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20) => 
   params.append("page", page.toString());
   params.append("size", size.toString());
 
-  // Если currentPath передан и не пустой - используем как parentId
   if (currentPath && currentPath !== "") {
     params.append("parentId", currentPath);
   }
@@ -303,7 +302,6 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20) => 
     const data = await listResponse.json();
     console.log("Raw server response:", data);
 
-    // ИСПРАВЛЕНО: правильно извлекаем массив файлов
     let filesArray = [];
 
     if (data.page && Array.isArray(data.page.content)) {
@@ -422,11 +420,9 @@ export const getTrashFiles = async (token, page = 0, size = 1000) => {
 
     const data = await response.json();
 
-    // 🔥 ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ ОТЛАДКИ 🔥
     console.log("=== FULL SERVER RESPONSE ===");
     console.log(JSON.stringify(data, null, 2));
 
-    // Извлекаем файлы
     let filesArray = [];
     if (data.page && data.page.content && Array.isArray(data.page.content)) {
       filesArray = data.page.content;
@@ -438,7 +434,6 @@ export const getTrashFiles = async (token, page = 0, size = 1000) => {
 
     console.log(`Found ${filesArray.length} files in trash`);
 
-    // Логируем первый файл подробно
     if (filesArray.length > 0) {
       console.log("=== FIRST FILE DETAILS ===");
       console.log("Raw file object:", filesArray[0]);
@@ -482,7 +477,6 @@ export const softDeleteFile = async (token, id) => {
   console.log("File ID:", id);
   console.log("Token provided:", !!token);
 
-  // Получаем userId
   const userStr = localStorage.getItem('user');
   let userId = null;
 
@@ -515,7 +509,6 @@ export const softDeleteFile = async (token, id) => {
     }
   }
 
-  // Формируем URL
   const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=false&userId=${encodeURIComponent(userId)}`;
   console.log("DELETE URL:", url);
   console.log("Full request details:", {
@@ -647,7 +640,7 @@ export const emptyTrash = async (token) => {
   console.log("emptyTrash request");
 
   try {
-    const trashFiles = await getTrashFiles(token); // убрали parentId
+    const trashFiles = await getTrashFiles(token);
 
     console.log(`Found ${trashFiles.length} files to delete permanently`);
 
@@ -1076,7 +1069,6 @@ export const uploadFileWithTags = async (token, file, parentId = null, onProgres
 const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsString) => {
   console.log("Using simple upload with tags");
 
-  // Строим URL с query параметрами
   let url = `${BASE}/files/upload?name=${encodeURIComponent(file.name)}`;
 
   if (parentId && parentId !== "") {
@@ -1092,13 +1084,12 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
   console.log("File type:", file.type);
 
   try {
-    // НЕ используем FormData! Отправляем файл напрямую
     const res = await fetchWithTokenRefresh(url, {
       method: "POST",
       headers: {
-        'Content-Type': 'application/octet-stream'  // Важно!
+        'Content-Type': 'application/octet-stream'
       },
-      body: file  // Отправляем File объект напрямую
+      body: file
     }, token);
 
     if (onProgress) onProgress(100);
@@ -1131,7 +1122,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   const totalParts = Math.ceil(file.size / CHUNK_SIZE);
   let sessionId = existingSessionId;
 
-  // 1. START UPLOAD (только если нет существующей сессии)
   if (!sessionId) {
     let url = `${BASE}/files/upload/chunked/start?name=${encodeURIComponent(file.name)}`;
     if (parentId && parentId !== "") {
@@ -1159,15 +1149,12 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
     const startData = await startResponse.json();
     sessionId = startData.sessionId;
-    console.log("✅ Upload started, sessionId:", sessionId);
 
-    // Сохраняем сессию
     saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
   } else {
-    console.log("✅ Using existing session:", sessionId);
+    console.log("Using existing session:", sessionId);
   }
 
-  // 2. CHECK EXISTING PARTS
   let startPart = 1;
   try {
     const statusData = await getUploadStatus(token, sessionId);
@@ -1187,7 +1174,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
     console.log("Could not get upload status, starting from scratch:", err);
   }
 
-  // 3. UPLOAD MISSING PARTS
   console.log(`Uploading parts from ${startPart} to ${totalParts}...`);
 
   for (let partNumber = startPart; partNumber <= totalParts; partNumber++) {
@@ -1216,7 +1202,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
     if (onProgress) onProgress(progress);
   }
 
-  // 4. COMPLETE UPLOAD
   console.log("Completing upload...");
   const completeResponse = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
     method: "POST"
@@ -1227,7 +1212,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
     throw new Error(`Failed to complete upload: ${error}`);
   }
 
-  // Удаляем сессию
   removeUploadSession(file.name, parentId);
 
   const result = await completeResponse.json();
@@ -1258,10 +1242,6 @@ export const getUploadStatus = async (token, sessionId) => {
   const data = await response.json();
   console.log("Raw status data:", data);
 
-  // 🔥 ВАЖНО: totalParts может не прийти, нужно вычислить
-  // Если totalParts нет, но есть currentSize и известен размер части
-  // Попробуем получить размер файла из сессии или файла
-
   return {
     sessionId: data.sessionId,
     status: data.status,
@@ -1273,7 +1253,6 @@ export const getUploadStatus = async (token, sessionId) => {
   };
 };
 
- // Отменить загрузку
  export const abortChunkedUpload = async (token, sessionId) => {
    console.log("=== ABORT UPLOAD ===");
 
@@ -1291,7 +1270,6 @@ export const getUploadStatus = async (token, sessionId) => {
    return { success: true };
  };
 
- // Сохранить сессию в localStorage
  export const saveUploadSession = (fileName, parentId, sessionId, totalParts, fileSize) => {
    const key = `${parentId || 'root'}_${fileName}`;
    const sessions = JSON.parse(localStorage.getItem('uploadSessions') || '{}');
@@ -1307,7 +1285,6 @@ export const getUploadStatus = async (token, sessionId) => {
  };
 
  export const getSavedUploadSession = (fileName, parentId) => {
-   // parentId может быть null, undefined, пустая строка или UUID
    const parentKey = parentId && parentId !== "" ? parentId : "root";
    const key = `${parentKey}_${fileName}`;
    console.log("🔍 Looking for session with key:", key);

@@ -55,4 +55,5 @@ public class ApiEndpoints {
   public static final String PAYMENTS_HISTORY = PAYMENTS_PREFIX + "/history";
   // FilePreview
   public static final String FILES_PREVIEW = FILES_PREFIX + "/preview";
+  public static final String FILES_PREVIEW_CONTENT = FILES_PREVIEW + "/content";
 }

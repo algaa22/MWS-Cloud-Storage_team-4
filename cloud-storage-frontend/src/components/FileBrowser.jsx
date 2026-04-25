@@ -243,7 +243,6 @@ useEffect(() => {
       console.log("Upload status:", status);
 
       if (status && status.currentParts && status.currentParts > 0) {
-        // 🔥 ИСПОЛЬЗУЕМ СОХРАНЕННЫЕ totalParts И fileSize 🔥
         const totalParts = session.totalParts || status.totalParts || status.currentParts;
         const percent = Math.round((status.currentParts / totalParts) * 100);
 
@@ -1051,7 +1050,6 @@ const refreshUserInfo = async () => {
     console.log("File size:", file.size);
     console.log("Current path:", currentPath);
 
-    // Проверяем, есть ли сохраненный sessionId для продолжения
     const resumeSessionId = sessionStorage.getItem('resumeSessionId');
     const resumeFileName = sessionStorage.getItem('resumeFileName');
 
@@ -1071,6 +1069,7 @@ const refreshUserInfo = async () => {
         await loadStorageInfo();
         setSuccess("Файл успешно загружен");
         setTimeout(() => setSuccess(""), 2000);
+        setShowUploadModal(false);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -1097,16 +1096,13 @@ const refreshUserInfo = async () => {
         console.log("Upload status from server:", status);
 
         if (status && status.currentParts && status.currentParts > 0) {
-          // 🔥 ВЫЧИСЛЯЕМ ОБЩЕЕ КОЛИЧЕСТВО ЧАСТЕЙ 🔥
           const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
           let totalParts = status.totalParts;
 
-          // Если totalParts нет, вычисляем из размера файла
           if (!totalParts || totalParts === 0) {
             totalParts = Math.ceil(file.size / CHUNK_SIZE);
           }
 
-          // Если все еще нет, используем currentParts (но это не правильно)
           if (!totalParts || totalParts === 0) {
             totalParts = status.currentParts;
           }
@@ -1133,7 +1129,6 @@ const refreshUserInfo = async () => {
       }
     }
 
-    // Новая загрузка
     console.log("Starting new upload...");
     try {
       await uploadFileWithTags(token, file, currentPath, setUploadProgress, []);
@@ -1141,7 +1136,10 @@ const refreshUserInfo = async () => {
       await loadStorageInfo();
       setSuccess("Файл успешно загружен");
       setTimeout(() => setSuccess(""), 2000);
-    } catch (err) {
+        setShowUploadModal(false);
+
+    }
+catch (err) {
       setError(err.message);
     } finally {
       setUploading(false);
@@ -1162,22 +1160,17 @@ const handleResumeUpload = async () => {
 
   setShowResumeModal(false);
 
-  // Сохраняем sessionId для продолжения
   sessionStorage.setItem('resumeSessionId', pendingSession);
   sessionStorage.setItem('resumeFileName', pendingFile.name);
 
-  // Очищаем состояние
   setPendingFile(null);
   setPendingSession(null);
   setPendingProgress(0);
 
-  // Открываем диалог выбора файла
-  // Используем setTimeout чтобы дать время закрыться модальному окну
   setTimeout(() => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     } else {
-      // Если ref не работает, показываем модальное окно загрузки
       setShowUploadModal(true);
     }
   }, 200);
@@ -1194,11 +1187,9 @@ const handleCancelAndReupload = async () => {
   setError(null);
 
   try {
-    // Просто отменяем загрузку на сервере
     await abortChunkedUpload(token, pendingSession);
     console.log("✅ Upload cancelled on server");
 
-    // Удаляем сессию из localStorage
     removeUploadSession(pendingFile.name, currentPath);
     console.log("✅ Session removed from localStorage");
 
@@ -1308,6 +1299,68 @@ const handleCancelAndReupload = async () => {
       setError("Ошибка при создании папки");
     }
   };
+
+const searchFilesByTags = async (tags) => {
+  if (tags.length === 0) {
+    await fetchFiles();
+    return;
+  }
+
+  setIsSearching(true);
+  try {
+    const params = new URLSearchParams();
+    params.append("includeDirectories", "true");
+    params.append("recursive", "true");
+    params.append("page", "0");
+    params.append("size", "100");
+    params.append("tags", tags.join(','));
+
+    const response = await fetchWithTokenRefresh(
+      `${BASE}/files/list?${params.toString()}`,
+      { headers: { "Accept": "application/json" } },
+      token
+    );
+
+    if (!response.ok) {
+      throw new Error(`Search failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    let items = [];
+    if (data.page && Array.isArray(data.page.content)) {
+      items = data.page.content;
+    } else if (Array.isArray(data.files)) {
+      items = data.files;
+    } else if (Array.isArray(data)) {
+      items = data;
+    }
+
+    const processed = items.map(item => ({
+      name: item.name || "Без имени",
+      type: item.isDirectory ? "folder" : "file",
+      size: item.size || 0,
+      id: item.id,
+      tags: item.tags,
+      _raw: item
+    }));
+
+    setFiles(processed.filter(f => f.type === "file"));
+    setFolders(processed.filter(f => f.type === "folder"));
+
+    if (items.length === 0) {
+      setError("Файлы с такими тегами не найдены");
+    } else {
+      setError("");
+    }
+
+  } catch (error) {
+    console.error("Search error:", error);
+    setError("Ошибка при поиске по тегам");
+  } finally {
+    setIsSearching(false);
+  }
+};
 
   const formatFileSize = (bytes) => {
     if (!bytes && bytes !== 0) return "—";
@@ -1601,55 +1654,7 @@ const closePreviewModal = () => {
                       setSearchTags(updatedTags);
                       setSearchInput("");
 
-                      setIsSearching(true);
-                      try {
-                        const params = new URLSearchParams();
-                        params.append("includeDirectories", "true");
-                        params.append("recursive", "true");
-                        params.append("tags", updatedTags.join(','));
-
-                        const response = await fetchWithTokenRefresh(
-                          `${BASE}/files/list?${params.toString()}`,
-                          { headers: { "Accept": "application/json" } },
-                          token
-                        );
-
-                         const responseText = await response.text();
-                                console.log("RAW SEARCH RESPONSE:", responseText);
-
-                         let data;
-
-                         try {
-                           data = JSON.parse(responseText);
-                         } catch (e) {
-                           console.error("Failed to parse JSON:", e);
-                           return;
-                         }
-
-                         if (!response.ok) throw new Error(`Search failed: ${response.status}`);
-
-                         const items = data?.files || data || [];
-
-                         if (!Array.isArray(items)) {
-                           return;
-                         }
-
-                         const processed = items.map(item => ({
-                           name: item.name || "Без имени",
-                           type: item.isDirectory ? "folder" : "file",
-                           size: item.size || 0,
-                           id: item.id,
-                           _raw: item
-                         }));
-
-                         setFiles(processed.filter(f => f.type === "file"));
-                         setFolders(processed.filter(f => f.type === "folder"));
-                      } catch (error) {
-                        console.error("Search error:", error);
-                        setError("Ошибка при поиске по тегам");
-                      } finally {
-                        setIsSearching(false);
-                      }
+                      await searchFilesByTags(updatedTags);
                     }
                   }
                 }}
@@ -1689,52 +1694,7 @@ const closePreviewModal = () => {
                     onClick={async () => {
                       const updatedTags = searchTags.filter((_, i) => i !== index);
                       setSearchTags(updatedTags);
-
-                      if (updatedTags.length === 0) {
-                        await fetchFiles();
-                      } else {
-                        setIsSearching(true);
-                        try {
-                          const params = new URLSearchParams();
-                          params.append("includeDirectories", "true");
-                          params.append("recursive", "true");
-                          params.append("tags", updatedTags.join(','));
-
-                          const response = await fetchWithTokenRefresh(
-                            `${BASE}/files/list?${params.toString()}`,
-                            { headers: { "Accept": "application/json" } },
-                            token
-                          );
-
-                          const responseText = await response.text();
-                          console.log("RAW SEARCH RESPONSE:", responseText);
-
-                          if (!response.ok) throw new Error(`Search failed: ${response.status}`);
-
-                          const data = JSON.parse(responseText);
-                          const items = data?.files || data || [];
-
-                          if (!Array.isArray(items)) {
-                            return;
-                          }
-
-                          const processed = items.map(item => ({
-                            name: item.name || "Без имени",
-                            type: item.isDirectory ? "folder" : "file",
-                            size: item.size || 0,
-                            id: item.id,
-                            _raw: item
-                          }));
-
-                          setFiles(processed.filter(f => f.type === "file"));
-                          setFolders(processed.filter(f => f.type === "folder"));
-                        } catch (error) {
-                          console.error("Search error:", error);
-                          setError("Ошибка при поиске по тегам");
-                        } finally {
-                          setIsSearching(false);
-                        }
-                      }
+                        await searchFilesByTags(updatedTags);
                     }}
                     className="ml-1 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-full w-4 h-4 flex items-center justify-center"
                   >
@@ -2298,7 +2258,26 @@ const closePreviewModal = () => {
               </div>
             ) : previewData?.isPreviewable && previewData?.previewUrl ? (
               <div className="w-full h-full flex items-center justify-center">
-                {previewData?.mimeType?.startsWith('image/') ? (
+                {/* Аудио файлы */}
+                            {previewData?.mimeType?.startsWith('audio/') ? (
+                              <div className="w-full max-w-md p-8 bg-gradient-to-br from-purple-900/50 to-blue-900/50 rounded-xl">
+                                <div className="text-center mb-6">
+                                  <div className="text-7xl mb-4">🎵</div>
+                                  <h4 className="font-bold text-xl text-white mb-2">{previewData.fileName}</h4>
+                                  <p className="text-sm text-white/50">
+                                    {formatFileSize(previewData.fileSize)} • Аудио файл
+                                  </p>
+                                </div>
+                                <audio
+                                  src={previewData.previewUrl}
+                                  controls
+                                  className="w-full"
+                                  controlsList="nodownload"
+                                >
+                                  Ваш браузер не поддерживает аудио
+                                </audio>
+                              </div>
+                            ) : previewData?.mimeType?.startsWith('image/') ? (
                   <img
                     src={previewData.previewUrl}
                     alt={previewData.fileName}

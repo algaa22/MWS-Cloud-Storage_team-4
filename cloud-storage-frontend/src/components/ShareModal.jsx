@@ -70,12 +70,6 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
     onClose();
   };
 
-  const formatDate = (date) => {
-    if (!date) return null;
-    const d = new Date(date);
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-  };
-
   if (shareUrl) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -150,10 +144,12 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
           <select
             value={shareType}
             onChange={(e) => setShareType(e.target.value)}
-            className="w-full p-3 rounded-xl bg-white/20 text-white"
+            autoComplete="off"
+            className="w-full p-3 rounded-xl bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            style={{ backgroundColor: '#374151', color: 'white' }}
           >
-            <option value="PUBLIC" className="bg-gray-800 text-white">Публичный (любой по ссылке)</option>
-            <option value="PROTECTED" className="bg-gray-800 text-white">Защищенный (с паролем)</option>
+            <option value="PUBLIC">Публичный (любой по ссылке)</option>
+            <option value="PROTECTED">Защищенный (с паролем)</option>
           </select>
         </div>
 
@@ -164,7 +160,9 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
           <select
             value={expiresIn}
             onChange={(e) => setExpiresIn(e.target.value)}
-            className="w-full p-3 rounded-xl bg-white/20 text-white"
+            autoComplete="off"
+            className="w-full p-3 rounded-xl bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            style={{ backgroundColor: '#374151', color: 'white' }}
           >
             <option value="1">1 день</option>
             <option value="7">7 дней</option>
@@ -182,8 +180,10 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
             min="1"
             value={maxDownloads}
             onChange={(e) => setMaxDownloads(e.target.value)}
-            className="w-full p-3 rounded-xl bg-white/20 text-white"
+            autoComplete="off"
             placeholder="Без лимита"
+            className="w-full p-3 rounded-xl bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            style={{ backgroundColor: '#374151', color: 'white' }}
           />
         </div>
 
@@ -192,13 +192,15 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
             <label className="block text-sm text-white/70 mb-2">
               Пароль для доступа:
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Введите пароль"
-              className="w-full p-3 rounded-xl bg-white/20 text-white"
-            />
+<input
+  type="password"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  autoComplete="off"
+  placeholder="Введите пароль"
+  className="w-full p-3 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+  style={{ backgroundColor: '#374151' }}
+/>
           </div>
         )}
 

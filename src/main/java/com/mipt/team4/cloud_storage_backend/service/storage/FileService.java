@@ -38,13 +38,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Slf4j
 @Service
@@ -330,6 +325,7 @@ public class FileService {
         || mimeType.equals("application/pdf")
         || mimeType.startsWith("video/")
         || mimeType.equals("text/plain")
+        || (mimeType.startsWith("audio/"))
         || mimeType.startsWith("text/");
   }
 
@@ -366,9 +362,7 @@ public class FileService {
             });
   }
 
-  @GetMapping("/preview/content")
-  public ResponseEntity<byte[]> previewContent(
-      @RequestParam UUID fileId, @RequestParam UUID userId) {
+  public byte[] getPreviewContent(UUID fileId, UUID userId) {
     StorageEntity fileEntity =
         storageRepository
             .get(userId, fileId)
@@ -377,10 +371,7 @@ public class FileService {
     InputStream inputStream = storageRepository.download(fileEntity, null);
 
     try {
-      return ResponseEntity.ok()
-          .contentType(MediaType.parseMediaType(fileEntity.getMimeType()))
-          .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-          .body(inputStream.readAllBytes());
+      return inputStream.readAllBytes();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

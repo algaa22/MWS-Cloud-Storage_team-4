@@ -277,7 +277,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.parentId = :parentId AND s.name = :name AND s.isDeleted = false")
   Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 
-  @Query("SELECT SUM(f.size) FROM FileEntity f WHERE f.userId = :userId")
+  @Query("SELECT SUM(f.size) FROM StorageEntity f WHERE f.userId = :userId")
   Long calculateTotalSizeByUserId(@Param("userId") UUID userId);
 
   Slice<StorageEntity> findByStatusInAndUpdatedAtBefore(

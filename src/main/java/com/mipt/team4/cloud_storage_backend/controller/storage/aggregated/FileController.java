@@ -91,4 +91,26 @@ public class FileController {
         fileService.generatePreviewUrl(request.fileId(), request.userId());
     ResponseUtils.send(ctx, response);
   }
+
+  public void getFilePreviewContent(
+      ChannelHandlerContext ctx, GetFilePreviewContentRequest request) {
+    byte[] content = fileService.getPreviewContent(request.fileId(), request.userId());
+
+    io.netty.handler.codec.http.FullHttpResponse response =
+        new io.netty.handler.codec.http.DefaultFullHttpResponse(
+            io.netty.handler.codec.http.HttpVersion.HTTP_1_1,
+            io.netty.handler.codec.http.HttpResponseStatus.OK,
+            io.netty.buffer.Unpooled.wrappedBuffer(content));
+
+    response
+        .headers()
+        .set(io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
+    response
+        .headers()
+        .set(io.netty.handler.codec.http.HttpHeaderNames.CONTENT_DISPOSITION, "inline");
+    response
+        .headers()
+        .set(io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH, content.length);
+    ctx.writeAndFlush(response);
+  }
 }

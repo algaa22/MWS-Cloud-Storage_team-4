@@ -199,16 +199,12 @@ public class S3ContentRepository implements FileContentRepository {
     return wrapper.execute(
         () -> {
           try {
-            // 1. Указываем параметры ответа ПРЯМО ЗДЕСЬ, чтобы они вошли в подпись
             GetObjectRequest getObjectRequest =
                 GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
                     .responseContentDisposition("inline")
                     .build();
-
-            // Создаем пресайнер с форсированным PathStyle (если это не сделано в бине)
-            // Лучше настроить S3Presigner один раз в конструкторе
 
             GetObjectPresignRequest presignRequest =
                 GetObjectPresignRequest.builder()
@@ -219,8 +215,6 @@ public class S3ContentRepository implements FileContentRepository {
             PresignedGetObjectRequest presignedRequest =
                 s3Presigner.presignGetObject(presignRequest);
 
-            // Теперь URL уже содержит правильную подпись и все параметры.
-            // Никаких url.replace() и ручных правок делать НЕЛЬЗЯ.
             return presignedRequest.url().toString();
 
           } catch (Exception e) {

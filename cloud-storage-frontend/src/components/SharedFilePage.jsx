@@ -55,12 +55,18 @@ export default function SharedFilePage() {
     try {
       console.log("Downloading with password:", password ? "yes" : "no");
 
-      const { blob, filename } = await downloadSharedFile(token, password);
+      const { blob, filename: downloadedFilename } = await downloadSharedFile(token, password);
+
+      const finalFilename = (downloadedFilename && downloadedFilename !== 'file')
+        ? downloadedFilename
+        : (fileInfo?.fileName || 'download');
+
+      console.log("Final filename:", finalFilename);
 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename || fileInfo?.fileName || 'file');
+      link.setAttribute('download', finalFilename);
       document.body.appendChild(link);
       link.click();
 
@@ -73,7 +79,7 @@ export default function SharedFilePage() {
       console.error("Download error:", err);
       setDownloading(false);
 
-      if (err.status === 401) {
+      if (err.status === 400 || err.status === 401 || err.status === 403) {
         setError('INVALID_PASSWORD');
       } else {
         setError('DOWNLOAD_FAILED');
@@ -105,6 +111,11 @@ export default function SharedFilePage() {
           <h1 className="text-xl font-bold truncate">
             {fileInfo?.fileName || 'Защищенный объект'}
           </h1>
+          {fileInfo?.fileSize && (
+            <p className="text-slate-500 text-sm mt-1">
+              {(fileInfo.fileSize / 1024 / 1024).toFixed(2)} MB
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleDownload} className="space-y-4">
@@ -114,29 +125,56 @@ export default function SharedFilePage() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError(null);
+                }}
                 className={`w-full p-4 rounded-xl bg-slate-800 border ${
                   error === 'INVALID_PASSWORD' ? 'border-red-500' : 'border-slate-700'
-                } outline-none focus:border-blue-500`}
+                } outline-none focus:border-blue-500 transition-colors`}
                 placeholder="Введите пароль"
+                autoFocus
               />
               {error === 'INVALID_PASSWORD' && (
-                <p className="text-red-500 text-xs mt-1">Неверный пароль!</p>
+                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                  <span>❌</span> Неверный пароль! Попробуйте снова.
+                </p>
               )}
               {error === 'PASSWORD_REQUIRED' && (
-                <p className="text-red-500 text-xs mt-1">Введите пароль для скачивания</p>
+                <p className="text-red-500 text-sm mt-1">
+                  Введите пароль для скачивания
+                </p>
               )}
+            </div>
+          )}
+
+          {error === 'DOWNLOAD_FAILED' && (
+            <div className="bg-red-500/20 border border-red-500 rounded-xl p-3 text-center">
+              <p className="text-red-400 text-sm">Ошибка при скачивании. Попробуйте позже.</p>
             </div>
           )}
 
           <button
             type="submit"
             disabled={downloading || (requiresPassword && !password)}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 rounded-xl font-bold transition-all"
+            className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:cursor-not-allowed rounded-xl font-bold transition-all"
           >
-            {downloading ? 'Скачивание...' : 'Скачать'}
+            {downloading ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                Скачивание...
+              </span>
+            ) : (
+              'Скачать файл'
+            )}
           </button>
         </form>
+
+        {error === 'LINK_EXPIRED' && (
+          <p className="text-center text-slate-500 text-sm mt-4">
+            Срок действия ссылки истек
+          </p>
+        )}
       </div>
     </div>
   );

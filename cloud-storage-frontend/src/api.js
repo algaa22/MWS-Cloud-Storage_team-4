@@ -1,6 +1,8 @@
 export const BASE = "https://localhost:8443/api";
 export const API_BASE = "https://localhost:8443/api";
 export const PUBLIC_BASE = "https://localhost:8443";
+window.activeUploadAbortFlag = false;
+
 
 async function parseJsonSafe(res) {
   try {
@@ -1118,6 +1120,7 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   console.log("File:", file.name, "size:", file.size);
   console.log("Existing session ID:", existingSessionId);
 
+      window.activeUploadAbortFlag = false;
   const CHUNK_SIZE = 5 * 1024 * 1024;
   const totalParts = Math.ceil(file.size / CHUNK_SIZE);
   let sessionId = existingSessionId;
@@ -1177,6 +1180,14 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   console.log(`Uploading parts from ${startPart} to ${totalParts}...`);
 
   for (let partNumber = startPart; partNumber <= totalParts; partNumber++) {
+     if (window.activeUploadAbortFlag) {
+          console.log('❌ Upload cancelled by user, stopping...');
+          try {
+            await abortChunkedUpload(token, sessionId);
+          } catch(e) {}
+          throw new Error('Upload cancelled by user');
+        }
+
     const start = (partNumber - 1) * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const chunk = file.slice(start, end);

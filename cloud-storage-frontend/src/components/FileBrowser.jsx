@@ -1042,6 +1042,8 @@ const refreshUserInfo = async () => {
   };
 
   const handleFileUpload = async (event) => {
+  window.activeUploadAbortFlag = false;
+
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -1052,10 +1054,15 @@ const refreshUserInfo = async () => {
 
     const resumeSessionId = sessionStorage.getItem('resumeSessionId');
     const resumeFileName = sessionStorage.getItem('resumeFileName');
+    const resumeFileSize = sessionStorage.getItem('resumeFileSize');
 
-    if (resumeSessionId && resumeFileName === file.name) {
+
+    if (resumeSessionId && resumeFileName) {
+        if (resumeFileName === file.name && resumeFileSize && parseInt(resumeFileSize) === file.size) {
       sessionStorage.removeItem('resumeSessionId');
       sessionStorage.removeItem('resumeFileName');
+            sessionStorage.removeItem('resumeFileSize');
+
 
       console.log("🔄 Resuming upload with session:", resumeSessionId);
 
@@ -1081,6 +1088,24 @@ const refreshUserInfo = async () => {
       }
       return;
     }
+
+else {
+      const errorMessage = `Ошибка: выбран неверный файл.\n\nОжидался: ${resumeFileName}\nВыбран: ${file.name}\n\nПожалуйста, выберите правильный файл для продолжения загрузки.`;
+
+      setError(errorMessage);
+      console.error("File mismatch:", {
+        expected: resumeFileName,
+        expectedSize: resumeFileSize,
+        got: file.name,
+        gotSize: file.size
+      });
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+  }
 
     setUploading(true);
     setUploadProgress(0);
@@ -1162,6 +1187,7 @@ const handleResumeUpload = async () => {
 
   sessionStorage.setItem('resumeSessionId', pendingSession);
   sessionStorage.setItem('resumeFileName', pendingFile.name);
+  sessionStorage.setItem('resumeFileSize', pendingFile.size);
 
   setPendingFile(null);
   setPendingSession(null);
@@ -1193,6 +1219,10 @@ const handleCancelAndReupload = async () => {
     removeUploadSession(pendingFile.name, currentPath);
     console.log("✅ Session removed from localStorage");
 
+    sessionStorage.removeItem('resumeSessionId');
+        sessionStorage.removeItem('resumeFileName');
+        sessionStorage.removeItem('resumeFileSize');
+
     setSuccess("Загрузка отменена");
     setTimeout(() => setSuccess(""), 2000);
 
@@ -1204,6 +1234,8 @@ const handleCancelAndReupload = async () => {
     setPendingFile(null);
     setPendingSession(null);
     setPendingProgress(0);
+        setShowUploadModal(false);
+
   }
 };
 
@@ -1706,12 +1738,6 @@ const closePreviewModal = () => {
           )}
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center">
-            {error}
-          </div>
-        )}
-
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
@@ -1919,13 +1945,50 @@ const closePreviewModal = () => {
               </div>
             )}
             <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowUploadModal(false)}
-                className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
-                disabled={uploading || storageLoading}
-              >
-                Отмена
-              </button>
+<button
+  onClick={async () => {
+    window.activeUploadAbortFlag = true;
+
+    const resumeSessionId = sessionStorage.getItem('resumeSessionId');
+    if (resumeSessionId) {
+      try {
+        await abortChunkedUpload(token, resumeSessionId);
+      } catch (err) {}
+    }
+
+    if (pendingSession) {
+      try {
+        await abortChunkedUpload(token, pendingSession);
+      } catch (err) {}
+    }
+
+    sessionStorage.removeItem('resumeSessionId');
+    sessionStorage.removeItem('resumeFileName');
+    sessionStorage.removeItem('resumeFileSize');
+
+    if (pendingFile?.name) {
+      removeUploadSession(pendingFile.name, currentPath);
+    }
+
+    setUploading(false);
+    setUploadProgress(0);
+    setPendingFile(null);
+    setPendingSession(null);
+    setPendingProgress(0);
+    setShowUploadModal(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    setTimeout(() => {
+      window.activeUploadAbortFlag = false;
+    }, 1000);
+  }}
+  className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+>
+  Отмена
+</button>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors"
@@ -2404,6 +2467,43 @@ const closePreviewModal = () => {
     </div>
   </div>
 )}
+
+{/* Глобальное отображение ошибок */}
+{error && (
+  <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] bg-red-500/90 backdrop-blur-sm border border-red-400 rounded-xl p-4 max-w-md shadow-2xl animate-bounce-in">
+    <div className="flex items-start gap-3">
+      <div className="flex-shrink-0">
+        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div className="flex-1">
+        <p className="text-white text-sm whitespace-pre-line">{error}</p>
+        {error.includes('выбран неверный файл') && (
+          <button
+            onClick={() => {
+              sessionStorage.removeItem('resumeSessionId');
+              sessionStorage.removeItem('resumeFileName');
+              sessionStorage.removeItem('resumeFileSize');
+              setError("");
+            }}
+            className="mt-2 text-white/80 hover:text-white text-xs underline"
+          >
+          </button>
+        )}
+      </div>
+      <button
+        onClick={() => setError("")}
+        className="flex-shrink-0 text-white/70 hover:text-white"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  </div>
+)}
+
 
       </div>
     );

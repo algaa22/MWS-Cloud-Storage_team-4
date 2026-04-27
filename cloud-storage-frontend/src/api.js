@@ -1,6 +1,8 @@
 export const BASE = "https://localhost:8443/api";
 export const API_BASE = "https://localhost:8443/api";
 export const PUBLIC_BASE = "https://localhost:8443";
+window.activeUploadAbortFlag = false;
+
 
 async function parseJsonSafe(res) {
   try {
@@ -270,21 +272,22 @@ export const getUserInfo = async (token) => {
   }
 };
 
-export const getFiles = async (token, currentPath = "") => {
+export const getFiles = async (token, currentPath = "", page = 0, size = 20) => {
   console.log("=== GET FILES ===");
 
   if (!token) throw new Error("Требуется авторизация");
 
   const params = new URLSearchParams();
   params.append("includeDirectories", "true");
+  params.append("page", page.toString());
+  params.append("size", size.toString());
 
-  const pathParts = currentPath.split('/').filter(p => p && p !== '');
-  if (pathParts.length > 0) {
-    const parentId = pathParts[pathParts.length - 1];
-    params.append("parentId", parentId);
+  if (currentPath && currentPath !== "") {
+    params.append("parentId", currentPath);
   }
 
   const listUrl = `${BASE}/files/list?${params.toString()}`;
+  console.log("Request URL:", listUrl);
 
   try {
     const listResponse = await fetchWithTokenRefresh(listUrl, {
@@ -299,40 +302,41 @@ export const getFiles = async (token, currentPath = "") => {
     }
 
     const data = await listResponse.json();
-    const files = data?.files || data || [];
+    console.log("Raw server response:", data);
 
-    console.log(`Found ${files.length} items`);
-    console.log("Raw server response:", files);
+    let filesArray = [];
 
-    const result = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const item = files[i];
-
-      let name = "Без имени";
-      if (item.name && item.name.trim() !== "") {
-        name = item.name;
-      }
-
-      let type = item.isDirectory ? "folder" : "file";
-
-      result.push({
-        name: name,
-        type: type,
-        size: item.size || 0,
-        id: item.id || Math.random().toString(),
-        _raw: item
-      });
-
-      console.log(`Processed ${i+1}/${files.length}:`, {
-        name: name,
-        type: type,
-        size: item.size || 0,
-        id: item.id
-      });
+    if (data.page && Array.isArray(data.page.content)) {
+      filesArray = data.page.content;
+      console.log("Extracted from page.content");
+    } else if (Array.isArray(data.content)) {
+      filesArray = data.content;
+      console.log("Extracted from content");
+    } else if (Array.isArray(data.files)) {
+      filesArray = data.files;
+      console.log("Extracted from files");
+    } else if (Array.isArray(data)) {
+      filesArray = data;
+      console.log("Data is already an array");
+    } else {
+      console.warn("Unexpected data structure:", data);
+      filesArray = [];
     }
 
-    console.log("Final result:", result);
+    console.log(`Found ${filesArray.length} items`);
+    console.log("Raw items:", filesArray);
+
+    const result = filesArray.map(item => ({
+      name: item.name || "Без имени",
+      type: item.isDirectory ? "folder" : "file",
+      size: item.size || 0,
+      id: item.id,
+      parentId: item.parentId,
+      tags: item.tags,
+      _raw: item
+    }));
+
+    console.log("Processed result:", result);
     return result;
 
   } catch (err) {
@@ -391,12 +395,16 @@ export const downloadFile = async (token, id, filename, fileSize) => {
   }
 };
 
-export const getTrashFiles = async (token) => {
+export const getTrashFiles = async (token, page = 0, size = 1000) => {
   console.log("=== GET TRASH FILES ===");
 
   if (!token) throw new Error("Требуется авторизация");
 
-  const url = `${BASE}/files/trash`;
+  const params = new URLSearchParams();
+  params.append("page", page.toString());
+  params.append("size", size.toString());
+
+  const url = `${BASE}/files/trash?${params.toString()}`;
   console.log("Request URL:", url);
 
   try {
@@ -413,18 +421,51 @@ export const getTrashFiles = async (token) => {
     }
 
     const data = await response.json();
-    console.log("Raw trash data:", data);
 
-    const files = Array.isArray(data) ? data : (data.files || []);
-    console.log(`Found ${files.length} files in trash`);
+    console.log("=== FULL SERVER RESPONSE ===");
+    console.log(JSON.stringify(data, null, 2));
 
-    return files.map(item => ({
-      name: item.name || "Без имени",
-      id: item.id,
-      type: item.isDirectory ? "folder" : "file",
-      size: item.size || 0,
-      deletedAt: item.deletedAt || item.deleted_at || item.DeletedAt
-    }));
+    let filesArray = [];
+    if (data.page && data.page.content && Array.isArray(data.page.content)) {
+      filesArray = data.page.content;
+      console.log("Extracted from page.content");
+    } else if (data.content && Array.isArray(data.content)) {
+      filesArray = data.content;
+      console.log("Extracted from content");
+    }
+
+    console.log(`Found ${filesArray.length} files in trash`);
+
+    if (filesArray.length > 0) {
+      console.log("=== FIRST FILE DETAILS ===");
+      console.log("Raw file object:", filesArray[0]);
+      console.log("All keys:", Object.keys(filesArray[0]));
+      console.log("deletedAt:", filesArray[0].deletedAt);
+      console.log("deleted_at:", filesArray[0].deleted_at);
+      console.log("deletedAt type:", typeof filesArray[0].deletedAt);
+    }
+
+    return filesArray.map(item => {
+      let deletedAt = null;
+
+      if (item.deletedAt) {
+        deletedAt = item.deletedAt;
+        console.log(`Found deletedAt for ${item.name}:`, deletedAt);
+      } else if (item.deleted_at) {
+        deletedAt = item.deleted_at;
+        console.log(`Found deleted_at for ${item.name}:`, deletedAt);
+      } else {
+        console.warn(`No deletedAt field for ${item.name}`);
+      }
+
+      return {
+        name: item.name || "Без имени",
+        id: item.id,
+        type: item.isDirectory ? "folder" : "file",
+        size: item.size || 0,
+        deletedAt: item.updatedAt
+      };
+    });
 
   } catch (error) {
     console.error("Error getting trash files:", error);
@@ -434,28 +475,88 @@ export const getTrashFiles = async (token) => {
 
 
 export const softDeleteFile = async (token, id) => {
-  console.log("softDeleteFile request (to trash):", { id });
+  console.log("=== SOFT DELETE FILE (to trash) ===");
+  console.log("File ID:", id);
+  console.log("Token provided:", !!token);
 
-  const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=false`;
+  const userStr = localStorage.getItem('user');
+  let userId = null;
 
-  const res = await fetchWithTokenRefresh(url, {
-    method: "DELETE",
-    headers: {
-      "Accept": "application/json"
+  console.log("User from localStorage:", userStr);
+
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      userId = user.id;
+      console.log("User ID for delete:", userId);
+    } catch (e) {
+      console.error("Failed to parse user:", e);
     }
-  }, token);
-
-  console.log("softDeleteFile status:", res.status);
-
-  if (!res.ok) {
-    const responseText = await res.text();
-    throw new Error(`Soft delete failed: ${res.status} ${responseText}`);
   }
 
-  const responseText = await res.text();
-  console.log("softDeleteFile response:", responseText);
+  if (!userId) {
+    console.error("No user ID found, trying to get from getUserInfo...");
+    try {
+      const userInfo = await getUserInfo(token);
+      userId = userInfo.id;
+      console.log("Got user ID from getUserInfo:", userId);
+      localStorage.setItem('user', JSON.stringify({
+        id: userInfo.id,
+        email: userInfo.email,
+        username: userInfo.username
+      }));
+    } catch (error) {
+      console.error("Failed to get user info:", error);
+      throw new Error("User not found");
+    }
+  }
 
-  return true;
+  const url = `${BASE}/files?id=${encodeURIComponent(id)}&permanent=false&userId=${encodeURIComponent(userId)}`;
+  console.log("DELETE URL:", url);
+  console.log("Full request details:", {
+    method: "DELETE",
+    url: url,
+    headers: {
+      "Accept": "application/json",
+      "X-Auth-Token": token ? `${token.substring(0, 20)}...` : "missing"
+    }
+  });
+
+  try {
+    const res = await fetchWithTokenRefresh(url, {
+      method: "DELETE",
+      headers: {
+        "Accept": "application/json"
+      }
+    }, token);
+
+    console.log("Response status:", res.status);
+    console.log("Response status text:", res.statusText);
+    console.log("Response headers:", Object.fromEntries(res.headers.entries()));
+
+    const responseText = await res.text();
+    console.log("Response body:", responseText);
+
+    if (!res.ok) {
+      throw new Error(`Soft delete failed: ${res.status} ${responseText}`);
+    }
+
+    let responseData;
+    try {
+      responseData = responseText ? JSON.parse(responseText) : { success: true };
+      console.log("Parsed response:", responseData);
+    } catch (e) {
+      console.log("Response is not JSON, treating as success");
+      responseData = { success: true };
+    }
+
+    console.log("Soft delete completed successfully");
+    return true;
+
+  } catch (error) {
+    console.error("Soft delete error:", error);
+    throw error;
+  }
 };
 
 export const softDeleteFolder = async (token, id) => {
@@ -543,6 +644,8 @@ export const emptyTrash = async (token) => {
   try {
     const trashFiles = await getTrashFiles(token);
 
+    console.log(`Found ${trashFiles.length} files to delete permanently`);
+
     const results = await Promise.allSettled(
       trashFiles.map(file => permanentDeleteFile(token, file.id))
     );
@@ -550,11 +653,11 @@ export const emptyTrash = async (token) => {
     const successful = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.filter(r => r.status === 'rejected').length;
 
-    const totalSuccess = trashFiles.length - failed;
+    console.log(`Empty trash result: ${successful} successful, ${failed} failed`);
 
     return {
       total: trashFiles.length,
-      success: totalSuccess,
+      success: successful,
       failed: failed
     };
   } catch (error) {
@@ -969,35 +1072,27 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
   console.log("Using simple upload with tags");
 
   let url = `${BASE}/files/upload?name=${encodeURIComponent(file.name)}`;
-  if (parentId) {
+
+  if (parentId && parentId !== "") {
     url += `&parentId=${encodeURIComponent(parentId)}`;
   }
 
+  if (tagsString && tagsString.trim() !== '') {
+    url += `&tags=${encodeURIComponent(tagsString)}`;
+  }
+
   console.log("Upload URL:", url);
-  console.log("Tags:", tagsString);
+  console.log("File size:", file.size);
+  console.log("File type:", file.type);
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 30000);
-
-    const headers = {
-      "Content-Type": file.type || "application/octet-stream"
-    };
-
-    if (tagsString && tagsString.trim() !== '') {
-      headers["X-File-Tags"] = tagsString;
-    }
-
     const res = await fetchWithTokenRefresh(url, {
       method: "POST",
-      headers: headers,
-      body: file,
-      signal: controller.signal
+      headers: {
+        'Content-Type': 'application/octet-stream'
+      },
+      body: file
     }, token);
-
-    clearTimeout(timeoutId);
 
     if (onProgress) onProgress(100);
 
@@ -1020,70 +1115,206 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
   }
 };
 
-const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tagsString) => {
-  console.log("Using chunked upload with tags");
+const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tagsString, existingSessionId = null) => {
+  console.log("=== STARTING CHUNKED UPLOAD ===");
+  console.log("File:", file.name, "size:", file.size);
+  console.log("Existing session ID:", existingSessionId);
 
-  let url = `${BASE}/files/upload/chunked?name=${encodeURIComponent(file.name)}`;
-  if (parentId) {
-    url += `&parentId=${encodeURIComponent(parentId)}`;
-  }
+      window.activeUploadAbortFlag = false;
+  const CHUNK_SIZE = 5 * 1024 * 1024;
+  const totalParts = Math.ceil(file.size / CHUNK_SIZE);
+  let sessionId = existingSessionId;
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    xhr.open('POST', url);
-    xhr.setRequestHeader('X-Auth-Token', token);
-
+  if (!sessionId) {
+    let url = `${BASE}/files/upload/chunked/start?name=${encodeURIComponent(file.name)}`;
+    if (parentId && parentId !== "") {
+      url += `&parentId=${encodeURIComponent(parentId)}`;
+    }
     if (tagsString && tagsString.trim() !== '') {
-      xhr.setRequestHeader('X-File-Tags', tagsString);
+      url += `&tags=${encodeURIComponent(tagsString)}`;
     }
 
-    xhr.setRequestHeader('X-File-Size', file.size);
+    console.log("Start upload URL:", url);
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        const progress = Math.round((event.loaded / event.total) * 100);
-        console.log(`Upload progress: ${progress}% (${event.loaded}/${event.total} bytes)`);
+    const startResponse = await fetchWithTokenRefresh(url, {
+      method: "POST",
+      headers: {
+        "X-Total-Parts": totalParts.toString(),
+        "X-File-Size": file.size.toString(),
+        "Content-Type": "application/json"
+      }
+    }, token);
+
+    if (!startResponse.ok) {
+      const error = await startResponse.text();
+      throw new Error(`Failed to start upload: ${error}`);
+    }
+
+    const startData = await startResponse.json();
+    sessionId = startData.sessionId;
+
+    saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
+  } else {
+    console.log("Using existing session:", sessionId);
+  }
+
+  let startPart = 1;
+  try {
+    const statusData = await getUploadStatus(token, sessionId);
+    console.log("Upload status:", statusData);
+
+    if (statusData && statusData.currentParts && statusData.currentParts > 0) {
+      startPart = statusData.currentParts + 1;
+      console.log(`✅ Resuming from part ${startPart} out of ${totalParts}`);
+      console.log(`   Already uploaded: ${statusData.currentParts} parts`);
+
+      if (onProgress) {
+        const progress = Math.round(((startPart - 1) / totalParts) * 100);
         onProgress(progress);
       }
-    };
+    }
+  } catch (err) {
+    console.log("Could not get upload status, starting from scratch:", err);
+  }
 
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const response = JSON.parse(xhr.responseText);
-          console.log("Upload completed successfully");
-          if (onProgress) onProgress(100);
-          resolve(response);
-        } catch (e) {
-          console.log("Upload response (non-JSON):", xhr.responseText);
-          if (onProgress) onProgress(100);
-          resolve({ success: true });
+  console.log(`Uploading parts from ${startPart} to ${totalParts}...`);
+
+  for (let partNumber = startPart; partNumber <= totalParts; partNumber++) {
+     if (window.activeUploadAbortFlag) {
+          console.log('❌ Upload cancelled by user, stopping...');
+          try {
+            await abortChunkedUpload(token, sessionId);
+          } catch(e) {}
+          throw new Error('Upload cancelled by user');
         }
-      } else {
-        console.error(`Upload failed: ${xhr.status} ${xhr.statusText}`);
-        reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`));
-      }
-    };
 
-    xhr.onerror = () => {
-      console.error("Upload XHR error");
-      reject(new Error('Network error during upload'));
-    };
+    const start = (partNumber - 1) * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const chunk = file.slice(start, end);
 
-    xhr.ontimeout = () => {
-      console.error("Upload timeout");
-      reject(new Error('Upload timeout'));
-    };
+    console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
 
-    xhr.timeout = 300000;
+    const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
 
-    const formData = new FormData();
-    formData.append('file', file);
+    const partResponse = await fetchWithTokenRefresh(partUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream"
+      },
+      body: chunk
+    }, token);
 
-    xhr.send(formData);
-  });
+    if (!partResponse.ok) {
+      const error = await partResponse.text();
+      throw new Error(`Failed to upload part ${partNumber}: ${error}`);
+    }
+
+    const progress = Math.round((partNumber / totalParts) * 100);
+    if (onProgress) onProgress(progress);
+  }
+
+  console.log("Completing upload...");
+  const completeResponse = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
+    method: "POST"
+  }, token);
+
+  if (!completeResponse.ok) {
+    const error = await completeResponse.text();
+    throw new Error(`Failed to complete upload: ${error}`);
+  }
+
+  removeUploadSession(file.name, parentId);
+
+  const result = await completeResponse.json();
+  console.log("✅ Upload completed, fileId:", result.fileId);
+
+  if (onProgress) onProgress(100);
+  return result;
 };
+
+export const getUploadStatus = async (token, sessionId) => {
+  console.log("=== GET UPLOAD STATUS ===");
+  console.log("Session ID:", sessionId);
+
+  const url = `${BASE}/files/upload/chunked/status?sessionId=${sessionId}`;
+
+  const response = await fetchWithTokenRefresh(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json"
+    }
+  }, token);
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get upload status: ${error}`);
+  }
+
+  const data = await response.json();
+  console.log("Raw status data:", data);
+
+  return {
+    sessionId: data.sessionId,
+    status: data.status,
+    currentSize: data.currentSize,
+    currentParts: data.currentParts,
+    totalParts: data.totalParts || 0,
+    fileSize: data.fileSize || 0,
+    missingPartsBitmask: data.missingPartsBitmask
+  };
+};
+
+ export const abortChunkedUpload = async (token, sessionId) => {
+   console.log("=== ABORT UPLOAD ===");
+
+   const url = `${BASE}/files/upload/chunked/abort?sessionId=${sessionId}`;
+
+   const response = await fetchWithTokenRefresh(url, {
+     method: "POST"
+   }, token);
+
+   if (!response.ok) {
+     const error = await response.text();
+     throw new Error(`Failed to abort upload: ${error}`);
+   }
+
+   return { success: true };
+ };
+
+ export const saveUploadSession = (fileName, parentId, sessionId, totalParts, fileSize) => {
+   const key = `${parentId || 'root'}_${fileName}`;
+   const sessions = JSON.parse(localStorage.getItem('uploadSessions') || '{}');
+   sessions[key] = {
+     sessionId: sessionId,
+     fileName: fileName,
+     parentId: parentId,
+     startedAt: Date.now(),
+     totalParts: totalParts,
+     fileSize: fileSize
+   };
+   localStorage.setItem('uploadSessions', JSON.stringify(sessions));
+ };
+
+ export const getSavedUploadSession = (fileName, parentId) => {
+   const parentKey = parentId && parentId !== "" ? parentId : "root";
+   const key = `${parentKey}_${fileName}`;
+   console.log("🔍 Looking for session with key:", key);
+
+   const sessions = JSON.parse(localStorage.getItem('uploadSessions') || '{}');
+   console.log("📦 All sessions:", sessions);
+   console.log("✅ Found:", sessions[key]);
+
+   return sessions[key] || null;
+ };
+
+ export const removeUploadSession = (fileName, parentId) => {
+   const parentKey = parentId && parentId !== "" ? parentId : "root";
+   const key = `${parentKey}_${fileName}`;
+   const sessions = JSON.parse(localStorage.getItem('uploadSessions') || '{}');
+   delete sessions[key];
+   localStorage.setItem('uploadSessions', JSON.stringify(sessions));
+   console.log("🗑️ Removed session for key:", key);
+ };
 
 export const deleteSharePermanently = async (token, shareId) => {
   console.log("=== DELETE SHARE PERMANENTLY ===");
@@ -1459,6 +1690,41 @@ export const setAutoRenew = async (token, enabled) => {
     return data;
   } catch (error) {
     console.error(`Error ${enabled ? 'enabling' : 'disabling'} auto-renew:`, error);
+    throw error;
+  }
+};
+
+export const getFilePreview = async (token, fileId) => {
+  try {
+    const url = `${BASE}/files/preview?fileId=${fileId}`;
+    console.log("=== GET FILE PREVIEW ===");
+    console.log("URL:", url);
+    console.log("Token present:", !!token);
+
+    const response = await fetchWithTokenRefresh(
+      url,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      },
+      token
+    );
+
+    console.log("Response status:", response.status);
+    console.log("Response headers:", response.headers);
+
+    const text = await response.text();
+    console.log("Response body:", text);
+
+    if (!response.ok) {
+      throw new Error(`Failed to get preview URL: ${response.status} - ${text}`);
+    }
+
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Error getting file preview:', error);
     throw error;
   }
 };

@@ -37,7 +37,7 @@ public class StorageRepository {
         entity,
         FileOperationType.UPLOAD,
         () -> {
-          metadataRepository.addFile(entity);
+          metadataRepository.upsertFile(entity);
           contentRepository.putObject(entity.getS3Key(), data);
           return null;
         });
@@ -48,7 +48,7 @@ public class StorageRepository {
         entity,
         FileOperationType.UPLOAD,
         () -> {
-          metadataRepository.addFile(entity);
+          metadataRepository.upsertFile(entity);
 
           String uploadId = contentRepository.startMultipartUpload(entity.getS3Key());
           session.setUploadId(uploadId);
@@ -183,7 +183,7 @@ public class StorageRepository {
         entity,
         FileOperationType.UPLOAD,
         () -> {
-          metadataRepository.addFile(entity);
+          metadataRepository.upsertFile(entity);
           return null;
         });
   }
@@ -204,10 +204,6 @@ public class StorageRepository {
 
   public int touchUploadSessionStatus(UUID sessionId, ChunkedUploadStatus expectedStatus) {
     return uploadRepository.touchSessionStatus(sessionId, expectedStatus);
-  }
-
-  public Page<StorageEntity> getTrashFileList(UUID userId, UUID parentId, PageQuery pageQuery) {
-    return metadataRepository.getTrashFileList(userId, parentId, pageQuery);
   }
 
   public InputStream download(StorageEntity entity, String range) {
@@ -270,5 +266,13 @@ public class StorageRepository {
 
   public Optional<ChunkedUploadSessionEntity> getUploadSession(UUID sessionId) {
     return uploadRepository.getSession(sessionId);
+  }
+
+  public String generatePresignedUrl(StorageEntity entity, int expirySeconds) {
+    return contentRepository.generatePresignedUrl(entity.getS3Key(), expirySeconds);
+  }
+
+  public Page<StorageEntity> getAllTrashFiles(UUID userId, UUID parentId, PageQuery pageQuery) {
+    return metadataRepository.getTrashFileList(userId, parentId, pageQuery);
   }
 }

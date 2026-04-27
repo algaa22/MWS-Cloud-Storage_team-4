@@ -6,3 +6,19 @@ body {
   background-color: #f2f6ff;
   font-family: Arial, sans-serif;
 }
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #374151 inset !important;
+  -webkit-text-fill-color: white !important;
+  box-shadow: 0 0 0 30px #374151 inset !important;
+  background-color: #374151 !important;
+  caret-color: white !important;
+}
+
+input[type="password"]:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 30px #374151 inset !important;
+  -webkit-text-fill-color: white !important;
+}

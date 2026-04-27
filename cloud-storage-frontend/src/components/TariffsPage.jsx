@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
-import { getTariffInfo, purchaseTariff, setAutoRenew } from "../api";
+import { getTariffInfo, purchaseTariff, setAutoRenew, getUserInfo } from "../api";
 import PaymentModal from "./PaymentModal";
 
 export default function TariffsPage() {
@@ -14,6 +14,7 @@ export default function TariffsPage() {
   const [success, setSuccess] = useState("");
   const [selectedTariff, setSelectedTariff] = useState(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [usedStorage, setUsedStorage] = useState(0);
 
   const tariffs = [
     {
@@ -41,21 +42,38 @@ export default function TariffsPage() {
 
   useEffect(() => {
     loadCurrentTariff();
+    loadUsedStorage();
   }, []);
 
-  const loadCurrentTariff = async () => {
-    setLoading(true);
-    try {
-      const info = await getTariffInfo(token);
-      console.log("Tariff info from server:", info);
-      setCurrentTariff(info);
-    } catch (err) {
-      console.error('Failed to load tariff info:', err);
-      setError('Не удалось загрузить информацию о тарифе');
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadCurrentTariff = async () => {
+  setLoading(true);
+  try {
+    const info = await getTariffInfo(token);
+    console.log("=== TARIFF INFO RECEIVED ===");
+    console.log("Full object:", info);
+    console.log("usedStorage:", info.usedStorage);
+    console.log("totalStorageLimit:", info.totalStorageLimit);
+    console.log("freeStorageLimit:", info.freeStorageLimit);
+    console.log("activeTariff:", info.activeTariff);
+    console.log("All keys:", Object.keys(info));
+    setCurrentTariff(info);
+  } catch (err) {
+    console.error('Failed to load tariff info:', err);
+    setError('Не удалось загрузить информацию о тарифе');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const loadUsedStorage = async () => {
+  try {
+    const userInfo = await getUserInfo(token);
+    console.log("User info for storage:", userInfo);
+    setUsedStorage(userInfo.usedStorage || 0);
+  } catch (err) {
+    console.error("Failed to load used storage:", err);
+  }
+};
 
   const handlePurchase = (tariffId) => {
     const tariff = tariffs.find(t => t.id === tariffId);
@@ -73,6 +91,7 @@ export default function TariffsPage() {
 
       await purchaseTariff(token, selectedTariff.id, 'test-payment-token', autoRenew, paymentMethod);
       await loadCurrentTariff();
+      await loadUsedStorage();
 
       sessionStorage.setItem('refreshStorage', 'true');
 
@@ -119,9 +138,17 @@ export default function TariffsPage() {
 
   const calculatePercentage = () => {
     if (!currentTariff) return 0;
-    const used = currentTariff.usedStorage || 0;
+
+    const used = usedStorage; // ← ИСПОЛЬЗУЕМ usedStorage ИЗ СОСТОЯНИЯ
     const limit = currentTariff.totalStorageLimit || (5 * 1024 * 1024 * 1024);
-    return Math.round((used / limit) * 100);
+
+    if (limit === 0) return 0;
+
+    const percent = Math.min(Math.round((used / limit) * 100), 100);
+
+    console.log(`📊 Storage calculation: used=${used}, limit=${limit}, percent=${percent}%`);
+
+    return percent;
   };
 
   const handleToggleAutoRenew = async () => {
@@ -239,7 +266,7 @@ export default function TariffsPage() {
               <div className="bg-white/10 rounded-xl p-3">
                 <div className="text-sm text-white/60 mb-1">Использовано</div>
                 <div className="text-lg font-bold text-blue-300">
-                  {formatBytes(currentTariff.usedStorage || 0)}
+                  {formatBytes(usedStorage || 0)}
                 </div>
               </div>
               <div className="bg-white/10 rounded-xl p-3">

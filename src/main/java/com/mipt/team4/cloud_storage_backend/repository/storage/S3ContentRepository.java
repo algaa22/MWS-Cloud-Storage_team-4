@@ -1,8 +1,11 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
+import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.utils.string.StoragePaths;
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -12,21 +15,41 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
+import software.amazon.awssdk.services.s3.model.CompletedPart;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.UploadPartRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartResponse;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 @Slf4j
 @Repository
 public class S3ContentRepository implements FileContentRepository {
+
   private final S3Wrapper wrapper;
   private final S3Client s3Client;
   private final String bucketName;
+  private final S3Presigner s3Presigner;
 
   @Autowired
-  public S3ContentRepository(StorageProps storageProps, S3Wrapper wrapper, S3Client s3Client) {
+  public S3ContentRepository(
+      StorageProps storageProps, S3Wrapper wrapper, S3Client s3Client, S3Presigner s3Presigner) {
     this.wrapper = wrapper;
-
     this.bucketName = storageProps.s3().userDataBucket().name();
     this.s3Client = s3Client;
+    this.s3Presigner = s3Presigner;
   }
 
   @PostConstruct
@@ -83,6 +106,7 @@ public class S3ContentRepository implements FileContentRepository {
                   .key(s3Key)
                   .uploadId(uploadId)
                   .partNumber(partNum)
+                  .contentLength(size)
                   .build();
 
           UploadPartResponse response =
@@ -144,7 +168,11 @@ public class S3ContentRepository implements FileContentRepository {
     wrapper.execute(
         () -> {
           s3Client.putObject(
-              PutObjectRequest.builder().bucket(bucketName).key(s3Key).build(),
+              PutObjectRequest.builder()
+                  .bucket(bucketName)
+                  .key(s3Key)
+                  .contentLength((long) data.length)
+                  .build(),
               RequestBody.fromBytes(data));
           return null;
         });
@@ -179,5 +207,40 @@ public class S3ContentRepository implements FileContentRepository {
               DeleteObjectRequest.builder().bucket(bucketName).key(s3Key).build());
           return null;
         });
+  }
+
+  @Override
+  public String generatePresignedUrl(String s3Key, int expirySeconds) {
+    return wrapper.execute(
+        () -> {
+          try {
+            GetObjectRequest getObjectRequest =
+                GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .responseContentDisposition("inline")
+                    .build();
+
+            GetObjectPresignRequest presignRequest =
+                GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofSeconds(expirySeconds))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            PresignedGetObjectRequest presignedRequest =
+                s3Presigner.presignGetObject(presignRequest);
+
+            return presignedRequest.url().toString();
+
+          } catch (Exception e) {
+            log.error("Failed to generate presigned URL for key {}", s3Key, e);
+            return null;
+          }
+        });
+  }
+
+  public String generatePresignedUrl(StorageEntity fileEntity, int expirySeconds) {
+    String s3Key = StoragePaths.getS3Key(fileEntity.getUserId(), fileEntity.getId());
+    return generatePresignedUrl(s3Key, expirySeconds);
   }
 }

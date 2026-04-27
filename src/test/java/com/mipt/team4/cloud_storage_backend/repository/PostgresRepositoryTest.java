@@ -11,7 +11,6 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import jakarta.persistence.EntityManager;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -168,7 +167,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .isDirectory(true)
             .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
             .build();
-    storageJpaRepositoryAdapter.addFile(folder);
+    storageJpaRepositoryAdapter.upsertFile(folder);
 
     StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
 
@@ -182,7 +181,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .username("name")
             .email("test-" + UUID.randomUUID() + "@email.com")
             .passwordHash("password")
-            .createdAt(LocalDateTime.now())
+            .paidStorageLimit(10737418240L)
             .build();
 
     userRepository.addUser(user);
@@ -203,7 +202,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .tags(List.of("some xml"))
             .build();
 
-    storageJpaRepositoryAdapter.addFile(fileEntity);
+    storageJpaRepositoryAdapter.upsertFile(fileEntity);
     return fileEntity;
   }
 
@@ -222,7 +221,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .tags(List.of("some directory"))
             .build();
 
-    storageJpaRepositoryAdapter.addFile(directoryEntity);
+    storageJpaRepositoryAdapter.upsertFile(directoryEntity);
     return directoryEntity;
   }
 

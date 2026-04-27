@@ -49,7 +49,12 @@ public class CorsHandler extends ChannelDuplexHandler {
           "X-Payment-Token",
           "X-Payment-Method",
           "X-Share-Password",
-          "X-Share-Token");
+          "X-Share-Token",
+          "X-Total-Parts",
+          "X-File-Size",
+          "X-Session-Id",
+          "X-Part-Number",
+          "Content-Type");
 
   private static final String EXPOSE_HEADERS =
       String.join(

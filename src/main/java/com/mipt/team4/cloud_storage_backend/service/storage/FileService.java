@@ -3,12 +3,8 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 import com.mipt.team4.cloud_storage_backend.antivirus.config.props.AntivirusProps;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.antivirus.service.AntivirusService;
-import com.mipt.team4.cloud_storage_backend.exception.storage.CannotDownloadDirectoryException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.DirectoryContainsLockedFilesException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileAlreadyExistsException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileIsDangerousException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileNotFoundException;
-import com.mipt.team4.cloud_storage_backend.exception.storage.FileUnderScanException;
+import com.mipt.team4.cloud_storage_backend.config.props.NotificationProps;
+import com.mipt.team4.cloud_storage_backend.exception.storage.*;
 import com.mipt.team4.cloud_storage_backend.exception.upload.MissingChecksumException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
@@ -17,17 +13,12 @@ import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ContentRangeDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChunkedDownloadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileListRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.RestoreFileRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUploadRequest;
-import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.*;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FilePreviewResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.share.FileShareRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
@@ -36,6 +27,7 @@ import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
 import com.mipt.team4.cloud_storage_backend.utils.converter.ContentRangeConverter;
 import com.mipt.team4.cloud_storage_backend.utils.file.HashUtils;
 import com.mipt.team4.cloud_storage_backend.utils.string.MimeTypeDetector;
+import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -51,6 +43,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class FileService {
+
+  private static final int PREVIEW_EXPIRY_SECONDS = 3600;
+
   private final FileErasureService erasureService;
   private final AntivirusService antivirusService;
   private final TariffService tariffService;
@@ -60,6 +55,8 @@ public class FileService {
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
   private final FileShareRepositoryAdapter shareRepository;
+  private final NotificationClient notificationClient;
+  private final NotificationProps notificationConfig;
 
   @Transactional
   public UUID simpleUpload(SimpleUploadRequest request) {
@@ -215,8 +212,21 @@ public class FileService {
 
   @Transactional(readOnly = true)
   public Page<StorageEntity> getTrashFileList(TrashFileListRequest request) {
-    return storageRepository.getTrashFileList(
-        request.userId(), request.parentId(), PaginationMapper.toPageQuery(request.pagination()));
+    Page<StorageEntity> result =
+        storageRepository.getAllTrashFiles(
+            request.userId(),
+            request.parentId(),
+            PaginationMapper.toPageQuery(request.pagination()));
+
+    if (result.hasContent()) {
+      StorageEntity first = result.getContent().get(0);
+      log.info("First file deletedAt: {}", first.getDeletedAt());
+      log.info(
+          "First file deletedAt class: {}",
+          first.getDeletedAt() != null ? first.getDeletedAt().getClass() : "null");
+    }
+
+    return result;
   }
 
   @Transactional(readOnly = true)
@@ -279,6 +289,86 @@ public class FileService {
       if (hasLocked) {
         throw new DirectoryContainsLockedFilesException(fileEntity.getId());
       }
+    }
+  }
+
+  // TODO: вынести в другой класс
+  @Transactional(readOnly = true)
+  public FilePreviewResponse generatePreviewUrl(UUID fileId, UUID userId) {
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException();
+    }
+
+    StorageEntity fileEntity =
+        storageRepository
+            .get(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
+    boolean isPreviewable = isPreviewableMimeType(fileEntity.getMimeType());
+
+    String previewUrl = null;
+    if (isPreviewable) {
+      previewUrl = storageRepository.generatePresignedUrl(fileEntity, PREVIEW_EXPIRY_SECONDS);
+    }
+
+    return FilePreviewResponse.from(fileEntity, previewUrl);
+  }
+
+  private boolean isPreviewableMimeType(String mimeType) {
+    if (mimeType == null) return false;
+    return mimeType.startsWith("image/")
+        || mimeType.equals("application/pdf")
+        || mimeType.startsWith("video/")
+        || mimeType.equals("text/plain")
+        || (mimeType.startsWith("audio/"))
+        || mimeType.startsWith("text/");
+  }
+
+  private void checkStorageAndNotify(UUID userId) {
+    userRepository
+        .getStorageUsage(userId)
+        .ifPresent(
+            usage -> {
+              double ratio = usage.getRatio();
+
+              log.info(
+                  "Storage check for user {}: used={}, limit={}, {}%",
+                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
+
+              if (ratio >= notificationConfig.fullThreshold()) {
+                userRepository
+                    .getUserById(userId)
+                    .ifPresent(
+                        user ->
+                            notificationClient.notifyStorageFull(
+                                user.getEmail(), user.getUsername(), userId));
+              } else if (ratio >= notificationConfig.almostFullThreshold()) {
+                userRepository
+                    .getUserById(userId)
+                    .ifPresent(
+                        user ->
+                            notificationClient.notifyStorageAlmostFull(
+                                user.getEmail(),
+                                user.getUsername(),
+                                usage.used(),
+                                usage.limit(),
+                                userId));
+              }
+            });
+  }
+
+  public byte[] getPreviewContent(UUID fileId, UUID userId) {
+    StorageEntity fileEntity =
+        storageRepository
+            .get(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
+    InputStream inputStream = storageRepository.download(fileEntity, null);
+
+    try {
+      return inputStream.readAllBytes();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }

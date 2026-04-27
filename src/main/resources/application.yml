@@ -23,6 +23,11 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      adjust-dates-to-context-time-zone: false
 
 management:
   endpoints:
@@ -115,9 +120,13 @@ storage:
       min-file-part-size: 5242880 # 5mb
       max-file-part-size: 33554432 # 32mb
       max-parts-num: 10000
+    timeouts-sec:
+      connection: 30
+      socket: 30
+    path-style-access: true
 
   rest:
-    max-aggregated-content-length: 1048576 # 1mb
+    max-aggregated-content-length: 209715200 # 200mb
     file-download-chunk-size: 65536 # 64 kb
 
   auth:

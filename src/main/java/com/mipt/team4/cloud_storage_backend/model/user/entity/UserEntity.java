@@ -54,7 +54,7 @@ public class UserEntity {
   private long freeStorageLimit = 5L * 1024 * 1024 * 1024; // 5GB постоянно
 
   @Column(name = "paid_storage_limit")
-  private Long paidStorageLimit; // может быть null если нет платного тарифа
+  private Long paidStorageLimit;
 
   @Builder.Default
   @Column(name = "used_storage")

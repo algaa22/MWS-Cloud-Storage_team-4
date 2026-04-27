@@ -35,10 +35,13 @@ public record StorageProps(
       String secretKey,
       String region,
       UserDataBucket userDataBucket,
-      Limits limits) {
+      Limits limits,
+      TimeoutsSec timeoutsSec) {
     public record UserDataBucket(String name) {}
 
     public record Limits(long minFilePartSize, long maxFilePartSize, int maxPartsNum) {}
+
+    public record TimeoutsSec(int connection, int socket) {}
   }
 
   public record HealthCheck(

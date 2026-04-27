@@ -24,7 +24,13 @@ import {
   permanentDeleteFile,
   emptyTrash,
   softDeleteFile,
-  softDeleteFolder
+  softDeleteFolder,
+  getFilePreview,
+  getUploadStatus,
+    abortChunkedUpload,
+    saveUploadSession,
+    getSavedUploadSession,
+    removeUploadSession
 } from "../api.js";
 
 export default function FileBrowser() {
@@ -67,6 +73,14 @@ export default function FileBrowser() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [shares, setShares] = useState([]);
   const [showSharesList, setShowSharesList] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingSession, setPendingSession] = useState(null);
+  const [pendingProgress, setPendingProgress] = useState(0);
+  const [selectedTags, setSelectedTags] = useState([]);
 
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
@@ -209,6 +223,54 @@ useEffect(() => {
   console.log("📁 Current files:", files.length, "files, total size:",
     files.reduce((sum, f) => sum + (f.size || 0), 0));
 }, [storageInfo, files]);
+
+useEffect(() => {
+  const checkPendingUploads = async () => {
+    const sessions = JSON.parse(localStorage.getItem('uploadSessions') || '{}');
+    console.log("🔍 Checking for pending uploads on page load:", sessions);
+
+    const sessionKeys = Object.keys(sessions);
+    if (sessionKeys.length === 0) return;
+
+    const firstKey = sessionKeys[0];
+    const session = sessions[firstKey];
+    const fileName = firstKey.substring(firstKey.indexOf('_') + 1);
+
+    console.log("Found pending upload:", { fileName, sessionId: session.sessionId });
+
+    try {
+      const status = await getUploadStatus(token, session.sessionId);
+      console.log("Upload status:", status);
+
+      if (status && status.currentParts && status.currentParts > 0) {
+        const totalParts = session.totalParts || status.totalParts || status.currentParts;
+        const percent = Math.round((status.currentParts / totalParts) * 100);
+
+        console.log(`📊 Pending upload: ${status.currentParts} of ${totalParts} parts (${percent}%)`);
+
+        const pendingFileObj = {
+          name: fileName,
+          size: session.fileSize || status.currentSize,
+          type: 'file'
+        };
+
+        setPendingFile(pendingFileObj);
+        setPendingSession(session.sessionId);
+        setPendingProgress(percent);
+        setShowResumeModal(true);
+      } else {
+        removeUploadSession(fileName, null);
+      }
+    } catch (err) {
+      console.error("Error checking pending upload:", err);
+      removeUploadSession(fileName, null);
+    }
+  };
+
+  if (token) {
+    checkPendingUploads();
+  }
+}, [token]);
 
 
 const refreshStorageFromFiles = () => {
@@ -439,7 +501,7 @@ const refreshStorageInfo = async () => {
         return;
       }
 
-      const data = await getFiles(token, currentPath);
+      const data = await getFiles(token, currentPath, 0, 100);
       console.log("Raw getFiles data:", data);
 
       if (!Array.isArray(data)) {
@@ -760,6 +822,10 @@ const handleDeleteSelected = async () => {
           }
           break;
 
+        case "preview":
+            await handlePreview(selectedItem);
+            break;
+
         case "info":
           const info = selectedItem.type === "file"
             ? await apiGetFileInfo(token, selectedItem.id)
@@ -976,34 +1042,202 @@ const refreshUserInfo = async () => {
   };
 
   const handleFileUpload = async (event) => {
+  window.activeUploadAbortFlag = false;
+
     const file = event.target.files?.[0];
     if (!file) return;
 
-    try {
+    console.log("=== HANDLE FILE UPLOAD CALLED ===");
+    console.log("File name:", file.name);
+    console.log("File size:", file.size);
+    console.log("Current path:", currentPath);
+
+    const resumeSessionId = sessionStorage.getItem('resumeSessionId');
+    const resumeFileName = sessionStorage.getItem('resumeFileName');
+    const resumeFileSize = sessionStorage.getItem('resumeFileSize');
+
+
+    if (resumeSessionId && resumeFileName) {
+        if (resumeFileName === file.name && resumeFileSize && parseInt(resumeFileSize) === file.size) {
+      sessionStorage.removeItem('resumeSessionId');
+      sessionStorage.removeItem('resumeFileName');
+            sessionStorage.removeItem('resumeFileSize');
+
+
+      console.log("🔄 Resuming upload with session:", resumeSessionId);
+
       setUploading(true);
       setUploadProgress(0);
+      setError(null);
 
-      const parentId = currentPath || null;
+      try {
+        await uploadFileWithTags(token, file, currentPath, setUploadProgress, [], resumeSessionId);
+        await fetchFiles();
+        await loadStorageInfo();
+        setSuccess("Файл успешно загружен");
+        setTimeout(() => setSuccess(""), 2000);
+        setShowUploadModal(false);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+      return;
+    }
 
-      await uploadFileWithTags(token, file, parentId, (progress) => {
-        setUploadProgress(progress);
-      }, uploadTags);
+else {
+      const errorMessage = `Ошибка: выбран неверный файл.\n\nОжидался: ${resumeFileName}\nВыбран: ${file.name}\n\nПожалуйста, выберите правильный файл для продолжения загрузки.`;
 
-      console.log("Upload completed successfully");
+      setError(errorMessage);
+      console.error("File mismatch:", {
+        expected: resumeFileName,
+        expectedSize: resumeFileSize,
+        got: file.name,
+        gotSize: file.size
+      });
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+  }
+
+    setUploading(true);
+    setUploadProgress(0);
+    setError(null);
+
+    const parentId = currentPath && currentPath !== "" ? currentPath : null;
+    const savedSession = getSavedUploadSession(file.name, parentId);
+    console.log("Saved session from localStorage:", savedSession);
+
+    if (savedSession) {
+      try {
+        const status = await getUploadStatus(token, savedSession.sessionId);
+        console.log("Upload status from server:", status);
+
+        if (status && status.currentParts && status.currentParts > 0) {
+          const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+          let totalParts = status.totalParts;
+
+          if (!totalParts || totalParts === 0) {
+            totalParts = Math.ceil(file.size / CHUNK_SIZE);
+          }
+
+          if (!totalParts || totalParts === 0) {
+            totalParts = status.currentParts;
+          }
+
+          const percent = Math.round((status.currentParts / totalParts) * 100);
+
+          console.log(`✅ Already uploaded: ${status.currentParts} out of ${totalParts} parts`);
+          console.log(`📊 Progress: ${percent}%`);
+          console.log(`📁 File size: ${file.size}, CHUNK_SIZE: ${CHUNK_SIZE}, totalParts: ${totalParts}`);
+
+          setPendingFile(file);
+          setPendingSession(savedSession.sessionId);
+          setPendingProgress(percent);
+          setShowResumeModal(true);
+          setUploading(false);
+          return;
+        } else {
+          console.log("No uploaded parts found, removing session");
+          removeUploadSession(file.name, parentId);
+        }
+      } catch (err) {
+        console.error("Error checking existing upload:", err);
+        removeUploadSession(file.name, parentId);
+      }
+    }
+
+    console.log("Starting new upload...");
+    try {
+      await uploadFileWithTags(token, file, currentPath, setUploadProgress, []);
       await fetchFiles();
       await loadStorageInfo();
-      setShowUploadModal(false);
-      setUploadTags([]);
+      setSuccess("Файл успешно загружен");
+      setTimeout(() => setSuccess(""), 2000);
+        setShowUploadModal(false);
 
-    } catch (err) {
-      console.error("Upload error:", err);
-      setError(`Ошибка при загрузке файла: ${err.message}`);
+    }
+catch (err) {
+      setError(err.message);
     } finally {
       setUploading(false);
       setUploadProgress(0);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
+
+const handleResumeUpload = async () => {
+  if (!pendingFile) return;
+
+  console.log("=== ПРОДОЛЖЕНИЕ ЗАГРУЗКИ ===");
+  console.log("Файл:", pendingFile.name);
+  console.log("Session:", pendingSession);
+  console.log("Progress:", pendingProgress);
+
+  setShowResumeModal(false);
+
+  sessionStorage.setItem('resumeSessionId', pendingSession);
+  sessionStorage.setItem('resumeFileName', pendingFile.name);
+  sessionStorage.setItem('resumeFileSize', pendingFile.size);
+
+  setPendingFile(null);
+  setPendingSession(null);
+  setPendingProgress(0);
+
+  setTimeout(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    } else {
+      setShowUploadModal(true);
+    }
+  }, 200);
+};
+
+const handleCancelAndReupload = async () => {
+  if (!pendingFile) return;
+
+  console.log("=== ОТМЕНА ЗАГРУЗКИ ===");
+  console.log("Cancelling session:", pendingSession);
+
+  setShowResumeModal(false);
+  setUploading(true);
+  setError(null);
+
+  try {
+    await abortChunkedUpload(token, pendingSession);
+    console.log("✅ Upload cancelled on server");
+
+    removeUploadSession(pendingFile.name, currentPath);
+    console.log("✅ Session removed from localStorage");
+
+    sessionStorage.removeItem('resumeSessionId');
+        sessionStorage.removeItem('resumeFileName');
+        sessionStorage.removeItem('resumeFileSize');
+
+    setSuccess("Загрузка отменена");
+    setTimeout(() => setSuccess(""), 2000);
+
+  } catch (err) {
+    console.error("Error cancelling upload:", err);
+    setError(`Ошибка отмены: ${err.message}`);
+  } finally {
+    setUploading(false);
+    setPendingFile(null);
+    setPendingSession(null);
+    setPendingProgress(0);
+        setShowUploadModal(false);
+
+  }
+};
 
   const renderModernNavigation = () => {
     return (
@@ -1098,6 +1332,68 @@ const refreshUserInfo = async () => {
     }
   };
 
+const searchFilesByTags = async (tags) => {
+  if (tags.length === 0) {
+    await fetchFiles();
+    return;
+  }
+
+  setIsSearching(true);
+  try {
+    const params = new URLSearchParams();
+    params.append("includeDirectories", "true");
+    params.append("recursive", "true");
+    params.append("page", "0");
+    params.append("size", "100");
+    params.append("tags", tags.join(','));
+
+    const response = await fetchWithTokenRefresh(
+      `${BASE}/files/list?${params.toString()}`,
+      { headers: { "Accept": "application/json" } },
+      token
+    );
+
+    if (!response.ok) {
+      throw new Error(`Search failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    let items = [];
+    if (data.page && Array.isArray(data.page.content)) {
+      items = data.page.content;
+    } else if (Array.isArray(data.files)) {
+      items = data.files;
+    } else if (Array.isArray(data)) {
+      items = data;
+    }
+
+    const processed = items.map(item => ({
+      name: item.name || "Без имени",
+      type: item.isDirectory ? "folder" : "file",
+      size: item.size || 0,
+      id: item.id,
+      tags: item.tags,
+      _raw: item
+    }));
+
+    setFiles(processed.filter(f => f.type === "file"));
+    setFolders(processed.filter(f => f.type === "folder"));
+
+    if (items.length === 0) {
+      setError("Файлы с такими тегами не найдены");
+    } else {
+      setError("");
+    }
+
+  } catch (error) {
+    console.error("Search error:", error);
+    setError("Ошибка при поиске по тегам");
+  } finally {
+    setIsSearching(false);
+  }
+};
+
   const formatFileSize = (bytes) => {
     if (!bytes && bytes !== 0) return "—";
     if (bytes === 0) return "0 Bytes";
@@ -1156,6 +1452,31 @@ const refreshUserInfo = async () => {
 
     return iconMap[extension] || "📄";
   };
+
+const handlePreview = async (file) => {
+  if (!file || file.type !== "file") return;
+
+  setPreviewLoading(true);
+  setShowPreviewModal(true);
+
+  try {
+    const data = await getFilePreview(token, file.id);
+    setPreviewData({
+      ...data,
+      file: file
+    });
+  } catch (error) {
+    console.error("Preview error:", error);
+    setError("Не удалось загрузить предпросмотр файла");
+  } finally {
+    setPreviewLoading(false);
+  }
+};
+
+const closePreviewModal = () => {
+  setShowPreviewModal(false);
+  setPreviewData(null);
+};
 
   const getProgressBarColor = (percentage) => {
     if (percentage < 50) return 'bg-green-500';
@@ -1365,55 +1686,7 @@ const refreshUserInfo = async () => {
                       setSearchTags(updatedTags);
                       setSearchInput("");
 
-                      setIsSearching(true);
-                      try {
-                        const params = new URLSearchParams();
-                        params.append("includeDirectories", "true");
-                        params.append("recursive", "true");
-                        params.append("tags", updatedTags.join(','));
-
-                        const response = await fetchWithTokenRefresh(
-                          `${BASE}/files/list?${params.toString()}`,
-                          { headers: { "Accept": "application/json" } },
-                          token
-                        );
-
-                         const responseText = await response.text();
-                                console.log("RAW SEARCH RESPONSE:", responseText);
-
-                         let data;
-
-                         try {
-                           data = JSON.parse(responseText);
-                         } catch (e) {
-                           console.error("Failed to parse JSON:", e);
-                           return;
-                         }
-
-                         if (!response.ok) throw new Error(`Search failed: ${response.status}`);
-
-                         const items = data?.files || data || [];
-
-                         if (!Array.isArray(items)) {
-                           return;
-                         }
-
-                         const processed = items.map(item => ({
-                           name: item.name || "Без имени",
-                           type: item.isDirectory ? "folder" : "file",
-                           size: item.size || 0,
-                           id: item.id,
-                           _raw: item
-                         }));
-
-                         setFiles(processed.filter(f => f.type === "file"));
-                         setFolders(processed.filter(f => f.type === "folder"));
-                      } catch (error) {
-                        console.error("Search error:", error);
-                        setError("Ошибка при поиске по тегам");
-                      } finally {
-                        setIsSearching(false);
-                      }
+                      await searchFilesByTags(updatedTags);
                     }
                   }
                 }}
@@ -1453,52 +1726,7 @@ const refreshUserInfo = async () => {
                     onClick={async () => {
                       const updatedTags = searchTags.filter((_, i) => i !== index);
                       setSearchTags(updatedTags);
-
-                      if (updatedTags.length === 0) {
-                        await fetchFiles();
-                      } else {
-                        setIsSearching(true);
-                        try {
-                          const params = new URLSearchParams();
-                          params.append("includeDirectories", "true");
-                          params.append("recursive", "true");
-                          params.append("tags", updatedTags.join(','));
-
-                          const response = await fetchWithTokenRefresh(
-                            `${BASE}/files/list?${params.toString()}`,
-                            { headers: { "Accept": "application/json" } },
-                            token
-                          );
-
-                          const responseText = await response.text();
-                          console.log("RAW SEARCH RESPONSE:", responseText);
-
-                          if (!response.ok) throw new Error(`Search failed: ${response.status}`);
-
-                          const data = JSON.parse(responseText);
-                          const items = data?.files || data || [];
-
-                          if (!Array.isArray(items)) {
-                            return;
-                          }
-
-                          const processed = items.map(item => ({
-                            name: item.name || "Без имени",
-                            type: item.isDirectory ? "folder" : "file",
-                            size: item.size || 0,
-                            id: item.id,
-                            _raw: item
-                          }));
-
-                          setFiles(processed.filter(f => f.type === "file"));
-                          setFolders(processed.filter(f => f.type === "folder"));
-                        } catch (error) {
-                          console.error("Search error:", error);
-                          setError("Ошибка при поиске по тегам");
-                        } finally {
-                          setIsSearching(false);
-                        }
-                      }
+                        await searchFilesByTags(updatedTags);
                     }}
                     className="ml-1 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-full w-4 h-4 flex items-center justify-center"
                   >
@@ -1509,12 +1737,6 @@ const refreshUserInfo = async () => {
             </div>
           )}
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center">
-            {error}
-          </div>
-        )}
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -1572,6 +1794,7 @@ const refreshUserInfo = async () => {
                 </div>
               ))}
 
+
 {files.map((file) => (
   <div
     key={file.id || file.fullPath}
@@ -1590,7 +1813,22 @@ const refreshUserInfo = async () => {
     <p className="truncate text-sm font-medium">{file.name}</p>
     <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
 
-    {/* Кнопка шаринга */}
+    {/* Кнопка предпросмотра */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        handlePreview(file);
+      }}
+      className="absolute top-2 right-12 opacity-0 group-hover:opacity-100 transition-opacity bg-green-500/20 hover:bg-green-500/30 p-1.5 rounded-lg"
+      title="Предпросмотр"
+    >
+      <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      </svg>
+    </button>
+
+    {/* Кнопка шаринга (существующая) */}
     <button
       onClick={(e) => {
         e.stopPropagation();
@@ -1707,13 +1945,50 @@ const refreshUserInfo = async () => {
               </div>
             )}
             <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowUploadModal(false)}
-                className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
-                disabled={uploading || storageLoading}
-              >
-                Отмена
-              </button>
+<button
+  onClick={async () => {
+    window.activeUploadAbortFlag = true;
+
+    const resumeSessionId = sessionStorage.getItem('resumeSessionId');
+    if (resumeSessionId) {
+      try {
+        await abortChunkedUpload(token, resumeSessionId);
+      } catch (err) {}
+    }
+
+    if (pendingSession) {
+      try {
+        await abortChunkedUpload(token, pendingSession);
+      } catch (err) {}
+    }
+
+    sessionStorage.removeItem('resumeSessionId');
+    sessionStorage.removeItem('resumeFileName');
+    sessionStorage.removeItem('resumeFileSize');
+
+    if (pendingFile?.name) {
+      removeUploadSession(pendingFile.name, currentPath);
+    }
+
+    setUploading(false);
+    setUploadProgress(0);
+    setPendingFile(null);
+    setPendingSession(null);
+    setPendingProgress(0);
+    setShowUploadModal(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    setTimeout(() => {
+      window.activeUploadAbortFlag = false;
+    }, 1000);
+  }}
+  className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+>
+  Отмена
+</button>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors"
@@ -1974,29 +2249,6 @@ const refreshUserInfo = async () => {
         </div>
       )}
 
-      {showItemMenu && selectedItem && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowItemMenu(false)} />
-          <div className="fixed bg-gray-800 rounded-xl shadow-2xl py-2 z-50 min-w-[200px]" style={{ left: itemMenuPosition.x, top: itemMenuPosition.y }}>
-            {selectedItem.type === "file" && (
-              <button onClick={() => handleFileAction("download")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
-                📥 Скачать
-              </button>
-            )}
-            <button onClick={() => handleFileAction("info")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
-              ℹ️ Информация
-            </button>
-            <div className="border-t border-white/20 my-1" />
-            <button
-              onClick={() => handleFileAction("delete")}
-              className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
-            >
-              {selectedItem.type === "folder" ? "🗑️ Удалить папку" : "🗑️ Удалить файл"}
-            </button>
-          </div>
-        </>
-      )}
-
   {showShareModal && selectedItem && (
             <ShareModal
               file={selectedItem}
@@ -2035,6 +2287,224 @@ const refreshUserInfo = async () => {
             </div>
           </>
         )}
+
+    {/* Модальное окно предпросмотра */}
+    {showPreviewModal && (
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="bg-gradient-to-br from-gray-900 to-blue-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-white/20 shadow-2xl">
+
+          {/* Заголовок */}
+          <div className="flex justify-between items-center p-4 border-b border-white/10">
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">{getFileIcon(previewData?.file || {})}</span>
+              <div>
+                <h3 className="font-bold text-white">{previewData?.fileName || previewData?.file?.name || "Предпросмотр"}</h3>
+                <p className="text-xs text-white/50">
+                  {previewData?.mimeType} • {formatFileSize(previewData?.fileSize || 0)}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={closePreviewModal}
+              className="text-white/70 hover:text-white bg-white/10 w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Содержимое предпросмотра */}
+          <div className="p-4 overflow-auto max-h-[70vh] flex items-center justify-center bg-black/30 min-h-[300px]">
+            {previewLoading ? (
+              <div className="flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mb-4"></div>
+                <p className="text-white/70">Загрузка предпросмотра...</p>
+              </div>
+            ) : previewData?.isPreviewable && previewData?.previewUrl ? (
+              <div className="w-full h-full flex items-center justify-center">
+                {/* Аудио файлы */}
+                            {previewData?.mimeType?.startsWith('audio/') ? (
+                              <div className="w-full max-w-md p-8 bg-gradient-to-br from-purple-900/50 to-blue-900/50 rounded-xl">
+                                <div className="text-center mb-6">
+                                  <div className="text-7xl mb-4">🎵</div>
+                                  <h4 className="font-bold text-xl text-white mb-2">{previewData.fileName}</h4>
+                                  <p className="text-sm text-white/50">
+                                    {formatFileSize(previewData.fileSize)} • Аудио файл
+                                  </p>
+                                </div>
+                                <audio
+                                  src={previewData.previewUrl}
+                                  controls
+                                  className="w-full"
+                                  controlsList="nodownload"
+                                >
+                                  Ваш браузер не поддерживает аудио
+                                </audio>
+                              </div>
+                            ) : previewData?.mimeType?.startsWith('image/') ? (
+                  <img
+                    src={previewData.previewUrl}
+                    alt={previewData.fileName}
+                    className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      setError("Не удалось загрузить изображение");
+                    }}
+                  />
+                ) : previewData?.mimeType === 'application/pdf' ? (
+                  <iframe
+                    src={previewData.previewUrl}
+                    className="w-full h-[60vh] rounded-lg"
+                    title={previewData.fileName}
+                  />
+                ) : previewData?.mimeType?.startsWith('video/') ? (
+                  <video
+                    src={previewData.previewUrl}
+                    controls
+                    className="max-w-full max-h-[60vh] rounded-lg"
+                    controlsList="nodownload"
+                  >
+                    Ваш браузер не поддерживает видео
+                  </video>
+                ) : previewData?.mimeType?.startsWith('text/') ? (
+                  <iframe
+                    src={previewData.previewUrl}
+                    className="w-full h-[60vh] rounded-lg bg-white"
+                    title={previewData.fileName}
+                  />
+                ) : (
+                  <div className="text-center">
+                    <div className="text-6xl mb-4">📄</div>
+                    <p className="text-white/70 mb-2">Предпросмотр недоступен для этого типа файлов</p>
+                    <button
+                      onClick={() => handleFileAction("download")}
+                      className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    >
+                      Скачать файл
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="text-6xl mb-4">🔒</div>
+                <p className="text-white/70 mb-2">Предпросмотр недоступен</p>
+                <p className="text-white/50 text-sm mb-4">Этот тип файлов нельзя просмотреть в браузере</p>
+                <button
+                  onClick={() => handleFileAction("download")}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  Скачать файл
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Кнопки действий внизу */}
+          <div className="flex justify-end space-x-3 p-4 border-t border-white/10">
+            <button
+              onClick={() => {
+                closePreviewModal();
+                handleFileAction("download");
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center space-x-2"
+            >
+              <span>📥</span>
+              <span>Скачать</span>
+            </button>
+            <button
+              onClick={closePreviewModal}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+            >
+              Закрыть
+            </button>
+          </div>
+
+        </div>
+      </div>
+    )}
+
+{/* Модальное окно для продолжения загрузки */}
+{showResumeModal && pendingFile && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
+      <h3 className="text-xl font-bold mb-4 text-white">Незавершенная загрузка</h3>
+
+      <p className="text-gray-300 mb-2">
+        Файл: <span className="font-medium text-white">{pendingFile.name}</span>
+      </p>
+
+      <div className="mb-4">
+        <div className="flex justify-between text-sm text-gray-400 mb-1">
+          <span>Загружено:</span>
+          <span>{pendingProgress}%</span>
+        </div>
+        <div className="w-full bg-gray-700 rounded-full h-2">
+          <div
+            className="bg-blue-500 rounded-full h-2 transition-all duration-300"
+            style={{ width: `${pendingProgress}%` }}
+          />
+        </div>
+      </div>
+
+      <p className="text-gray-400 mb-6 text-sm">
+        Загрузка была прервана. Желаете продолжить с того места, где остановились?
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={handleResumeUpload}
+          className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-xl font-medium transition-colors text-white"
+        >
+          Продолжить
+        </button>
+        <button
+          onClick={handleCancelAndReupload}
+          className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-xl font-medium transition-colors text-white"
+        >
+          Остановить
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Глобальное отображение ошибок */}
+{error && (
+  <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] bg-red-500/90 backdrop-blur-sm border border-red-400 rounded-xl p-4 max-w-md shadow-2xl animate-bounce-in">
+    <div className="flex items-start gap-3">
+      <div className="flex-shrink-0">
+        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div className="flex-1">
+        <p className="text-white text-sm whitespace-pre-line">{error}</p>
+        {error.includes('выбран неверный файл') && (
+          <button
+            onClick={() => {
+              sessionStorage.removeItem('resumeSessionId');
+              sessionStorage.removeItem('resumeFileName');
+              sessionStorage.removeItem('resumeFileSize');
+              setError("");
+            }}
+            className="mt-2 text-white/80 hover:text-white text-xs underline"
+          >
+          </button>
+        )}
+      </div>
+      <button
+        onClick={() => setError("")}
+        className="flex-shrink-0 text-white/70 hover:text-white"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  </div>
+)}
+
+
       </div>
     );
   }

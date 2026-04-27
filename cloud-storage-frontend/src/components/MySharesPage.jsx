@@ -36,7 +36,6 @@ export default function MySharesPage() {
     }
   };
 
-  // Деактивация ссылки (меняет статус на неактивную)
   const handleDeactivate = async (shareId) => {
     console.log("Deactivating share:", shareId);
 
@@ -51,7 +50,6 @@ export default function MySharesPage() {
     try {
       await deactivateShare(token, shareId);
 
-      // Обновляем статус ссылки на неактивный
       setShares(prevShares =>
         prevShares.map(share =>
           share.id === shareId
@@ -73,7 +71,6 @@ export default function MySharesPage() {
     }
   };
 
-  // Полное удаление ссылки из списка
   const handleDelete = async (shareId) => {
     if (!window.confirm("Удалить ссылку безвозвратно? Это действие нельзя отменить.")) {
       return;
@@ -96,6 +93,18 @@ export default function MySharesPage() {
       }, 3000);
     }
   };
+
+const isShareActuallyActive = (share) => {
+  if (!share.isActive) return false;
+
+  const isExpired = share.expiresAt && new Date(share.expiresAt) < new Date();
+  if (isExpired) return false;
+
+  const isLimitReached = share.maxDownloads && share.downloadCount >= share.maxDownloads;
+  if (isLimitReached) return false;
+
+  return true;
+};
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -343,7 +352,7 @@ export default function MySharesPage() {
 
                 {/* Правая часть - кнопки действий */}
                 <div className="flex flex-row md:flex-col gap-2">
-                  {share.isActive ? (
+                  {isShareActuallyActive(share) ? (
                     <button
                       onClick={() => handleDeactivate(share.id)}
                       disabled={deactivatingId === share.id}

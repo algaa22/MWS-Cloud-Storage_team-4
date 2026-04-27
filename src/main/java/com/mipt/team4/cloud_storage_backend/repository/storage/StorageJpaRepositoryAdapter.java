@@ -54,7 +54,7 @@ public class StorageJpaRepositoryAdapter {
         """;
 
   @Transactional
-  public void addFile(StorageEntity fileEntity) {
+  public void upsertFile(StorageEntity fileEntity) {
     if (fileEntity.getId() == null) fileEntity.setId(UUID.randomUUID());
 
     jpaRepository.upsertFile(fileEntity);

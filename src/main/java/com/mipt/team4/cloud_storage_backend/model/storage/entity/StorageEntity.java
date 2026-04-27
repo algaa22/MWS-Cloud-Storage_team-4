@@ -1,5 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
@@ -120,10 +122,18 @@ public class StorageEntity {
   private String errorMessage;
 
   @Column(name = "deleted_at")
+  @JsonProperty("deletedAt")
+  @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
   private LocalDateTime deletedAt;
 
   /** Генерирует уникальный детерминированный ключ для S3. */
   public String getS3Key() {
     return StoragePaths.getS3Key(userId, id);
+  }
+
+  @JsonProperty("deletedAt")
+  @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+  public LocalDateTime getDeletedAt() {
+    return deletedAt;
   }
 }

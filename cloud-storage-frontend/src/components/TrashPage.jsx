@@ -31,6 +31,11 @@ export default function TrashPage() {
     try {
       setLoading(true);
       const trashFiles = await getTrashFiles(token);
+      console.log("=== TRASH FILES RECEIVED IN PAGE ===");
+      console.log("Raw files:", trashFiles);
+      trashFiles.forEach(file => {
+        console.log(`File: ${file.name}, deletedAt: ${file.deletedAt}`);
+      });
       setFiles(trashFiles);
       setError(null);
     } catch (err) {

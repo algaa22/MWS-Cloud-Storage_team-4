@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.controller.storage.aggregated;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.CreatedResponse;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.responses.SuccessResponse;
 import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.*;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.ChangeFileMetadataRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.DeleteFileRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.GetFileInfoRequest;
@@ -12,6 +13,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.SimpleUpl
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFileListRequest;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileInfoResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FileListResponse;
+import com.mipt.team4.cloud_storage_backend.model.storage.dto.responses.FilePreviewResponse;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
 import com.mipt.team4.cloud_storage_backend.service.storage.FileService;
@@ -75,5 +77,33 @@ public class FileController {
   public void changeMetadata(ChannelHandlerContext ctx, ChangeFileMetadataRequest request) {
     fileService.changeMetadata(request);
     ResponseUtils.send(ctx, new SuccessResponse("File metadata successfully changed"));
+  }
+
+  public void getFilePreview(ChannelHandlerContext ctx, GetFilePreviewRequest request) {
+    FilePreviewResponse response =
+        fileService.generatePreviewUrl(request.fileId(), request.userId());
+    ResponseUtils.send(ctx, response);
+  }
+
+  public void getFilePreviewContent(
+      ChannelHandlerContext ctx, GetFilePreviewContentRequest request) {
+    byte[] content = fileService.getPreviewContent(request.fileId(), request.userId());
+
+    io.netty.handler.codec.http.FullHttpResponse response =
+        new io.netty.handler.codec.http.DefaultFullHttpResponse(
+            io.netty.handler.codec.http.HttpVersion.HTTP_1_1,
+            io.netty.handler.codec.http.HttpResponseStatus.OK,
+            io.netty.buffer.Unpooled.wrappedBuffer(content));
+
+    response
+        .headers()
+        .set(io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
+    response
+        .headers()
+        .set(io.netty.handler.codec.http.HttpHeaderNames.CONTENT_DISPOSITION, "inline");
+    response
+        .headers()
+        .set(io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH, content.length);
+    ctx.writeAndFlush(response);
   }
 }

@@ -242,7 +242,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
               operationType,
               () -> {
                 assertPending(file, operationType);
-                metadataRepository.addFile(file);
+                metadataRepository.upsertFile(file);
                 return true;
               }),
           LAMBDA_NOT_EXECUTED);
@@ -277,7 +277,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       LocalDateTime oldUpdatedAt = file.getUpdatedAt().minusDays(1);
       file.setUpdatedAt(oldUpdatedAt);
 
-      metadataRepository.addFile(file);
+      metadataRepository.upsertFile(file);
       performStepAndAssertChanged(file, operationType, oldUpdatedAt);
     }
 
@@ -459,7 +459,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
 
   private StorageEntity createAndSaveTestFile(FileStatus status) {
     StorageEntity newFile = createTestFile(status);
-    metadataRepository.addFile(newFile);
+    metadataRepository.upsertFile(newFile);
     return newFile;
   }
 

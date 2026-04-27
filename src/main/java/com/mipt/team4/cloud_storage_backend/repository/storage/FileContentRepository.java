@@ -10,6 +10,8 @@ public interface FileContentRepository {
 
   String uploadPart(String uploadId, String s3Key, int partNum, InputStream inputStream, long size);
 
+  String generatePresignedUrl(String s3Key, int expirySeconds);
+
   void completeMultipartUpload(String s3Key, String uploadId, Map<Integer, String> eTags);
 
   void abortMultipartUpload(String s3Key, String uploadId);

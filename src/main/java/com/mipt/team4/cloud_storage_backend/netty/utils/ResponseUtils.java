@@ -15,15 +15,12 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.UUID;
 import java.util.function.Function;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 public class ResponseUtils {
 
   public static void sendInternalServerErrorAndClose(ChannelHandlerContext ctx) {
@@ -154,55 +151,5 @@ public class ResponseUtils {
 
     byte[] bytes = bitset.toByteArray();
     return Base64.getEncoder().encodeToString(bytes);
-  }
-
-  // TODO: зачем... есть ведь код из ChunkedDownloadController...
-  public static void sendFile(
-      ChannelHandlerContext ctx, byte[] fileData, String filename, String mimeType) {
-    try {
-      log.info("sendFile called with filename: {}, size: {}", filename, fileData.length);
-
-      String encodedFilename =
-          URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
-
-      FullHttpResponse response =
-          new DefaultFullHttpResponse(
-              HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(fileData));
-
-      response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173");
-      response
-          .headers()
-          .set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, OPTIONS");
-      response
-          .headers()
-          .set(
-              HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS,
-              "X-Auth-Token, X-Share-Password, Content-Type");
-      response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
-
-      response
-          .headers()
-          .set(
-              HttpHeaderNames.CONTENT_TYPE,
-              mimeType != null && !mimeType.isEmpty() ? mimeType : "application/octet-stream");
-      response
-          .headers()
-          .set(
-              HttpHeaderNames.CONTENT_DISPOSITION,
-              "attachment; filename=\""
-                  + encodedFilename
-                  + "\"; filename*=UTF-8''"
-                  + encodedFilename);
-      response.headers().set(HttpHeaderNames.CONTENT_LENGTH, fileData.length);
-      response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-      response.headers().set(HttpHeaderNames.PRAGMA, "no-cache");
-      response.headers().set(HttpHeaderNames.EXPIRES, "0");
-
-      ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
-
-    } catch (Exception e) {
-      sendError(
-          ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error sending file: " + e.getMessage());
-    }
   }
 }

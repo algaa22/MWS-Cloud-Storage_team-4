@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -13,7 +12,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Slf4j
 @Component
 @Profile("!test")
-@Primary
 public class WebNotificationClient implements NotificationClient {
   private final WebClient webClient;
 
@@ -22,7 +20,6 @@ public class WebNotificationClient implements NotificationClient {
     this.webClient = WebClient.builder().baseUrl(url).build();
   }
 
-  @Override
   public void notifyFileDeleted(String userEmail, String userName, String fileName, UUID userId) {
     NotificationDto request =
         NotificationDto.builder()
@@ -36,7 +33,6 @@ public class WebNotificationClient implements NotificationClient {
     sendRequest(request);
   }
 
-  @Override
   public void notifyStorageAlmostFull(
       String userEmail, String userName, long usedStorage, long storageLimit, UUID userId) {
     NotificationDto request =
@@ -52,7 +48,6 @@ public class WebNotificationClient implements NotificationClient {
     sendRequest(request);
   }
 
-  @Override
   public void notifyStorageFull(String userEmail, String userName, UUID userId) {
     NotificationDto request =
         NotificationDto.builder()
@@ -65,7 +60,6 @@ public class WebNotificationClient implements NotificationClient {
     sendRequest(request);
   }
 
-  @Override
   public void notifyTariffPurchased(
       String email, String name, String tariffName, LocalDateTime endDate) {
     NotificationDto request =
@@ -74,12 +68,11 @@ public class WebNotificationClient implements NotificationClient {
             .userEmail(email)
             .userName(name)
             .tariffName(tariffName)
-            .endDate(endDate != null ? endDate.toString() : null)
+            .endDate(endDate.toString())
             .build();
     sendRequest(request);
   }
 
-  @Override
   public void notifyTariffEndingSoon(
       String email, String name, int daysLeft, LocalDateTime endDate) {
     NotificationDto request =
@@ -88,55 +81,25 @@ public class WebNotificationClient implements NotificationClient {
             .userEmail(email)
             .userName(name)
             .daysLeft(daysLeft)
-            .endDate(endDate != null ? endDate.toString() : null)
+            .endDate(endDate.toString())
             .build();
     sendRequest(request);
   }
 
-  @Override
   public void notifyTariffExpired(String email, String name) {
     NotificationDto request =
         NotificationDto.builder().type("TARIFF_EXPIRED").userEmail(email).userName(name).build();
     sendRequest(request);
   }
 
-  @Override
-  public void notifyTariffRenewed(
-      String email, String name, String tariffName, LocalDateTime newEndDate) {
+  public void notifyTariffRenewed(String email, String name, LocalDateTime newEndDate) {
     NotificationDto request =
         NotificationDto.builder()
             .type("TARIFF_RENEWED")
             .userEmail(email)
             .userName(name)
-            .tariffName(tariffName)
-            .endDate(newEndDate != null ? newEndDate.toString() : null)
+            .endDate(newEndDate.toString())
             .build();
-    sendRequest(request);
-  }
-
-  @Override
-  public void notifySubscriptionExpired(String email, String name, LocalDateTime deletionDate) {
-    NotificationDto request =
-        NotificationDto.builder()
-            .type("SUBSCRIPTION_EXPIRED")
-            .userEmail(email)
-            .userName(name)
-            .deletionDate(deletionDate != null ? deletionDate.toString() : null)
-            .build();
-    sendRequest(request);
-  }
-
-  @Override
-  public void notifyFilesDeleted(String email, String name) {
-    NotificationDto request =
-        NotificationDto.builder().type("FILES_DELETED").userEmail(email).userName(name).build();
-    sendRequest(request);
-  }
-
-  @Override
-  public void notifyTrialExpired(String email, String name) {
-    NotificationDto request =
-        NotificationDto.builder().type("TRIAL_EXPIRED").userEmail(email).userName(name).build();
     sendRequest(request);
   }
 
@@ -186,7 +149,7 @@ public class WebNotificationClient implements NotificationClient {
         .retrieve()
         .toBodilessEntity()
         .subscribe(
-            response -> log.debug("Notification sent successfully to {}", request.getUserEmail()),
+            response -> {},
             error ->
                 log.error(
                     "Failed to send notification to {}: {}. Error: {}",

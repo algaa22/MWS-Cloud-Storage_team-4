@@ -2,7 +2,6 @@ package com.mipt.team4.cloud_storage_backend.schedulers.tariff;
 
 import com.mipt.team4.cloud_storage_backend.config.props.NotificationProps;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
@@ -38,8 +37,6 @@ public class TariffScheduler {
     }
 
     checkExpiredTariffs();
-    checkUsersInGracePeriod();
-    checkExpiredTrials();
 
     log.info("[{}] Completed", TASK_NAME);
   }
@@ -49,7 +46,7 @@ public class TariffScheduler {
     LocalDateTime to = from.plusDays(1);
 
     batchProcessor.scroll(
-        TASK_NAME + ": Notification " + days + "d",
+        TASK_NAME,
         pageable -> userRepository.getUsersWithTariffEndingBetween(from, to, pageable),
         UserEntity::getId,
         user ->
@@ -59,35 +56,15 @@ public class TariffScheduler {
 
   private void checkExpiredTariffs() {
     batchProcessor.scoop(
-        TASK_NAME + ": Expiry",
+        TASK_NAME,
         pageable -> userRepository.getUsersWithExpiredTariff(LocalDateTime.now(), pageable),
         UserEntity::getId,
         user -> {
-          if (user.isAutoRenew() && user.getPaymentMethodId() != null) {
-            tariffService.handleAutoRenew(user);
+          if (user.isAutoRenew()) {
+            tariffService.autoRenew(user);
           } else {
-            tariffService.restrictUserAccess(user);
+            tariffService.deactivateUser(user);
           }
         });
-  }
-
-  private void checkUsersInGracePeriod() {
-    batchProcessor.scoop(
-        TASK_NAME + ": Grace Period",
-        pageable ->
-            userRepository.findAllByUserStatusAndScheduledDeletionDateBefore(
-                UserStatus.RESTRICTED, LocalDateTime.now(), pageable),
-        UserEntity::getId,
-        tariffService::checkUsersInGracePeriod);
-  }
-
-  private void checkExpiredTrials() {
-    batchProcessor.scoop(
-        TASK_NAME + ": Trial Expiry",
-        pageable ->
-            userRepository.findAllByTrialEndDateBeforeAndTariffPlanIsNull(
-                LocalDateTime.now(), pageable),
-        UserEntity::getId,
-        tariffService::checkExpiredTrials);
   }
 }

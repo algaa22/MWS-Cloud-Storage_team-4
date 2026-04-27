@@ -3,8 +3,6 @@ package com.mipt.team4.cloud_storage_backend.config;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mipt.team4.cloud_storage_backend.config.props.JacksonProps;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps.FailsafeRetry;
@@ -23,7 +21,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationConfig {
-
   private final JacksonProps jacksonConfig;
 
   @Bean
@@ -60,11 +57,8 @@ public class ApplicationConfig {
 
   @Bean
   public ObjectMapper objectMapper() {
-    ObjectMapper mapper =
-        new ObjectMapper()
-            .deactivateDefaultTyping()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.deactivateDefaultTyping();
 
     JsonFactory factory = mapper.getFactory();
     factory.setStreamReadConstraints(

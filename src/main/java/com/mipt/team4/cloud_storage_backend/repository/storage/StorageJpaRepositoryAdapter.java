@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +25,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class StorageJpaRepositoryAdapter {
@@ -118,11 +120,6 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public List<StorageEntity> findOldestFilesByUserId(UUID userId, Pageable pageable) {
-    return jpaRepository.findByUserIdAndIsDeletedFalseOrderByUpdatedAtAsc(userId, pageable);
-  }
-
-  @Transactional(readOnly = true)
   public Slice<StorageEntity> getStaleFiles(LocalDateTime threshold, Pageable pageable) {
     return jpaRepository.findByStatusInAndUpdatedAtBefore(
         List.of(FileStatus.PENDING, FileStatus.ERROR, FileStatus.FATAL), threshold, pageable);
@@ -157,11 +154,6 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
     return jpaRepository.findByIdIncludeDeleted(userId, fileId);
-  }
-
-  @Transactional(readOnly = true)
-  public Optional<StorageEntity> getFileById(UUID fileId) {
-    return jpaRepository.findById(fileId);
   }
 
   @Transactional(readOnly = true)
@@ -233,7 +225,7 @@ public class StorageJpaRepositoryAdapter {
         .executeUpdate();
 
     if (tags != null && !tags.isEmpty()) {
-      String sql = "INSERT INTO file_tags (file_id, tag) SELECT :fileId, unnest(:tags)";
+      String sql = "INSERT INTO file_tags (file_id, tag) " + "SELECT :fileId, unnest(:tags)";
 
       entityManager
           .createNativeQuery(sql)

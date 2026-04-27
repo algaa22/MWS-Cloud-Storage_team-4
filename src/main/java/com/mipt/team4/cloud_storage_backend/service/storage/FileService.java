@@ -13,7 +13,6 @@ import com.mipt.team4.cloud_storage_backend.exception.upload.MissingChecksumExce
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
 import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
-import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ContentRangeDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileDownloadInfoDto;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
@@ -28,7 +27,6 @@ import com.mipt.team4.cloud_storage_backend.model.storage.dto.requests.TrashFile
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
-import com.mipt.team4.cloud_storage_backend.repository.share.FileShareRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
@@ -39,7 +37,6 @@ import com.mipt.team4.cloud_storage_backend.utils.string.MimeTypeDetector;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +56,6 @@ public class FileService {
   private final StorageRepository storageRepository;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
-  private final FileShareRepositoryAdapter shareRepository;
 
   @Transactional
   public UUID simpleUpload(SimpleUploadRequest request) {
@@ -175,8 +171,6 @@ public class FileService {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
-    shareRepository.deactivateAllByFileId(fileId);
-
     StorageEntity fileEntity =
         storageRepository
             .getIncludeDeleted(userId, fileId)
@@ -200,17 +194,6 @@ public class FileService {
     }
 
     storageRepository.restore(fileEntity);
-
-    // TODO: в сервис
-    List<FileShare> shares = shareRepository.findByFileId(fileId);
-    for (FileShare share : shares) {
-      if (share.getIsActive() == false
-          && share.getExpiresAt() != null
-          && share.getExpiresAt().isAfter(LocalDateTime.now())) {
-        share.setIsActive(true);
-        shareRepository.save(share);
-      }
-    }
   }
 
   @Transactional(readOnly = true)
@@ -249,10 +232,6 @@ public class FileService {
   public void changeMetadata(ChangeFileMetadataRequest request) {
     UUID fileId = request.id();
     UUID userId = request.userId();
-
-    if (!tariffService.hasAccess(userId)) {
-      throw new TariffAccessDeniedException();
-    }
 
     StorageEntity fileEntity =
         storageRepository.get(userId, fileId).orElseThrow(() -> new FileNotFoundException(fileId));

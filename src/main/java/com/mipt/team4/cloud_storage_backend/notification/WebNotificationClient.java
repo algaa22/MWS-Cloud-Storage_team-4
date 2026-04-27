@@ -140,15 +140,41 @@ public class WebNotificationClient implements NotificationClient {
     sendRequest(request);
   }
 
-  @Override
-  public void notifyTrialStarted(String email, String name, LocalDateTime trialEndDate) {
+  public void notifyDangerousFile(
+      String userEmail,
+      String userName,
+      String fileName,
+      String folderPath,
+      String verdict,
+      UUID userId) {
+
     NotificationDto request =
         NotificationDto.builder()
-            .type("TRIAL_STARTED")
-            .userEmail(email)
-            .userName(name)
-            .endDate(trialEndDate != null ? trialEndDate.toString() : null)
+            .type("FILE_INFECTED")
+            .userEmail(userEmail)
+            .userName(userName)
+            .fileName(fileName)
+            .folderPath(folderPath)
+            .verdict(verdict)
+            .userId(userId)
             .build();
+
+    sendRequest(request);
+  }
+
+  public void notifyScanError(
+      String userEmail, String userName, String fileName, String folderPath, UUID userId) {
+
+    NotificationDto request =
+        NotificationDto.builder()
+            .type("SCAN_ERROR")
+            .userEmail(userEmail)
+            .userName(userName)
+            .fileName(fileName)
+            .folderPath(folderPath)
+            .userId(userId)
+            .build();
+
     sendRequest(request);
   }
 

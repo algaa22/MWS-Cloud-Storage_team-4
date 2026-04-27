@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.netty.ssl;
 
 import com.mipt.team4.cloud_storage_backend.exception.netty.SslLoadingException;
-import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+import com.mipt.team4.cloud_storage_backend.utils.file.FileLoader;
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.IdentityCipherSuiteFilter;
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 public class SslContextFactory {
 
   public SslContext createFromResources() {
-    try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) { // TODO: hardcoding
+    try (InputStream p12Stream = FileLoader.getInputStream("ssl/server.p12")) { // TODO: hardcoded
       log.info("Loading SSL from PKCS12 file");
 
       KeyStore keyStore = KeyStore.getInstance("PKCS12");

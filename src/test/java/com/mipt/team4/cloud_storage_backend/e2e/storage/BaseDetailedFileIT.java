@@ -19,16 +19,20 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
+  @Autowired protected ITUtils itUtils;
+  @Autowired protected UserAuthUtils userAuthUtils;
+
+  private final boolean usePagination;
   private final PathParam pathParam;
   private final String rawEndpoint;
   private final String method;
-  @Autowired protected UserAuthUtils userAuthUtils;
-  @Autowired protected ITUtils itUtils;
 
-  public BaseDetailedFileIT(String rawEndpoint, String method, PathParam pathParam) {
+  public BaseDetailedFileIT(
+      String rawEndpoint, String method, PathParam pathParam, boolean usePagination) {
     this.rawEndpoint = rawEndpoint;
     this.method = method;
     this.pathParam = pathParam;
+    this.usePagination = usePagination;
   }
 
   // TODO: тест на отсутствие хедеров, параметром
@@ -115,6 +119,10 @@ public abstract class BaseDetailedFileIT extends BaseStorageIT {
 
     if (pathParam == PathParam.NEW_ENTITY) {
       endpoint += "&name=_";
+    }
+
+    if (usePagination) {
+      endpoint += "&page=%s&size=%s&direction=%s&sort_by=%s".formatted(0, 100, "asc", "name");
     }
 
     return itUtils

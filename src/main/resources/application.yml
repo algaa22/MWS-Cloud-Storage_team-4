@@ -24,9 +24,45 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus,health"
+
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+
+  health:
+    defaults:
+      enabled: true
+
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        storage.operation.duration: true
+        storage.payload.size.bytes: true
+      sla:
+        http.server.requests: 50ms, 100ms, 200ms, 500ms, 1s
+        storage.operation.duration: 100ms, 500ms, 1s, 5s, 10s
+        storage.payload.size.bytes: 102400, 10485760, 104857600, 524288000, 10485760000
+
+jackson:
+  max-nesting-depth: 32
+  max-string-length: 1048576 # 1 mb
+  max-number-length: 1000
+
 netty:
   enable-logging: false
   enable-https: true
+  https-redirect: true
   http-port: 8080
   https-port: 8443
   boss-threads: 1
@@ -46,22 +82,42 @@ cors:
     allow-credentials: true
     max-age: 3600
 
-minio:
-  url: ${MINIO_URL}
-  username: ${MINIO_USERNAME}
-  password: ${MINIO_PASSWORD}
+antivirus:
+  enabled: true
 
-  min-file-part-size: 5242880 # 5mb
-  region: "eu-central-1"
+  rabbitmq:
+    retry:
+      max-attempts: 3
+      initial-interval-ms: 1
+      multiplier: 2.0
+      max-interval-ms: 10
 
-  user-data-bucket:
-    name: user-data
+    exchanges:
+      tasks: "antivirus.tasks.direct"
+      results: "antivirus.results.direct"
+
+    queues:
+      results: "antivirus.results.queue"
+
+    routing-keys:
+      tasks: "scan.task.v1"
+      results: "scan.result.v1"
 
 storage:
+  s3:
+    url: ${S3_URL}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
+    region: ${S3_REGION:eu-central-1}
+    user-data-bucket:
+      name: ${S3_BUCKET_NAME:user-data}
+    limits:
+      min-file-part-size: 5242880 # 5mb
+      max-file-part-size: 33554432 # 32mb
+      max-parts-num: 10000
+
   rest:
-    max-aggregated-content-length: 5242900 # 5mb + 20b
-    max-file-size: 10737418240 # 10 gb
-    max-file-chunk-size: 10485760 # 10 mb
+    max-aggregated-content-length: 1048576 # 1mb
     file-download-chunk-size: 65536 # 64 kb
 
   auth:
@@ -74,8 +130,13 @@ storage:
 
   state-machine:
     max-retry-count: 3
-    file-stale-time-min: 60
     file-throttled-update-interval-sec: 15
+
+  health-check:
+    check-interval-seconds: 10
+    db-timeout-seconds: 2
+    s3-timeout-seconds: 2
+    min-free-memory-percent: 0.10
 
   failsafe-retry:
     max-attempts: 3
@@ -86,6 +147,25 @@ storage:
 
   trash:
     retention-days: 30
+
+  scheduling:
+    page-size: 100
+
+    stale-time-min:
+      file: 60
+      upload: 45
+      scan: 15
+
+    dangerous-deletion-time-days: 30
+
+    cron:
+      stale-scans: "0 */5 * * * *"
+      stale-file-cleanup: "0 0 1 * * *"
+      stale-upload-cleanup: "0 0 2 * * *"
+      trash-cleanup: "0 0 3 * * *"
+      check-tariff: "0 0 4 * * *"
+      quota-sync: "0 0 5 * * *"
+      dangerous-file-cleanup: "0 0 6 * * *"
 
 notification:
   tariff:

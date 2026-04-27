@@ -3,6 +3,7 @@ package com.mipt.team4.cloud_storage_backend.netty.mapping;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.CreateDtoInstanceException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.NotFullRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.ParseJsonParamException;
@@ -11,9 +12,8 @@ import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.UnknownReque
 import com.mipt.team4.cloud_storage_backend.exception.netty.mapping.WrongParameterTypeException;
 import com.mipt.team4.cloud_storage_backend.exception.user.auth.MissingAuthTokenException;
 import com.mipt.team4.cloud_storage_backend.exception.utils.MissingRequiredParamException;
-import com.mipt.team4.cloud_storage_backend.netty.constants.NettyAttributes;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.MappedParameter.SourceType;
-import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
+import com.mipt.team4.cloud_storage_backend.utils.parser.SafeParser;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.ChannelHandlerContext;
@@ -63,6 +63,7 @@ public class DtoAssembler {
             case AUTH -> getAuthAttribute(ctx, param);
             case BODY_PARAM -> parseBodyParam(rootNode, param);
             case BODY -> parseBody(request, param);
+            case NESTED_DTO -> assemble(ctx, param.type(), request);
             default ->
                 throw new UnknownRequestSourceTypeException(param.mappedName(), param.source());
           };

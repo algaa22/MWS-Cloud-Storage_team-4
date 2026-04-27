@@ -1,9 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.entity;
 
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
-import com.mipt.team4.cloud_storage_backend.utils.StoragePaths;
+import com.mipt.team4.cloud_storage_backend.utils.string.StoragePaths;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -18,7 +19,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.*;
-import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Метаданные объекта хранения (файла или директории).
@@ -29,7 +29,6 @@ import org.hibernate.annotations.SQLRestriction;
  */
 @Entity
 @Table(name = "files")
-@SQLRestriction("is_deleted = false")
 @Getter
 @Setter
 @Builder
@@ -68,6 +67,14 @@ public class StorageEntity {
   @Column(nullable = false)
   private String name;
 
+  @Column(name = "hash")
+  private String hash;
+
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "scan_verdict")
+  private ScanVerdict scanVerdict = ScanVerdict.UNKNOWN;
+
   @Column(name = "size")
   private long size;
 
@@ -78,7 +85,7 @@ public class StorageEntity {
   @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private FileStatus status = FileStatus.READY;
+  private FileStatus status = FileStatus.PENDING;
 
   /**
    * Счетчик ретраев для текущей операции. Используется {@code FileCleanupService} для

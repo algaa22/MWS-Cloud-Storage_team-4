@@ -1,16 +1,26 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
+import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
+import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +29,29 @@ import org.springframework.transaction.annotation.Transactional;
 public class StorageJpaRepositoryAdapter {
   private final StorageJpaRepository jpaRepository;
   private final EntityManager entityManager;
+
+  private static final String RECURSIVE_SEARCH =
+      """
+            WITH RECURSIVE folder_tree AS (
+                SELECT * FROM files
+                WHERE user_id = :userId
+                  AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
+                  AND is_deleted = FALSE
+                UNION ALL
+                SELECT f.* FROM files f
+                INNER JOIN folder_tree ft ON f.parent_id = ft.id
+                WHERE f.is_deleted = FALSE
+            )
+            SELECT * FROM folder_tree WHERE 1=1
+        """;
+
+  private static final String SIMPLE_SEARCH =
+      """
+            SELECT * FROM files
+            WHERE user_id = :userId
+              AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
+              AND is_deleted = FALSE
+        """;
 
   @Transactional
   public void addFile(StorageEntity fileEntity) {
@@ -39,122 +72,48 @@ public class StorageJpaRepositoryAdapter {
 
   @Transactional
   public void hardDelete(UUID userId, UUID fileId) {
-    System.out.println("=== JPA ADAPTER HARD DELETE (NATIVE) ===");
-    System.out.println("User ID: " + userId);
-    System.out.println("File ID: " + fileId);
-
-    int deletedCount = jpaRepository.hardDeleteNative(userId, fileId);
-    System.out.println("Deleted rows: " + deletedCount);
-
-    if (deletedCount == 0) {
-      System.out.println("⚠️ WARNING: No rows deleted!");
-    }
+    jpaRepository.deleteByUserIdAndId(userId, fileId);
   }
 
   @Transactional
   public void restore(UUID userId, UUID fileId, boolean isDirectory) {
-    System.out.println("=== JPA ADAPTER RESTORE ===");
-    System.out.println("User ID: " + userId);
-    System.out.println("File ID: " + fileId);
-
     if (isDirectory) {
       jpaRepository.restoreRecursive(userId, fileId);
     } else {
       jpaRepository.restore(userId, fileId);
     }
-
-    // Проверим, что действительно обновилось
-    Optional<StorageEntity> check = jpaRepository.findByIdIncludeDeleted(userId, fileId);
-    if (check.isPresent()) {
-      System.out.println("After restore - isDeleted: " + check.get().isDeleted());
-    } else {
-      System.out.println("File not found after restore!");
-    }
-  }
-
-  @Transactional(readOnly = true)
-  public List<StorageEntity> getAllTrashFiles(UUID userId) {
-    String sql = "SELECT * FROM files WHERE user_id = :userId AND is_deleted = true";
-    Query query = entityManager.createNativeQuery(sql, StorageEntity.class);
-    query.setParameter("userId", userId);
-    return query.getResultList();
   }
 
   @Transactional
-  public void saveFile(StorageEntity entity) {
-    jpaRepository.saveAndFlush(entity);
+  public void syncLifecycleMetadata(
+      UUID id,
+      FileStatus status,
+      int retryCount,
+      FileOperationType operationType,
+      LocalDateTime startedAt,
+      LocalDateTime updatedAt,
+      String errorMessage) {
+    jpaRepository.syncLifecycleMetadata(
+        id, status, retryCount, operationType, startedAt, updatedAt, errorMessage);
+  }
+
+  @Transactional
+  public void updateStatus(UUID fileId, FileStatus newStatus) {
+    jpaRepository.updateStatus(fileId, newStatus);
   }
 
   @Transactional(readOnly = true)
-  @SuppressWarnings("unchecked")
-  public List<StorageEntity> getFileList(FileListFilter filter) {
-    StringBuilder sql = new StringBuilder();
+  public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
+    QueryContext ctx = buildBaseQueryWithFilters(filter);
+    long total = fetchTotalCount(ctx);
+    List<StorageEntity> content = fetchPageContent(ctx, pageQuery, filter.query());
 
-    if (filter.recursive()) {
-      sql.append(
-          """
-                WITH RECURSIVE folder_tree AS (
-                    SELECT * FROM files
-                    WHERE user_id = :userId
-                      AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
-                      AND is_deleted = FALSE
-                    UNION ALL
-                    SELECT f.* FROM files f
-                    INNER JOIN folder_tree ft ON f.parent_id = ft.id
-                    WHERE f.is_deleted = FALSE
-                )
-                SELECT * FROM folder_tree WHERE 1=1
-            """);
-    } else {
-      sql.append(
-          """
-                SELECT * FROM files
-                WHERE user_id = :userId
-                  AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
-                  AND is_deleted = FALSE
-            """);
-    }
-
-    if (!filter.includeDirectories()) {
-      sql.append(" AND is_directory = FALSE");
-    }
-
-    if (!filter.recursive()) {
-      sql.append(" AND status = 'READY'");
-    }
-
-    boolean needTags = filter.tags() != null && !filter.tags().isEmpty();
-
-    if (needTags) {
-      sql.append(
-          """
-              AND EXISTS (
-                  SELECT 1 FROM file_tags ft
-                  WHERE ft.file_id = id
-                  AND ft.tag IN (:tags)
-                  GROUP BY ft.file_id
-                  HAVING COUNT(DISTINCT ft.tag) = :tagCount
-              )
-          """);
-    }
-
-    sql.append(" ORDER BY CASE WHEN is_directory THEN 1 ELSE 2 END, name ASC");
-
-    Query query = entityManager.createNativeQuery(sql.toString(), StorageEntity.class);
-
-    query.setParameter("userId", filter.userId());
-    query.setParameter("parentId", filter.parentId());
-
-    if (needTags) {
-      query.setParameter("tags", filter.tags());
-      query.setParameter("tagCount", filter.tags().size());
-    }
-
-    return query.getResultList();
+    return new PageImpl<>(
+        content, PageRequest.of(pageQuery.offset() / pageQuery.limit(), pageQuery.limit()), total);
   }
 
   @Transactional(readOnly = true)
-  public Optional<StorageEntity> getDeletedById(UUID userId, UUID fileId) {
+  public Optional<StorageEntity> getDeleted(UUID userId, UUID fileId) {
     return jpaRepository.findDeletedById(userId, fileId);
   }
 
@@ -164,20 +123,35 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public List<StorageEntity> getStaleFiles(LocalDateTime threshold) {
+  public Slice<StorageEntity> getStaleFiles(LocalDateTime threshold, Pageable pageable) {
     return jpaRepository.findByStatusInAndUpdatedAtBefore(
-        List.of(FileStatus.PENDING, FileStatus.ERROR), threshold);
+        List.of(FileStatus.PENDING, FileStatus.ERROR, FileStatus.FATAL), threshold, pageable);
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<StorageEntity> getStaleScans(LocalDateTime threshold, Pageable pageable) {
+    return jpaRepository.findByScanVerdictAndUpdatedAtBefore(
+        ScanVerdict.SCANNING, threshold, pageable);
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<StorageEntity> getDangerousFiles(LocalDateTime threshold, Pageable pageable) {
+    return jpaRepository.findByStatusAndUpdatedAtBefore(FileStatus.DANGEROUS, threshold, pageable);
   }
 
   @Transactional(readOnly = true)
   public Optional<StorageEntity> get(UUID userId, UUID parentId, String name) {
-    // Исправлено: используем правильное название метода из репозитория
     return jpaRepository.findByUserIdAndIdAndName(userId, parentId, name);
   }
 
   @Transactional(readOnly = true)
   public Optional<StorageEntity> get(UUID userId, UUID fileId) {
     return jpaRepository.findByUserIdAndId(userId, fileId);
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<StorageEntity> get(UUID fileId) {
+    return jpaRepository.findById(fileId);
   }
 
   @Transactional(readOnly = true)
@@ -191,14 +165,24 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public List<StorageEntity> getTrashFileList(UUID userId, UUID parentId) {
-    // parentId не используется в текущей реализации, но оставляем параметр для API
-    return jpaRepository.findAllTrashByUserId(userId);
+  public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID parentId, String name) {
+    return jpaRepository.findByParentIdAndNameIncludeDeleted(userId, parentId, name);
   }
 
   @Transactional(readOnly = true)
-  public List<StorageEntity> getStaleDeletedFiles(LocalDateTime threshold) {
-    return jpaRepository.findStaleDeletedFiles(threshold);
+  public Page<StorageEntity> getTrashFileList(UUID userId, UUID parentId, PageQuery pageQuery) {
+    return jpaRepository.findTrashByParentId(
+        userId, parentId, PaginationMapper.toPageable(pageQuery));
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<StorageEntity> getStaleDeletedFiles(LocalDateTime threshold, Pageable pageable) {
+    return jpaRepository.findStaleDeletedFiles(threshold, pageable);
+  }
+
+  public boolean hasLockedDescendants(UUID userId, UUID parentId) {
+    return jpaRepository.existsLockedDescendants(
+        userId, parentId, FileStatus.PENDING, ScanVerdict.SCANNING);
   }
 
   @Transactional(readOnly = true)
@@ -222,7 +206,7 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public List<StorageEntity> findAllDescendants(UUID userId, UUID id) {
+  public List<StorageEntity> findAllFilesDescendants(UUID userId, UUID id) {
     return jpaRepository.findAllFilesDescendants(userId, id);
   }
 
@@ -235,6 +219,11 @@ public class StorageJpaRepositoryAdapter {
     }
 
     return String.join("/", nodes);
+  }
+
+  @Transactional(readOnly = true)
+  public long countByStatus(FileStatus status) {
+    return jpaRepository.countByStatus(status);
   }
 
   private void syncTags(UUID fileId, List<String> tags) {
@@ -253,4 +242,78 @@ public class StorageJpaRepositoryAdapter {
           .executeUpdate();
     }
   }
+
+  private QueryContext buildBaseQueryWithFilters(FileListFilter filter) {
+    String baseSql = filter.recursive() ? RECURSIVE_SEARCH : SIMPLE_SEARCH;
+    StringBuilder sql = new StringBuilder(baseSql);
+    Map<String, Object> params = new HashMap<>();
+
+    params.put("userId", filter.userId());
+    params.put("parentId", filter.parentId());
+
+    if (!filter.includeDirectories()) {
+      sql.append(" AND is_directory = FALSE");
+    }
+
+    if (!filter.recursive()) {
+      sql.append(" AND status = 'READY'");
+    }
+
+    if (filter.tags() != null && !filter.tags().isEmpty()) {
+      sql.append(
+          """
+             AND EXISTS (
+                SELECT 1 FROM file_tags ft
+                WHERE ft.file_id = id AND ft.tag IN (:tags)
+                GROUP BY ft.file_id HAVING COUNT(DISTINCT ft.tag) = :tagCount
+             )
+        """);
+      params.put("tags", filter.tags());
+      params.put("tagCount", filter.tags().size());
+    }
+
+    if (filter.query() != null && !filter.query().isEmpty()) {
+      sql.append(
+          """
+              AND name % :query
+          """);
+      params.put("query", filter.query());
+    }
+
+    return new QueryContext(sql, params);
+  }
+
+  private long fetchTotalCount(QueryContext ctx) {
+    String countSql = "SELECT COUNT(*) FROM (" + ctx.sql.toString() + ") as t";
+    Query query = entityManager.createNativeQuery(countSql);
+    ctx.params().forEach(query::setParameter);
+
+    return ((Number) query.getSingleResult()).longValue();
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<StorageEntity> fetchPageContent(
+      QueryContext ctx, PageQuery pageQuery, String searchQuery) {
+    StringBuilder orderClause = new StringBuilder(" ORDER BY ");
+
+    if (searchQuery != null && !searchQuery.isEmpty()) {
+      orderClause.append("similarity(name, :query) DESC, ");
+      ctx.params.put("query", searchQuery);
+    }
+
+    orderClause.append(
+        "is_directory DESC, %s %s".formatted(pageQuery.order(), pageQuery.direction()));
+
+    String finalSql = ctx.sql() + orderClause.toString() + " LIMIT :limit OFFSET :offset";
+
+    Query query = entityManager.createNativeQuery(finalSql, StorageEntity.class);
+    ctx.params().forEach(query::setParameter);
+
+    query.setParameter("limit", pageQuery.limit());
+    query.setParameter("offset", pageQuery.offset());
+
+    return query.getResultList();
+  }
+
+  private record QueryContext(StringBuilder sql, Map<String, Object> params) {}
 }

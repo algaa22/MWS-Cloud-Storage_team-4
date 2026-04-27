@@ -1,11 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.netty.utils;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.auth.JwtAuthHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.StorageExceptionHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.http.CorsHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.http.HttpsRedirectHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.http.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.HttpTrafficStrategySelector;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.codec.DtoToResponseEncoder;
 import io.netty.channel.ChannelPipeline;
@@ -21,16 +22,18 @@ public class PipelineBuilder {
   private final StorageExceptionHandler storageExceptionHandlers;
   private final GlobalErrorHandler globalErrorHandlers;
   private final IdleTimeoutHandler idleTimeoutHandlers;
+  private final HttpsRedirectHandler httpsRedirectHandler;
   private final DtoToResponseEncoder dtoToResponseEncoder;
   private final JwtAuthHandler jwtAuthHandler;
   private final CorsHandler corsHandler;
 
   public void buildHttp11Pipeline(ChannelPipeline pipeline) {
     pipeline.addLast(PipelineHandlerNames.HTTP_SERVER_CODEC, new HttpServerCodec());
-    finalizeHttpPipeline(pipeline);
+    pipeline.addLast(PipelineHandlerNames.HTTPS_REDIRECT, httpsRedirectHandler);
+    finalizePipeline(pipeline);
   }
 
-  public void finalizeHttpPipeline(ChannelPipeline pipeline) {
+  public void finalizePipeline(ChannelPipeline pipeline) {
     pipeline.addLast(PipelineHandlerNames.HEAD_GLOBAL_ERROR, globalErrorHandlers);
     pipeline.addLast(PipelineHandlerNames.CORS, corsHandler);
     pipeline.addLast(PipelineHandlerNames.DTO_TO_RESPONSE, dtoToResponseEncoder);

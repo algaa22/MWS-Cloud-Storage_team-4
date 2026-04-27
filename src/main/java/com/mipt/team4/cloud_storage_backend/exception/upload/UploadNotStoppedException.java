@@ -1,0 +1,10 @@
+package com.mipt.team4.cloud_storage_backend.exception.upload;
+
+import com.mipt.team4.cloud_storage_backend.exception.BaseStorageException;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
+public class UploadNotStoppedException extends BaseStorageException {
+  public UploadNotStoppedException() {
+    super("Cannot resume chunked upload because it is not stopped", HttpResponseStatus.CONFLICT);
+  }
+}

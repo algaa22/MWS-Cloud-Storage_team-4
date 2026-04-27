@@ -1,12 +1,16 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +19,11 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID> {
+  @Query(
+      "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.name = :name AND s.parentId = :parentId")
+  Optional<StorageEntity> findByParentIdAndNameIncludeDeleted(
+      @Param("userId") UUID userId, @Param("parentId") UUID parentId, @Param("name") String name);
+
   @Query(nativeQuery = true, value = "SELECT * FROM files WHERE id = :id AND user_id = :userId")
   Optional<StorageEntity> findByIdIncludeDeleted(
       @Param("userId") UUID userId, @Param("id") UUID id);
@@ -26,6 +35,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
           AND f.name = :name
           AND (:onlyReady = false OR f.status = 'READY')
           AND (f.parentId = :parentId OR (:parentId IS NULL AND f.parentId IS NULL))
+          AND f.isDeleted = false
     """)
   boolean existsFile(
       @Param("userId") UUID userId,
@@ -33,13 +43,13 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       @Param("name") String name,
       @Param("onlyReady") boolean onlyReady);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
   @Query(
-      "UPDATE StorageEntity s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP, s.updatedAt = CURRENT_TIMESTAMP "
+      "UPDATE StorageEntity s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP "
           + "WHERE s.id = :id AND s.userId = :userId")
   void softDelete(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
   @Query(
       nativeQuery = true,
       value =
@@ -50,18 +60,44 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
             SELECT f.id FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
         )
         UPDATE files
-        SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP
         WHERE id IN (SELECT id FROM folder_tree)
     """)
   void softDeleteRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
   @Query(
-      "UPDATE StorageEntity s SET s.isDeleted = false, s.deletedAt = NULL, s.updatedAt = CURRENT_TIMESTAMP "
-          + "WHERE s.id = :id AND s.userId = :userId")
+      nativeQuery = true,
+      value =
+          """
+    UPDATE files
+    SET is_deleted = false, deleted_at = NULL
+    WHERE id = :id AND user_id = :userId
+""")
   void restore(@Param("userId") UUID userId, @Param("id") UUID id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Modifying(flushAutomatically = true)
+  @Query(
+      """
+        UPDATE StorageEntity s
+        SET s.status = :status,
+            s.retryCount = :retryCount,
+            s.updatedAt = :updatedAt,
+            s.startedAt = :startedAt,
+            s.operationType = :opType,
+            s.errorMessage = :errorMessage
+        WHERE s.id = :id
+    """)
+  void syncLifecycleMetadata(
+      @Param("id") UUID id,
+      @Param("status") FileStatus status,
+      @Param("retryCount") int retryCount,
+      @Param("opType") FileOperationType opType,
+      @Param("startedAt") LocalDateTime startedAt,
+      @Param("updatedAt") LocalDateTime updatedAt,
+      @Param("errorMessage") String errorMessage);
+
+  @Modifying(flushAutomatically = true)
   @Query(
       nativeQuery = true,
       value =
@@ -72,7 +108,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
             SELECT f.id FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
         )
         UPDATE files
-        SET is_deleted = false, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
+        SET is_deleted = false, deleted_at = NULL
         WHERE id IN (SELECT id FROM folder_tree)
     """)
   void restoreRecursive(@Param("userId") UUID userId, @Param("id") UUID id);
@@ -85,14 +121,14 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
     WHERE user_id = :userId
       AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
       AND is_deleted = true
-    ORDER BY is_directory DESC, name ASC
 """)
-  List<StorageEntity> findTrashByParentId(
-      @Param("userId") UUID userId, @Param("parentId") UUID parentId);
+  Page<StorageEntity> findTrashByParentId(
+      @Param("userId") UUID userId, @Param("parentId") UUID parentId, Pageable pageable);
 
   @Query(
       nativeQuery = true,
-      value = "SELECT * FROM files WHERE id = :id AND user_id = :userId AND is_deleted = true")
+      value =
+          "SELECT * FROM files WHERE id = CAST(:id AS uuid) AND user_id = CAST(:userId AS uuid) AND is_deleted = true")
   Optional<StorageEntity> findDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Modifying(flushAutomatically = true)
@@ -115,6 +151,10 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
               """)
   void upsertFile(@Param("f") StorageEntity file);
 
+  @Modifying(flushAutomatically = true)
+  @Query(value = "UPDATE StorageEntity s SET status = :newStatus WHERE id=:id")
+  void updateStatus(UUID id, FileStatus newStatus);
+
   @Modifying
   @Query("DELETE FROM StorageEntity f WHERE f.userId = :userId AND f.id = :id")
   int deleteByUserIdAndId(@Param("userId") UUID userId, @Param("id") UUID id);
@@ -124,6 +164,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   List<StorageEntity> findByUserIdAndIsDeletedFalseOrderByUpdatedAtAsc(
       @Param("userId") UUID userId, Pageable pageable);
 
+  // TODO: полная копия deleteByUserIdAndId
   @Modifying
   @Query(value = "DELETE FROM files WHERE user_id = :userId AND id = :id", nativeQuery = true)
   int hardDeleteNative(@Param("userId") UUID userId, @Param("id") UUID id);
@@ -162,19 +203,20 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       nativeQuery = true,
       value =
           """
-    WITH RECURSIVE folder_tree AS (
-        SELECT * FROM files WHERE id = :id AND user_id = :userId
-        UNION ALL
-        SELECT f.* FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id
-    )
-    SELECT * FROM folder_tree WHERE is_directory = false
-""")
+                  WITH RECURSIVE folder_tree AS (
+                      SELECT * FROM files WHERE id = :id AND user_id = :userId AND is_directory = false
+                      UNION ALL
+                      SELECT f.* FROM files f INNER JOIN folder_tree ft ON f.parent_id = ft.id AND f.is_directory = false
+                  )
+                  SELECT * FROM folder_tree
+              """)
   List<StorageEntity> findAllFilesDescendants(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Query(
       nativeQuery = true,
       value = "SELECT * FROM files WHERE is_deleted = true AND deleted_at < :threshold")
-  List<StorageEntity> findStaleDeletedFiles(@Param("threshold") LocalDateTime threshold);
+  Slice<StorageEntity> findStaleDeletedFiles(
+      @Param("threshold") LocalDateTime threshold, Pageable pageable);
 
   @Query(
       value =
@@ -196,15 +238,51 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       nativeQuery = true)
   List<String> getFullPathNodes(@Param("fileId") UUID fileId);
 
-  @Query("SELECT f FROM StorageEntity f WHERE f.userId = :userId AND f.isDeleted = true")
-  List<StorageEntity> findAllTrashByUserId(@Param("userId") UUID userId);
+  @Query(
+      value =
+          """
+        WITH RECURSIVE descendants AS (
+            SELECT id, status, scan_verdict
+            FROM storage
+            WHERE parent_id = :parentId AND user_id = :userId
 
-  Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID fileId);
+            UNION ALL
 
-  List<StorageEntity> findByStatusInAndUpdatedAtBefore(
-      List<FileStatus> statuses, LocalDateTime threshold);
+            SELECT s.id, s.status, s.scan_verdict
+            FROM storage s
+            INNER JOIN descendants d ON s.parent_id = d.id
+            WHERE s.user_id = :userId
+        )
+        SELECT EXISTS (
+            SELECT 1 FROM descendants
+            WHERE status = :#{#status.name()}
+               OR scan_verdict = :#{#verdict.name()}
+        )
+        """,
+      nativeQuery = true)
+  boolean existsLockedDescendants(
+      @Param("userId") UUID userId,
+      @Param("parentId") UUID parentId,
+      @Param("status") FileStatus status,
+      @Param("verdict") ScanVerdict verdict);
 
+  @Query(
+      "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.id = :id AND s.isDeleted = false")
+  Optional<StorageEntity> findByUserIdAndId(UUID userId, UUID id);
+
+  @Query(
+      "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.parentId = :parentId AND s.name = :name AND s.isDeleted = false")
   Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 
-  List<StorageEntity> findAllByUserIdAndIsDeletedTrue(UUID userId);
+  @Query("SELECT COUNT(s) FROM StorageEntity s WHERE s.status=:status")
+  long countByStatus(FileStatus status);
+
+  Slice<StorageEntity> findByStatusInAndUpdatedAtBefore(
+      List<FileStatus> statuses, LocalDateTime threshold, Pageable pageable);
+
+  Slice<StorageEntity> findByStatusAndUpdatedAtBefore(
+      FileStatus status, LocalDateTime threshold, Pageable pageable);
+
+  Slice<StorageEntity> findByScanVerdictAndUpdatedAtBefore(
+      ScanVerdict scanVerdict, LocalDateTime threshold, Pageable pageable);
 }

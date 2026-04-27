@@ -11,11 +11,12 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenEntity, UUID> {
-  Optional<RefreshTokenEntity> findByToken(String token);
-
+  @Modifying(flushAutomatically = true)
   void deleteByUserId(UUID userId);
 
-  @Modifying
+  @Modifying(flushAutomatically = true)
   @Query("UPDATE RefreshTokenEntity r SET r.revoked = true WHERE r.id = :id")
   void revokeById(@Param("id") UUID id);
+
+  Optional<RefreshTokenEntity> findByToken(String token);
 }

@@ -27,7 +27,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
   private final BlockingQueue<Object> httpObjectsQueue = new LinkedBlockingQueue<>();
   private final RestHandlerInvoker handlerInvoker;
 
-  private boolean threadStarted = false;
+  private volatile boolean threadStarted = false;
   private String currentMethod;
   private String currentPath;
 
@@ -66,6 +66,7 @@ public class ChunkedHttpHandler extends SimpleChannelInboundHandler<Object> {
                 "Virtual thread of chunked http handler was interrupted", e);
           } finally {
             clearHttpObjectsQueue();
+            threadStarted = false;
           }
         });
   }

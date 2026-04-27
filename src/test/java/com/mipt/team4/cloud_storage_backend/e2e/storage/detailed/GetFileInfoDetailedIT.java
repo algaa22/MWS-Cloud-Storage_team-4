@@ -9,6 +9,6 @@ import org.junit.jupiter.api.Tag;
 public class GetFileInfoDetailedIT extends BaseDetailedFileIT {
 
   public GetFileInfoDetailedIT() {
-    super("/api/files/info", HttpMethod.GET.name(), PathParam.EXISTENT_FILE);
+    super("/api/files/info", HttpMethod.GET.name(), PathParam.EXISTENT_FILE, false);
   }
 }

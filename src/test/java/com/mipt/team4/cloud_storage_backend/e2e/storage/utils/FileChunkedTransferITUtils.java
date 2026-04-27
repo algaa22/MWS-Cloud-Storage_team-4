@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.e2e.storage.utils;
 
-import com.mipt.team4.cloud_storage_backend.utils.FileLoader;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.utils.ITUtils;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -19,8 +20,8 @@ import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.io.entity.InputStreamEntity;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -30,44 +31,45 @@ public class FileChunkedTransferITUtils {
 
   private final ITUtils itUtils;
 
-  private static List<byte[]> readChunksFromInputStream(InputStream inputStream)
-      throws IOException {
-    List<byte[]> chunks = new ArrayList<>();
-    byte[] buffer = new byte[MAX_CHUNK_SIZE];
-    int bytesRead;
+  public UploadResult startUploadSession(
+      HttpClient client, String token, String name, long size, int totalParts) throws IOException {
+    String url =
+        itUtils.createUriString(
+            itUtils.fillQuery(ApiEndpoints.FILES_CHUNKED_UPLOAD_START + "?name=%s", name));
 
-    while ((bytesRead = inputStream.read(buffer)) != -1) {
-      byte[] chunk = new byte[bytesRead];
-      System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+    HttpPost request = new HttpPost(url);
+    request.setHeader("X-Auth-Token", token);
+    request.setHeader("X-Total-Parts", totalParts);
+    request.setHeader("X-File-Size", size);
 
-      chunks.add(chunk);
-    }
-
-    return chunks;
+    return client.execute(request, UploadResult::from);
   }
 
-  public UploadResult sendUploadRequest(
-      CloseableHttpClient client,
-      String userToken,
-      String targetFileName,
-      String filePath,
-      String fileTags,
-      long fileSize)
+  public UploadResult uploadPart(
+      HttpClient client, String token, UUID sessionId, int part, byte[] data, String md5)
       throws IOException {
-    HttpPost request =
-        new HttpPost(
-            itUtils.createUriString(
-                itUtils.fillQuery("/api/files/upload/chunked?name=%s", targetFileName)));
+    String url =
+        itUtils.createUriString(
+            itUtils.fillQuery(
+                ApiEndpoints.FILES_CHUNKED_UPLOAD_PART + "?sessionId=%s&part=%s", sessionId, part));
 
-    InputStream fileStream = FileLoader.getInputStream(filePath);
-    InputStreamEntity entity =
-        new InputStreamEntity(fileStream, -1, ContentType.APPLICATION_OCTET_STREAM);
+    HttpPost request = new HttpPost(url);
+    request.setHeader("X-Auth-Token", token);
+    request.setHeader("Content-MD5", md5);
+    request.setEntity(new ByteArrayEntity(data, ContentType.APPLICATION_OCTET_STREAM));
 
-    request.setEntity(entity);
-    request.setHeader(HttpHeaderNames.CONNECTION.toString(), HttpHeaderValues.CLOSE.toString());
-    request.setHeader("X-Auth-Token", userToken);
-    request.setHeader("X-File-Tags", fileTags);
-    request.setHeader("X-File-Size", fileSize);
+    return client.execute(request, UploadResult::from);
+  }
+
+  public UploadResult completeUploadSession(HttpClient client, String token, UUID sessionId)
+      throws IOException {
+    String url =
+        itUtils.createUriString(
+            itUtils.fillQuery(
+                ApiEndpoints.FILES_CHUNKED_UPLOAD_COMPLETE + "?sessionId=%s", sessionId));
+
+    HttpPost request = new HttpPost(url);
+    request.setHeader("X-Auth-Token", token);
 
     return client.execute(request, UploadResult::from);
   }
@@ -94,8 +96,25 @@ public class FileChunkedTransferITUtils {
     return true;
   }
 
-  public record UploadResult(int statusCode, String body) {
+  public List<byte[]> splitData(byte[] data, int chunkSize) {
+    List<byte[]> parts = new ArrayList<>();
+    int totalLength = data.length;
+    int offset = 0;
 
+    while (offset < totalLength) {
+      int currentChunkSize = Math.min(chunkSize, totalLength - offset);
+
+      byte[] chunk = new byte[currentChunkSize];
+      System.arraycopy(data, offset, chunk, 0, currentChunkSize);
+
+      parts.add(chunk);
+      offset += currentChunkSize;
+    }
+
+    return parts;
+  }
+
+  public record UploadResult(int statusCode, String body) {
     public static UploadResult from(ClassicHttpResponse response)
         throws IOException, ParseException {
       return new UploadResult(response.getCode(), EntityUtils.toString(response.getEntity()));
@@ -115,6 +134,22 @@ public class FileChunkedTransferITUtils {
           response.getCode(),
           headers,
           readChunksFromInputStream(response.getEntity().getContent()));
+    }
+
+    private static List<byte[]> readChunksFromInputStream(InputStream inputStream)
+        throws IOException {
+      List<byte[]> chunks = new ArrayList<>();
+      byte[] buffer = new byte[MAX_CHUNK_SIZE];
+      int bytesRead;
+
+      while ((bytesRead = inputStream.read(buffer)) != -1) {
+        byte[] chunk = new byte[bytesRead];
+        System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+
+        chunks.add(chunk);
+      }
+
+      return chunks;
     }
   }
 }

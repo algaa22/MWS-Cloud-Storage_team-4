@@ -5,7 +5,8 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class TariffAccessDeniedException extends BaseStorageException {
 
-  public TariffAccessDeniedException(String message) {
-    super(message, HttpResponseStatus.PAYMENT_REQUIRED);
+  public TariffAccessDeniedException() {
+    super(
+        "Your tariff has expired. Please renew to continue.", HttpResponseStatus.PAYMENT_REQUIRED);
   }
 }

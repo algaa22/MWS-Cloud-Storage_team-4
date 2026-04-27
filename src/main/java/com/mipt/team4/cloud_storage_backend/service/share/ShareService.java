@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.service.share;
 
 import com.mipt.team4.cloud_storage_backend.exception.share.*;
-import com.mipt.team4.cloud_storage_backend.exception.storage.StorageFileNotFoundException;
+import com.mipt.team4.cloud_storage_backend.exception.storage.FileNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.model.share.dto.*;
 import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
@@ -75,7 +75,7 @@ public class ShareService {
     StorageEntity file =
         storageRepository
             .get(userId, request.fileId())
-            .orElseThrow(() -> new StorageFileNotFoundException(request.fileId()));
+            .orElseThrow(() -> new FileNotFoundException(request.fileId()));
 
     UserEntity user =
         userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
@@ -189,9 +189,7 @@ public class ShareService {
 
   @Transactional(readOnly = true)
   public List<ShareInfoResponse> getFileSharesInfo(UUID fileId, UUID userId) {
-    storageRepository
-        .get(userId, fileId)
-        .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+    storageRepository.get(userId, fileId).orElseThrow(() -> new FileNotFoundException(fileId));
 
     return shareRepository.findByFileId(fileId).stream()
         .filter(
@@ -271,7 +269,7 @@ public class ShareService {
   }
 
   private byte[] downloadFileToBytes(StorageEntity file) {
-    try (InputStream inputStream = storageRepository.download(file)) {
+    try (InputStream inputStream = storageRepository.download(file, null)) {
       return inputStream.readAllBytes();
     } catch (IOException e) {
       log.error("Failed to read file data for: {}", file.getName(), e);

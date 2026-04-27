@@ -1,14 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.validation.GlobalValidationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.codec.RequestToDtoDecoder;
-import com.mipt.team4.cloud_storage_backend.netty.utils.RequestUtils;
-import com.mipt.team4.cloud_storage_backend.utils.SafeParser;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -60,7 +58,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
   private final AggregatedHttpHandler aggregatedHttpHandlerProvider;
   private final GlobalValidationHandler globalValidationHandler;
   private final RequestToDtoDecoder requestToDtoDecoder;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
 
   private PipelineType previousPipeline = null;
 
@@ -75,8 +73,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       PipelineType currentPipeline;
 
       try {
-        currentPipeline =
-            PipelineType.from(request, storageConfig.rest().maxAggregatedContentLength());
+        currentPipeline = PipelineType.from(request);
       } catch (ParseException e) {
         ReferenceCountUtil.release(msg);
         throw e;
@@ -105,6 +102,9 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       safeRemoveFromPipeline(pipeline, HttpObjectAggregator.class);
       safeRemoveFromPipeline(pipeline, AggregatedHttpHandler.class);
     }
+
+    safeRemoveFromPipeline(pipeline, RequestToDtoDecoder.class);
+    safeRemoveFromPipeline(pipeline, GlobalValidationHandler.class);
   }
 
   private void configurePipeline(PipelineType currentPipeline, ChannelHandlerContext ctx) {
@@ -119,7 +119,7 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
       addHandlerToPipeline(
           pipeline,
           PipelineHandlerNames.HTTP_OBJECT_AGGREGATOR,
-          new HttpObjectAggregator(storageConfig.rest().maxAggregatedContentLength()));
+          new HttpObjectAggregator(storageProps.rest().maxAggregatedContentLength()));
       addInitialRestHandlers(pipeline);
       addHandlerToPipeline(
           pipeline, PipelineHandlerNames.AGGREGATED_HTTP, aggregatedHttpHandlerProvider);
@@ -146,20 +146,16 @@ public class HttpTrafficStrategySelector extends ChannelInboundHandlerAdapter {
     CHUNKED,
     AGGREGATED;
 
-    public static PipelineType from(HttpRequest request, int maxAggregatedContentLength)
-        throws ParseException {
-      if (request.method() == HttpMethod.POST) {
-        int fileSize =
-            SafeParser.parseInt("File size", RequestUtils.getHeader(request, "X-File-Size", "0"));
+    public static PipelineType from(HttpRequest request) throws ParseException {
+      String uri = request.uri();
+      HttpMethod method = request.method();
 
-        if (fileSize > maxAggregatedContentLength) {
-          return CHUNKED;
-        }
+      if (uri.startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD_PART)
+          && method.equals(HttpMethod.POST)) {
+        return CHUNKED;
       }
 
-      if (request.uri().startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD)
-          || request.uri().startsWith(ApiEndpoints.FILES_CHUNKED_UPLOAD_RESUME)
-          || request.uri().startsWith(ApiEndpoints.FILES_DOWNLOAD)) {
+      if (uri.startsWith(ApiEndpoints.FILES_DOWNLOAD) && method.equals(HttpMethod.GET)) {
         return CHUNKED;
       }
 

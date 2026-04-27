@@ -17,6 +17,8 @@ import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.BitSet;
 import java.util.UUID;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
@@ -145,16 +147,24 @@ public class ResponseUtils {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, root);
   }
 
+  public static String encodeBitset(BitSet bitset) {
+    if (bitset == null || bitset.isEmpty()) {
+      return "";
+    }
+
+    byte[] bytes = bitset.toByteArray();
+    return Base64.getEncoder().encodeToString(bytes);
+  }
+
+  // TODO: зачем... есть ведь код из ChunkedDownloadController...
   public static void sendFile(
       ChannelHandlerContext ctx, byte[] fileData, String filename, String mimeType) {
     try {
       log.info("sendFile called with filename: {}, size: {}", filename, fileData.length);
 
-      // Кодируем имя файла для безопасной передачи в HTTP заголовках
       String encodedFilename =
           URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
 
-      // Создаем полный HTTP ответ с данными файла
       FullHttpResponse response =
           new DefaultFullHttpResponse(
               HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(fileData));
@@ -170,7 +180,6 @@ public class ResponseUtils {
               "X-Auth-Token, X-Share-Password, Content-Type");
       response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
 
-      // Устанавливаем заголовки для скачивания
       response
           .headers()
           .set(
@@ -189,15 +198,9 @@ public class ResponseUtils {
       response.headers().set(HttpHeaderNames.PRAGMA, "no-cache");
       response.headers().set(HttpHeaderNames.EXPIRES, "0");
 
-      log.info("Response headers set, sending...");
-
-      // Отправляем ответ и закрываем соединение
       ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
 
-      log.info("File sent successfully");
-
     } catch (Exception e) {
-      log.error("Error sending file", e);
       sendError(
           ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error sending file: " + e.getMessage());
     }

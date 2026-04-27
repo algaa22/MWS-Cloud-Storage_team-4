@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
-import com.mipt.team4.cloud_storage_backend.config.props.StorageConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.user.InvalidEmailOrPassword;
 import com.mipt.team4.cloud_storage_backend.exception.user.MissingOldPasswordException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsException;
@@ -35,12 +35,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+  // TODO: в кфг
   private static final long FREE_STORAGE_LIMIT = 5L * 1024 * 1024 * 1024; // 5GB
   private final UserJpaRepositoryAdapter userRepository;
   private final UserSessionService userSessionService;
   private final RefreshTokenService refreshTokenService;
   private final PasswordHasher passwordHasher;
-  private final StorageConfig storageConfig;
+  private final StorageProps storageProps;
   private final TariffService tariffService;
   private final StorageJpaRepository storageRepository;
 
@@ -101,6 +102,7 @@ public class UserService {
 
     UserSessionDto session = userSessionService.createSession(userEntity);
     RefreshTokenDto refreshToken = refreshTokenService.create(userEntity.getId());
+    tariffService.setupTrialPeriod(userEntity.getId());
 
     return new TokenPairDto(session.token(), refreshToken.token());
   }
@@ -128,11 +130,9 @@ public class UserService {
   public void logoutUser(LogoutRequest request) {
     refreshTokenService.revokeAllForUser(request.userId());
     userSessionService.blacklistToken(request.authToken());
-
-    log.info("User logged out: {}", request.userId());
   }
 
-  @Transactional()
+  @Transactional
   public TokenPairDto refreshTokens(RefreshTokenRequest request) {
     RefreshTokenDto refreshToken = refreshTokenService.validate(request.refreshToken());
 
@@ -162,12 +162,10 @@ public class UserService {
             .getUserById(request.userId())
             .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
-    // Проверяем, не находится ли пользователь в ограниченном режиме
     if (userEntity.getUserStatus() != UserStatus.ACTIVE) {
+      // TODO: не тот exception
       throw new IllegalStateException("Cannot update user info while account is restricted");
     }
-
-    boolean updated = false;
 
     if (request.newPassword() != null) {
       if (request.oldPassword() == null) {
@@ -178,18 +176,10 @@ public class UserService {
 
       String newPasswordHash = passwordHasher.hash(request.newPassword());
       userEntity.setPasswordHash(newPasswordHash);
-      updated = true;
-      log.info("Password updated for user: {}", request.userId());
     }
 
     if (request.newName() != null) {
       userEntity.setUsername(request.newName());
-      updated = true;
-      log.info("Username updated for user: {} -> {}", request.userId(), request.newName());
-    }
-
-    if (!updated) {
-      log.debug("No updates provided for user: {}", request.userId());
     }
   }
 

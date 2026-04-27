@@ -1,7 +1,8 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationPatterns;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ValidationPatterns;
+import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.NestedDto;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.QueryParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.UserId;
@@ -15,6 +16,8 @@ public record GetFileListRequest(
     @QueryParam(required = false) UUID parentId,
     @QueryParam(defaultValue = "false", required = false) boolean recursive,
     @QueryParam(defaultValue = "false", required = false) boolean includeDirectories,
+    @NestedDto FilePaginationParams pagination,
+    @QueryParam(required = false) String query,
     @QueryParam(required = false)
         List<
                 @Pattern(

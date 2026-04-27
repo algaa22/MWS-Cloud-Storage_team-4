@@ -6,10 +6,11 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +23,6 @@ public class UserJpaRepositoryAdapter {
     if (userEntity.getId() != null && jpaRepository.existsById(userEntity.getId())) {
       throw new UserAlreadyExistsException(userEntity.getId());
     }
-
     jpaRepository.saveAndFlush(userEntity);
   }
 
@@ -53,7 +53,7 @@ public class UserJpaRepositoryAdapter {
       LocalDateTime startDate,
       LocalDateTime endDate,
       boolean autoRenew,
-      Long storageLimit) { // Изменено с long на Long для возможности null
+      Long storageLimit) {
     jpaRepository.updateTariff(userId, plan, startDate, endDate, autoRenew, storageLimit);
   }
 
@@ -103,37 +103,26 @@ public class UserJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public List<UserEntity> getUsersWithTariffEndingBetween(LocalDateTime from, LocalDateTime to) {
-    return jpaRepository.findAllByTariffEndDateBetweenAndUserStatus(from, to, UserStatus.ACTIVE);
+  public Slice<UserEntity> getUsersWithTariffEndingBetween(
+      LocalDateTime from, LocalDateTime to, Pageable pageable) {
+    return jpaRepository.findAllByTariffEndDateBetweenAndIsActiveTrue(from, to, pageable);
   }
 
   @Transactional(readOnly = true)
-  public List<UserEntity> getUsersWithExpiredTariff(LocalDateTime now) {
-    return jpaRepository.findAllByTariffEndDateBeforeAndUserStatus(now, UserStatus.ACTIVE);
+  public Slice<UserEntity> getUsersWithExpiredTariff(LocalDateTime now, Pageable pageable) {
+    return jpaRepository.findAllByTariffEndDateBeforeAndIsActiveTrue(now, pageable);
   }
 
   @Transactional(readOnly = true)
-  public List<UserEntity> getUsersWithTrialStartedToday() {
-    LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
-    LocalDateTime endOfDay = startOfDay.plusDays(1);
-    return jpaRepository.findAllByTrialStartDateBetween(startOfDay, endOfDay);
+  public Slice<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
+      UserStatus status, LocalDateTime date, Pageable pageable) {
+    return jpaRepository.findAllByUserStatusAndScheduledDeletionDateBefore(status, date, pageable);
   }
 
   @Transactional(readOnly = true)
-  public List<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
-      UserStatus status, LocalDateTime date) {
-    return jpaRepository.findAllByUserStatusAndScheduledDeletionDateBefore(status, date);
-  }
-
-  @Transactional(readOnly = true)
-  public List<UserEntity> findAllByTrialEndDateBeforeAndTariffPlanIsNull(LocalDateTime now) {
-    return jpaRepository.findAllByTrialEndDateBeforeAndTariffPlanIsNull(now);
-  }
-
-  @Transactional(readOnly = true)
-  public List<UserEntity> findAllByTariffEndDateBeforeAndUserStatus(
-      LocalDateTime now, UserStatus status) {
-    return jpaRepository.findAllByTariffEndDateBeforeAndUserStatus(now, status);
+  public Slice<UserEntity> findAllByTrialEndDateBeforeAndTariffPlanIsNull(
+      LocalDateTime now, Pageable pageable) {
+    return jpaRepository.findAllByTrialEndDateBeforeAndTariffPlanIsNull(now, pageable);
   }
 
   @Transactional(readOnly = true)
@@ -143,18 +132,13 @@ public class UserJpaRepositoryAdapter {
         .map(
             projection -> {
               long used = projection.getUsedStorage() != null ? projection.getUsedStorage() : 0L;
-
               long freeLimit =
                   projection.getFreeStorageLimit() != null
                       ? projection.getFreeStorageLimit()
                       : 5L * 1024 * 1024 * 1024;
-
               long paidLimit =
                   projection.getPaidStorageLimit() != null ? projection.getPaidStorageLimit() : 0L;
-
-              long totalLimit = freeLimit + paidLimit;
-
-              return new StorageUsage(used, totalLimit);
+              return new StorageUsage(used, freeLimit + paidLimit);
             });
   }
 }

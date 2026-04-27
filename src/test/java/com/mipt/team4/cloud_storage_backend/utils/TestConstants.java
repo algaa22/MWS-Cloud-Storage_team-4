@@ -4,4 +4,5 @@ public class TestConstants {
 
   public static final String SMALL_FILE_LOCAL_PATH = "files/small_file.txt";
   public static final String BIG_FILE_LOCAL_PATH = "files/big_file.txt";
+  public static final int S3_INTERNAL_PORT = 8333;
 }

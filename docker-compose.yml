@@ -2,27 +2,34 @@ services:
   app:
     image: cloud-storage-app:latest
     container_name: cloud-storage-app
+    env_file:
+      - .env
     ports:
       - "8080:8080" # HTTP
       - "8443:8443" # HTTPS
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      seaweedfs:
+        condition: service_healthy
+      av-redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       notification-service:
         condition: service_started
-    environment:
-      DB_URL: jdbc:postgresql://postgres:5432/cloud_storage_db
-      DB_USERNAME: postgres
-      DB_PASSWORD: super_secret_password_123
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      MINIO_URL: ${MINIO_URL}
-      MINIO_USERNAME: ${MINIO_USERNAME}
-      MINIO_PASSWORD: ${MINIO_PASSWORD}
-      NOTIFICATION_SERVICE_URL: http://notification-service:8082
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/health | grep -q '200' || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - cloud-network
+    volumes:
+      - ./src/main/resources/application.yml:/app/resources/application.yml
 
   notification-service:
     build: ../MWS-Cloud-Storage_notification
@@ -59,28 +66,82 @@ services:
     networks:
       - cloud-network
 
-  minio:
-    image: minio/minio:latest
-    container_name: cloud-storage-minio
-    command: server /fileStream --console-address ":9001"
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: cloud-storage-seaweed
     environment:
-      - MINIO_ROOT_USER=${MINIO_USERNAME}
-      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
+      - WEED_S3_KEY=${S3_ACCESS_KEY}
+      - WEED_S3_SECRET=${S3_SECRET_KEY}
+    command: >
+      server -dir="/data"
+      -s3 -s3.port=8333
+      -s3.config=/etc/seaweedfs/s3.json
+      -master.port=9333 
+      -volume.port=8080
+      -filer.port=8888
     ports:
-      - "9000:9000"  # S3 API
-      - "9001:9001"  # Admin Console
+      - "8333:8333" # S3 API
+      - "9333:9333" # Master Console / API
+      - "8888:8888" # Filer UI
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: [ "CMD-SHELL", "curl -I http://localhost:8333/ || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cloud-network
+    volumes:
+      - seaweed-data:/data
+      - ./etc/seaweedfs:/etc/seaweedfs:ro
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: cloud-storage-mq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - cloud-network
 
+  av-redis:
+    image: redis:7-alpine
+    container_name: av_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - cloud-network
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: clamav
+    expose:
+      - "3310"
+    healthcheck:
+      test: [ "CMD-SHELL", "echo PING | nc -w 2 localhost 3310 | grep -q PONG" ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - cloud-network
+
 volumes:
   postgres-data:
   file-storage:
-  minio-data:
+  seaweed-data:
 
 networks:
   cloud-network:

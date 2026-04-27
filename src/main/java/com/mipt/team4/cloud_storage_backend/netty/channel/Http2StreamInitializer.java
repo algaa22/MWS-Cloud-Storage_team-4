@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.channel;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.utils.PipelineBuilder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -21,6 +21,6 @@ public class Http2StreamInitializer extends ChannelInitializer<Channel> {
     pipeline.addLast(
         PipelineHandlerNames.HTTP2_STREAM_FRAME_TO_OBJECT,
         new Http2StreamFrameToHttpObjectCodec(true));
-    pipelineBuilder.finalizeHttpPipeline(pipeline);
+    pipelineBuilder.finalizePipeline(pipeline);
   }
 }

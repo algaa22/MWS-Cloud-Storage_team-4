@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
-import { getTariffInfo, purchaseTariff, setAutoRenew } from "../api";
+import { getTariffInfo, purchaseTariff } from "../api";
 import PaymentModal from "./PaymentModal";
+import { setAutoRenew } from "../api";
 
 export default function TariffsPage() {
   const { user, token } = useAuth();
@@ -21,21 +22,21 @@ export default function TariffsPage() {
       name: 'Базовый',
       price: '99 ₽/мес',
       storage: '10 GB',
-      features: ['10 GB платного хранилища', '5 GB бесплатно всегда', 'До 3 пользователей', 'Поддержка 24/7']
+      features: ['10 GB хранилища', 'До 3 пользователей', 'Поддержка 24/7']
     },
     {
       id: 'WORK',
       name: 'Рабочий',
       price: '199 ₽/мес',
       storage: '50 GB',
-      features: ['50 GB платного хранилища', '5 GB бесплатно всегда', 'До 10 пользователей', 'Приоритетная поддержка']
+      features: ['50 GB хранилища', 'До 10 пользователей', 'Приоритетная поддержка']
     },
     {
       id: 'PREMIUM',
       name: 'Премиум',
       price: '349 ₽/мес',
       storage: '100 GB',
-      features: ['100 GB платного хранилища', '5 GB бесплатно всегда', 'До 30 пользователей', 'VIP поддержка']
+      features: ['100 GB хранилища', 'До 30 пользователей', 'VIP поддержка']
     }
   ];
 
@@ -74,8 +75,6 @@ export default function TariffsPage() {
       await purchaseTariff(token, selectedTariff.id, 'test-payment-token', autoRenew, paymentMethod);
       await loadCurrentTariff();
 
-      sessionStorage.setItem('refreshStorage', 'true');
-
       setSuccess(`Тариф "${selectedTariff.name}" успешно приобретен!`);
       setIsPaymentModalOpen(false);
       setSelectedTariff(null);
@@ -95,18 +94,41 @@ export default function TariffsPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '—';
+  const formatEndDate = (dateString) => {
+    if (!dateString) {
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 30);
+      return trialEndDate.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    }
+
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '—';
+      if (isNaN(date.getTime())) {
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + 30);
+        return trialEndDate.toLocaleDateString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      }
       return date.toLocaleDateString('ru-RU', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
       });
     } catch {
-      return '—';
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 30);
+      return trialEndDate.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
     }
   };
 
@@ -120,12 +142,12 @@ export default function TariffsPage() {
   const calculatePercentage = () => {
     if (!currentTariff) return 0;
     const used = currentTariff.usedStorage || 0;
-    const limit = currentTariff.totalStorageLimit || (5 * 1024 * 1024 * 1024);
+    const limit = currentTariff.storageLimit || 10 * 1024 * 1024 * 1024;
     return Math.round((used / limit) * 100);
   };
 
   const handleToggleAutoRenew = async () => {
-    if (!currentTariff || !currentTariff.activeTariff) return;
+    if (!currentTariff) return;
 
     const newState = !currentTariff.autoRenew;
 
@@ -144,7 +166,7 @@ export default function TariffsPage() {
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white p-6 flex flex-col overflow-hidden">
-      {/* Верхняя панель */}
+      {/* Верхняя панель с кнопкой назад слева */}
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <button
           onClick={() => navigate(-1)}
@@ -180,92 +202,29 @@ export default function TariffsPage() {
 
       {/* Основной контент */}
       <div className="flex-1 flex flex-col">
-        {/* Блок текущего тарифа */}
+        {/* Блок текущего тарифа - убрали заголовок */}
         {currentTariff && (
           <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-2xl p-5 border border-white/10 mb-6">
-            {/* Статус пользователя */}
-            {currentTariff.isActive === false && (
-              <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <span className="text-red-300 font-medium">Аккаунт ограничен. Оплатите тариф для восстановления доступа.</span>
-                </div>
-              </div>
-            )}
-
-            {/* Пробный период */}
-            {currentTariff.hasActiveTrial && (
-              <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="text-green-300 font-medium">Пробный период активен!</span>
-                  </div>
-                  <span className="text-green-300 text-sm">
-                    Действует до: {formatDate(currentTariff.trialEndDate)}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="bg-white/10 rounded-xl p-3">
                 <div className="text-sm text-white/60 mb-1">Тариф</div>
-                <div className="text-2xl font-bold text-yellow-300">
-                  {currentTariff.activeTariff || 'Бесплатный'}
-                </div>
-                {!currentTariff.activeTariff && (
-                  <div className="text-xs text-white/50 mt-1">5 GB бесплатно</div>
-                )}
-              </div>
-              <div className="bg-white/10 rounded-xl p-3">
-                <div className="text-sm text-white/60 mb-1">Бесплатно</div>
-                <div className="text-lg font-bold text-blue-300">
-                  {formatBytes(currentTariff.freeStorageLimit || 5 * 1024 * 1024 * 1024)}
-                </div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-3">
-                <div className="text-sm text-white/60 mb-1">Платный лимит</div>
-                <div className="text-lg font-bold text-purple-300">
-                  {currentTariff.activeTariff
-                    ? formatBytes(currentTariff.totalStorageLimit - currentTariff.freeStorageLimit)
-                    : '—'}
-                </div>
+                <div className="text-2xl font-bold text-yellow-300">{currentTariff.tariffPlan || 'TRIAL'}</div>
               </div>
               <div className="bg-white/10 rounded-xl p-3">
                 <div className="text-sm text-white/60 mb-1">Использовано</div>
-                <div className="text-lg font-bold text-blue-300">
-                  {formatBytes(currentTariff.usedStorage || 0)}
-                </div>
+                <div className="text-2xl font-bold text-blue-300">{formatBytes(currentTariff.usedStorage || 0)}</div>
               </div>
               <div className="bg-white/10 rounded-xl p-3">
-                <div className="text-sm text-white/60 mb-1">Всего</div>
-                <div className="text-lg font-bold text-green-300">
-                  {formatBytes(currentTariff.totalStorageLimit || 5 * 1024 * 1024 * 1024)}
+                <div className="text-sm text-white/60 mb-1">Лимит</div>
+                <div className="text-2xl font-bold text-green-300">{formatBytes(currentTariff.storageLimit || 10 * 1024 * 1024 * 1024)}</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-3">
+                <div className="text-sm text-white/60 mb-1">Действует до</div>
+                <div className="text-lg font-bold text-white">
+                  {formatEndDate(currentTariff.endDate)}
                 </div>
               </div>
             </div>
-
-            {/* Дата окончания тарифа */}
-            {currentTariff.activeTariff && currentTariff.tariffEndDate && (
-              <div className="mt-3 p-2 bg-white/5 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-white/70">Действует до:</span>
-                  <span className="font-medium text-white">
-                    {formatDate(currentTariff.tariffEndDate)}
-                    {currentTariff.daysLeft > 0 && (
-                      <span className="ml-2 text-sm text-white/50">
-                        (осталось {currentTariff.daysLeft} дн.)
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </div>
-            )}
 
             {/* Прогресс-бар */}
             <div className="mt-3">
@@ -282,7 +241,7 @@ export default function TariffsPage() {
             </div>
 
             {/* Переключатель автопродления */}
-            {currentTariff.activeTariff && (
+            {currentTariff.tariffPlan !== 'TRIAL' && (
               <div className="mt-3 p-3 bg-white/5 rounded-xl border border-white/10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -309,6 +268,9 @@ export default function TariffsPage() {
                     role="switch"
                     aria-checked={currentTariff.autoRenew}
                   >
+                    <span className="sr-only">
+                      {currentTariff.autoRenew ? 'Отключить' : 'Включить'} автопродление
+                    </span>
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                         currentTariff.autoRenew ? 'translate-x-6' : 'translate-x-1'
@@ -316,12 +278,20 @@ export default function TariffsPage() {
                     />
                   </button>
                 </div>
+
+                {currentTariff.autoRenew && (
+                  <p className="text-xs text-white/40 mt-2 pt-2 border-t border-white/10">
+                    ✓ Оплата будет списываться автоматически
+                    ✓ Можно отключить в любой момент
+                    ✓ Придет уведомление о продлении
+                  </p>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* Сообщения */}
+        {/* Сообщения об ошибках/успехе */}
         {error && (
           <div className="mb-3 p-2 bg-red-500/20 border border-red-500 rounded-xl text-center text-sm">
             {error}
@@ -334,19 +304,20 @@ export default function TariffsPage() {
           </div>
         )}
 
+        {/* Индикатор загрузки */}
         {loading && (
           <div className="mb-3 p-2 bg-blue-500/20 border border-blue-500 rounded-xl text-center text-sm">
             Загрузка информации о тарифе...
           </div>
         )}
 
-        {/* Сетка тарифов */}
+        {/* Сетка тарифов - поднята выше */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-auto">
           {tariffs.map((tariff) => (
             <div
               key={tariff.id}
               className={`bg-white/10 backdrop-blur-xl rounded-2xl p-5 border-2 transition-all duration-300 hover:scale-105 ${
-                currentTariff?.activeTariff === tariff.id
+                currentTariff?.tariffPlan === tariff.id
                   ? 'border-yellow-400 shadow-lg shadow-yellow-500/20'
                   : 'border-white/10 hover:border-blue-500/50'
               }`}
@@ -355,26 +326,22 @@ export default function TariffsPage() {
               <div className="text-3xl font-bold text-yellow-300 mb-4">{tariff.price}</div>
               <div className="text-xl text-blue-300 mb-6">{tariff.storage}</div>
 
-              <ul className="space-y-3 mb-8 flex-grow">
-                  {tariff.features.map((feature, index) => (
-                    <li key={index} className="flex items-center text-white/80">
-                      {feature && (
-                        <>
-                          <svg className="w-5 h-5 mr-2 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>{feature}</span>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+              <ul className="space-y-3 mb-8">
+                {tariff.features.map((feature, index) => (
+                  <li key={index} className="flex items-center text-white/80">
+                    <svg className="w-5 h-5 mr-2 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
 
               <button
                 onClick={() => handlePurchase(tariff.id)}
-                disabled={purchasing || currentTariff?.activeTariff === tariff.id}
+                disabled={purchasing || currentTariff?.tariffPlan === tariff.id}
                 className={`w-full py-3 rounded-xl font-medium transition-all ${
-                  currentTariff?.activeTariff === tariff.id
+                  currentTariff?.tariffPlan === tariff.id
                     ? 'bg-green-600/50 cursor-not-allowed'
                     : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500'
                 }`}
@@ -384,7 +351,7 @@ export default function TariffsPage() {
                     <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
                     <span>Обработка...</span>
                   </div>
-                ) : currentTariff?.activeTariff === tariff.id ? (
+                ) : currentTariff?.tariffPlan === tariff.id ? (
                   'Текущий тариф'
                 ) : (
                   'Выбрать'

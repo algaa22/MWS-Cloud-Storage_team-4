@@ -31,17 +31,7 @@ public class StubNotificationClient implements NotificationClient {
   public void notifyTariffExpired(String email, String name) {}
 
   @Override
-  public void notifyTariffRenewed(
-      String email, String name, String tariffName, LocalDateTime newEndDate) {}
-
-  @Override
-  public void notifySubscriptionExpired(String email, String name, LocalDateTime deletionDate) {}
-
-  @Override
-  public void notifyFilesDeleted(String email, String name) {}
-
-  @Override
-  public void notifyTrialExpired(String email, String name) {}
+  public void notifyTariffRenewed(String email, String name, LocalDateTime newEndDate) {}
 
   @Override
   public void notifyDangerousFile(

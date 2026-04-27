@@ -3,7 +3,6 @@ package com.mipt.team4.cloud_storage_backend.repository.user;
 import com.mipt.team4.cloud_storage_backend.model.storage.projection.StorageUsageProjection;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
-import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,21 +47,21 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
   @Modifying(flushAutomatically = true)
   @Query(
       """
-          UPDATE UserEntity u
-          SET u.tariffPlan = :plan,
-              u.tariffStartDate = :startDate,
-              u.tariffEndDate = :endDate,
-              u.autoRenew = :autoRenew,
-              u.paidStorageLimit = :storageLimit
-          WHERE u.id = :userId
-          """)
+        UPDATE UserEntity u
+        SET u.tariffPlan = :plan,
+            u.tariffStartDate = :startDate,
+            u.tariffEndDate = :endDate,
+            u.autoRenew = :autoRenew,
+            u.storageLimit = :storageLimit
+        WHERE u.id = :userId
+    """)
   void updateTariff(
       @Param("userId") UUID userId,
       @Param("plan") TariffPlan plan,
       @Param("startDate") LocalDateTime startDate,
       @Param("endDate") LocalDateTime endDate,
       @Param("autoRenew") boolean autoRenew,
-      @Param("storageLimit") Long storageLimit);
+      @Param("storageLimit") long storageLimit);
 
   @Modifying(flushAutomatically = true)
   @Query("UPDATE UserEntity u SET u.tariffEndDate = :newEndDate WHERE u.id = :userId")
@@ -78,25 +77,8 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
   @Query("UPDATE UserEntity u SET u.isActive = :isActive WHERE u.id = :userId")
   void updateActiveStatus(@Param("userId") UUID userId, @Param("isActive") boolean isActive);
 
-  @Modifying
-  @Query("UPDATE UserEntity u SET u.userStatus = :status WHERE u.id = :userId")
-  void updateUserStatus(@Param("userId") UUID userId, @Param("status") UserStatus status);
-
-  @Modifying
-  @Query("UPDATE UserEntity u SET u.scheduledDeletionDate = :deletionDate WHERE u.id = :userId")
-  void updateScheduledDeletionDate(
-      @Param("userId") UUID userId, @Param("deletionDate") LocalDateTime deletionDate);
-
-  @Modifying
   @Query(
-      "UPDATE UserEntity u SET u.trialStartDate = :startDate, u.trialEndDate = :endDate WHERE u.id = :userId")
-  void updateTrialDates(
-      @Param("userId") UUID userId,
-      @Param("startDate") LocalDateTime startDate,
-      @Param("endDate") LocalDateTime endDate);
-
-  @Query(
-      "SELECT u.usedStorage as usedStorage, u.freeStorageLimit as freeStorageLimit, u.paidStorageLimit as paidStorageLimit FROM UserEntity u WHERE u.id = :userId")
+      "SELECT u.usedStorage as usedStorage, u.storageLimit as storageLimit FROM UserEntity u WHERE u.id = :userId")
   Optional<StorageUsageProjection> findStorageUsageById(@Param("userId") UUID userId);
 
   Slice<UserEntity> findAllByTariffEndDateBetweenAndIsActiveTrue(
@@ -104,11 +86,4 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
   Slice<UserEntity> findAllByTariffEndDateBeforeAndIsActiveTrue(
       LocalDateTime now, Pageable pageable);
-
-  Slice<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
-      UserStatus status, LocalDateTime date, Pageable pageable);
-
-  @Query("SELECT u FROM UserEntity u WHERE u.trialEndDate < :now AND u.tariffPlan IS NULL")
-  Slice<UserEntity> findAllByTrialEndDateBeforeAndTariffPlanIsNull(
-      @Param("now") LocalDateTime now, Pageable pageable);
 }

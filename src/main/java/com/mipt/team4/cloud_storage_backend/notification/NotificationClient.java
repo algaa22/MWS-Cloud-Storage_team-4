@@ -17,13 +17,7 @@ public interface NotificationClient {
 
   void notifyTariffExpired(String email, String name);
 
-  void notifyTariffRenewed(String email, String name, String tariffName, LocalDateTime newEndDate);
-
-  void notifySubscriptionExpired(String email, String name, LocalDateTime deletionDate);
-
-  void notifyFilesDeleted(String email, String name);
-
-  void notifyTrialExpired(String email, String name);
+  void notifyTariffRenewed(String email, String name, LocalDateTime newEndDate);
 
   void notifyDangerousFile(
       String userEmail,

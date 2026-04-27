@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.http;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
 import com.mipt.team4.cloud_storage_backend.config.props.NettyProps;
 import com.mipt.team4.cloud_storage_backend.exception.netty.MissingHostHeaderException;
 import com.mipt.team4.cloud_storage_backend.netty.utils.ResponseUtils;
@@ -24,7 +25,7 @@ import org.springframework.stereotype.Component;
 public class HttpsRedirectHandler extends ChannelInboundHandlerAdapter {
   private final NettyProps nettyConfig;
 
-  private static final Set<String> REDIRECT_WHITELIST = Set.of();
+  private static final Set<String> REDIRECT_WHITELIST = Set.of(ApiEndpoints.HEALTHCHECK);
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {

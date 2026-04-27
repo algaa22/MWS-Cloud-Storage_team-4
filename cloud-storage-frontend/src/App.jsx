@@ -4,13 +4,9 @@ import { AuthProvider, useAuth } from './AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
 import FileBrowser from './components/FileBrowser';
-import Landing from './components/Landing';
+import Landing from './pages/Landing';
 import SettingsPage from './components/SettingsPage';
 import TariffsPage from './components/TariffsPage';
-import TrashPage from './components/TrashPage';
-import SharedFilePage from './components/SharedFilePage';
-import PaymentHistoryPage from './components/PaymentHistoryPage';
-import MySharesPage from './components/MySharesPage';
 
 
 function PrivateRoute({ children }) {
@@ -52,9 +48,6 @@ function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/register" element={<Register />} />
             <Route path="/tariffs" element={<TariffsPage />} />
-            <Route path="/payments" element={<PaymentHistoryPage />} />
-            <Route path="/s" element={<SharedFilePage />} />
-
             <Route
                 path="/files/*"
                 element={
@@ -63,18 +56,7 @@ function App() {
                   </PrivateRoute>
                 }
             />
-
-            <Route
-              path="/shares"
-              element={
-                <PrivateRoute>
-                  <MySharesPage />
-                </PrivateRoute>
-              }
-            />
-
             <Route path="*" element={<Navigate to="/" />} />
-              <Route path="/trash" element={<TrashPage />} />
           </Routes>
         </Router>
       </AuthProvider>

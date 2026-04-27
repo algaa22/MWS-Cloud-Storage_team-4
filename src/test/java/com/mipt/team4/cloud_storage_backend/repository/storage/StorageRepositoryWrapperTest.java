@@ -484,8 +484,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
             .username("user")
             .email("test@gmail.com")
             .passwordHash("hash")
-            .storageLimit(100)
-            .tariffPlan(TariffPlan.TRIAL)
+            .tariffPlan(TariffPlan.BASIC)
             .build();
 
     userRepository.addUser(newUser);

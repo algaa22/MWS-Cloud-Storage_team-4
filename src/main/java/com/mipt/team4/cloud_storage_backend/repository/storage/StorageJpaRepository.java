@@ -156,7 +156,18 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   void updateStatus(UUID id, FileStatus newStatus);
 
   @Modifying
-  void deleteByUserIdAndId(UUID userId, UUID id);
+  @Query("DELETE FROM StorageEntity f WHERE f.userId = :userId AND f.id = :id")
+  int deleteByUserIdAndId(@Param("userId") UUID userId, @Param("id") UUID id);
+
+  @Query(
+      "SELECT f FROM StorageEntity f WHERE f.userId = :userId AND f.isDeleted = false ORDER BY f.updatedAt ASC")
+  List<StorageEntity> findByUserIdAndIsDeletedFalseOrderByUpdatedAtAsc(
+      @Param("userId") UUID userId, Pageable pageable);
+
+  // TODO: полная копия deleteByUserIdAndId
+  @Modifying
+  @Query(value = "DELETE FROM files WHERE user_id = :userId AND id = :id", nativeQuery = true)
+  int hardDeleteNative(@Param("userId") UUID userId, @Param("id") UUID id);
 
   @Query(
       nativeQuery = true,
@@ -170,6 +181,10 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
         SELECT EXISTS (SELECT 1 FROM descendants WHERE id = :targetId)
     """)
   boolean isDescendant(@Param("sourceId") UUID sourceId, @Param("targetId") UUID targetId);
+
+  @Query(
+      "SELECT COALESCE(SUM(f.size), 0) FROM StorageEntity f WHERE f.userId = :userId AND f.isDeleted = false")
+  Long sumFileSizesByUserId(@Param("userId") UUID userId);
 
   @Query(
       nativeQuery = true,

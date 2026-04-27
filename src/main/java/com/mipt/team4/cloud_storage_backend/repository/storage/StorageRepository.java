@@ -39,7 +39,6 @@ public class StorageRepository {
         () -> {
           metadataRepository.addFile(entity);
           contentRepository.putObject(entity.getS3Key(), data);
-
           return null;
         });
   }

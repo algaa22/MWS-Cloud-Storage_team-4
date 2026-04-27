@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
+import ShareModal from './ShareModal';
+import { createShareLink, getFileShares, deactivateShare } from "../api";
 
 import {
   getFiles,
@@ -16,7 +18,13 @@ import {
   updateFileMetadata,
   moveFolder,
   BASE,
-  fetchWithTokenRefresh
+  fetchWithTokenRefresh,
+  getTrashFiles,
+  restoreFile,
+  permanentDeleteFile,
+  emptyTrash,
+  softDeleteFile,
+  softDeleteFolder
 } from "../api.js";
 
 export default function FileBrowser() {
@@ -52,6 +60,13 @@ export default function FileBrowser() {
   const [searchTags, setSearchTags] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashFiles, setTrashFiles] = useState([]);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [selectedTrashItems, setSelectedTrashItems] = useState(new Set());
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shares, setShares] = useState([]);
+  const [showSharesList, setShowSharesList] = useState(false);
 
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
@@ -98,6 +113,136 @@ export default function FileBrowser() {
     loadData();
   }, [token, currentPath]);
 
+useEffect(() => {
+  const handleFocus = () => {
+    console.log("Window focused, refreshing user info...");
+    refreshUserInfo();
+  };
+
+  window.addEventListener('focus', handleFocus);
+
+  return () => {
+    window.removeEventListener('focus', handleFocus);
+  };
+}, [token]);
+
+useEffect(() => {
+  const shouldRefresh = sessionStorage.getItem('refreshStorage');
+  if (shouldRefresh === 'true') {
+    refreshUserInfo();
+    sessionStorage.removeItem('refreshStorage');
+  }
+}, []);
+
+useEffect(() => {
+  window.refreshStorageInfo = refreshStorageInfo;
+  console.log("✅ refreshStorageInfo registered globally");
+
+  return () => {
+    delete window.refreshStorageInfo;
+    console.log("❌ refreshStorageInfo unregistered");
+  };
+}, [token]);
+
+useEffect(() => {
+  const handleStorageUpdate = async (event) => {
+    console.log("📡 Received storage-updated event", event.detail);
+
+    if (event.detail && event.detail.usedStorage !== undefined) {
+      const userData = event.detail;
+      const totalStorageLimit = userData.totalStorageLimit ||
+                                (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
+                                (userData.paidStorageLimit || 0);
+      const usedStorage = userData.usedStorage || 0;
+
+      setStorageInfo({
+        used: usedStorage,
+        total: totalStorageLimit,
+        formattedUsed: formatFileSize(usedStorage),
+        formattedTotal: formatFileSize(totalStorageLimit),
+        percentage: totalStorageLimit > 0 ? Math.round((usedStorage / totalStorageLimit) * 100) : 0
+      });
+      console.log("✅ Storage info updated from event:", { usedStorage, totalStorageLimit });
+
+      await fetchFiles();
+    } else {
+      await refreshStorageInfo();
+      await fetchFiles();
+    }
+  };
+
+  window.addEventListener('storage-updated', handleStorageUpdate);
+
+  return () => {
+    window.removeEventListener('storage-updated', handleStorageUpdate);
+  };
+}, [token]);
+
+useEffect(() => {
+  window.refreshStorageFromFiles = refreshStorageFromFiles;
+  window.refreshStorageInfo = refreshStorageInfo;
+  console.log("✅ Global storage methods registered");
+
+  return () => {
+    delete window.refreshStorageFromFiles;
+    delete window.refreshStorageInfo;
+    console.log("❌ Global storage methods unregistered");
+  };
+}, [token, files]);
+
+useEffect(() => {
+  window.refreshStorageInfo = refreshStorageInfo;
+  window.refreshStorageFromFiles = refreshStorageFromFiles;
+  window.forceStorageUpdate = forceStorageUpdate;
+  console.log("✅ Global storage methods registered");
+
+  return () => {
+    delete window.refreshStorageInfo;
+    delete window.refreshStorageFromFiles;
+    delete window.forceStorageUpdate;
+    console.log("❌ Global storage methods unregistered");
+  };
+}, [token]);
+
+useEffect(() => {
+  console.log("📊 Current storage info:", storageInfo);
+  console.log("📁 Current files:", files.length, "files, total size:",
+    files.reduce((sum, f) => sum + (f.size || 0), 0));
+}, [storageInfo, files]);
+
+
+const refreshStorageFromFiles = () => {
+  console.log("Refreshing storage from files...");
+  if (files.length === 0 && folders.length === 0) {
+    setStorageInfo(prev => ({
+      ...prev,
+      used: 0,
+      formattedUsed: '0 Bytes',
+      percentage: 0
+    }));
+    return;
+  }
+
+  let totalUsed = 0;
+  files.forEach(file => {
+    if (file.type === 'file' && file.size) {
+      totalUsed += file.size;
+    }
+  });
+
+  const totalLimit = storageInfo.total || (10 * 1024 * 1024 * 1024);
+  const percentage = totalLimit > 0 ? Math.round((totalUsed / totalLimit) * 100) : 0;
+
+  setStorageInfo({
+    ...storageInfo,
+    used: totalUsed,
+    formattedUsed: formatFileSize(totalUsed),
+    percentage
+  });
+
+  console.log("Storage updated:", { used: totalUsed, total: totalLimit, percentage });
+  };
+
   const handleAddSearchTag = () => {
     if (searchInput.trim() && !searchTags.includes(searchInput.trim())) {
       setSearchTags([...searchTags, searchInput.trim()]);
@@ -105,7 +250,6 @@ export default function FileBrowser() {
     }
   };
 
-  // Функция удаления тега
   const handleRemoveSearchTag = (tagToRemove) => {
     setSearchTags(searchTags.filter(tag => tag !== tagToRemove));
   };
@@ -219,6 +363,37 @@ export default function FileBrowser() {
     }
   };
 
+const refreshStorageInfo = async () => {
+  if (!token) return;
+  setStorageLoading(true);
+  try {
+    const userData = await getUserInfo(token);
+    console.log("User info refreshed:", userData);
+
+    if (userData.storageInfo) {
+      setStorageInfo(userData.storageInfo);
+    } else {
+      const totalStorageLimit = userData.totalStorageLimit ||
+                                (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
+                                (userData.paidStorageLimit || 0);
+      const usedStorage = userData.usedStorage || 0;
+
+      setStorageInfo({
+        used: usedStorage,
+        total: totalStorageLimit,
+        formattedUsed: formatFileSize(usedStorage),
+        formattedTotal: formatFileSize(totalStorageLimit),
+        percentage: totalStorageLimit > 0 ? Math.round((usedStorage / totalStorageLimit) * 100) : 0
+      });
+    }
+  } catch (err) {
+    console.error("Error refreshing user info:", err);
+  } finally {
+    setStorageLoading(false);
+  }
+};
+
+
   const calculateStorageFromFiles = () => {
     if (files.length === 0 && folders.length === 0) return;
 
@@ -294,6 +469,7 @@ export default function FileBrowser() {
       setFiles(filesList);
       setFolders(foldersList);
       setError("");
+
     } catch (err) {
       console.error("Error in fetchFiles:", err);
       setError(`Не удалось загрузить файлы: ${err.message}`);
@@ -308,6 +484,12 @@ export default function FileBrowser() {
     logout();
     navigate("/login");
   };
+
+const forceStorageUpdate = async () => {
+  console.log("🔄 Force storage update triggered");
+  await loadStorageInfo();
+  await fetchFiles();
+};
 
   const handleGoHome = () => {
     setCurrentPath("");
@@ -398,7 +580,145 @@ export default function FileBrowser() {
     }
   };
 
+const handleSoftDelete = async (item) => {
+  if (!item || !item.id) return;
+
+  const itemType = item.type === "folder" ? "папку" : "файл";
+  const itemName = item.name || "Без имени";
+
+  if (window.confirm(`Переместить ${itemType} "${itemName}" в корзину?`)) {
+    try {
+      if (item.type === "folder") {
+        await softDeleteFolder(token, item.id);
+      } else {
+        await softDeleteFile(token, item.id);
+      }
+      await fetchFiles();
+      await loadStorageInfo();
+      await loadTrashFiles();
+      setSuccess(`"${itemName}" перемещен(а) в корзину`);
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err) {
+      console.error("Soft delete error:", err);
+      setError(`Ошибка при перемещении в корзину: ${err.message}`);
+    }
+  }
+};
+
+const handleRestoreFromTrash = async (id) => {
+  try {
+    await restoreFile(token, id);
+    await loadTrashFiles();
+    await fetchFiles();
+    setSuccess("Файл восстановлен");
+    setTimeout(() => setSuccess(""), 2000);
+  } catch (err) {
+    console.error("Restore error:", err);
+    setError(`Ошибка восстановления: ${err.message}`);
+  }
+};
+
+const loadTrashFiles = async () => {
+  if (!token) return;
+
+  setTrashLoading(true);
+  try {
+    const files = await getTrashFiles(token);
+    setTrashFiles(files);
+  } catch (err) {
+    console.error("Error loading trash:", err);
+  } finally {
+    setTrashLoading(false);
+  }
+};
+
+const handlePermanentDelete = async (id) => {
+  if (window.confirm("Удалить файл безвозвратно? Это действие нельзя отменить!")) {
+    try {
+      await permanentDeleteFile(token, id);
+      await loadTrashFiles();
+      setSuccess("Файл удален навсегда");
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err) {
+      console.error("Permanent delete error:", err);
+      setError(`Ошибка удаления: ${err.message}`);
+    }
+  }
+};
+
+const handleEmptyTrash = async () => {
+  if (window.confirm("Очистить корзину? Все файлы будут удалены безвозвратно!")) {
+    try {
+      const result = await emptyTrash(token);
+      await loadTrashFiles();
+      setSuccess(`Корзина очищена. Удалено: ${result.success} файлов`);
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err) {
+      console.error("Empty trash error:", err);
+      setError(`Ошибка очистки корзины: ${err.message}`);
+    }
+  }
+};
+
+const handleSelectAllTrash = () => {
+  if (selectedTrashItems.size === trashFiles.length) {
+    setSelectedTrashItems(new Set());
+  } else {
+    setSelectedTrashItems(new Set(trashFiles.map(f => f.id)));
+  }
+};
+
+const handleSelectTrashItem = (id) => {
+  const newSelected = new Set(selectedTrashItems);
+  if (newSelected.has(id)) {
+    newSelected.delete(id);
+  } else {
+    newSelected.add(id);
+  }
+  setSelectedTrashItems(newSelected);
+};
+
+const handleRestoreSelected = async () => {
+  if (selectedTrashItems.size === 0) return;
+
+  try {
+    for (const id of selectedTrashItems) {
+      await restoreFile(token, id);
+    }
+    setSelectedTrashItems(new Set());
+    await loadTrashFiles();
+    await fetchFiles();
+    setSuccess(`Восстановлено ${selectedTrashItems.size} файлов`);
+    setTimeout(() => setSuccess(""), 2000);
+  } catch (err) {
+    console.error("Restore selected error:", err);
+    setError(`Ошибка восстановления: ${err.message}`);
+  }
+};
+
+const handleDeleteSelected = async () => {
+  if (selectedTrashItems.size === 0) return;
+
+  if (window.confirm(`Удалить ${selectedTrashItems.size} файлов безвозвратно?`)) {
+    try {
+      for (const id of selectedTrashItems) {
+        await permanentDeleteFile(token, id);
+      }
+      setSelectedTrashItems(new Set());
+      await loadTrashFiles();
+      setSuccess(`Удалено ${selectedTrashItems.size} файлов`);
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err) {
+      console.error("Delete selected error:", err);
+      setError(`Ошибка удаления: ${err.message}`);
+    }
+  }
+};
+
   const handleFileAction = async (action) => {
+    console.log("DELETE ID:", selectedItem.id, selectedItem);
+    console.log("handleFileAction called with action:", action, "selectedItem:", selectedItem);
+
     if (!selectedItem) return;
 
     setShowItemMenu(false);
@@ -419,16 +739,27 @@ export default function FileBrowser() {
           const itemType = selectedItem.type === "folder" ? "папку" : "файл";
           const itemName = getItemName(selectedItem);
 
-          if (window.confirm(`Удалить ${itemType} "${itemName}"?`)) {
-            if (selectedItem.type === "folder") {
-              await apiDeleteFolder(token, selectedItem.id);
-            } else {
-              await apiDeleteFile(token, selectedItem.id, false);
+          if (window.confirm(`Переместить ${itemType} "${itemName}" в корзину?`)) {
+            try {
+              if (selectedItem.type === "folder") {
+                await softDeleteFolder(token, selectedItem.id);
+              } else {
+                await softDeleteFile(token, selectedItem.id);
+              }
+                const trashCheck = await getTrashFiles(token);
+                console.log("Files in trash after delete:", trashCheck);
+              await fetchFiles();
+              await loadStorageInfo();
+              await loadTrashFiles();
+              setSuccess(`"${itemName}" перемещен(а) в корзину`);
+              setTimeout(() => setSuccess(""), 2000);
+            } catch (err) {
+              console.error("Delete error:", err);
+              setError(`Ошибка при удалении: ${err.message}`);
             }
-            await fetchFiles();
-            await loadStorageInfo();
           }
           break;
+
         case "info":
           const info = selectedItem.type === "file"
             ? await apiGetFileInfo(token, selectedItem.id)
@@ -495,6 +826,36 @@ export default function FileBrowser() {
       return [];
     }
   };
+
+const refreshUserInfo = async () => {
+  if (!token) return;
+  setStorageLoading(true);
+  try {
+    const userData = await getUserInfo(token);
+    console.log("User info refreshed:", userData);
+
+    if (userData.storageInfo) {
+      setStorageInfo(userData.storageInfo);
+    } else {
+      const totalStorageLimit = userData.totalStorageLimit ||
+                                (userData.freeStorageLimit || 5 * 1024 * 1024 * 1024) +
+                                (userData.paidStorageLimit || 0);
+      const usedStorage = userData.usedStorage || 0;
+
+      setStorageInfo({
+        used: usedStorage,
+        total: totalStorageLimit,
+        formattedUsed: formatFileSize(usedStorage),
+        formattedTotal: formatFileSize(totalStorageLimit),
+        percentage: totalStorageLimit > 0 ? Math.round((usedStorage / totalStorageLimit) * 100) : 0
+      });
+    }
+  } catch (err) {
+    console.error("Error refreshing user info:", err);
+  } finally {
+    setStorageLoading(false);
+  }
+};
 
   const handleSaveFileName = async () => {
     if (!fileInfoData || !fileInfoData.item || !newFileName.trim() || newFileName === fileInfoData.name) {
@@ -683,7 +1044,6 @@ export default function FileBrowser() {
                         ) : (
                           <button
                             onClick={() => {
-                              // Переходим к выбранной папке
                               const newHistory = navHistory.slice(0, index + 1);
                               setNavHistory(newHistory);
                               setCurrentPath(folder.id);
@@ -823,11 +1183,11 @@ export default function FileBrowser() {
             className="flex items-center space-x-3 bg-white/10 hover:bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 transition-all duration-200 border border-white/10 hover:border-white/20"
           >
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500/90 to-purple-500/90 rounded-full flex items-center justify-center text-white font-bold shadow-md">
-              {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
+              {((user?.username || user?.name || user?.email || "U").charAt(0)).toUpperCase()}
             </div>
             <div className="text-left">
               <span className="font-medium text-white text-sm block">
-                {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+                {user?.username || user?.name || user?.email?.split('@')[0] || "Пользователь"}
               </span>
               {user?.email && <span className="text-white/50 text-xs block">{user.email}</span>}
             </div>
@@ -841,11 +1201,11 @@ export default function FileBrowser() {
                <div className="px-4 py-3 border-b border-white/10">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                        {((user?.name || user?.username || user?.email || "U").charAt(0)).toUpperCase()}
+                        {((user?.username || user?.name || user?.email || "U").charAt(0)).toUpperCase()}
                       </div>
                       <div>
                         <p className="font-semibold text-white">
-                          {user?.name || user?.username || user?.email?.split('@')[0] || "Пользователь"}
+                          {user?.username || user?.name || user?.email?.split('@')[0] || "Пользователь"}
                         </p>
                         {user?.email && <p className="text-white/60 text-xs mt-0.5">{user.email}</p>}
                       </div>
@@ -866,6 +1226,19 @@ export default function FileBrowser() {
                 <span className="text-sm">Настройки профиля</span>
               </button>
 
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate("/shares");
+                    }}
+                    className="flex items-center w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors border-t border-white/10"
+                  >
+                    <svg className="w-4 h-4 mr-3 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm">Мои ссылки</span>
+                  </button>
+
               <button
                     onClick={() => {
                       setShowUserMenu(false);
@@ -878,6 +1251,19 @@ export default function FileBrowser() {
                     </svg>
                     <span className="text-sm">Тарифы и оплата</span>
                   </button>
+
+                <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        navigate("/payments");
+                      }}
+                      className="flex items-center w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors border-t border-white/10"
+                    >
+                      <svg className="w-4 h-4 mr-3 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                      <span className="text-sm">История платежей</span>
+                    </button>
 
               <button
                 onClick={handleLogout}
@@ -1186,31 +1572,47 @@ export default function FileBrowser() {
                 </div>
               ))}
 
-              {files.map((file) => (
-                <div
-                  key={file.id || file.fullPath}
-                  onClick={(e) => handleItemClick(file, e)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setSelectedItem(file);
-                    setShowItemMenu(true);
-                    setItemMenuPosition({ x: e.clientX, y: e.clientY });
-                  }}
-                  className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group"
-                >
-                  <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">
-                    {getFileIcon(file)}
-                  </div>
-                  <p className="truncate text-sm font-medium">{file.name}</p>
-                  <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
-                </div>
-              ))}
+{files.map((file) => (
+  <div
+    key={file.id || file.fullPath}
+    onClick={(e) => handleItemClick(file, e)}
+    onContextMenu={(e) => {
+      e.preventDefault();
+      setSelectedItem(file);
+      setShowItemMenu(true);
+      setItemMenuPosition({ x: e.clientX, y: e.clientY });
+    }}
+    className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group relative"
+  >
+    <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">
+      {getFileIcon(file)}
+    </div>
+    <p className="truncate text-sm font-medium">{file.name}</p>
+    <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
+
+    {/* Кнопка шаринга */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setSelectedItem(file);
+        setShowShareModal(true);
+      }}
+      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-500/20 hover:bg-blue-500/30 p-1.5 rounded-lg"
+      title="Поделиться"
+    >
+      <svg className="w-4 h-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+      </svg>
+    </button>
+  </div>
+))}
             </div>
           </>
         )}
       </div>
 
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-4">
+      {/* Кнопки действий */}
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-4 z-40">
         <button
           onClick={() => setShowUploadModal(true)}
           disabled={uploading}
@@ -1235,6 +1637,20 @@ export default function FileBrowser() {
         >
           <span>📁</span>
           <span>Создать папку</span>
+        </button>
+
+        {/* Кнопка корзины */}
+        <button
+          onClick={() => navigate("/trash")}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-colors flex items-center space-x-2 shadow-lg relative"
+        >
+          <span>🗑️</span>
+          <span>Корзина</span>
+          {trashFiles.length > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {trashFiles.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -1580,6 +1996,45 @@ export default function FileBrowser() {
           </div>
         </>
       )}
-    </div>
-  );
-}
+
+  {showShareModal && selectedItem && (
+            <ShareModal
+              file={selectedItem}
+              token={token}
+              onClose={() => {
+                setShowShareModal(false);
+                setSelectedItem(null);
+              }}
+              onShareCreated={(share) => {
+                console.log('Share created:', share);
+                setSuccess('Ссылка создана!');
+                setTimeout(() => setSuccess(''), 2000);
+              }}
+            />
+          )}
+
+        {showItemMenu && selectedItem && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowItemMenu(false)} />
+            <div className="fixed bg-gray-800 rounded-xl shadow-2xl py-2 z-50 min-w-[200px]" style={{ left: itemMenuPosition.x, top: itemMenuPosition.y }}>
+              {selectedItem.type === "file" && (
+                <button onClick={() => handleFileAction("download")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
+                  📥 Скачать
+                </button>
+              )}
+              <button onClick={() => handleFileAction("info")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
+                ℹ️ Информация
+              </button>
+              <div className="border-t border-white/20 my-1" />
+              <button
+                onClick={() => handleFileAction("delete")}
+                className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
+              >
+                {selectedItem.type === "folder" ? "🗑️ Удалить папку" : "🗑️ Удалить файл"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }

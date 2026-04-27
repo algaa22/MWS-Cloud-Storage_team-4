@@ -182,7 +182,6 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .username("name")
             .email("test-" + UUID.randomUUID() + "@email.com")
             .passwordHash("password")
-            .storageLimit(10737418240L)
             .createdAt(LocalDateTime.now())
             .build();
 

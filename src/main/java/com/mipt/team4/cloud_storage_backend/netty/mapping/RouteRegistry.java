@@ -26,16 +26,26 @@ public class RouteRegistry {
   }
 
   private void scanAndRegisterRoutes() {
+    System.out.println("=== Scanning for DTOs ===");
     ClassPathScanningCandidateComponentProvider scanner =
         new ClassPathScanningCandidateComponentProvider(false);
     scanner.addIncludeFilter(new AnnotationTypeFilter(RequestMapping.class));
 
     Set<BeanDefinition> candidates = scanner.findCandidateComponents(MODEL_PACKAGE);
+    System.out.println("Found " + candidates.size() + " DTOs");
 
     for (BeanDefinition beanDefinition : candidates) {
       try {
         Class<?> dtoClass = Class.forName(beanDefinition.getBeanClassName());
         RequestMapping mapping = dtoClass.getAnnotation(RequestMapping.class);
+
+        System.out.println(
+            "Registering: "
+                + mapping.method()
+                + " "
+                + mapping.path()
+                + " -> "
+                + dtoClass.getSimpleName());
 
         String routeKey = getRouteKey(mapping.method(), mapping.path());
         routes.put(routeKey, dtoClass);

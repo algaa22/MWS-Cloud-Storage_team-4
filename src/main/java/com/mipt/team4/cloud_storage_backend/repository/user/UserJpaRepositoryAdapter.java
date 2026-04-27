@@ -4,6 +4,7 @@ import com.mipt.team4.cloud_storage_backend.exception.user.UserAlreadyExistsExce
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.StorageUsage;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
+import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,7 +23,6 @@ public class UserJpaRepositoryAdapter {
     if (userEntity.getId() != null && jpaRepository.existsById(userEntity.getId())) {
       throw new UserAlreadyExistsException(userEntity.getId());
     }
-
     jpaRepository.saveAndFlush(userEntity);
   }
 
@@ -53,7 +53,7 @@ public class UserJpaRepositoryAdapter {
       LocalDateTime startDate,
       LocalDateTime endDate,
       boolean autoRenew,
-      long storageLimit) {
+      Long storageLimit) {
     jpaRepository.updateTariff(userId, plan, startDate, endDate, autoRenew, storageLimit);
   }
 
@@ -65,6 +65,21 @@ public class UserJpaRepositoryAdapter {
   @Transactional
   public void updatePaymentMethod(UUID userId, String paymentMethodId) {
     jpaRepository.updatePaymentMethod(userId, paymentMethodId);
+  }
+
+  @Transactional
+  public void updateUserStatus(UUID userId, UserStatus status) {
+    jpaRepository.updateUserStatus(userId, status);
+  }
+
+  @Transactional
+  public void updateScheduledDeletionDate(UUID userId, LocalDateTime deletionDate) {
+    jpaRepository.updateScheduledDeletionDate(userId, deletionDate);
+  }
+
+  @Transactional
+  public void updateTrialDates(UUID userId, LocalDateTime startDate, LocalDateTime endDate) {
+    jpaRepository.updateTrialDates(userId, startDate, endDate);
   }
 
   @Transactional
@@ -99,11 +114,31 @@ public class UserJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
+  public Slice<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
+      UserStatus status, LocalDateTime date, Pageable pageable) {
+    return jpaRepository.findAllByUserStatusAndScheduledDeletionDateBefore(status, date, pageable);
+  }
+
+  @Transactional(readOnly = true)
+  public Slice<UserEntity> findAllByTrialEndDateBeforeAndTariffPlanIsNull(
+      LocalDateTime now, Pageable pageable) {
+    return jpaRepository.findAllByTrialEndDateBeforeAndTariffPlanIsNull(now, pageable);
+  }
+
+  @Transactional(readOnly = true)
   public Optional<StorageUsage> getStorageUsage(UUID userId) {
     return jpaRepository
         .findStorageUsageById(userId)
         .map(
-            projection ->
-                new StorageUsage(projection.getUsedStorage(), projection.getStorageLimit()));
+            projection -> {
+              long used = projection.getUsedStorage() != null ? projection.getUsedStorage() : 0L;
+              long freeLimit =
+                  projection.getFreeStorageLimit() != null
+                      ? projection.getFreeStorageLimit()
+                      : 5L * 1024 * 1024 * 1024;
+              long paidLimit =
+                  projection.getPaidStorageLimit() != null ? projection.getPaidStorageLimit() : 0L;
+              return new StorageUsage(used, freeLimit + paidLimit);
+            });
   }
 }

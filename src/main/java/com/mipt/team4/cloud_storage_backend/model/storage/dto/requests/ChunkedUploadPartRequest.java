@@ -15,4 +15,4 @@ public record ChunkedUploadPartRequest(
     @NotNull @QueryParam UUID sessionId,
     @Positive @QueryParam int part,
     @Positive @RequestHeader("Content-Length") long partSize,
-    @RequestHeader(value = "Content-MD5", required = false) String checksum) {}
+    @RequestHeader(value = "Content-SHA256", required = false) String checksum) {}

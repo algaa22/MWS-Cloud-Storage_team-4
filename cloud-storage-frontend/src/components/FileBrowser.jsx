@@ -27,10 +27,16 @@ import {
   softDeleteFolder,
   getFilePreview,
   getUploadStatus,
-    abortChunkedUpload,
-    saveUploadSession,
-    getSavedUploadSession,
-    removeUploadSession
+  abortChunkedUpload,
+  saveUploadSession,
+  getSavedUploadSession,
+  removeUploadSession,
+  ScanVerdict,
+  isDangerousVerdict,
+  isSuspiciousVerdict,
+  isScanning,
+  getFileBackgroundColor,
+  getScanStatusText
 } from "../api.js";
 
 export default function FileBrowser() {
@@ -90,6 +96,96 @@ export default function FileBrowser() {
     formattedTotal: '10 GB'
   });
   const [storageLoading, setStorageLoading] = useState(true);
+
+  // Быстрый опрос для файлов, которые загружены недавно (первые 30 секунд)
+  useEffect(() => {
+    if (!token || files.length === 0) return;
+
+    // Находим файлы, которым меньше 30 секунд и которые еще не имеют финального статуса
+    const recentUnresolvedFiles = files.filter(f => {
+      if (f.type !== 'file') return false;
+      // Финальные статусы - не нужно больше опрашивать
+      const isFinal = f.scanVerdict === ScanVerdict.CLEAN ||
+                      f.scanVerdict === ScanVerdict.INFECTED ||
+                      f.scanVerdict === ScanVerdict.CONTENT_MISMATCH ||
+                      f.scanVerdict === ScanVerdict.RESOURCE_EXHAUSTED ||
+                      f.scanVerdict === ScanVerdict.ERROR ||
+                      f.scanVerdict === ScanVerdict.TOO_LARGE ||
+                      f.scanVerdict === ScanVerdict.PASSWORD_PROTECTED;
+
+      if (isFinal) return false;
+
+      // Проверяем, не старый ли файл (по createdAt или updatedAt)
+      const fileDate = f.createdAt || f.updatedAt;
+      if (fileDate) {
+        const age = Date.now() - new Date(fileDate).getTime();
+        if (age > 30000) return false; // старше 30 секунд - не опрашиваем быстро
+      }
+      return true;
+    });
+
+    if (recentUnresolvedFiles.length === 0) return;
+
+    console.log(`🔄 Быстрый опрос ${recentUnresolvedFiles.length} новых файлов...`);
+
+    // Быстрый интервал - каждую секунду
+    const fastInterval = setInterval(async () => {
+      for (const file of recentUnresolvedFiles) {
+        try {
+          const updatedInfo = await apiGetFileInfo(token, file.id);
+          if (updatedInfo.scanVerdict !== file.scanVerdict) {
+            console.log(`📊 Статус файла ${file.name} обновлен: ${file.scanVerdict} -> ${updatedInfo.scanVerdict}`);
+            setFiles(prev => prev.map(f =>
+              f.id === file.id ? { ...f, scanVerdict: updatedInfo.scanVerdict } : f
+            ));
+          }
+        } catch (err) {
+          console.error(`Failed to update scan status for ${file.id}:`, err);
+        }
+      }
+    }, 1000); // каждую секунду
+
+    // Останавливаем быстрый опрос через 30 секунд
+    const timeout = setTimeout(() => {
+      clearInterval(fastInterval);
+      console.log("⏹️ Быстрый опрос остановлен");
+    }, 30000);
+
+    return () => {
+      clearInterval(fastInterval);
+      clearTimeout(timeout);
+    };
+  }, [token, files]);
+
+  // Добавьте useEffect для опроса статусов сканирования
+  useEffect(() => {
+    if (!token || files.length === 0) return;
+
+    // Находим файлы, которые еще сканируются
+    const scanningFiles = files.filter(f =>
+      f.type === 'file' && isScanning(f.scanVerdict)
+    );
+
+    if (scanningFiles.length === 0) return;
+
+    const interval = setInterval(async () => {
+      for (const file of scanningFiles) {
+        try {
+          const updatedInfo = await apiGetFileInfo(token, file.id);
+          if (updatedInfo.scanVerdict !== file.scanVerdict) {
+            // Обновляем статус файла
+            setFiles(prev => prev.map(f =>
+              f.id === file.id ? { ...f, scanVerdict: updatedInfo.scanVerdict } : f
+            ));
+          }
+        } catch (err) {
+          console.error(`Failed to update scan status for ${file.id}:`, err);
+        }
+      }
+    }, 5000); // Проверяем каждые 5 секунд
+
+    return () => clearInterval(interval);
+  }, [token, files]);
 
   useEffect(() => {
     if (!token) {
@@ -271,6 +367,47 @@ useEffect(() => {
     checkPendingUploads();
   }
 }, [token]);
+
+const renderScanStatusIcon = (verdict, size = "w-4 h-4") => {
+  switch (verdict) {
+    case ScanVerdict.SCANNING:
+      return (
+        <div className={`${size} relative`}>
+          <div className="animate-spin rounded-full h-full w-full border-t-2 border-b-2 border-yellow-400"></div>
+        </div>
+      );
+    case ScanVerdict.INFECTED:
+      return (
+        <svg className={`${size} text-red-500`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      );
+    case ScanVerdict.CONTENT_MISMATCH:
+    case ScanVerdict.RESOURCE_EXHAUSTED:
+      return (
+        <svg className={`${size} text-orange-500`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case ScanVerdict.PASSWORD_PROTECTED:
+    case ScanVerdict.TOO_LARGE:
+    case ScanVerdict.ERROR:
+      return (
+        <svg className={`${size} text-yellow-500`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case ScanVerdict.CLEAN:
+    case ScanVerdict.EMPTY_FILE:
+      return (
+        <svg className={`${size} text-green-500`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
 
 
 const refreshStorageFromFiles = () => {
@@ -493,16 +630,17 @@ const refreshStorageInfo = async () => {
   const fetchFiles = async () => {
     try {
       setLoading(true);
-      console.log("fetchFiles called with path:", currentPath || "(root)");
+          console.log("fetchFiles called with path:", currentPath || "(root)");
 
-      if (!token || token.trim() === "") {
-        setError("Требуется авторизация");
-        setLoading(false);
-        return;
-      }
+          if (!token || token.trim() === "") {
+            setError("Требуется авторизация");
+            setLoading(false);
+            return;
+          }
 
-      const data = await getFiles(token, currentPath, 0, 100);
-      console.log("Raw getFiles data:", data);
+          // Добавьте параметр для предотвращения кэширования
+          const data = await getFiles(token, currentPath, 0, 100);
+          console.log("Raw getFiles data:", data);
 
       if (!Array.isArray(data)) {
         setError("Некорректный формат данных от сервера");
@@ -789,6 +927,17 @@ const handleDeleteSelected = async () => {
       switch (action) {
         case "download":
           if (selectedItem.type === "file") {
+            // Проверяем, является ли файл подозрительным
+            if (isSuspiciousVerdict(selectedItem.scanVerdict)) {
+              // Показываем предупреждение
+              const confirmed = window.confirm(
+                "Скачивание этого файла может быть небезопасно. Вы уверены, что хотите скачать этот файл?"
+              );
+              if (!confirmed) {
+                setShowItemMenu(false);
+                return;
+              }
+            }
             await apiDownloadFile(token, selectedItem.id, selectedItem.name, selectedItem.size);
           } else {
             setError("Папки нельзя скачать");
@@ -1071,21 +1220,61 @@ const refreshUserInfo = async () => {
       setError(null);
 
       try {
-        await uploadFileWithTags(token, file, currentPath, setUploadProgress, [], resumeSessionId);
+        const result = await uploadFileWithTags(token, file, currentPath, setUploadProgress, [], resumeSessionId);
+
+        // Немедленно получаем информацию о файле
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        let fileId = null;
+        if (result?.id) {
+          fileId = result.id;
+        } else {
+          // Если не получили ID, ищем по имени
+          const refreshedFiles = await getFiles(token, currentPath, 0, 100);
+          const uploadedFile = refreshedFiles.find(f => f.name === file.name);
+          fileId = uploadedFile?.id;
+        }
+
+        if (fileId) {
+          // Активно опрашиваем статус первые несколько секунд
+          let attempts = 0;
+          const maxAttempts = 15; // 15 секунд
+
+          const pollInterval = setInterval(async () => {
+            try {
+              const status = await apiGetFileInfo(token, fileId);
+              console.log(`📊 Статус файла ${file.name}: ${status.scanVerdict}`);
+
+              // Обновляем в списке
+              setFiles(prev => prev.map(f =>
+                f.id === fileId ? { ...f, scanVerdict: status.scanVerdict } : f
+              ));
+
+              // Если получили финальный статус - останавливаем опрос
+              const isFinal = status.scanVerdict === ScanVerdict.CLEAN ||
+                              status.scanVerdict === ScanVerdict.INFECTED ||
+                              status.scanVerdict === ScanVerdict.CONTENT_MISMATCH ||
+                              status.scanVerdict === ScanVerdict.RESOURCE_EXHAUSTED;
+
+              if (isFinal || attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+              }
+              attempts++;
+            } catch (err) {
+              console.error("Poll error:", err);
+            }
+          }, 1000); // каждую секунду
+        }
+
         await fetchFiles();
         await loadStorageInfo();
         setSuccess("Файл успешно загружен");
-        setTimeout(() => setSuccess(""), 2000);
+        setTimeout(() => setSuccess(""), 3000);
         setShowUploadModal(false);
       } catch (err) {
         setError(err.message);
-      } finally {
-        setUploading(false);
-        setUploadProgress(0);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
       }
+
       return;
     }
 
@@ -1453,6 +1642,38 @@ const searchFilesByTags = async (tags) => {
     return iconMap[extension] || "📄";
   };
 
+  const getFileIconWithStatus = (file) => {
+    const baseIcon = getFileIcon(file);
+
+    // Возвращаем отдельно: иконку файла и уголок
+    return {
+      icon: <div className="text-4xl">{baseIcon}</div>,
+      badge: (() => {
+        if (isScanning(file.scanVerdict)) {
+          return (
+            <div className="absolute -top-2 -right-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-yellow-400"></div>
+            </div>
+          );
+        }
+        if (isDangerousVerdict(file.scanVerdict)) {
+          return (
+            <div className="absolute -top-2 -right-2">
+              <div className="bg-red-600 rounded-full w-5 h-5 flex items-center justify-center text-white text-xs font-bold">
+                ⚠
+              </div>
+            </div>
+          );
+        }
+        // Для подозрительных - НЕ показываем уголок
+        // if (isSuspiciousVerdict(file.scanVerdict)) {
+        //   return null;  // ← просто не возвращаем badge
+        // }
+        return null;
+      })()
+    };
+  };
+
 const handlePreview = async (file) => {
   if (!file || file.type !== "file") return;
 
@@ -1798,50 +2019,97 @@ const closePreviewModal = () => {
 {files.map((file) => (
   <div
     key={file.id || file.fullPath}
-    onClick={(e) => handleItemClick(file, e)}
+    onClick={(e) => {
+        handleItemClick(file, e);
+      }}
     onContextMenu={(e) => {
       e.preventDefault();
       setSelectedItem(file);
       setShowItemMenu(true);
       setItemMenuPosition({ x: e.clientX, y: e.clientY });
     }}
-    className="bg-white/5 hover:bg-white/10 rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group relative"
+    className={`rounded-xl p-4 cursor-pointer transition-all hover:scale-105 group relative ${getFileBackgroundColor(file.scanVerdict)}`}
   >
-    <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">
-      {getFileIcon(file)}
+
+    <div className="relative mb-2 group-hover:scale-110 transition-transform">
+      {(() => {
+        const { icon, badge } = getFileIconWithStatus(file);
+        return (
+          <>
+            {icon}
+            <div className="group-hover:opacity-0 transition-opacity">
+              {badge}
+            </div>
+          </>
+        );
+      })()}
     </div>
+
     <p className="truncate text-sm font-medium">{file.name}</p>
     <p className="text-xs text-white/50 mt-1">{formatFileSize(file.size)}</p>
 
-    {/* Кнопка предпросмотра */}
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        handlePreview(file);
-      }}
-      className="absolute top-2 right-12 opacity-0 group-hover:opacity-100 transition-opacity bg-green-500/20 hover:bg-green-500/30 p-1.5 rounded-lg"
-      title="Предпросмотр"
-    >
-      <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-      </svg>
-    </button>
+    {/* Бейдж со статусом при наведении - появляется поверх */}
+    {getScanStatusText(file.scanVerdict) && (
+      <div className="absolute inset-0 bg-black/80 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 z-10">
+        <div className="text-center">
+          {renderScanStatusIcon(file.scanVerdict, "w-6 h-6 mx-auto")}
+          <p className="text-xs mt-1 font-medium">
+            {getScanStatusText(file.scanVerdict)}
+          </p>
+          {isDangerousVerdict(file.scanVerdict) && (
+            <p className="text-xs text-red-300 mt-1">
+              ⚠ Опасный файл
+            </p>
+          )}
+          {isSuspiciousVerdict(file.scanVerdict) && !isDangerousVerdict(file.scanVerdict) && (
+            <p className="text-xs text-yellow-300 mt-1">
+              Предпросмотр недоступен
+            </p>
+          )}
+        </div>
+      </div>
+    )}
+    {/* Предпросмотр - для чистых файлов, всегда виден */}
+    {!isDangerousVerdict(file.scanVerdict) &&
+     !isSuspiciousVerdict(file.scanVerdict) &&
+     !isScanning(file.scanVerdict) && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handlePreview(file);
+        }}
+        className="absolute top-2 right-12 opacity-100 transition-opacity bg-green-500/20 hover:bg-green-500/30 p-1.5 rounded-lg z-20"
+        title="Предпросмотр"
+      >
+        <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      </button>
+    )}
 
-    {/* Кнопка шаринга (существующая) */}
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        setSelectedItem(file);
-        setShowShareModal(true);
-      }}
-      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-500/20 hover:bg-blue-500/30 p-1.5 rounded-lg"
-      title="Поделиться"
-    >
-      <svg className="w-4 h-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-      </svg>
-    </button>
+    {/* Шаринг - для всех, кроме опасных и сканирующихся */}
+    {!isDangerousVerdict(file.scanVerdict) && !isScanning(file.scanVerdict) && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedItem(file);
+          setShowShareModal(true);
+        }}
+        className={`absolute top-2 right-2 opacity-100 transition-opacity p-1.5 rounded-lg z-20 ${
+          isSuspiciousVerdict(file.scanVerdict)
+            ? 'bg-yellow-500/30 hover:bg-yellow-500/50'
+            : 'bg-blue-500/20 hover:bg-blue-500/30'
+        }`}
+        title="Поделиться"
+      >
+        <svg className={`w-4 h-4 ${
+          isSuspiciousVerdict(file.scanVerdict) ? 'text-yellow-200' : 'text-blue-300'
+        }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+      </button>
+    )}
   </div>
 ))}
             </div>
@@ -2162,6 +2430,21 @@ const closePreviewModal = () => {
                 <div className="text-sm text-white/60 mb-1">Дата изменения</div>
                 <div className="font-medium">{fileInfoData.formattedDate}</div>
               </div>
+
+              <div className="bg-white/10 p-3 rounded-xl col-span-2">
+                <div className="text-sm text-white/60 mb-1">Статус сканирования</div>
+                <div className="font-medium flex items-center gap-2">
+                  {renderScanStatusIcon(fileInfoData.scanVerdict, "w-5 h-5")}
+                  <span className={
+                    isDangerousVerdict(fileInfoData.scanVerdict) ? "text-red-400" :
+                    isSuspiciousVerdict(fileInfoData.scanVerdict) ? "text-yellow-400" :
+                    isScanning(fileInfoData.scanVerdict) ? "text-blue-400" :
+                    "text-white"
+                  }>
+                    {getScanStatusText(fileInfoData.scanVerdict) || "Файл проверен"}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="bg-white/10 p-4 rounded-xl mb-6">
@@ -2269,21 +2552,30 @@ const closePreviewModal = () => {
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowItemMenu(false)} />
             <div className="fixed bg-gray-800 rounded-xl shadow-2xl py-2 z-50 min-w-[200px]" style={{ left: itemMenuPosition.x, top: itemMenuPosition.y }}>
-              {selectedItem.type === "file" && (
+              {/* Скачивание - запрещено для опасных файлов */}
+              {selectedItem.type === "file" && !isDangerousVerdict(selectedItem.scanVerdict) && !isScanning(selectedItem.scanVerdict) && (
                 <button onClick={() => handleFileAction("download")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
                   📥 Скачать
                 </button>
               )}
+
+              {/* Информация - разрешена всегда */}
               <button onClick={() => handleFileAction("info")} className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors">
                 ℹ️ Информация
               </button>
-              <div className="border-t border-white/20 my-1" />
-              <button
-                onClick={() => handleFileAction("delete")}
-                className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
-              >
-                {selectedItem.type === "folder" ? "🗑️ Удалить папку" : "🗑️ Удалить файл"}
-              </button>
+
+              {/* Удаление - запрещено для сканирующихся файлов */}
+              {!isScanning(selectedItem.scanVerdict) && (
+                <>
+                  <div className="border-t border-white/20 my-1" />
+                  <button
+                    onClick={() => handleFileAction("delete")}
+                    className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-300"
+                  >
+                    {selectedItem.type === "folder" ? "🗑️ Удалить папку" : "🗑️ Удалить файл"}
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}

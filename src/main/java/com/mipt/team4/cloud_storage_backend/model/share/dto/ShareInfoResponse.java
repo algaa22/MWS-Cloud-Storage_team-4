@@ -1,5 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.model.share.dto;
 
+import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.response.ResponseBodyParam;
 import java.time.format.DateTimeFormatter;
@@ -18,7 +19,8 @@ public record ShareInfoResponse(
     @ResponseBodyParam Integer downloadCount,
     @ResponseBodyParam Boolean isActive,
     @ResponseBodyParam Boolean hasPassword,
-    @ResponseBodyParam Boolean isFileDeleted) {
+    @ResponseBodyParam Boolean isFileDeleted,
+    @ResponseBodyParam ScanVerdict scanVerdict) {
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
   public static ShareInfoResponse fromShare(FileShare share, String baseUrl) {
@@ -27,11 +29,13 @@ public record ShareInfoResponse(
     String fileName = "Файл удален";
     Long fileSize = 0L;
     String fileId = null;
+    ScanVerdict scanVerdict = null;
 
     if (share.getFile() != null && !share.getFile().isDeleted()) {
       fileName = share.getFile().getName();
       fileSize = share.getFile().getSize();
       fileId = share.getFile().getId().toString();
+      scanVerdict = share.getFile().getScanVerdict();
     }
 
     return new ShareInfoResponse(
@@ -48,6 +52,7 @@ public record ShareInfoResponse(
         share.getDownloadCount(),
         share.getIsActive() && !isFileDeleted,
         share.getPasswordHash() != null,
-        isFileDeleted);
+        isFileDeleted,
+        scanVerdict);
   }
 }

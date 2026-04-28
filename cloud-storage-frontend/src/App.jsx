@@ -7,7 +7,7 @@ import FileBrowser from './components/FileBrowser';
 import Landing from './components/Landing';
 import SettingsPage from './components/SettingsPage';
 import TariffsPage from './components/TariffsPage';
-import TrashPage from './components/TrashPage';
+import TrashBrowser from './components/TrashBrowser';
 import SharedFilePage from './components/SharedFilePage';
 import PaymentHistoryPage from './components/PaymentHistoryPage';
 import MySharesPage from './components/MySharesPage';
@@ -74,7 +74,7 @@ function App() {
             />
 
             <Route path="*" element={<Navigate to="/" />} />
-              <Route path="/trash" element={<TrashPage />} />
+              <Route path="/trash" element={<TrashBrowser />} />
           </Routes>
         </Router>
       </AuthProvider>

@@ -30,5 +30,5 @@ public record SimpleUploadRequest(
                     message = ValidationPatterns.SINGLE_TAG_ERROR)
                 String>
             tags,
-    @RequestHeader(value = "Content-MD5", required = false) String checksum,
+    @RequestHeader(value = "Content-SHA256", required = false) String checksum,
     @NotEmpty @RequestBody byte[] data) {}

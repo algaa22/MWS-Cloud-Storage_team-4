@@ -255,10 +255,6 @@ public class StorageJpaRepositoryAdapter {
       sql.append(" AND is_directory = FALSE");
     }
 
-    if (!filter.recursive()) {
-      sql.append(" AND status = 'READY'");
-    }
-
     if (filter.tags() != null && !filter.tags().isEmpty()) {
       sql.append(
           """

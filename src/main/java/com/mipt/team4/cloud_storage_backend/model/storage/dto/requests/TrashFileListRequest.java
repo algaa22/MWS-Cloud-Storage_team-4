@@ -10,5 +10,5 @@ import java.util.UUID;
 @RequestMapping(method = "GET", path = ApiEndpoints.FILES_TRASH)
 public record TrashFileListRequest(
     @UserId UUID userId,
-    @QueryParam("parentId") UUID parentId,
+    @QueryParam(required = false) UUID parentId,
     @NestedDto FilePaginationParams pagination) {}

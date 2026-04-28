@@ -20,7 +20,15 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID> {
   @Query(
-      "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.name = :name AND s.parentId = :parentId")
+      nativeQuery = true,
+      value =
+          """
+    SELECT * FROM files
+    WHERE user_id = :userId
+      AND name = :name
+      AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
+    LIMIT 1
+""")
   Optional<StorageEntity> findByParentIdAndNameIncludeDeleted(
       @Param("userId") UUID userId, @Param("parentId") UUID parentId, @Param("name") String name);
 

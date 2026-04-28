@@ -159,12 +159,10 @@ public class FileService {
     validateEntityNotLocked(fileEntity);
 
     UserEntity userEntity =
-        userRepository
-            .getUserById(userId)
-            .orElseThrow(() -> new UserNotFoundException(request.userId()));
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
     erasureService.hardDelete(fileEntity);
-    notificationService.notifyFileDeleted(fileId, userEntity);
+    notificationService.notifyFileDeleted(fileEntity.getId(), userEntity);
   }
 
   @Transactional
@@ -172,13 +170,12 @@ public class FileService {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
-    shareRepository.deactivateAllByFileId(fileId);
-
     StorageEntity fileEntity =
         storageRepository
             .getIncludeDeleted(userId, fileId)
             .orElseThrow(() -> new FileNotFoundException(fileId));
 
+    shareRepository.deactivateAllByFileId(fileId);
     storageRepository.softDeleteEntity(fileEntity);
   }
 
@@ -314,49 +311,6 @@ public class FileService {
     return FilePreviewResponse.from(fileEntity, previewUrl);
   }
 
-  private boolean isPreviewableMimeType(String mimeType) {
-    if (mimeType == null) return false;
-    return mimeType.startsWith("image/")
-        || mimeType.equals("application/pdf")
-        || mimeType.startsWith("video/")
-        || mimeType.equals("text/plain")
-        || (mimeType.startsWith("audio/"))
-        || mimeType.startsWith("text/");
-  }
-
-  private void checkStorageAndNotify(UUID userId) {
-    userRepository
-        .getStorageUsage(userId)
-        .ifPresent(
-            usage -> {
-              double ratio = usage.getRatio();
-
-              log.info(
-                  "Storage check for user {}: used={}, limit={}, {}%",
-                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
-
-              if (ratio >= notificationConfig.fullThreshold()) {
-                userRepository
-                    .getUserById(userId)
-                    .ifPresent(
-                        user ->
-                            notificationClient.notifyStorageFull(
-                                user.getEmail(), user.getUsername(), userId));
-              } else if (ratio >= notificationConfig.almostFullThreshold()) {
-                userRepository
-                    .getUserById(userId)
-                    .ifPresent(
-                        user ->
-                            notificationClient.notifyStorageAlmostFull(
-                                user.getEmail(),
-                                user.getUsername(),
-                                usage.used(),
-                                usage.limit(),
-                                userId));
-              }
-            });
-  }
-
   public byte[] getPreviewContent(UUID fileId, UUID userId) {
     StorageEntity fileEntity =
         storageRepository
@@ -370,5 +324,15 @@ public class FileService {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private boolean isPreviewableMimeType(String mimeType) {
+    if (mimeType == null) return false;
+    return mimeType.startsWith("image/")
+        || mimeType.equals("application/pdf")
+        || mimeType.startsWith("video/")
+        || mimeType.equals("text/plain")
+        || (mimeType.startsWith("audio/"))
+        || mimeType.startsWith("text/");
   }
 }

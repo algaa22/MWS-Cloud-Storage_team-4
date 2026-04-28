@@ -1,8 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
-import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
-import com.mipt.team4.cloud_storage_backend.utils.string.StoragePaths;
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
 import java.time.Duration;
@@ -223,7 +221,9 @@ public class S3ContentRepository implements FileContentRepository {
 
             GetObjectPresignRequest presignRequest =
                 GetObjectPresignRequest.builder()
-                    .signatureDuration(Duration.ofSeconds(expirySeconds))
+                    .signatureDuration(
+                        Duration.ofSeconds(
+                            expirySeconds)) // TODO: зачем константу передавать в параметры...
                     .getObjectRequest(getObjectRequest)
                     .build();
 
@@ -237,10 +237,5 @@ public class S3ContentRepository implements FileContentRepository {
             return null;
           }
         });
-  }
-
-  public String generatePresignedUrl(StorageEntity fileEntity, int expirySeconds) {
-    String s3Key = StoragePaths.getS3Key(fileEntity.getUserId(), fileEntity.getId());
-    return generatePresignedUrl(s3Key, expirySeconds);
   }
 }

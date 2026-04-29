@@ -50,9 +50,7 @@ public class PaymentService {
   }
 
   @Transactional
-  public void processAutoRenewal(UUID userId, TariffPlan plan) {
-    log.info("Processing auto-renewal for user: {}, plan: {}", userId, plan);
-
+  public void processAutoRenewal(UUID userId) {
     UserEntity userEntity =
         userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
@@ -62,6 +60,8 @@ public class PaymentService {
     }
 
     String paymentMethodId = userEntity.getPaymentMethodId();
+    TariffPlan plan = userEntity.getTariffPlan();
+
     if (paymentMethodId == null || paymentMethodId.isBlank()) {
       throw new PaymentMethodNotFoundException(userId);
     }
@@ -69,6 +69,8 @@ public class PaymentService {
     if (plan == null) {
       throw new IllegalTariffStateException(userId, null);
     }
+
+    log.info("Processing auto-renewal for user: {}, plan: {}", userId, plan);
 
     try {
       boolean paymentSuccessful = simulateAutoRenewalCall(userId, plan, paymentMethodId);

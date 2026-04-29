@@ -3,7 +3,6 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 import com.mipt.team4.cloud_storage_backend.exception.storage.DownloadNonReadyFileException;
 import com.mipt.team4.cloud_storage_backend.exception.upload.IncorrectUploadStatusException;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
-import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPartEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
@@ -38,9 +37,8 @@ public class StorageRepository {
         entity,
         FileOperationType.UPLOAD,
         () -> {
-          metadataRepository.addFile(entity);
+          metadataRepository.upsertFile(entity);
           contentRepository.putObject(entity.getS3Key(), data);
-
           return null;
         });
   }
@@ -50,6 +48,8 @@ public class StorageRepository {
         entity,
         FileOperationType.UPLOAD,
         () -> {
+          metadataRepository.upsertFile(entity);
+
           String uploadId = contentRepository.startMultipartUpload(entity.getS3Key());
           session.setUploadId(uploadId);
           uploadRepository.addSession(session);
@@ -174,8 +174,6 @@ public class StorageRepository {
         FileOperationType.CHANGE_METADATA,
         () -> {
           metadataRepository.restore(entity.getUserId(), entity.getId(), entity.isDirectory());
-          entity.setDeleted(false);
-          entity.setDeletedAt(null);
           return null;
         });
   }
@@ -185,7 +183,7 @@ public class StorageRepository {
         entity,
         FileOperationType.UPLOAD,
         () -> {
-          metadataRepository.addFile(entity);
+          metadataRepository.upsertFile(entity);
           return null;
         });
   }
@@ -216,10 +214,6 @@ public class StorageRepository {
     return contentRepository.downloadObject(entity.getS3Key(), range);
   }
 
-  public InputStream download(StorageEntity entity) {
-    return download(entity, null);
-  }
-
   public Optional<StorageEntity> get(UUID userId, UUID fileId) {
     return metadataRepository.get(userId, fileId);
   }
@@ -230,11 +224,6 @@ public class StorageRepository {
 
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID fileId) {
     return metadataRepository.getIncludeDeleted(userId, fileId);
-  }
-
-  public Page<StorageEntity> getTrashFileList(UUID userId, PageQuery pageQuery) {
-    return metadataRepository.findAllDeletedByUserId(
-        userId, PaginationMapper.toPageable(pageQuery));
   }
 
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID parentId, String name) {
@@ -283,15 +272,7 @@ public class StorageRepository {
     return contentRepository.generatePresignedUrl(entity.getS3Key(), expirySeconds);
   }
 
-  public List<StorageEntity> getAllTrashFiles(UUID userId) {
-    return metadataRepository.getAllTrashFiles(userId);
-  }
-
-  public void saveFile(StorageEntity entity) {
-    metadataRepository.saveFile(entity);
-  }
-
-  public Optional<ChunkedUploadSessionEntity> getUploadSessionByFileId(UUID fileId) {
-    return uploadRepository.getSessionByFileId(fileId);
+  public Page<StorageEntity> getAllTrashFiles(UUID userId, UUID parentId, PageQuery pageQuery) {
+    return metadataRepository.getTrashFileList(userId, parentId, pageQuery);
   }
 }

@@ -140,18 +140,6 @@ public class WebNotificationClient implements NotificationClient {
     sendRequest(request);
   }
 
-  @Override
-  public void notifyTrialStarted(String email, String name, LocalDateTime trialEndDate) {
-    NotificationDto request =
-        NotificationDto.builder()
-            .type("TRIAL_STARTED")
-            .userEmail(email)
-            .userName(name)
-            .endDate(trialEndDate != null ? trialEndDate.toString() : null)
-            .build();
-    sendRequest(request);
-  }
-
   public void notifyDangerousFile(
       String userEmail,
       String userName,

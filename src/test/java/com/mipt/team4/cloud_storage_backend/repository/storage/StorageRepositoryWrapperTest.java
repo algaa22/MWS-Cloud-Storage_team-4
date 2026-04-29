@@ -15,6 +15,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationTyp
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileVisibility;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
+import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
@@ -241,7 +242,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
               operationType,
               () -> {
                 assertPending(file, operationType);
-                metadataRepository.addFile(file);
+                metadataRepository.upsertFile(file);
                 return true;
               }),
           LAMBDA_NOT_EXECUTED);
@@ -276,7 +277,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
       LocalDateTime oldUpdatedAt = file.getUpdatedAt().minusDays(1);
       file.setUpdatedAt(oldUpdatedAt);
 
-      metadataRepository.addFile(file);
+      metadataRepository.upsertFile(file);
       performStepAndAssertChanged(file, operationType, oldUpdatedAt);
     }
 
@@ -458,7 +459,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
 
   private StorageEntity createAndSaveTestFile(FileStatus status) {
     StorageEntity newFile = createTestFile(status);
-    metadataRepository.addFile(newFile);
+    metadataRepository.upsertFile(newFile);
     return newFile;
   }
 
@@ -483,7 +484,7 @@ class StorageRepositoryWrapperTest extends BasePostgresTest {
             .username("user")
             .email("test@gmail.com")
             .passwordHash("hash")
-            .paidStorageLimit(100L)
+            .tariffPlan(TariffPlan.BASIC)
             .build();
 
     userRepository.addUser(newUser);

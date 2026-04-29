@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.user.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationPatterns;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ValidationPatterns;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestHeader;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestMapping;
 import jakarta.validation.constraints.Pattern;

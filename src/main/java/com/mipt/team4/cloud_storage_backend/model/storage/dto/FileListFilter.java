@@ -4,4 +4,9 @@ import java.util.List;
 import java.util.UUID;
 
 public record FileListFilter(
-    UUID userId, UUID parentId, boolean includeDirectories, boolean recursive, List<String> tags) {}
+    UUID userId,
+    UUID parentId,
+    boolean includeDirectories,
+    boolean recursive,
+    String query,
+    List<String> tags) {}

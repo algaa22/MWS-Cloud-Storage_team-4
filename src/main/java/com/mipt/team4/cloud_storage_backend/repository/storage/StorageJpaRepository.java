@@ -20,29 +20,21 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID> {
   @Query(
-      """
-    SELECT s FROM StorageEntity s
-    WHERE s.userId = :userId
-      AND s.name = :name
-      AND (s.parentId = :parentId OR (:parentId IS NULL AND s.parentId IS NULL))
-    """)
+      nativeQuery = true,
+      value =
+          """
+    SELECT * FROM files
+    WHERE user_id = :userId
+      AND name = :name
+      AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
+    LIMIT 1
+""")
   Optional<StorageEntity> findByParentIdAndNameIncludeDeleted(
       @Param("userId") UUID userId, @Param("parentId") UUID parentId, @Param("name") String name);
 
   @Query(nativeQuery = true, value = "SELECT * FROM files WHERE id = :id AND user_id = :userId")
   Optional<StorageEntity> findByIdIncludeDeleted(
       @Param("userId") UUID userId, @Param("id") UUID id);
-
-  @Query(
-      nativeQuery = true,
-      value =
-          """
-        SELECT * FROM files
-        WHERE user_id = :userId
-          AND is_deleted = true
-        ORDER BY deleted_at DESC
-    """)
-  Page<StorageEntity> findAllDeletedByUserId(@Param("userId") UUID userId, Pageable pageable);
 
   @Query(
       """
@@ -132,6 +124,18 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   @Query(
       nativeQuery = true,
       value =
+          """
+    SELECT * FROM files
+    WHERE user_id = :userId
+      AND parent_id IS NOT DISTINCT FROM CAST(:parentId AS UUID)
+      AND is_deleted = true
+""")
+  Page<StorageEntity> findTrashByParentId(
+      @Param("userId") UUID userId, @Param("parentId") UUID parentId, Pageable pageable);
+
+  @Query(
+      nativeQuery = true,
+      value =
           "SELECT * FROM files WHERE id = CAST(:id AS uuid) AND user_id = CAST(:userId AS uuid) AND is_deleted = true")
   Optional<StorageEntity> findDeletedById(@Param("userId") UUID userId, @Param("id") UUID id);
 
@@ -168,6 +172,7 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
   List<StorageEntity> findByUserIdAndIsDeletedFalseOrderByUpdatedAtAsc(
       @Param("userId") UUID userId, Pageable pageable);
 
+  // TODO: полная копия deleteByUserIdAndId
   @Modifying
   @Query(value = "DELETE FROM files WHERE user_id = :userId AND id = :id", nativeQuery = true)
   int hardDeleteNative(@Param("userId") UUID userId, @Param("id") UUID id);
@@ -277,8 +282,8 @@ public interface StorageJpaRepository extends JpaRepository<StorageEntity, UUID>
       "SELECT s FROM StorageEntity s WHERE s.userId = :userId AND s.parentId = :parentId AND s.name = :name AND s.isDeleted = false")
   Optional<StorageEntity> findByUserIdAndIdAndName(UUID userId, UUID parentId, String name);
 
-  @Query("SELECT SUM(f.size) FROM StorageEntity f WHERE f.userId = :userId")
-  Long calculateTotalSizeByUserId(@Param("userId") UUID userId);
+  @Query("SELECT COUNT(s) FROM StorageEntity s WHERE s.status=:status")
+  long countByStatus(FileStatus status);
 
   Slice<StorageEntity> findByStatusInAndUpdatedAtBefore(
       List<FileStatus> statuses, LocalDateTime threshold, Pageable pageable);

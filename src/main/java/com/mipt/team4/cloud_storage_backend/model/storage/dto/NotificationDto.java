@@ -16,8 +16,8 @@ public class NotificationDto {
   private Long usedStorage;
   private Long storageLimit;
   private String tariffName;
-  private Integer daysLeft;
   private String endDate;
-  private String verdict;
   private String deletionDate;
+  private Integer daysLeft;
+  private String verdict;
 }

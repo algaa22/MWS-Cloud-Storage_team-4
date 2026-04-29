@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createShareLink } from '../api';
+import { createShareLink, isDangerousVerdict, isSuspiciousVerdict, getScanStatusText } from '../api';
 
 export default function ShareModal({ file, token, onClose, onShareCreated }) {
   const [shareType, setShareType] = useState('PUBLIC');
@@ -10,12 +10,28 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
   const [shareUrl, setShareUrl] = useState(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
 
   const getFrontendBaseUrl = () => {
     if (process.env.NODE_ENV === 'development') {
       return 'http://localhost:5173';
     }
     return window.location.origin;
+  };
+
+  // Проверяем, является ли файл подозрительным или опасным
+  const isRiskyFile = () => {
+    return isDangerousVerdict(file.scanVerdict) || isSuspiciousVerdict(file.scanVerdict);
+  };
+
+  const getRiskMessage = () => {
+    if (isDangerousVerdict(file.scanVerdict)) {
+      return `⚠️ ВНИМАНИЕ! Этот файл ОПАСЕН. Шаринг таких файлов может быть небезопасен!`;
+    }
+    if (isSuspiciousVerdict(file.scanVerdict)) {
+      return `⚠️ ВНИМАНИЕ! Этот файл ПОДОЗРИТЕЛЕН. Шаринг таких файлов может быть небезопасен!`;
+    }
+    return null;
   };
 
   const handleCreateShare = async () => {
@@ -70,6 +86,11 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
     onClose();
   };
 
+  const handleProceed = () => {
+    setShowWarning(false);
+    handleCreateShare();
+  };
+
   if (shareUrl) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -109,6 +130,40 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
     );
   }
 
+  // Показываем предупреждение перед созданием ссылки для опасных/подозрительных файлов
+  if (showWarning) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md border border-red-500/50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="text-4xl">⚠️</div>
+            <h3 className="text-xl font-bold text-red-400">Подтверждение действия</h3>
+          </div>
+
+          <p className="text-white/90 mb-4">{getRiskMessage()}</p>
+          <p className="text-white/60 text-sm mb-6">
+            Вы уверены, что хотите создать публичную ссылку на этот файл?
+          </p>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowWarning(false)}
+              className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleProceed}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 transition-colors"
+            >
+              Всё равно создать
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
@@ -124,11 +179,23 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
           </button>
         </div>
 
-        <div className="mb-4 p-3 bg-white/10 rounded-xl">
+        <div className={`mb-4 p-3 rounded-xl ${
+          isDangerousVerdict(file.scanVerdict) ? 'bg-red-500/20 border border-red-500' :
+          isSuspiciousVerdict(file.scanVerdict) ? 'bg-yellow-500/20 border border-yellow-500' :
+          'bg-white/10'
+        }`}>
           <p className="text-white font-medium truncate">{file.name}</p>
           <p className="text-white/60 text-sm">
             {file.size ? `${(file.size / 1024).toFixed(2)} KB` : 'Размер неизвестен'}
           </p>
+          {/* Показываем статус файла */}
+          {isRiskyFile() && (
+            <p className={`text-xs mt-2 ${
+              isDangerousVerdict(file.scanVerdict) ? 'text-red-400' : 'text-yellow-400'
+            }`}>
+              ⚠️ Статус: {getScanStatusText(file.scanVerdict)}
+            </p>
+          )}
         </div>
 
         {error && (
@@ -192,15 +259,15 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
             <label className="block text-sm text-white/70 mb-2">
               Пароль для доступа:
             </label>
-<input
-  type="password"
-  value={password}
-  onChange={(e) => setPassword(e.target.value)}
-  autoComplete="off"
-  placeholder="Введите пароль"
-  className="w-full p-3 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-  style={{ backgroundColor: '#374151' }}
-/>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="off"
+              placeholder="Введите пароль"
+              className="w-full p-3 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={{ backgroundColor: '#374151' }}
+            />
           </div>
         )}
 
@@ -213,7 +280,13 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
             Отмена
           </button>
           <button
-            onClick={handleCreateShare}
+            onClick={() => {
+              if (isRiskyFile()) {
+                setShowWarning(true);
+              } else {
+                handleCreateShare();
+              }
+            }}
             disabled={loading || (shareType === 'PROTECTED' && !password)}
             className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
           >

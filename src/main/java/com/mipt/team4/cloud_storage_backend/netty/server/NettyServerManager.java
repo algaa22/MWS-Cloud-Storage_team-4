@@ -1,8 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.netty.server;
 
-import com.mipt.team4.cloud_storage_backend.config.props.NettyConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NettyProps;
 import com.mipt.team4.cloud_storage_backend.exception.netty.ServerStartException;
 import com.mipt.team4.cloud_storage_backend.netty.channel.MainChannelInitializer;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.binder.netty4.NettyEventExecutorMetrics;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
@@ -15,6 +17,7 @@ import io.netty.util.concurrent.Promise;
 import jakarta.annotation.PreDestroy;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -37,31 +40,27 @@ import org.springframework.stereotype.Component;
  * </ul>
  */
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class NettyServerManager {
   private final AtomicBoolean stopping = new AtomicBoolean(false);
 
   private final MainChannelInitializer httpChannelInitializer;
   private final MainChannelInitializer httpsChannelInitializer;
-  private final NettyConfig nettyConfig;
+  private final NettyProps nettyConfig;
+  private final MeterRegistry meterRegistry;
 
   private Channel httpServerChannel;
   private Channel httpsServerChannel;
   private EventLoopGroup bossGroup;
   private EventLoopGroup workerGroup;
 
-  public NettyServerManager(
-      MainChannelInitializer httpChannelInitializer,
-      MainChannelInitializer httpsChannelInitializer,
-      NettyConfig nettyConfig) {
-    this.httpChannelInitializer = httpChannelInitializer;
-    this.httpsChannelInitializer = httpsChannelInitializer;
-    this.nettyConfig = nettyConfig;
-  }
-
   public void start() {
     bossGroup = createEventLoopGroup(nettyConfig.bossThreads());
     workerGroup = createEventLoopGroup(nettyConfig.workerThreads());
+
+    registerEventLoopMetrics(bossGroup);
+    registerEventLoopMetrics(workerGroup);
 
     try {
       startServers();
@@ -176,6 +175,10 @@ public class NettyServerManager {
 
   private EventLoopGroup createEventLoopGroup(int numThreads) {
     return new MultiThreadIoEventLoopGroup(numThreads, NioIoHandler.newFactory());
+  }
+
+  private void registerEventLoopMetrics(EventLoopGroup eventLoopGroup) {
+    new NettyEventExecutorMetrics(eventLoopGroup).bindTo(meterRegistry);
   }
 
   public enum ServerProtocol {

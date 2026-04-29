@@ -147,6 +147,16 @@ public class ResponseUtils {
     ResponseUtils.sendJson(ctx, HttpResponseStatus.CREATED, root);
   }
 
+  public static String encodeBitset(BitSet bitset) {
+    if (bitset == null || bitset.isEmpty()) {
+      return "";
+    }
+
+    byte[] bytes = bitset.toByteArray();
+    return Base64.getEncoder().encodeToString(bytes);
+  }
+
+  // TODO: зачем... есть ведь код из ChunkedDownloadController...
   public static void sendFile(
       ChannelHandlerContext ctx, byte[] fileData, String filename, String mimeType) {
     try {
@@ -188,25 +198,11 @@ public class ResponseUtils {
       response.headers().set(HttpHeaderNames.PRAGMA, "no-cache");
       response.headers().set(HttpHeaderNames.EXPIRES, "0");
 
-      log.info("Response headers set, sending...");
-
       ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
 
-      log.info("File sent successfully");
-
     } catch (Exception e) {
-      log.error("Error sending file", e);
       sendError(
           ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error sending file: " + e.getMessage());
     }
-  }
-
-  public static String encodeBitset(BitSet bitset) {
-    if (bitset == null || bitset.isEmpty()) {
-      return "";
-    }
-
-    byte[] bytes = bitset.toByteArray();
-    return Base64.getEncoder().encodeToString(bytes);
   }
 }

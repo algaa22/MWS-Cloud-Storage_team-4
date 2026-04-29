@@ -65,7 +65,8 @@ public class ChunkedUploadJpaRepositoryAdapter {
     return jpaRepository.findByFile_UpdatedAtBefore(threshold, pageable);
   }
 
-  public Optional<ChunkedUploadSessionEntity> getSessionByFileId(UUID fileId) {
-    return jpaRepository.findByFileId(fileId);
+  @Transactional(readOnly = true)
+  public long count() {
+    return jpaRepository.count();
   }
 }

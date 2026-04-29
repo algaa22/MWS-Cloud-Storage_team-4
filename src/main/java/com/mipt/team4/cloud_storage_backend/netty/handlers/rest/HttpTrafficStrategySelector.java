@@ -1,10 +1,10 @@
 package com.mipt.team4.cloud_storage_backend.netty.handlers.rest;
 
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
 import com.mipt.team4.cloud_storage_backend.exception.netty.NotHttpRequestException;
 import com.mipt.team4.cloud_storage_backend.exception.validation.ParseException;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.validation.GlobalValidationHandler;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.codec.RequestToDtoDecoder;
 import io.netty.channel.ChannelHandler;

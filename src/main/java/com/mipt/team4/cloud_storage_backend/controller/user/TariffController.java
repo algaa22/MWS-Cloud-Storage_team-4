@@ -18,10 +18,8 @@ import io.netty.channel.ChannelHandlerContext;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 
-@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class TariffController {

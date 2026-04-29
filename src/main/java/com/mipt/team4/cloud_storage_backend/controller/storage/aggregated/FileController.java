@@ -60,7 +60,6 @@ public class FileController {
   }
 
   public void deleteFile(ChannelHandlerContext ctx, DeleteFileRequest request) {
-
     if (request.permanent()) {
       fileService.hardDelete(request);
     } else {
@@ -71,14 +70,8 @@ public class FileController {
   }
 
   public void restoreFile(ChannelHandlerContext ctx, RestoreFileRequest request) {
-
-    try {
-      fileService.restore(request);
-      ResponseUtils.send(ctx, new SuccessResponse("File successfully restored"));
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw e;
-    }
+    fileService.restore(request);
+    ResponseUtils.send(ctx, new SuccessResponse("File successfully restored"));
   }
 
   public void changeMetadata(ChannelHandlerContext ctx, ChangeFileMetadataRequest request) {

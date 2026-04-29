@@ -3,7 +3,7 @@ package com.mipt.team4.cloud_storage_backend.service.storage;
 import com.mipt.team4.cloud_storage_backend.antivirus.config.props.AntivirusProps;
 import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.antivirus.service.AntivirusService;
-import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NotificationProps;
 import com.mipt.team4.cloud_storage_backend.exception.storage.*;
 import com.mipt.team4.cloud_storage_backend.exception.upload.MissingChecksumException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
@@ -20,9 +20,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
 import com.mipt.team4.cloud_storage_backend.repository.share.FileShareRepositoryAdapter;
-import com.mipt.team4.cloud_storage_backend.repository.storage.StorageJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
-import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepositoryWrapper;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
 import com.mipt.team4.cloud_storage_backend.service.user.TariffService;
@@ -54,13 +52,11 @@ public class FileService {
   private final AntivirusProps antivirusProps;
 
   private final StorageRepository storageRepository;
-  private final StorageJpaRepositoryAdapter storageJpaRepositoryAdapter;
-  private final StorageRepositoryWrapper storageRepositoryWrapper;
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationService notificationService;
   private final FileShareRepositoryAdapter shareRepository;
-  private final NotificationConfig notificationConfig;
   private final NotificationClient notificationClient;
+  private final NotificationProps notificationConfig;
 
   @Transactional
   public UUID simpleUpload(SimpleUploadRequest request) {
@@ -163,12 +159,10 @@ public class FileService {
     validateEntityNotLocked(fileEntity);
 
     UserEntity userEntity =
-        userRepository
-            .getUserById(userId)
-            .orElseThrow(() -> new UserNotFoundException(request.userId()));
+        userRepository.getUserById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
     erasureService.hardDelete(fileEntity);
-    notificationService.notifyFileDeleted(fileId, userEntity);
+    notificationService.notifyFileDeleted(fileEntity.getId(), userEntity);
   }
 
   @Transactional
@@ -176,16 +170,12 @@ public class FileService {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
-    shareRepository.deactivateAllByFileId(fileId);
-
     StorageEntity fileEntity =
         storageRepository
             .getIncludeDeleted(userId, fileId)
             .orElseThrow(() -> new FileNotFoundException(fileId));
-    userRepository.decreaseUsedStorage(userId, fileEntity.getSize());
 
-    fileEntity.setDeleted(true);
-    fileEntity.setDeletedAt(LocalDateTime.now());
+    shareRepository.deactivateAllByFileId(fileId);
     storageRepository.softDeleteEntity(fileEntity);
   }
 
@@ -204,8 +194,8 @@ public class FileService {
     }
 
     storageRepository.restore(fileEntity);
-    userRepository.increaseUsedStorage(userId, fileEntity.getSize());
 
+    // TODO: в сервис
     List<FileShare> shares = shareRepository.findByFileId(fileId);
     for (FileShare share : shares) {
       if (share.getIsActive() == false
@@ -215,14 +205,15 @@ public class FileService {
         shareRepository.save(share);
       }
     }
-    log.info("Restored {} shares for file {}", shares.size(), fileId);
   }
 
   @Transactional(readOnly = true)
   public Page<StorageEntity> getTrashFileList(TrashFileListRequest request) {
     Page<StorageEntity> result =
-        storageRepository.getTrashFileList(
-            request.userId(), PaginationMapper.toPageQuery(request.pagination()));
+        storageRepository.getAllTrashFiles(
+            request.userId(),
+            request.parentId(),
+            PaginationMapper.toPageQuery(request.pagination()));
 
     if (result.hasContent()) {
       StorageEntity first = result.getContent().get(0);
@@ -242,7 +233,12 @@ public class FileService {
 
     return storageRepository.getFileList(
         new FileListFilter(
-            userId, parentId, request.includeDirectories(), request.recursive(), request.tags()),
+            userId,
+            parentId,
+            request.includeDirectories(),
+            request.recursive(),
+            request.query(),
+            request.tags()),
         PaginationMapper.toPageQuery(request.pagination()));
   }
 
@@ -256,17 +252,12 @@ public class FileService {
         .orElseThrow(() -> new FileNotFoundException(fileId));
   }
 
-  @Transactional(readOnly = true)
-  public List<StorageEntity> getAllTrashFiles(UUID userId) {
-    return storageRepository.getAllTrashFiles(userId);
-  }
-
   @Transactional
   public void changeMetadata(ChangeFileMetadataRequest request) {
     UUID fileId = request.id();
     UUID userId = request.userId();
 
-    if (!tariffService.canModifyFiles(userId)) {
+    if (!tariffService.hasAccess(userId)) {
       throw new TariffAccessDeniedException();
     }
 
@@ -298,8 +289,13 @@ public class FileService {
     }
   }
 
+  // TODO: вынести в другой класс
   @Transactional(readOnly = true)
   public FilePreviewResponse generatePreviewUrl(UUID fileId, UUID userId) {
+    if (!tariffService.hasAccess(userId)) {
+      throw new TariffAccessDeniedException();
+    }
+
     StorageEntity fileEntity =
         storageRepository
             .get(userId, fileId)
@@ -313,16 +309,6 @@ public class FileService {
     }
 
     return FilePreviewResponse.from(fileEntity, previewUrl);
-  }
-
-  private boolean isPreviewableMimeType(String mimeType) {
-    if (mimeType == null) return false;
-    return mimeType.startsWith("image/")
-        || mimeType.equals("application/pdf")
-        || mimeType.startsWith("video/")
-        // || mimeType.equals("text/plain")
-        || (mimeType.startsWith("audio/"))
-        || mimeType.startsWith("text/");
   }
 
   public byte[] getPreviewContent(UUID fileId, UUID userId) {
@@ -340,36 +326,13 @@ public class FileService {
     }
   }
 
-  private void checkStorageAndNotify(UUID userId) {
-    userRepository
-        .getStorageUsage(userId)
-        .ifPresent(
-            usage -> {
-              double ratio = usage.getRatio();
-
-              log.info(
-                  "Storage check for user {}: used={}, limit={}, {}%",
-                  userId, usage.used(), usage.limit(), String.format("%.2f", ratio * 100));
-
-              if (ratio >= notificationConfig.fullThreshold()) {
-                userRepository
-                    .getUserById(userId)
-                    .ifPresent(
-                        user ->
-                            notificationClient.notifyStorageFull(
-                                user.getEmail(), user.getUsername(), userId));
-              } else if (ratio >= notificationConfig.almostFullThreshold()) {
-                userRepository
-                    .getUserById(userId)
-                    .ifPresent(
-                        user ->
-                            notificationClient.notifyStorageAlmostFull(
-                                user.getEmail(),
-                                user.getUsername(),
-                                usage.used(),
-                                usage.limit(),
-                                userId));
-              }
-            });
+  private boolean isPreviewableMimeType(String mimeType) {
+    if (mimeType == null) return false;
+    return mimeType.startsWith("image/")
+        || mimeType.equals("application/pdf")
+        || mimeType.startsWith("video/")
+        || mimeType.equals("text/plain")
+        || (mimeType.startsWith("audio/"))
+        || mimeType.startsWith("text/");
   }
 }

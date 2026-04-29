@@ -1,6 +1,6 @@
 package com.mipt.team4.cloud_storage_backend.service.user;
 
-import com.mipt.team4.cloud_storage_backend.config.props.NotificationConfig;
+import com.mipt.team4.cloud_storage_backend.config.props.NotificationProps;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.notification.NotificationClient;
@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
   private final UserJpaRepositoryAdapter userRepository;
   private final NotificationClient notificationClient;
-  private final NotificationConfig notificationConfig;
+  private final NotificationProps notificationConfig;
   private final StorageRepository storageRepository;
 
   @Transactional(readOnly = true)

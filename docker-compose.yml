@@ -1,8 +1,8 @@
 services:
   app:
+    build: .
     image: cloud-storage-app:latest
     container_name: cloud-storage-app
-    platform: linux/arm64
     restart: on-failure
     env_file:
       - .env
@@ -19,6 +19,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      antivirus-service:
+        condition: service_started
       notification-service:
         condition: service_started
     healthcheck:
@@ -33,11 +35,6 @@ services:
       - ./src/main/resources/application.yml:/app/resources/application.yml
       - ./ssl:/app/ssl:ro
     environment:
-      - ANTIVIRUS_ENABLED=false
-      - SPRING_RABBITMQ_HOST=cloud-storage-mq
-      - SPRING_RABBITMQ_PORT=5672
-      - SPRING_RABBITMQ_USERNAME=guest
-      - SPRING_RABBITMQ_PASSWORD=guest
       - SPRING_DATA_REDIS_HOST=av_redis
       - SPRING_DATA_REDIS_PORT=6379
       - SPRING_JACKSON_SERIALIZATION_WRITE_DATES_AS_TIMESTAMPS=false
@@ -48,11 +45,34 @@ services:
       - CLOUD_AWS_S3_REGION=us-east-1
       - CLOUD_AWS_S3_PATH_STYLE_ACCESS=true
 
+  antivirus-service:
+    build: ../MWS_Cloud_Storage_antivirus
+    env_file:
+      - ../MWS_Cloud_Storage_antivirus/.env
+    container_name: antivirus-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      - JAVA_TOOL_OPTIONS=-Dcom.amazonaws.sdk.disableCertChecking=true -Djavax.net.ssl.trustStore=/dev/null -Djavax.net.ssl.trustStorePassword=changeit
+      - CLOUD_AWS_S3_ENDPOINT=https://cloud-storage-seaweed:8333
+      - CLOUD_AWS_S3_REGION=us-east-1
+      - SPRING_DATA_REDIS_HOST=av-redis
+      - SPRING_DATA_REDIS_PORT=6379
+    networks:
+      - cloud-network
+    volumes:
+      - ./ssl:/ssl:ro
 
   notification-service:
     build: ../MWS-Cloud-Storage_notification
     container_name: notification-service
-    platform: linux/arm64
     ports:
       - "8082:8082"
     environment:
@@ -68,7 +88,6 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: cloud-storage-db
-    platform: linux/arm64
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USERNAME}
@@ -88,7 +107,6 @@ services:
   seaweedfs:
     image: chrislusf/seaweedfs:latest
     container_name: cloud-storage-seaweed
-    platform: linux/arm64
     user: root
     environment:
       - WEED_S3_KEY=${S3_ACCESS_KEY}
@@ -123,7 +141,6 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: cloud-storage-mq
-    platform: linux/arm64
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -141,7 +158,6 @@ services:
   av-redis:
     image: redis:7-alpine
     container_name: av_redis
-    platform: linux/arm64
     ports:
       - "6379:6379"
     healthcheck:
@@ -152,25 +168,28 @@ services:
     networks:
       - cloud-network
 
-  # clamav:
-  #   image: clamav/clamav:1.4.2_base
-  #   container_name: clamav
-  #   platform: linux/arm64
-  #   expose:
-  #     - "3310"
-  #   healthcheck:
-  #     test: [ "CMD-SHELL", "echo PING | nc -w 2 localhost 3310 | grep -q PONG" ]
-  #     interval: 20s
-  #     timeout: 10s
-  #     retries: 10
-  #     start_period: 60s
-  #   networks:
-  #     - cloud-network
+  clamav:
+     image: clamav/clamav:1.4.2_base
+     container_name: clamav
+     expose:
+       - "3310"
+     healthcheck:
+       test: ["CMD", "clamdscan", "--ping"]
+       interval: 20s
+       timeout: 10s
+       retries: 10
+       start_period: 60s
+     volumes:
+       - ./etc/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
+       - clamav_db:/var/lib/clamav
+     networks:
+       - cloud-network
 
 volumes:
   postgres-data:
   file-storage:
   seaweed-data:
+  clamav_db:
 
 networks:
   cloud-network:

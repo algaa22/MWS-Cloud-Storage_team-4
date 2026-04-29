@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.constants;
+package com.mipt.team4.cloud_storage_backend.config.constants.netty;
 
 public class ApiEndpoints {
 
@@ -9,9 +9,6 @@ public class ApiEndpoints {
   public static final String USERS_PREFIX = API_PREFIX + "/users";
   public static final String AUTH_PREFIX = USERS_PREFIX + "/auth";
   public static final String TARIFF_PREFIX = USERS_PREFIX + "/tariff";
-
-  // Infrastructure
-  public static final String HEALTHCHECK = "/health";
 
   // Files (Aggregated)
   public static final String FILES_SIMPLE_UPLOAD = FILES_PREFIX + "/upload";
@@ -28,6 +25,7 @@ public class ApiEndpoints {
   public static final String FILES_CHUNKED_UPLOAD_COMPLETE = FILES_CHUNKED_UPLOAD + "/complete";
   public static final String FILES_CHUNKED_UPLOAD_ABORT = FILES_CHUNKED_UPLOAD + "/abort";
   public static final String FILES_DOWNLOAD = FILES_PREFIX + "/download";
+
   // Users & Auth
   public static final String AUTH_LOGIN = AUTH_PREFIX + "/login";
   public static final String AUTH_REGISTER = AUTH_PREFIX + "/register";

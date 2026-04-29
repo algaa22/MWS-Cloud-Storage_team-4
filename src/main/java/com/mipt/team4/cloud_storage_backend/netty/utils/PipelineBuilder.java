@@ -1,12 +1,12 @@
 package com.mipt.team4.cloud_storage_backend.netty.utils;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.PipelineHandlerNames;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.PipelineHandlerNames;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.auth.JwtAuthHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.CorsHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.HttpsRedirectHandler;
-import com.mipt.team4.cloud_storage_backend.netty.handlers.common.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.GlobalErrorHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.error.StorageExceptionHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.http.CorsHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.http.HttpsRedirectHandler;
+import com.mipt.team4.cloud_storage_backend.netty.handlers.http.IdleTimeoutHandler;
 import com.mipt.team4.cloud_storage_backend.netty.handlers.rest.HttpTrafficStrategySelector;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.codec.DtoToResponseEncoder;
 import io.netty.channel.ChannelPipeline;

@@ -1,3 +1,4 @@
+// components/TrashBrowser.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -9,36 +10,72 @@ import {
   getUserInfo
 } from "../api";
 
-export default function TrashPage() {
+export default function TrashBrowser() {
   const { user, token } = useAuth();
   const navigate = useNavigate();
-  const [files, setFiles] = useState([]);
+  const [rootItems, setRootItems] = useState([]); // Корневые элементы (parentId = null)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState("");
-  const [selectedFiles, setSelectedFiles] = useState(new Set());
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState(new Set()); // Развернутые папки
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [itemsMap, setItemsMap] = useState(new Map()); // Быстрый доступ к элементам по ID
 
   useEffect(() => {
     if (!token) {
       navigate("/login");
       return;
     }
-    loadTrashFiles();
+    loadTrashHierarchy();
   }, [token, navigate]);
 
-  const loadTrashFiles = async () => {
+  const loadTrashHierarchy = async () => {
     try {
       setLoading(true);
-      const trashFiles = await getTrashFiles(token);
-      console.log("=== TRASH FILES RECEIVED IN PAGE ===");
-      console.log("Raw files:", trashFiles);
-      trashFiles.forEach(file => {
-        console.log(`File: ${file.name}, deletedAt: ${file.deletedAt}`);
+      // Загружаем все файлы из корзины (recursive = true)
+      const allItems = await getTrashFiles(token, null, true);
+
+      // Строим иерархию
+      const map = new Map();
+      const roots = [];
+
+      // Сначала создаем Map всех элементов
+      allItems.forEach(item => {
+        map.set(item.id, { ...item, children: [] });
       });
-      setFiles(trashFiles);
+
+      // Строим дерево
+      map.forEach(item => {
+        if (item.parentId && map.has(item.parentId)) {
+          const parent = map.get(item.parentId);
+          parent.children.push(item);
+        } else if (!item.parentId) {
+          roots.push(item);
+        }
+      });
+
+      // Сортируем: папки сверху
+      const sortItems = (items) => {
+        items.sort((a, b) => {
+          if (a.type === 'folder' && b.type !== 'folder') return -1;
+          if (a.type !== 'folder' && b.type === 'folder') return 1;
+          return a.name.localeCompare(b.name);
+        });
+        items.forEach(item => {
+          if (item.children.length > 0) {
+            sortItems(item.children);
+          }
+        });
+      };
+
+      sortItems(roots);
+
+      setItemsMap(map);
+      setRootItems(roots);
       setError(null);
     } catch (err) {
+      console.error("Error loading trash hierarchy:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -46,94 +83,123 @@ export default function TrashPage() {
   };
 
   const refreshStorage = async () => {
-    console.log("🔄 Refreshing storage from TrashPage");
-
     if (window.forceStorageUpdate) {
-      console.log("Calling window.forceStorageUpdate from TrashPage");
       await window.forceStorageUpdate();
-      console.log("✅ Storage force updated via global method");
       return;
     }
-
     try {
-      console.log("Getting user info for storage update...");
       const userData = await getUserInfo(token);
-      console.log("User data received:", userData);
-
-      window.dispatchEvent(new CustomEvent('storage-updated', {
-        detail: userData
-      }));
-      console.log("✅ Storage-updated event dispatched");
+      window.dispatchEvent(new CustomEvent('storage-updated', { detail: userData }));
     } catch (err) {
-      console.error("Failed to get user info:", err);
-
       if (window.refreshStorageInfo) {
-        console.log("Falling back to refreshStorageInfo");
         window.refreshStorageInfo();
       }
     }
   };
 
+  const toggleFolder = (folderId) => {
+    setExpandedFolders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(folderId)) {
+        newSet.delete(folderId);
+      } else {
+        newSet.add(folderId);
+      }
+      return newSet;
+    });
+  };
+
   const handleSelectAll = () => {
-    if (selectedFiles.size === files.length) {
-      setSelectedFiles(new Set());
+    const collectAllIds = (items) => {
+      let ids = [];
+      items.forEach(item => {
+        ids.push(item.id);
+        if (item.children.length > 0) {
+          ids = ids.concat(collectAllIds(item.children));
+        }
+      });
+      return ids;
+    };
+
+    const allIds = collectAllIds(rootItems);
+    if (selectedItems.size === allIds.length && allIds.length > 0) {
+      setSelectedItems(new Set());
     } else {
-      setSelectedFiles(new Set(files.map(f => f.id)));
+      setSelectedItems(new Set(allIds));
     }
   };
 
-  const handleSelectFile = (id) => {
-    const newSelected = new Set(selectedFiles);
+  const handleSelectItem = (id) => {
+    const newSelected = new Set(selectedItems);
     if (newSelected.has(id)) {
       newSelected.delete(id);
     } else {
       newSelected.add(id);
     }
-    setSelectedFiles(newSelected);
+    setSelectedItems(newSelected);
   };
 
   const handleRestore = async (id) => {
     try {
       setActionInProgress(true);
-      console.log(`🔄 Restoring file ${id}...`);
-
       await restoreFile(token, id);
-      console.log("✅ File restored successfully");
 
-      setFiles(prevFiles => prevFiles.filter(f => f.id !== id));
-      setSelectedFiles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
+      // Удаляем элемент из локального состояния
+      removeItemFromTree(id);
 
       await refreshStorage();
-
       setSuccess("Файл восстановлен");
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
       console.error("Restore error:", err);
       setError(`Ошибка восстановления: ${err.message}`);
-      await loadTrashFiles();
+      await loadTrashHierarchy();
     } finally {
       setActionInProgress(false);
     }
   };
 
-  const handleRestoreSelected = async () => {
-    if (selectedFiles.size === 0) return;
+  const removeItemFromTree = (id) => {
+    const removeRecursive = (items) => {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].id === id) {
+          items.splice(i, 1);
+          return true;
+        }
+        if (items[i].children.length > 0) {
+          if (removeRecursive(items[i].children)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
 
-    const idsToRestore = Array.from(selectedFiles);
+    removeRecursive(rootItems);
+    setItemsMap(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(id);
+      return newMap;
+    });
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
+  };
+
+  const handleRestoreSelected = async () => {
+    if (selectedItems.size === 0) return;
+
+    const idsToRestore = Array.from(selectedItems);
 
     try {
       setActionInProgress(true);
-      console.log(`🔄 Restoring ${idsToRestore.length} files...`);
 
-      setFiles(prevFiles => prevFiles.filter(f => !idsToRestore.includes(f.id)));
-      setSelectedFiles(new Set());
+      // Удаляем выбранные элементы из UI
+      idsToRestore.forEach(id => removeItemFromTree(id));
 
       let successCount = 0;
-
       for (const id of idsToRestore) {
         try {
           await restoreFile(token, id);
@@ -143,15 +209,12 @@ export default function TrashPage() {
         }
       }
 
-      console.log(`✅ Restored ${successCount} files`);
-
       await refreshStorage();
-
       setSuccess(`Восстановлено ${successCount} файлов`);
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
       setError(`Ошибка восстановления: ${err.message}`);
-      await loadTrashFiles();
+      await loadTrashHierarchy();
     } finally {
       setActionInProgress(false);
     }
@@ -164,25 +227,18 @@ export default function TrashPage() {
 
     try {
       setActionInProgress(true);
-
-      setFiles(prevFiles => prevFiles.filter(f => f.id !== id));
-      setSelectedFiles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
+      removeItemFromTree(id);
 
       try {
         await permanentDeleteFile(token, id);
         setSuccess("Файл удален навсегда");
       } catch (err) {
-        if (err.message.includes('404')) {
-          console.log("File already deleted (404), UI already updated");
-          setSuccess("Файл удален навсегда");
-        } else {
+        if (!err.message.includes('404')) {
           console.error("Permanent delete error:", err);
           setError(`Ошибка удаления: ${err.message}`);
-          await loadTrashFiles();
+          await loadTrashHierarchy();
+        } else {
+          setSuccess("Файл удален навсегда");
         }
       }
       setTimeout(() => setSuccess(""), 2000);
@@ -192,50 +248,38 @@ export default function TrashPage() {
   };
 
   const handlePermanentDeleteSelected = async () => {
-    if (selectedFiles.size === 0) return;
+    if (selectedItems.size === 0) return;
 
-    if (!window.confirm(`Удалить ${selectedFiles.size} файлов безвозвратно?`)) {
+    if (!window.confirm(`Удалить ${selectedItems.size} файлов безвозвратно?`)) {
       return;
     }
 
-    const idsToDelete = Array.from(selectedFiles);
+    const idsToDelete = Array.from(selectedItems);
 
     try {
       setActionInProgress(true);
 
-      setFiles(prevFiles => prevFiles.filter(f => !idsToDelete.includes(f.id)));
-      setSelectedFiles(new Set());
+      idsToDelete.forEach(id => removeItemFromTree(id));
 
       let successCount = 0;
-      let error404Count = 0;
-      let otherErrorCount = 0;
-
       for (const id of idsToDelete) {
         try {
           await permanentDeleteFile(token, id);
           successCount++;
         } catch (err) {
-          if (err.message.includes('404')) {
-            successCount++;
-            error404Count++;
-          } else {
-            otherErrorCount++;
+          if (!err.message.includes('404')) {
             console.error(`Failed to delete ${id}:`, err);
+          } else {
+            successCount++;
           }
         }
       }
 
-      if (otherErrorCount === 0) {
-        setSuccess(`Удалено ${successCount} файлов` + (error404Count > 0 ? ` (${error404Count} уже были удалены)` : ''));
-      } else {
-        setError(`Ошибка удаления: ${otherErrorCount} файлов не удалось удалить`);
-        await loadTrashFiles();
-      }
-
+      setSuccess(`Удалено ${successCount} файлов`);
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
       setError(`Ошибка удаления: ${err.message}`);
-      await loadTrashFiles();
+      await loadTrashHierarchy();
     } finally {
       setActionInProgress(false);
     }
@@ -248,19 +292,17 @@ export default function TrashPage() {
 
     try {
       setActionInProgress(true);
-
-      setFiles([]);
-      setSelectedFiles(new Set());
+      setRootItems([]);
+      setSelectedItems(new Set());
 
       try {
         const result = await emptyTrash(token);
         setSuccess(`Корзина очищена. Удалено: ${result.success} файлов`);
       } catch (err) {
         console.error("Empty trash error:", err);
-        await loadTrashFiles();
+        await loadTrashHierarchy();
         setError(`Ошибка очистки корзины: ${err.message}`);
       }
-
       setTimeout(() => setSuccess(""), 2000);
     } finally {
       setActionInProgress(false);
@@ -268,7 +310,7 @@ export default function TrashPage() {
   };
 
   const formatSize = (bytes) => {
-    if (bytes === 0) return '0 B';
+    if (!bytes || bytes === 0) return '—';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -286,6 +328,118 @@ export default function TrashPage() {
       minute: '2-digit'
     });
   };
+
+  const countTotalItems = (items) => {
+    let count = items.length;
+    items.forEach(item => {
+      if (item.children.length > 0) {
+        count += countTotalItems(item.children);
+      }
+    });
+    return count;
+  };
+
+  const calculateTotalSize = (items) => {
+    let size = 0;
+    items.forEach(item => {
+      if (item.type === 'file') {
+        size += item.size || 0;
+      }
+      if (item.children.length > 0) {
+        size += calculateTotalSize(item.children);
+      }
+    });
+    return size;
+  };
+
+  // Компонент отображения элемента дерева
+  const TreeItem = ({ item, level = 0 }) => {
+    const isExpanded = expandedFolders.has(item.id);
+    const isSelected = selectedItems.has(item.id);
+    const hasChildren = item.children && item.children.length > 0;
+
+    return (
+      <React.Fragment>
+        <tr className={`border-b border-white/5 hover:bg-white/5 transition-colors ${
+          item.type === 'folder' ? 'bg-white/5' : ''
+        }`}>
+          <td className="p-4" style={{ paddingLeft: `${20 + level * 20}px` }}>
+            <div className="flex items-center space-x-2">
+              {/* Индикатор разворачивания для папок */}
+              {item.type === 'folder' && (
+                <button
+                  onClick={() => toggleFolder(item.id)}
+                  className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded transition-colors"
+                  disabled={actionInProgress}
+                >
+                  {isExpanded ? '▼' : '▶'}
+                </button>
+              )}
+
+              {/* Чекбокс */}
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => handleSelectItem(item.id)}
+                disabled={actionInProgress}
+                className="w-4 h-4 rounded border-white/30 bg-white/10 checked:bg-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+              />
+            </div>
+           </td>
+
+          <td className="p-4">
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">{item.type === 'folder' ? '📁' : '📄'}</span>
+              <span className="font-medium truncate max-w-[200px]">{item.name}</span>
+            </div>
+           </td>
+
+          <td className="p-4 text-white/70">
+            {item.type === 'folder' ? `Папка (${item.children.length})` : 'Файл'}
+           </td>
+
+          <td className="p-4 text-white/70">
+            {item.type === 'file' ? formatSize(item.size) : '—'}
+           </td>
+
+          <td className="p-4 text-white/70">
+            {formatDate(item.deletedAt)}
+           </td>
+
+          <td className="p-4">
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleRestore(item.id)}
+                disabled={actionInProgress}
+                className="p-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                title="Восстановить"
+              >
+                ↺
+              </button>
+              <button
+                onClick={() => handlePermanentDelete(item.id)}
+                disabled={actionInProgress}
+                className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                title="Удалить навсегда"
+              >
+                ×
+              </button>
+            </div>
+           </td>
+         </tr>
+
+        {/* Дочерние элементы */}
+        {item.type === 'folder' && isExpanded && hasChildren && (
+          item.children.map(child => (
+            <TreeItem key={child.id} item={child} level={level + 1} />
+          ))
+        )}
+      </React.Fragment>
+    );
+  };
+
+  const totalItems = countTotalItems(rootItems);
+  const totalSize = calculateTotalSize(rootItems);
 
   if (loading) {
     return (
@@ -326,7 +480,6 @@ export default function TrashPage() {
               <span className="font-medium text-white text-sm block">
                 {user?.username || user?.name || user?.email?.split('@')[0] || "Пользователь"}
               </span>
-              {user?.email && <span className="text-white/50 text-xs block">{user.email}</span>}
             </div>
           </div>
         </div>
@@ -334,16 +487,16 @@ export default function TrashPage() {
 
       {/* Сообщения */}
       {error && (
-        <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center">
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl text-center flex-shrink-0">
           {error}
-          <button onClick={loadTrashFiles} className="ml-3 underline hover:no-underline">
+          <button onClick={loadTrashHierarchy} className="ml-3 underline hover:no-underline">
             Повторить
           </button>
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-xl text-center">
+        <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-xl text-center flex-shrink-0">
           {success}
         </div>
       )}
@@ -355,22 +508,22 @@ export default function TrashPage() {
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={selectedFiles.size === files.length && files.length > 0}
+                checked={selectedItems.size === totalItems && totalItems > 0}
                 onChange={handleSelectAll}
-                disabled={files.length === 0 || actionInProgress}
+                disabled={totalItems === 0 || actionInProgress}
                 className="w-4 h-4 rounded border-white/30 bg-white/10 checked:bg-blue-500 focus:ring-blue-500 focus:ring-offset-0"
               />
               <span>Выбрать все</span>
             </label>
-            {selectedFiles.size > 0 && (
-              <span className="text-white/70 text-sm">Выбрано: {selectedFiles.size}</span>
+            {selectedItems.size > 0 && (
+              <span className="text-white/70 text-sm">Выбрано: {selectedItems.size}</span>
             )}
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleRestoreSelected}
-              disabled={selectedFiles.size === 0 || actionInProgress}
+              disabled={selectedItems.size === 0 || actionInProgress}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               <span>↺</span>
@@ -379,7 +532,7 @@ export default function TrashPage() {
 
             <button
               onClick={handlePermanentDeleteSelected}
-              disabled={selectedFiles.size === 0 || actionInProgress}
+              disabled={selectedItems.size === 0 || actionInProgress}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               <span>×</span>
@@ -388,7 +541,7 @@ export default function TrashPage() {
 
             <button
               onClick={handleEmptyTrash}
-              disabled={files.length === 0 || actionInProgress}
+              disabled={totalItems === 0 || actionInProgress}
               className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Очистить корзину
@@ -397,9 +550,9 @@ export default function TrashPage() {
         </div>
       </div>
 
-      {/* Список файлов */}
+      {/* Дерево файлов */}
       <div className="flex-1 overflow-auto bg-white/5 backdrop-blur-sm rounded-2xl p-4">
-        {files.length === 0 ? (
+        {totalItems === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center">
             <div className="text-6xl mb-4 opacity-50">🗑️</div>
             <p className="text-xl mb-2">Корзина пуста</p>
@@ -407,9 +560,9 @@ export default function TrashPage() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="sticky top-0 bg-gray-800/95 backdrop-blur-sm">
+            <thead className="sticky top-0 bg-gray-800/95 backdrop-blur-sm z-10">
               <tr className="border-b border-white/10">
-                <th className="p-4 text-left w-10"></th>
+                <th className="p-4 text-left w-12"></th>
                 <th className="p-4 text-left">Имя</th>
                 <th className="p-4 text-left">Тип</th>
                 <th className="p-4 text-left">Размер</th>
@@ -418,53 +571,8 @@ export default function TrashPage() {
               </tr>
             </thead>
             <tbody>
-              {files.map(file => (
-                <tr key={file.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="p-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedFiles.has(file.id)}
-                      onChange={() => handleSelectFile(file.id)}
-                      disabled={actionInProgress}
-                      className="w-4 h-4 rounded border-white/30 bg-white/10 checked:bg-blue-500 focus:ring-blue-500 focus:ring-offset-0"
-                    />
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{file.type === 'folder' ? '📁' : '📄'}</span>
-                      <span className="font-medium truncate max-w-[200px]">{file.name}</span>
-                    </div>
-                  </td>
-                  <td className="p-4 text-white/70">
-                    {file.type === 'folder' ? 'Папка' : 'Файл'}
-                  </td>
-                  <td className="p-4 text-white/70">
-                    {file.type === 'file' ? formatSize(file.size) : '—'}
-                  </td>
-                  <td className="p-4 text-white/70">
-                    {formatDate(file.deletedAt)}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleRestore(file.id)}
-                        disabled={actionInProgress}
-                        className="p-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
-                        title="Восстановить"
-                      >
-                        ↺
-                      </button>
-                      <button
-                        onClick={() => handlePermanentDelete(file.id)}
-                        disabled={actionInProgress}
-                        className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
-                        title="Удалить навсегда"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+              {rootItems.map(item => (
+                <TreeItem key={item.id} item={item} level={0} />
               ))}
             </tbody>
           </table>
@@ -472,10 +580,11 @@ export default function TrashPage() {
       </div>
 
       {/* Нижняя панель с информацией */}
-      {files.length > 0 && (
+      {totalItems > 0 && (
         <div className="mt-4 pt-4 border-t border-white/10 text-white/60 text-sm flex-shrink-0">
-          Всего файлов: {files.length} |
-          Размер: {formatSize(files.reduce((sum, f) => sum + (f.size || 0), 0))}
+          Всего файлов: {totalItems} |
+          Общий размер: {formatSize(totalSize)} |
+          Папок: {rootItems.filter(i => i.type === 'folder').length}
         </div>
       )}
     </div>

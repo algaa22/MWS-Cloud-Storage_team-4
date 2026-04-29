@@ -1,4 +1,4 @@
-package com.mipt.team4.cloud_storage_backend.netty.constants;
+package com.mipt.team4.cloud_storage_backend.config.constants.netty;
 
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ChunkedUploadPartContext;
 import io.netty.util.AttributeKey;

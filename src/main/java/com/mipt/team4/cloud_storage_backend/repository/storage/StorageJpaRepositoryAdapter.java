@@ -2,6 +2,7 @@ package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.antivirus.model.enums.ScanVerdict;
 import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
+import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.FileListFilter;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileOperationType;
@@ -15,7 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -24,7 +24,6 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class StorageJpaRepositoryAdapter {
@@ -55,7 +54,7 @@ public class StorageJpaRepositoryAdapter {
         """;
 
   @Transactional
-  public void addFile(StorageEntity fileEntity) {
+  public void upsertFile(StorageEntity fileEntity) {
     if (fileEntity.getId() == null) fileEntity.setId(UUID.randomUUID());
 
     jpaRepository.upsertFile(fileEntity);
@@ -83,26 +82,6 @@ public class StorageJpaRepositoryAdapter {
     } else {
       jpaRepository.restore(userId, fileId);
     }
-
-    Optional<StorageEntity> check = jpaRepository.findByIdIncludeDeleted(userId, fileId);
-    if (check.isPresent()) {
-      System.out.println("After restore - isDeleted: " + check.get().isDeleted());
-    } else {
-      System.out.println("File not found after restore!");
-    }
-  }
-
-  @Transactional(readOnly = true)
-  public List<StorageEntity> getAllTrashFiles(UUID userId) {
-    String sql = "SELECT * FROM files WHERE user_id = :userId AND is_deleted = true";
-    Query query = entityManager.createNativeQuery(sql, StorageEntity.class);
-    query.setParameter("userId", userId);
-    return query.getResultList();
-  }
-
-  @Transactional
-  public void saveFile(StorageEntity entity) {
-    jpaRepository.saveAndFlush(entity);
   }
 
   @Transactional
@@ -127,7 +106,7 @@ public class StorageJpaRepositoryAdapter {
   public Page<StorageEntity> getFileList(FileListFilter filter, PageQuery pageQuery) {
     QueryContext ctx = buildBaseQueryWithFilters(filter);
     long total = fetchTotalCount(ctx);
-    List<StorageEntity> content = fetchPageContent(ctx, pageQuery);
+    List<StorageEntity> content = fetchPageContent(ctx, pageQuery, filter.query());
 
     return new PageImpl<>(
         content, PageRequest.of(pageQuery.offset() / pageQuery.limit(), pageQuery.limit()), total);
@@ -181,11 +160,6 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @Transactional(readOnly = true)
-  public Page<StorageEntity> findAllDeletedByUserId(UUID userId, Pageable pageable) {
-    return jpaRepository.findAllDeletedByUserId(userId, pageable);
-  }
-
-  @Transactional(readOnly = true)
   public Optional<StorageEntity> getFileById(UUID fileId) {
     return jpaRepository.findById(fileId);
   }
@@ -193,6 +167,12 @@ public class StorageJpaRepositoryAdapter {
   @Transactional(readOnly = true)
   public Optional<StorageEntity> getIncludeDeleted(UUID userId, UUID parentId, String name) {
     return jpaRepository.findByParentIdAndNameIncludeDeleted(userId, parentId, name);
+  }
+
+  @Transactional(readOnly = true)
+  public Page<StorageEntity> getTrashFileList(UUID userId, UUID parentId, PageQuery pageQuery) {
+    return jpaRepository.findTrashByParentId(
+        userId, parentId, PaginationMapper.toPageable(pageQuery));
   }
 
   @Transactional(readOnly = true)
@@ -241,6 +221,11 @@ public class StorageJpaRepositoryAdapter {
     return String.join("/", nodes);
   }
 
+  @Transactional(readOnly = true)
+  public long countByStatus(FileStatus status) {
+    return jpaRepository.countByStatus(status);
+  }
+
   private void syncTags(UUID fileId, List<String> tags) {
     entityManager
         .createNativeQuery("DELETE FROM file_tags WHERE file_id = :fileId")
@@ -270,10 +255,6 @@ public class StorageJpaRepositoryAdapter {
       sql.append(" AND is_directory = FALSE");
     }
 
-    if (!filter.recursive()) {
-      sql.append(" AND status = 'READY'");
-    }
-
     if (filter.tags() != null && !filter.tags().isEmpty()) {
       sql.append(
           """
@@ -285,6 +266,14 @@ public class StorageJpaRepositoryAdapter {
         """);
       params.put("tags", filter.tags());
       params.put("tagCount", filter.tags().size());
+    }
+
+    if (filter.query() != null && !filter.query().isEmpty()) {
+      sql.append(
+          """
+              AND name % :query
+          """);
+      params.put("query", filter.query());
     }
 
     return new QueryContext(sql, params);
@@ -299,12 +288,19 @@ public class StorageJpaRepositoryAdapter {
   }
 
   @SuppressWarnings("unchecked")
-  private List<StorageEntity> fetchPageContent(QueryContext ctx, PageQuery pageQuery) {
-    String finalSql =
-        ctx.sql()
-            + " ORDER BY is_directory DESC, %s %s"
-                .formatted(pageQuery.order(), pageQuery.direction())
-            + " LIMIT :limit OFFSET :offset";
+  private List<StorageEntity> fetchPageContent(
+      QueryContext ctx, PageQuery pageQuery, String searchQuery) {
+    StringBuilder orderClause = new StringBuilder(" ORDER BY ");
+
+    if (searchQuery != null && !searchQuery.isEmpty()) {
+      orderClause.append("similarity(name, :query) DESC, ");
+      ctx.params.put("query", searchQuery);
+    }
+
+    orderClause.append(
+        "is_directory DESC, %s %s".formatted(pageQuery.order(), pageQuery.direction()));
+
+    String finalSql = ctx.sql() + orderClause.toString() + " LIMIT :limit OFFSET :offset";
 
     Query query = entityManager.createNativeQuery(finalSql, StorageEntity.class);
     ctx.params().forEach(query::setParameter);

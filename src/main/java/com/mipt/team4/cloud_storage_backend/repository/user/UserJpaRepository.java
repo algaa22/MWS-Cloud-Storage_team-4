@@ -5,7 +5,6 @@ import com.mipt.team4.cloud_storage_backend.model.user.entity.UserEntity;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.TariffPlan;
 import com.mipt.team4.cloud_storage_backend.model.user.enums.UserStatus;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -97,47 +96,19 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
       @Param("endDate") LocalDateTime endDate);
 
   @Query(
-      "SELECT u.usedStorage as usedStorage, "
-          + "u.freeStorageLimit as freeStorageLimit, "
-          + "u.paidStorageLimit as paidStorageLimit "
-          + "FROM UserEntity u WHERE u.id = :userId")
+      "SELECT u.usedStorage as usedStorage, u.freeStorageLimit as freeStorageLimit, u.paidStorageLimit as paidStorageLimit FROM UserEntity u WHERE u.id = :userId")
   Optional<StorageUsageProjection> findStorageUsageById(@Param("userId") UUID userId);
 
-  @Query(
-      "SELECT u FROM UserEntity u WHERE u.tariffEndDate BETWEEN :from AND :to AND u.userStatus = :status")
-  List<UserEntity> findAllByTariffEndDateBetweenAndUserStatus(
-      @Param("from") LocalDateTime from,
-      @Param("to") LocalDateTime to,
-      @Param("status") UserStatus status);
+  Slice<UserEntity> findAllByTariffEndDateBetweenAndIsActiveTrue(
+      LocalDateTime from, LocalDateTime to, Pageable pageable);
 
-  @Query("SELECT u FROM UserEntity u WHERE u.tariffEndDate < :now AND u.userStatus = :status")
-  List<UserEntity> findAllByTariffEndDateBeforeAndUserStatus(
-      @Param("now") LocalDateTime now, @Param("status") UserStatus status);
+  Slice<UserEntity> findAllByTariffEndDateBeforeAndIsActiveTrue(
+      LocalDateTime now, Pageable pageable);
 
-  @Query("SELECT u FROM UserEntity u WHERE u.tariffEndDate < :now AND u.userStatus = :status")
-  Slice<UserEntity> findAllByTariffEndDateBeforeAndUserStatus(
-      @Param("now") LocalDateTime now, @Param("status") UserStatus status, Pageable pageable);
-
-  List<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
-      @Param("status") UserStatus status, @Param("date") LocalDateTime date);
+  Slice<UserEntity> findAllByUserStatusAndScheduledDeletionDateBefore(
+      UserStatus status, LocalDateTime date, Pageable pageable);
 
   @Query("SELECT u FROM UserEntity u WHERE u.trialEndDate < :now AND u.tariffPlan IS NULL")
-  List<UserEntity> findAllByTrialEndDateBeforeAndTariffPlanIsNull(@Param("now") LocalDateTime now);
-
-  List<UserEntity> findAllByTrialStartDateBetween(LocalDateTime start, LocalDateTime end);
-
-  @Deprecated
-  List<UserEntity> findAllByTariffEndDateBetweenAndIsActiveTrue(
-      LocalDateTime from, LocalDateTime to);
-
-  @Deprecated
-  List<UserEntity> findAllByTariffEndDateBeforeAndIsActiveTrue(LocalDateTime now);
-
-  @Query(
-      "SELECT u FROM UserEntity u WHERE u.tariffEndDate BETWEEN :from AND :to AND u.userStatus = :status")
-  Slice<UserEntity> findAllByTariffEndDateBetweenAndUserStatus(
-      @Param("from") LocalDateTime from,
-      @Param("to") LocalDateTime to,
-      @Param("status") UserStatus status,
-      Pageable pageable);
+  Slice<UserEntity> findAllByTrialEndDateBeforeAndTariffPlanIsNull(
+      @Param("now") LocalDateTime now, Pageable pageable);
 }

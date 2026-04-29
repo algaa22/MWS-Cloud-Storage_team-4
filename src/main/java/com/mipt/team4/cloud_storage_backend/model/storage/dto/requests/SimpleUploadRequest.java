@@ -1,7 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.model.storage.dto.requests;
 
-import com.mipt.team4.cloud_storage_backend.netty.constants.ApiEndpoints;
-import com.mipt.team4.cloud_storage_backend.netty.constants.ValidationPatterns;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ApiEndpoints;
+import com.mipt.team4.cloud_storage_backend.config.constants.netty.ValidationPatterns;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.QueryParam;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestBody;
 import com.mipt.team4.cloud_storage_backend.netty.mapping.annotations.request.RequestHeader;
@@ -30,5 +30,5 @@ public record SimpleUploadRequest(
                     message = ValidationPatterns.SINGLE_TAG_ERROR)
                 String>
             tags,
-    @RequestHeader(value = "Content-MD5", required = false) String checksum,
+    @RequestHeader(value = "Content-SHA256", required = false) String checksum,
     @NotEmpty @RequestBody byte[] data) {}

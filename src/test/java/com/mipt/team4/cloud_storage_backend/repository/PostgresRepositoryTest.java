@@ -167,7 +167,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .isDirectory(true)
             .status(com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus.READY)
             .build();
-    storageJpaRepositoryAdapter.addFile(folder);
+    storageJpaRepositoryAdapter.upsertFile(folder);
 
     StorageEntity childFile = addTestFile(folder.getId(), "child.txt");
 
@@ -202,7 +202,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .tags(List.of("some xml"))
             .build();
 
-    storageJpaRepositoryAdapter.addFile(fileEntity);
+    storageJpaRepositoryAdapter.upsertFile(fileEntity);
     return fileEntity;
   }
 
@@ -221,7 +221,7 @@ public class PostgresRepositoryTest extends BasePostgresTest {
             .tags(List.of("some directory"))
             .build();
 
-    storageJpaRepositoryAdapter.addFile(directoryEntity);
+    storageJpaRepositoryAdapter.upsertFile(directoryEntity);
     return directoryEntity;
   }
 

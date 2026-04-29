@@ -4,7 +4,7 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "notification")
-public record NotificationConfig(
+public record NotificationProps(
     double fullThreshold, double almostFullThreshold, Tariff tariff, Service service) {
   public record Tariff(List<Integer> daysBeforeExpiry) {}
 

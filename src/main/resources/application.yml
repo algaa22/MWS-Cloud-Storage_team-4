@@ -1,6 +1,28 @@
 spring:
+#  server:
+#    port: 8090
+#
+#  main:
+#    web-application-type: reactive
   main:
     web-application-type: none
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASS}
+
+    listener:
+      simple:
+        concurrency: 24
+        max-concurrency: 24
+        prefetch: 1
+        retry:
+          enabled: true
+          initial-interval: 2000ms
+          max-attempts: 3
+          multiplier: 2
 
   application:
     name: cloud-storage-backend
@@ -28,6 +50,36 @@ spring:
       write-dates-as-timestamps: false
     deserialization:
       adjust-dates-to-context-time-zone: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus,health"
+
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+
+  health:
+    defaults:
+      enabled: true
+
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        storage.operation.duration: true
+        storage.payload.size.bytes: true
+      sla:
+        http.server.requests: 50ms, 100ms, 200ms, 500ms, 1s
+        storage.operation.duration: 100ms, 500ms, 1s, 5s, 10s
+        storage.payload.size.bytes: 102400, 10485760, 104857600, 524288000, 10485760000
 
 jackson:
   max-nesting-depth: 32
@@ -110,12 +162,6 @@ storage:
   state-machine:
     max-retry-count: 3
     file-throttled-update-interval-sec: 15
-
-  health-check:
-    check-interval-seconds: 10
-    db-timeout-seconds: 2
-    s3-timeout-seconds: 2
-    min-free-memory-percent: 0.10
 
   failsafe-retry:
     max-attempts: 3

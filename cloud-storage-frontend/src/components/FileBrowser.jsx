@@ -81,6 +81,14 @@ export default function FileBrowser() {
   const [pendingSession, setPendingSession] = useState(null);
   const [pendingProgress, setPendingProgress] = useState(0);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 8,
+    totalPages: 0,
+    totalElements: 0,
+    hasMore: true,
+    loadingMore: false
+  });
 
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
@@ -113,7 +121,8 @@ export default function FileBrowser() {
       setStorageLoading(true);
 
       try {
-        await fetchFiles();
+          setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
+        await fetchFiles(false);
         await loadStorageInfo();
       } catch (error) {
         console.error("Error loading data:", error);
@@ -490,57 +499,96 @@ const refreshStorageInfo = async () => {
     return item.id || "Объект";
   };
 
-  const fetchFiles = async () => {
-    try {
+const fetchFiles = async (isLoadMore = false) => {
+  try {
+    if (!isLoadMore) {
       setLoading(true);
-      console.log("fetchFiles called with path:", currentPath || "(root)");
+      setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
+    } else {
+      setPagination(prev => ({ ...prev, loadingMore: true }));
+    }
 
-      if (!token || token.trim() === "") {
-        setError("Требуется авторизация");
-        setLoading(false);
-        return;
-      }
+    console.log("fetchFiles called with path:", currentPath || "(root)");
 
-      const data = await getFiles(token, currentPath, 0, 100);
-      console.log("Raw getFiles data:", data);
+    if (!token || token.trim() === "") {
+      setError("Требуется авторизация");
+      setLoading(false);
+      return;
+    }
 
-      if (!Array.isArray(data)) {
-        setError("Некорректный формат данных от сервера");
-        setFiles([]);
-        setFolders([]);
-        return;
-      }
+    const currentPage = isLoadMore ? pagination.page : 0;
 
-      const normalized = data.map((it) => {
-        return {
-          ...it,
-          name: it.name || "",
-          type: it.type,
-          fileCount: it.fileCount || it.count || 0,
-          tags: Array.isArray(it.tags) ? it.tags.join(',') : (it.tags || ""),
-          fullPath: it.name || ""
-        };
+    const response = await getFiles(token, currentPath, currentPage, pagination.size);
+    console.log("Raw getFiles response:", response);
+
+    const foldersList = response.files.filter((it) => it.type === "folder");
+    const filesList = response.files.filter((it) => it.type === "file");
+
+    if (isLoadMore) {
+      setFolders(prev => {
+        const existingIds = new Set(prev.map(f => f.id));
+        const newFolders = foldersList.filter(f => !existingIds.has(f.id));
+        console.log(`Adding ${newFolders.length} new folders (total: ${prev.length + newFolders.length})`);
+        return [...prev, ...newFolders];
       });
 
-      console.log("Normalized data:", normalized);
-
-      const foldersList = normalized.filter((it) => it.type === "folder");
-      const filesList = normalized.filter((it) => it.type === "file");
-
-      console.log("Processed:", foldersList.length, "folders,", filesList.length, "files");
-      setFiles(filesList);
+      setFiles(prev => {
+        const existingIds = new Set(prev.map(f => f.id));
+        const newFiles = filesList.filter(f => !existingIds.has(f.id));
+        console.log(`Adding ${newFiles.length} new files (total: ${prev.length + newFiles.length})`);
+        return [...prev, ...newFiles];
+      });
+    } else {
       setFolders(foldersList);
-      setError("");
+      setFiles(filesList);
+    }
 
-    } catch (err) {
-      console.error("Error in fetchFiles:", err);
-      setError(`Не удалось загрузить файлы: ${err.message}`);
-      setFiles([]);
-      setFolders([]);
-    } finally {
-      setLoading(false);
+    setPagination(prev => ({
+      ...prev,
+      page: response.pageInfo.currentPage + 1,
+      totalPages: response.pageInfo.totalPages,
+      totalElements: response.pageInfo.totalElements,
+      hasMore: response.pageInfo.hasMore,
+      loadingMore: false
+    }));
+
+    setError("");
+
+  } catch (err) {
+    console.error("Error in fetchFiles:", err);
+    setError(`Не удалось загрузить файлы: ${err.message}`);
+    setFiles([]);
+    setFolders([]);
+  } finally {
+    setLoading(false);
+    setPagination(prev => ({ ...prev, loadingMore: false }));
+  }
+};
+
+const lastElementRef = useRef(null);
+
+useEffect(() => {
+  if (loading || pagination.loadingMore || !pagination.hasMore) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting && pagination.hasMore && !pagination.loadingMore) {
+        fetchFiles(true);
+      }
+    },
+    { threshold: 0.1 }
+  );
+
+  if (lastElementRef.current) {
+    observer.observe(lastElementRef.current);
+  }
+
+  return () => {
+    if (lastElementRef.current) {
+      observer.unobserve(lastElementRef.current);
     }
   };
+}, [files, folders, loading, pagination.hasMore, pagination.loadingMore, currentPath]);
 
   const handleLogout = () => {
     logout();
@@ -1795,9 +1843,10 @@ const closePreviewModal = () => {
               ))}
 
 
-{files.map((file) => (
+{files.map((file, index) => (
   <div
     key={file.id || file.fullPath}
+    ref={index === files.length - 1 ? lastElementRef : null}
     onClick={(e) => handleItemClick(file, e)}
     onContextMenu={(e) => {
       e.preventDefault();
@@ -2501,6 +2550,13 @@ const closePreviewModal = () => {
         </svg>
       </button>
     </div>
+  </div>
+)}
+
+{pagination.loadingMore && (
+  <div className="flex justify-center items-center py-4 col-span-full">
+    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-white"></div>
+    <span className="ml-2 text-white/70">Загрузка...</span>
   </div>
 )}
 

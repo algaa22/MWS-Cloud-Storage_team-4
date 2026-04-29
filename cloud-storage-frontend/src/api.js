@@ -278,9 +278,11 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20) => 
   if (!token) throw new Error("Требуется авторизация");
 
   const params = new URLSearchParams();
-  params.append("includeDirectories", "true");
-  params.append("page", page.toString());
-  params.append("size", size.toString());
+params.append("page", page.toString());
+params.append("size", size.toString());
+params.append("includeDirectories", "true");
+params.append("recursive", "true");
+
 
   if (currentPath && currentPath !== "") {
     params.append("parentId", currentPath);
@@ -304,27 +306,18 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20) => 
     const data = await listResponse.json();
     console.log("Raw server response:", data);
 
+    const pageInfo = data.page;
     let filesArray = [];
 
-    if (data.page && Array.isArray(data.page.content)) {
-      filesArray = data.page.content;
-      console.log("Extracted from page.content");
+if (pageInfo && Array.isArray(pageInfo.content)) {
+      filesArray = pageInfo.content;
     } else if (Array.isArray(data.content)) {
       filesArray = data.content;
-      console.log("Extracted from content");
     } else if (Array.isArray(data.files)) {
       filesArray = data.files;
-      console.log("Extracted from files");
     } else if (Array.isArray(data)) {
       filesArray = data;
-      console.log("Data is already an array");
-    } else {
-      console.warn("Unexpected data structure:", data);
-      filesArray = [];
     }
-
-    console.log(`Found ${filesArray.length} items`);
-    console.log("Raw items:", filesArray);
 
     const result = filesArray.map(item => ({
       name: item.name || "Без имени",
@@ -333,11 +326,20 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20) => 
       id: item.id,
       parentId: item.parentId,
       tags: item.tags,
+      fileCount: item.fileCount || 0,
       _raw: item
     }));
 
-    console.log("Processed result:", result);
-    return result;
+    return {
+      files: result,
+      pageInfo: {
+        currentPage: pageInfo?.page || 0,
+        totalPages: pageInfo?.totalPages || 1,
+        totalElements: pageInfo?.totalElements || result.length,
+        size: pageInfo?.size || size,
+        hasMore: (pageInfo?.page + 1) < (pageInfo?.totalPages || 1)
+      }
+    };
 
   } catch (err) {
     console.error("Error in getFiles:", err);
@@ -1120,7 +1122,7 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   console.log("File:", file.name, "size:", file.size);
   console.log("Existing session ID:", existingSessionId);
 
-      window.activeUploadAbortFlag = false;
+  window.activeUploadAbortFlag = false;
   const CHUNK_SIZE = 5 * 1024 * 1024;
   const totalParts = Math.ceil(file.size / CHUNK_SIZE);
   let sessionId = existingSessionId;

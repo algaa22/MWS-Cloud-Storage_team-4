@@ -300,10 +300,6 @@ public class FileService {
 
   @Transactional(readOnly = true)
   public FilePreviewResponse generatePreviewUrl(UUID fileId, UUID userId) {
-    if (!tariffService.hasAccess(userId)) {
-      throw new TariffAccessDeniedException();
-    }
-
     StorageEntity fileEntity =
         storageRepository
             .get(userId, fileId)
@@ -324,9 +320,24 @@ public class FileService {
     return mimeType.startsWith("image/")
         || mimeType.equals("application/pdf")
         || mimeType.startsWith("video/")
-        || mimeType.equals("text/plain")
+        // || mimeType.equals("text/plain")
         || (mimeType.startsWith("audio/"))
         || mimeType.startsWith("text/");
+  }
+
+  public byte[] getPreviewContent(UUID fileId, UUID userId) {
+    StorageEntity fileEntity =
+        storageRepository
+            .get(userId, fileId)
+            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
+
+    InputStream inputStream = storageRepository.download(fileEntity, null);
+
+    try {
+      return inputStream.readAllBytes();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private void checkStorageAndNotify(UUID userId) {
@@ -360,20 +371,5 @@ public class FileService {
                                 userId));
               }
             });
-  }
-
-  public byte[] getPreviewContent(UUID fileId, UUID userId) {
-    StorageEntity fileEntity =
-        storageRepository
-            .get(userId, fileId)
-            .orElseThrow(() -> new StorageFileNotFoundException(fileId));
-
-    InputStream inputStream = storageRepository.download(fileEntity, null);
-
-    try {
-      return inputStream.readAllBytes();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 }

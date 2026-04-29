@@ -57,21 +57,17 @@ public class ChunkedUploadService {
       throw new TariffAccessDeniedException();
     }
 
-    // Проверяем существующий файл
     Optional<StorageEntity> existingFile =
         storageRepository.getIncludeDeleted(userId, parentId, name);
 
     if (existingFile.isPresent()) {
       StorageEntity fileEntity = existingFile.get();
-      // Проверяем, есть ли сессия для этого файла
       Optional<ChunkedUploadSessionEntity> existingSession =
           storageRepository.getUploadSessionByFileId(fileEntity.getId());
 
       if (existingSession.isPresent()) {
-        // Сессия есть - возвращаем её для продолжения загрузки
         return new StartChunkedUploadResponse(existingSession.get().getId());
       } else {
-        // Сессии нет - файл уже полностью загружен, нельзя перезаписать
         throw new FileAlreadyExistsException(parentId, name);
       }
     }
@@ -80,7 +76,6 @@ public class ChunkedUploadService {
       throw new TooManyPartsException(storageProps.s3().limits().maxPartsNum());
     }
 
-    // Создаем новый файл
     StorageEntity fileEntity =
         StorageEntity.builder()
             .id(UUID.randomUUID())
@@ -95,10 +90,8 @@ public class ChunkedUploadService {
             .status(FileStatus.PENDING)
             .build();
 
-    // Сохраняем файл
     storageRepository.saveFile(fileEntity);
 
-    // Создаем сессию
     UUID sessionId = UUID.randomUUID();
 
     ChunkedUploadSessionEntity session =
@@ -135,11 +128,9 @@ public class ChunkedUploadService {
   public void forceAbortUpload(ChunkedUploadSessionEntity session) {
     StorageEntity fileEntity = session.getFile();
 
-    // Сначала меняем статус файла на отмену
     fileEntity.setStatus(FileStatus.ERROR);
     storageRepository.saveFile(fileEntity);
 
-    // Потом прерываем загрузку
     storageRepository.abortMultipartUpload(fileEntity, session.getId(), session.getUploadId());
     userRepository.decreaseUsedStorage(fileEntity.getUserId(), fileEntity.getSize());
   }

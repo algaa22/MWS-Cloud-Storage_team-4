@@ -60,7 +60,7 @@ public class MimeTypeDetector {
     }
 
     try {
-      String contentType = Files.probeContentType(Path.of(path));
+      String contentType = Files.probeContentType(Path.of(path)); // MimeType.utils
       if (contentType != null && !contentType.trim().isEmpty()) {
         return contentType;
       }

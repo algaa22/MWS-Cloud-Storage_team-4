@@ -640,6 +640,7 @@ const fetchFiles = async (isLoadMore = false) => {
   try {
     if (!isLoadMore) {
       setLoading(true);
+      // Сбрасываем страницу в 0 при новом поиске/переходе в папку
       setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
     } else {
       setPagination(prev => ({ ...prev, loadingMore: true }));
@@ -653,60 +654,60 @@ const fetchFiles = async (isLoadMore = false) => {
       return;
     }
 
-          // Добавьте параметр для предотвращения кэширования
-          const data = await getFiles(token, currentPath, 0, 100);
-          console.log("Raw getFiles data:", data);
+    // Определяем текущую страницу для запроса
+    const currentPage = isLoadMore ? pagination.page : 0;
 
-      if (!Array.isArray(data)) {
-        setError("Некорректный формат данных от сервера");
-        setFiles([]);
-        setFolders([]);
-        return;
-      }
-      const currentPage = isLoadMore ? pagination.page : 0;
-
-
+    // Выполняем ОДИН запрос к серверу
     const response = await getFiles(token, currentPath, currentPage, pagination.size);
     console.log("Raw getFiles response:", response);
 
-    const foldersList = response.files.filter((it) => it.type === "folder");
-    const filesList = response.files.filter((it) => it.type === "file");
+    // ПРОВЕРКА: Бэкенд возвращает объект (DTO), а файлы лежат в поле .files
+    if (!response || !Array.isArray(response.files)) {
+      console.error("Expected response.files to be an array, but got:", response);
+      setError("Некорректный формат данных от сервера");
+      if (!isLoadMore) {
+        setFiles([]);
+        setFolders([]);
+      }
+      return;
+    }
+
+    // Фильтруем данные.
+    // ВНИМАНИЕ: Проверь в консоли, приходят ли типы капсом (DIRECTORY/FILE) или строчными
+    const foldersList = response.files.filter((it) => it.type.toUpperCase() === "DIRECTORY" || it.type.toLowerCase() === "folder");
+    const filesList = response.files.filter((it) => it.type.toUpperCase() === "FILE");
 
     if (isLoadMore) {
+      // Режим дозагрузки (Infinity Scroll)
       setFolders(prev => {
         const existingIds = new Set(prev.map(f => f.id));
         const newFolders = foldersList.filter(f => !existingIds.has(f.id));
-        console.log(`Adding ${newFolders.length} new folders (total: ${prev.length + newFolders.length})`);
         return [...prev, ...newFolders];
       });
 
       setFiles(prev => {
         const existingIds = new Set(prev.map(f => f.id));
         const newFiles = filesList.filter(f => !existingIds.has(f.id));
-        console.log(`Adding ${newFiles.length} new files (total: ${prev.length + newFiles.length})`);
         return [...prev, ...newFiles];
       });
     } else {
+      // Обычная загрузка (первая страница или переход в папку)
       setFolders(foldersList);
       setFiles(filesList);
     }
 
+    // Обновляем состояние пагинации на основе ответа сервера
     setPagination(prev => ({
       ...prev,
-      page: response.pageInfo.currentPage + 1,
-      totalPages: response.pageInfo.totalPages,
-      totalElements: response.pageInfo.totalElements,
-      hasMore: response.pageInfo.hasMore,
+      page: currentPage + 1,
+      hasMore: response.files.length === prev.size, // Если пришло меньше, чем просили — значит данных больше нет
       loadingMore: false
     }));
 
-    setError("");
-
+    setError(null);
   } catch (err) {
     console.error("Error in fetchFiles:", err);
-    setError(`Не удалось загрузить файлы: ${err.message}`);
-    setFiles([]);
-    setFolders([]);
+    setError("Ошибка при загрузке списка файлов");
   } finally {
     setLoading(false);
     setPagination(prev => ({ ...prev, loadingMore: false }));

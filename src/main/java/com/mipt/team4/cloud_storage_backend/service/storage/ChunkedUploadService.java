@@ -18,6 +18,7 @@ import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadPa
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.ChunkedUploadSessionEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.entity.StorageEntity;
 import com.mipt.team4.cloud_storage_backend.model.storage.enums.ChunkedUploadStatus;
+import com.mipt.team4.cloud_storage_backend.model.storage.enums.FileStatus;
 import com.mipt.team4.cloud_storage_backend.repository.storage.StorageRepository;
 import com.mipt.team4.cloud_storage_backend.repository.user.UserJpaRepositoryAdapter;
 import com.mipt.team4.cloud_storage_backend.service.user.NotificationService;
@@ -56,16 +57,24 @@ public class ChunkedUploadService {
       throw new TariffAccessDeniedException();
     }
 
+    Optional<StorageEntity> existingFile =
+        storageRepository.getIncludeDeleted(userId, parentId, name);
+
+    if (existingFile.isPresent()) {
+      StorageEntity fileEntity = existingFile.get();
+      Optional<ChunkedUploadSessionEntity> existingSession =
+          storageRepository.getUploadSessionByFileId(fileEntity.getId());
+
+      if (existingSession.isPresent()) {
+        return new StartChunkedUploadResponse(existingSession.get().getId());
+      } else {
+        throw new FileAlreadyExistsException(parentId, name);
+      }
+    }
+
     if (request.totalParts() > storageProps.s3().limits().maxPartsNum()) {
       throw new TooManyPartsException(storageProps.s3().limits().maxPartsNum());
     }
-
-    storageRepository
-        .getIncludeDeleted(userId, parentId)
-        .ifPresent(
-            entity -> {
-              throw new FileAlreadyExistsException(parentId, name);
-            });
 
     StorageEntity fileEntity =
         StorageEntity.builder()
@@ -78,7 +87,10 @@ public class ChunkedUploadService {
             .tags(request.fileTags())
             .updatedAt(LocalDateTime.now())
             .size(request.fileSize())
+            .status(FileStatus.PENDING)
             .build();
+
+    storageRepository.saveFile(fileEntity);
 
     UUID sessionId = UUID.randomUUID();
 
@@ -115,6 +127,9 @@ public class ChunkedUploadService {
   @Transactional
   public void forceAbortUpload(ChunkedUploadSessionEntity session) {
     StorageEntity fileEntity = session.getFile();
+
+    fileEntity.setStatus(FileStatus.ERROR);
+    storageRepository.saveFile(fileEntity);
 
     storageRepository.abortMultipartUpload(fileEntity, session.getId(), session.getUploadId());
     userRepository.decreaseUsedStorage(fileEntity.getUserId(), fileEntity.getSize());

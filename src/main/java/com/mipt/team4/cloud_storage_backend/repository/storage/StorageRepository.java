@@ -275,4 +275,12 @@ public class StorageRepository {
   public Page<StorageEntity> getAllTrashFiles(UUID userId, UUID parentId, PageQuery pageQuery) {
     return metadataRepository.getTrashFileList(userId, parentId, pageQuery);
   }
+
+  public void saveFile(StorageEntity entity) {
+    metadataRepository.saveFile(entity);
+  }
+
+  public Optional<ChunkedUploadSessionEntity> getUploadSessionByFileId(UUID fileId) {
+    return uploadRepository.getSessionByFileId(fileId);
+  }
 }

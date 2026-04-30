@@ -1252,6 +1252,16 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   console.log("File:", file.name, "size:", file.size);
   console.log("Existing session ID:", existingSessionId);
 
+  // Вычисляем общий checksum файла
+  let fileChecksum = "";
+  try {
+    console.log("Calculating file SHA-256...");
+    fileChecksum = await calculateSHA256(file);
+    console.log("File SHA-256:", fileChecksum);
+  } catch (error) {
+    console.warn("Failed to calculate file checksum:", error);
+  }
+
   window.activeUploadAbortFlag = false;
   const CHUNK_SIZE = 5 * 1024 * 1024;
   const totalParts = Math.ceil(file.size / CHUNK_SIZE);
@@ -1273,6 +1283,7 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
       headers: {
         "X-Total-Parts": totalParts.toString(),
         "X-File-Size": file.size.toString(),
+        "X-File-Checksum": fileChecksum,
         "Content-Type": "application/json"
       }
     }, token);
@@ -1284,34 +1295,33 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
     const startData = await startResponse.json();
     sessionId = startData.sessionId;
-
     saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
   } else {
     console.log("Using existing session:", sessionId);
   }
 
-  // Получаем статус загрузки с сервера
-  let uploadedParts = new Set();
+  // Получаем статус для определения уже загруженных частей
+  let startPart = 1;
   try {
     const statusData = await getUploadStatus(token, sessionId);
-    console.log("Upload status from server:", statusData);
+    console.log("Upload status:", statusData);
 
-    if (statusData && statusData.missingPartsBitmask) {
-      // Декодируем битовую маску
-      uploadedParts = getUploadedPartsFromMissingBitmask(statusData.missingPartsBitmask, totalParts);
-      console.log(`✅ Already uploaded parts from bitmask: ${Array.from(uploadedParts).sort((a,b)=>a-b)}`);
-    } else if (statusData && statusData.currentParts > 0) {
-      for (let i = 1; i <= statusData.currentParts; i++) {
-        uploadedParts.add(i);
+    if (statusData && statusData.currentParts && statusData.currentParts > 0) {
+      startPart = statusData.currentParts + 1;
+      console.log(`✅ Resuming from part ${startPart} out of ${totalParts}`);
+      if (onProgress) {
+        const progress = Math.round(((startPart - 1) / totalParts) * 100);
+        onProgress(progress);
       }
-      console.log(`✅ Assuming parts 1-${statusData.currentParts} are uploaded`);
     }
   } catch (err) {
     console.log("Could not get upload status, starting from scratch:", err);
   }
 
-  // Загружаем части
-  for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+  console.log(`Uploading parts from ${startPart} to ${totalParts}...`);
+
+  // Загружаем каждую часть
+  for (let partNumber = startPart; partNumber <= totalParts; partNumber++) {
     if (window.activeUploadAbortFlag) {
       console.log('❌ Upload cancelled by user, stopping...');
       try {
@@ -1320,29 +1330,23 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
       throw new Error('Upload cancelled by user');
     }
 
-    // Пропускаем уже загруженные части
-    if (uploadedParts.has(partNumber)) {
-      console.log(`⏭️ Skipping already uploaded part ${partNumber}/${totalParts}`);
-      const progress = Math.round((partNumber / totalParts) * 100);
-      if (onProgress) onProgress(progress);
-      continue;
-    }
-
     const start = (partNumber - 1) * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const chunk = file.slice(start, end);
 
-    console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
-    console.log(`Calculating SHA-256 for part ${partNumber}...`);
-
-    // Вычисляем SHA-256 для текущей части
+    // ========== ВЫЧИСЛЯЕМ SHA-256 ДЛЯ КАЖДОЙ ЧАСТИ ==========
     let partChecksum = "";
     try {
+      console.log(`Calculating SHA-256 for part ${partNumber}...`);
       partChecksum = await calculateSHA256(chunk);
-      console.log(`Part ${partNumber} SHA-256: ${partChecksum.substring(0, 16)}...`);
+      console.log(`Part ${partNumber} checksum: ${partChecksum.substring(0, 16)}...`);
     } catch (error) {
       console.warn(`Failed to calculate checksum for part ${partNumber}:`, error);
+      // Если checksum не удалось вычислить, пробуем загрузить без него, но сервер может отклонить
     }
+    // ========================================================
+
+    console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
 
     const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
 
@@ -1350,14 +1354,15 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
       method: "POST",
       headers: {
         "Content-Type": "application/octet-stream",
-        ...(partChecksum && { 'Content-SHA256': partChecksum })  // Добавляем чексумму части
+        "Content-SHA256": partChecksum  // <-- ДОБАВЛЯЕМ ЗАГОЛОВОК С CHECKSUM
       },
       body: chunk
     }, token);
 
     if (!partResponse.ok) {
-      const error = await partResponse.text();
-      throw new Error(`Failed to upload part ${partNumber}: ${error}`);
+      const errorText = await partResponse.text();
+      console.error("Response error:", errorText);
+      throw new Error(`Failed to upload part ${partNumber}: ${errorText}`);
     }
 
     const progress = Math.round((partNumber / totalParts) * 100);
@@ -1365,85 +1370,18 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   }
 
   console.log("Completing upload...");
-
-  // При завершении можно также отправить общую чексумму, если нужно
-  let totalChecksum = "";
-  try {
-    totalChecksum = await calculateSHA256(file);
-    console.log("Total file SHA-256:", totalChecksum);
-  } catch (error) {
-    console.warn("Failed to calculate total file checksum:", error);
-  }
-
   const completeResponse = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
-    method: "POST",
-    headers: {
-      ...(totalChecksum && { 'Content-SHA256': totalChecksum })  // Можно добавить общую чексумму
-    }
+    method: "POST"
   }, token);
 
   if (!completeResponse.ok) {
-    // Обработка MissingUploadPartsResponse
-    const errorText = await completeResponse.text();
-    let errorData;
-    try {
-      errorData = JSON.parse(errorText);
-    } catch(e) {
-      errorData = { message: errorText };
-    }
-
-    if (completeResponse.status === 409 && errorData.missingPartsBitmask) {
-      const missingParts = getMissingPartsFromResponse(errorData, totalParts);
-      console.log(`⚠️ Missing parts detected: ${Array.from(missingParts)}`);
-
-      // Загружаем недостающие части с чексуммами
-      for (const missingPart of missingParts) {
-        const start = (missingPart - 1) * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, file.size);
-        const chunk = file.slice(start, end);
-
-        let partChecksum = "";
-        try {
-          partChecksum = await calculateSHA256(chunk);
-        } catch (error) {
-          console.warn(`Failed to calculate checksum for missing part ${missingPart}:`, error);
-        }
-
-        const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${missingPart}`;
-        const partResponse = await fetchWithTokenRefresh(partUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/octet-stream",
-            ...(partChecksum && { 'Content-SHA256': partChecksum })
-          },
-          body: chunk
-        }, token);
-
-        if (!partResponse.ok) {
-          throw new Error(`Failed to upload missing part ${missingPart}`);
-        }
-      }
-
-      // Повторяем завершение
-      const retryCompleteResponse = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
-        method: "POST",
-        headers: {
-          ...(totalChecksum && { 'Content-SHA256': totalChecksum })
-        }
-      }, token);
-
-      if (!retryCompleteResponse.ok) {
-        throw new Error(`Failed to complete upload after retry`);
-      }
-    } else {
-      throw new Error(`Failed to complete upload: ${errorText}`);
-    }
+    const error = await completeResponse.text();
+    throw new Error(`Failed to complete upload: ${error}`);
   }
 
   removeUploadSession(file.name, parentId);
-
   const result = await completeResponse.json();
-  console.log("✅ Upload completed, fileId:", result.id || result.fileId);
+  console.log("✅ Upload completed, fileId:", result.fileId);
 
   if (onProgress) onProgress(100);
   return result;

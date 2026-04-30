@@ -14,7 +14,7 @@ services:
       postgres:
         condition: service_healthy
       seaweedfs:
-        condition: service_healthy
+        condition: service_started
       av-redis:
         condition: service_healthy
       rabbitmq:
@@ -40,10 +40,19 @@ services:
       - SPRING_JACKSON_SERIALIZATION_WRITE_DATES_AS_TIMESTAMPS=false
       - JAVA_TOOL_OPTIONS=-Dcom.amazonaws.sdk.disableCertChecking=true
       - AWS_S3_DISABLE_CERT_CHECKING=true
+      - AWS_S3_VERIFY_SSL=false
       - DISABLE_S3_CERT_CHECKING=true
       - CLOUD_AWS_S3_ENDPOINT=https://cloud-storage-seaweed:8333
-      - CLOUD_AWS_S3_REGION=us-east-1
+      #- CLOUD_AWS_S3_REGION=us-east-1
       - CLOUD_AWS_S3_PATH_STYLE_ACCESS=true
+      - AWS_ACCESS_KEY_ID=${S3_ACCESS_KEY}
+      - AWS_SECRET_ACCESS_KEY=${S3_SECRET_KEY}
+      - CLOUD_AWS_S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - CLOUD_AWS_S3_SECRET_KEY=${S3_SECRET_KEY}
+      - com.amazonaws.sdk.disableCertChecking=true
+      - com.amazonaws.services.s3.disableCertChecking=true
+      - com.amazonaws.services.s3.enableV2Signer=true
+      - AWS_S3_V4_SIGNATURE_ENABLED=true
 
   antivirus-service:
     build: ../MWS_Cloud_Storage_antivirus
@@ -113,14 +122,14 @@ services:
       - WEED_S3_SECRET=${S3_SECRET_KEY}
     command: >
       server -dir="/data"
-            -ip.bind=0.0.0.0
             -s3 -s3.port=8333
-            -s3.config=/etc/seaweedfs/s3.json.example
+            -s3.config=/etc/swfs/iam.json
+            -s3.allowEmptyFolder=true
+            -s3.cert.file=/ssl/server.crt
+            -s3.key.file=/ssl/server.key
             -master.port=9333 
             -volume.port=8080
             -filer.port=8888
-            -s3.cert.file=/ssl/server.crt
-            -s3.key.file=/ssl/server.key
     ports:
       - "8333:8333"
       - "9333:9333"
@@ -137,6 +146,7 @@ services:
       - seaweed-data:/data
       - ./etc/seaweedfs:/etc/seaweedfs:ro
       - ./ssl:/ssl:ro
+      - ./iam.json:/etc/swfs/iam.json
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -169,21 +179,24 @@ services:
       - cloud-network
 
   clamav:
-     image: clamav/clamav:1.4.2_base
-     container_name: clamav
-     expose:
-       - "3310"
-     healthcheck:
-       test: ["CMD", "clamdscan", "--ping"]
-       interval: 20s
-       timeout: 10s
-       retries: 10
-       start_period: 60s
-     volumes:
-       - ./etc/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
-       - clamav_db:/var/lib/clamav
-     networks:
-       - cloud-network
+    image: clamav/clamav:stable
+    container_name: clamav
+    # Заставляем Docker использовать amd64 версию (через Rosetta)
+    platform: linux/amd64
+    expose:
+      - "3310"
+    environment:
+      - CLAMAV_NO_FRESHCLAMD=false
+    healthcheck:
+      test: ["CMD-SHELL", "echo PING | nc -w 2 localhost 3310 | grep PONG"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    volumes:
+      - clamav_db:/var/lib/clamav
+    networks:
+      - cloud-network
 
 volumes:
   postgres-data:

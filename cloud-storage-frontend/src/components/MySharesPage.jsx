@@ -218,6 +218,7 @@ const isShareActuallyActive = (share) => {
       {/* Основной контент */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Статистика */}
+        {/* Статистика */}
         {shares.length > 0 && (
           <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-2xl p-4 border border-white/10 mb-4 flex-shrink-0">
             <div className="grid grid-cols-3 gap-3">
@@ -227,12 +228,14 @@ const isShareActuallyActive = (share) => {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-300">
-                  {shares.filter(s => s.isActive).length}
+                  {/* Считаем только реально рабочие ссылки */}
+                  {shares.filter(s => isShareActuallyActive(s)).length}
                 </div>
                 <div className="text-xs text-white/60">Активных</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-300">
+                  {/* Суммируем все скачивания */}
                   {shares.reduce((sum, s) => sum + (s.downloadCount || 0), 0)}
                 </div>
                 <div className="text-xs text-white/60">Всего скачиваний</div>

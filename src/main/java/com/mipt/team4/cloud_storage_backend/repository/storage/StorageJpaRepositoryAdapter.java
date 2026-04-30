@@ -226,6 +226,11 @@ public class StorageJpaRepositoryAdapter {
     return jpaRepository.countByStatus(status);
   }
 
+  @Transactional
+  public void saveFile(StorageEntity entity) {
+    jpaRepository.saveAndFlush(entity);
+  }
+
   private void syncTags(UUID fileId, List<String> tags) {
     entityManager
         .createNativeQuery("DELETE FROM file_tags WHERE file_id = :fileId")

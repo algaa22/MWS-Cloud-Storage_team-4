@@ -1237,6 +1237,9 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   console.log("File:", file.name, "size:", file.size);
   console.log("Existing session ID:", existingSessionId);
 
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 1000;
+
   let fileChecksum = "";
   try {
     console.log("Calculating file SHA-256...");
@@ -1262,20 +1265,24 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
     console.log("Start upload URL:", url);
 
-    const startResponse = await fetchWithTokenRefresh(url, {
-      method: "POST",
-      headers: {
-        "X-Total-Parts": totalParts.toString(),
-        "X-File-Size": file.size.toString(),
-        "X-File-Checksum": fileChecksum,
-        "Content-Type": "application/json"
-      }
-    }, token);
+    const startResponse = await fetchWithRetry(async () => {
+      const res = await fetchWithTokenRefresh(url, {
+        method: "POST",
+        headers: {
+          "X-Total-Parts": totalParts.toString(),
+          "X-File-Size": file.size.toString(),
+          "X-File-Checksum": fileChecksum,
+          "Content-Type": "application/json"
+        }
+      }, token);
 
-    if (!startResponse.ok) {
-      const error = await startResponse.text();
-      throw new Error(`Failed to start upload: ${error}`);
-    }
+      if (!res.ok) {
+        const error = new Error(`Failed to start upload: ${await res.text()}`);
+        error.status = res.status;
+        throw error;
+      }
+      return res;
+    }, MAX_RETRIES, RETRY_DELAY);
 
     const startData = await startResponse.json();
     sessionId = startData.sessionId;
@@ -1327,36 +1334,46 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
     console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
 
-    const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
+    await fetchWithRetry(async () => {
+      const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
 
-    const partResponse = await fetchWithTokenRefresh(partUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-SHA256": partChecksum
-      },
-      body: chunk
-    }, token);
+      const partResponse = await fetchWithTokenRefresh(partUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-SHA256": partChecksum
+        },
+        body: chunk
+      }, token);
 
-    if (!partResponse.ok) {
-      const errorText = await partResponse.text();
-      console.error("Response error:", errorText);
-      throw new Error(`Failed to upload part ${partNumber}: ${errorText}`);
-    }
+      if (!partResponse.ok) {
+        const errorText = await partResponse.text();
+        const error = new Error(`Failed to upload part ${partNumber}: ${errorText}`);
+        error.status = partResponse.status;
+        throw error;
+      }
+
+      return partResponse;
+    }, MAX_RETRIES, RETRY_DELAY);
 
     const progress = Math.round((partNumber / totalParts) * 100);
     if (onProgress) onProgress(progress);
   }
 
   console.log("Completing upload...");
-  const completeResponse = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
-    method: "POST"
-  }, token);
 
-  if (!completeResponse.ok) {
-    const error = await completeResponse.text();
-    throw new Error(`Failed to complete upload: ${error}`);
-  }
+  const completeResponse = await fetchWithRetry(async () => {
+    const res = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
+      method: "POST"
+    }, token);
+
+    if (!res.ok) {
+      const error = new Error(`Failed to complete upload: ${await res.text()}`);
+      error.status = res.status;
+      throw error;
+    }
+    return res;
+  }, MAX_RETRIES, RETRY_DELAY);
 
   removeUploadSession(file.name, parentId);
   const result = await completeResponse.json();
@@ -1917,4 +1934,29 @@ async function calculateFileSHA256(file, onProgress) {
 
   const buffer = await file.arrayBuffer();
   return await calculateSHA256(buffer);
+}
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(fetchFn, maxRetries = 3, retryDelay = 1000) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fetchFn();
+    } catch (err) {
+      lastError = err;
+      console.log(`Attempt ${attempt}/${maxRetries} failed:`, err.message);
+
+      if (window.activeUploadAbortFlag) throw err;
+
+      if (err.status === 404) throw err;
+
+      if (attempt < maxRetries) {
+        await delay(retryDelay * attempt);
+      }
+    }
+  }
+
+  throw lastError;
 }

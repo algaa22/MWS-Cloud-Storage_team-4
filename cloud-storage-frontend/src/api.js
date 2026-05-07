@@ -3,7 +3,6 @@ export const API_BASE = "https://localhost:8443/api";
 export const PUBLIC_BASE = "https://localhost:8443";
 window.activeUploadAbortFlag = false;
 
-// Добавьте в api.js
 
 export const ScanVerdict = {
   UNKNOWN: 'UNKNOWN',
@@ -18,21 +17,18 @@ export const ScanVerdict = {
   ERROR: 'ERROR'
 };
 
-// Определяем опасные вердикты
 export function isDangerousVerdict(verdict) {
   return verdict === ScanVerdict.INFECTED ||
          verdict === ScanVerdict.RESOURCE_EXHAUSTED ||
          verdict === ScanVerdict.CONTENT_MISMATCH;
 }
 
-// Определяем подозрительные вердикты
 export function isSuspiciousVerdict(verdict) {
   return verdict === ScanVerdict.ERROR ||
          verdict === ScanVerdict.PASSWORD_PROTECTED ||
          verdict === ScanVerdict.TOO_LARGE;
 }
 
-// Определяем, что файл еще сканируется
 export function isScanning(verdict) {
   return verdict === ScanVerdict.SCANNING || verdict === ScanVerdict.UNKNOWN;
 }
@@ -52,7 +48,6 @@ export const getScanStatusText = (verdict) => {
   }
 };
 
-// Получить цвет фона для файла на основе вердикта
 export function getFileBackgroundColor(verdict) {
   if (isDangerousVerdict(verdict)) {
     return 'bg-red-500/20 border-red-500/50 hover:bg-red-500/30';
@@ -334,17 +329,23 @@ export const getUserInfo = async (token) => {
   }
 };
 
-export const getFiles = async (token, currentPath = "", page = 0, size = 20) => {
+export const getFiles = async (token, currentPath = "", page = 0, size = 20, searchName = "", sortBy = "name", sortOrder = "asc") => {
   console.log("=== GET FILES ===");
 
   if (!token) throw new Error("Требуется авторизация");
 
   const params = new URLSearchParams();
-params.append("page", page.toString());
-params.append("size", size.toString());
-params.append("includeDirectories", "true");
-params.append("recursive", "true");
+  params.append("page", page.toString());
+  params.append("size", size.toString());
+  params.append("includeDirectories", "true");
+  params.append("recursive", "true");
 
+  if (searchName && searchName.trim() !== "") {
+    params.append("query", searchName.trim());
+  }
+
+  params.append("sortBy", sortBy);
+  params.append("sortOrder", sortOrder);
 
   if (currentPath && currentPath !== "") {
     params.append("parentId", currentPath);
@@ -355,10 +356,7 @@ params.append("recursive", "true");
 
   try {
     const listResponse = await fetchWithTokenRefresh(listUrl, {
-      headers: {
-        "Accept": "application/json"
-      }
-    }, token);
+      headers: { "Accept": "application/json" }    }, token);
 
     if (!listResponse.ok) {
       const errorText = await listResponse.text();
@@ -371,7 +369,7 @@ params.append("recursive", "true");
     const pageInfo = data.page;
     let filesArray = [];
 
-if (pageInfo && Array.isArray(pageInfo.content)) {
+    if (pageInfo && Array.isArray(pageInfo.content)) {
       filesArray = pageInfo.content;
     } else if (Array.isArray(data.content)) {
       filesArray = data.content;
@@ -389,8 +387,7 @@ if (pageInfo && Array.isArray(pageInfo.content)) {
       parentId: item.parentId,
       tags: item.tags,
       fileCount: item.fileCount || 0,
-            scanVerdict: item.scanVerdict || ScanVerdict.UNKNOWN, // Добавить
-
+      scanVerdict: item.scanVerdict || ScanVerdict.UNKNOWN,
       _raw: item
     }));
 
@@ -461,8 +458,6 @@ export const downloadFile = async (token, id, filename, fileSize) => {
   }
 };
 
-// Добавить в api.js, заменить существующую функцию getTrashFiles
-
 export const getTrashFiles = async (token, parentId = null, recursive = false, page = 0, size = 1000) => {
   console.log("=== GET TRASH FILES ===");
   console.log("Parent ID:", parentId);
@@ -474,12 +469,10 @@ export const getTrashFiles = async (token, parentId = null, recursive = false, p
   params.append("page", page.toString());
   params.append("size", size.toString());
 
-  // Добавляем parentId для иерархического просмотра
   if (parentId && parentId !== "") {
     params.append("parentId", parentId);
   }
 
-  // Добавляем recursive флаг
   if (recursive) {
     params.append("recursive", "true");
   }
@@ -532,7 +525,7 @@ export const getTrashFiles = async (token, parentId = null, recursive = false, p
       size: item.size || 0,
       parentId: item.parentId || null,
       deletedAt: item.updatedAt || item.deletedAt || item.deleted_at,
-      children: [] // Для хранения дочерних элементов в иерархии
+      children: []
     }));
 
   } catch (error) {
@@ -1155,7 +1148,6 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
   console.log("File type:", file.type);
   console.log("Calculating file checksum...");
 
-  // Вычисляем SHA-256 для всего файла
   let checksum = "";
   try {
     checksum = await calculateSHA256(file);
@@ -1169,7 +1161,7 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
       method: "POST",
       headers: {
         'Content-Type': 'application/octet-stream',
-        ...(checksum && { 'Content-SHA256': checksum })  // Добавляем чексумму в заголовок
+        ...(checksum && { 'Content-SHA256': checksum })
       },
       body: file
     }, token);
@@ -1200,7 +1192,6 @@ function decodeBitmask(bitmask, totalParts) {
 
   const uploaded = new Set();
 
-  // Если пришла строка вида "10101"
   if (typeof bitmask === 'string') {
     for (let i = 0; i < bitmask.length && i < totalParts; i++) {
       if (bitmask[i] === '1') {
@@ -1208,7 +1199,6 @@ function decodeBitmask(bitmask, totalParts) {
       }
     }
   }
-  // Если пришел массив
   else if (Array.isArray(bitmask)) {
     bitmask.forEach(part => uploaded.add(part));
   }
@@ -1216,14 +1206,10 @@ function decodeBitmask(bitmask, totalParts) {
   return uploaded;
 }
 
-// Создание Set загруженных частей из missingPartsBitmask
 function getUploadedPartsFromMissingBitmask(missingPartsBitmask, totalParts) {
   if (!missingPartsBitmask) return new Set();
 
   const uploaded = new Set();
-  // missingPartsBitmask - это битмаска НЕдостающих частей
-  // Например: "10101" - недостающие части 1,3,5
-  // Значит загруженные - 2,4
   for (let i = 0; i < missingPartsBitmask.length && i < totalParts; i++) {
     if (missingPartsBitmask[i] === '0') {
       uploaded.add(i + 1);
@@ -1232,7 +1218,6 @@ function getUploadedPartsFromMissingBitmask(missingPartsBitmask, totalParts) {
   return uploaded;
 }
 
-// Получение Set недостающих частей из ответа сервера
 function getMissingPartsFromResponse(responseData, totalParts) {
   if (responseData.missingPartsBitmask) {
     const missing = new Set();
@@ -1252,7 +1237,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   console.log("File:", file.name, "size:", file.size);
   console.log("Existing session ID:", existingSessionId);
 
-  // Вычисляем общий checksum файла
   let fileChecksum = "";
   try {
     console.log("Calculating file SHA-256...");
@@ -1300,7 +1284,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
     console.log("Using existing session:", sessionId);
   }
 
-  // Получаем статус для определения уже загруженных частей
   let startPart = 1;
   try {
     const statusData = await getUploadStatus(token, sessionId);
@@ -1320,7 +1303,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
   console.log(`Uploading parts from ${startPart} to ${totalParts}...`);
 
-  // Загружаем каждую часть
   for (let partNumber = startPart; partNumber <= totalParts; partNumber++) {
     if (window.activeUploadAbortFlag) {
       console.log('❌ Upload cancelled by user, stopping...');
@@ -1334,7 +1316,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const chunk = file.slice(start, end);
 
-    // ========== ВЫЧИСЛЯЕМ SHA-256 ДЛЯ КАЖДОЙ ЧАСТИ ==========
     let partChecksum = "";
     try {
       console.log(`Calculating SHA-256 for part ${partNumber}...`);
@@ -1342,9 +1323,7 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
       console.log(`Part ${partNumber} checksum: ${partChecksum.substring(0, 16)}...`);
     } catch (error) {
       console.warn(`Failed to calculate checksum for part ${partNumber}:`, error);
-      // Если checksum не удалось вычислить, пробуем загрузить без него, но сервер может отклонить
     }
-    // ========================================================
 
     console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
 
@@ -1354,7 +1333,7 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
       method: "POST",
       headers: {
         "Content-Type": "application/octet-stream",
-        "Content-SHA256": partChecksum  // <-- ДОБАВЛЯЕМ ЗАГОЛОВОК С CHECKSUM
+        "Content-SHA256": partChecksum
       },
       body: chunk
     }, token);
@@ -1401,7 +1380,6 @@ export const getUploadStatus = async (token, sessionId) => {
   }, token);
 
   if (!response.ok) {
-    // Если 404 - сессия не найдена, начинаем заново
     if (response.status === 404) {
       console.log("Session not found, starting from scratch");
       return null;
@@ -1889,12 +1867,8 @@ export const getFilePreview = async (token, fileId) => {
   }
 };
 
-// Добавьте в api.js
-
-// Вычисление SHA-256 для Blob/File/ArrayBuffer
 async function calculateSHA256(data) {
   try {
-    // Используем Web Crypto API
     const crypto = window.crypto || window.msCrypto;
 
     let buffer;
@@ -1905,7 +1879,6 @@ async function calculateSHA256(data) {
     } else if (data instanceof Uint8Array) {
       buffer = data.buffer;
     } else {
-      // Если строка или другой тип, конвертируем
       buffer = new TextEncoder().encode(data.toString()).buffer;
     }
 
@@ -1916,42 +1889,32 @@ async function calculateSHA256(data) {
     return hashHex;
   } catch (error) {
     console.error("Failed to calculate SHA-256:", error);
-    // Fallback: возвращаем пустую строку, если вычисление не удалось
     return "";
   }
 }
 
-// Вычисление SHA-256 для части файла с прогрессом
 async function calculateSHA256ForChunk(file, start, end, onProgress) {
   const chunk = file.slice(start, end);
   const hash = await calculateSHA256(chunk);
 
   if (onProgress) {
-    // Можно обновлять прогресс вычисления хэша, если нужно
     onProgress();
   }
 
   return hash;
 }
 
-// Вычисление SHA-256 для всего файла (используется для простой загрузки)
 async function calculateFileSHA256(file, onProgress) {
-  const CHUNK_SIZE = 1024 * 1024; // 1MB chunks for hashing
+  const CHUNK_SIZE = 1024 * 1024;
   const totalSize = file.size;
   let offset = 0;
 
   const crypto = window.crypto || window.msCrypto;
 
-  // Создаем хэш через Web Crypto API с обновлением частями
-  // Заметка: Web Crypto API не поддерживает инкрементальное хэширование напрямую
-  // Поэтому для больших файлов лучше использовать библиотеку или загружать весь файл в память
-
-  // Простой вариант: загружаем весь файл (для файлов до 1GB)
-  if (file.size <= 1024 * 1024 * 100) { // 100MB limit for memory
+  if (file.size <= 1024 * 1024 * 100) {
     return await calculateSHA256(file);
   }
 
-  // Для больших файлов - читаем частями
   const buffer = await file.arrayBuffer();
   return await calculateSHA256(buffer);
 }

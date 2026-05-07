@@ -8,6 +8,7 @@ import com.mipt.team4.cloud_storage_backend.exception.storage.*;
 import com.mipt.team4.cloud_storage_backend.exception.upload.MissingChecksumException;
 import com.mipt.team4.cloud_storage_backend.exception.user.UserNotFoundException;
 import com.mipt.team4.cloud_storage_backend.exception.user.tariff.TariffAccessDeniedException;
+import com.mipt.team4.cloud_storage_backend.model.common.dto.PageQuery;
 import com.mipt.team4.cloud_storage_backend.model.common.mappers.PaginationMapper;
 import com.mipt.team4.cloud_storage_backend.model.share.entity.FileShare;
 import com.mipt.team4.cloud_storage_backend.model.storage.dto.ContentRangeDto;
@@ -231,6 +232,23 @@ public class FileService {
     UUID parentId = request.parentId();
     UUID userId = request.userId();
 
+    int page = request.pagination().commonParams().page();
+    int size = request.pagination().commonParams().size();
+    int limit = size;
+    int offset = page * size;
+
+    String sortField =
+        switch (request.sortBy()) {
+          case "type" -> "mime_type";
+          case "size" -> "size";
+          case "updatedAt" -> "updated_at";
+          default -> "name";
+        };
+
+    String direction = request.sortOrder();
+
+    PageQuery pageQuery = new PageQuery(limit, offset, sortField, direction);
+
     return storageRepository.getFileList(
         new FileListFilter(
             userId,
@@ -239,7 +257,7 @@ public class FileService {
             request.recursive(),
             request.query(),
             request.tags()),
-        PaginationMapper.toPageQuery(request.pagination()));
+        pageQuery);
   }
 
   @Transactional(readOnly = true)

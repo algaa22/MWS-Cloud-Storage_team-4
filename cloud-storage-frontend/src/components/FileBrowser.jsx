@@ -87,6 +87,10 @@ export default function FileBrowser() {
   const [pendingSession, setPendingSession] = useState(null);
   const [pendingProgress, setPendingProgress] = useState(0);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [searchName, setSearchName] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [searchNameInput, setSearchNameInput] = useState("");
   const [pagination, setPagination] = useState({
     page: 0,
     size: 8,
@@ -105,14 +109,11 @@ export default function FileBrowser() {
   });
   const [storageLoading, setStorageLoading] = useState(true);
 
-  // Быстрый опрос для файлов, которые загружены недавно (первые 30 секунд)
   useEffect(() => {
     if (!token || files.length === 0) return;
 
-    // Находим файлы, которым меньше 30 секунд и которые еще не имеют финального статуса
     const recentUnresolvedFiles = files.filter(f => {
       if (f.type !== 'file') return false;
-      // Финальные статусы - не нужно больше опрашивать
       const isFinal = f.scanVerdict === ScanVerdict.CLEAN ||
                       f.scanVerdict === ScanVerdict.INFECTED ||
                       f.scanVerdict === ScanVerdict.CONTENT_MISMATCH ||
@@ -123,11 +124,10 @@ export default function FileBrowser() {
 
       if (isFinal) return false;
 
-      // Проверяем, не старый ли файл (по createdAt или updatedAt)
       const fileDate = f.createdAt || f.updatedAt;
       if (fileDate) {
         const age = Date.now() - new Date(fileDate).getTime();
-        if (age > 30000) return false; // старше 30 секунд - не опрашиваем быстро
+        if (age > 30000) return false;
       }
       return true;
     });
@@ -136,7 +136,6 @@ export default function FileBrowser() {
 
     console.log(`🔄 Быстрый опрос ${recentUnresolvedFiles.length} новых файлов...`);
 
-    // Быстрый интервал - каждую секунду
     const fastInterval = setInterval(async () => {
       for (const file of recentUnresolvedFiles) {
         try {
@@ -151,9 +150,8 @@ export default function FileBrowser() {
           console.error(`Failed to update scan status for ${file.id}:`, err);
         }
       }
-    }, 1000); // каждую секунду
+    }, 1000);
 
-    // Останавливаем быстрый опрос через 30 секунд
     const timeout = setTimeout(() => {
       clearInterval(fastInterval);
       console.log("⏹️ Быстрый опрос остановлен");
@@ -165,11 +163,9 @@ export default function FileBrowser() {
     };
   }, [token, files]);
 
-  // Добавьте useEffect для опроса статусов сканирования
   useEffect(() => {
     if (!token || files.length === 0) return;
 
-    // Находим файлы, которые еще сканируются
     const scanningFiles = files.filter(f =>
       f.type === 'file' && isScanning(f.scanVerdict)
     );
@@ -181,7 +177,6 @@ export default function FileBrowser() {
         try {
           const updatedInfo = await apiGetFileInfo(token, file.id);
           if (updatedInfo.scanVerdict !== file.scanVerdict) {
-            // Обновляем статус файла
             setFiles(prev => prev.map(f =>
               f.id === file.id ? { ...f, scanVerdict: updatedInfo.scanVerdict } : f
             ));
@@ -190,7 +185,7 @@ export default function FileBrowser() {
           console.error(`Failed to update scan status for ${file.id}:`, err);
         }
       }
-    }, 5000); // Проверяем каждые 5 секунд
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [token, files]);
@@ -636,17 +631,16 @@ const refreshStorageInfo = async () => {
     return item.id || "Объект";
   };
 
-const fetchFiles = async (isLoadMore = false) => {
+const fetchFiles = async (isLoadMore = false, nameOverride = null) => {
   try {
+    const searchTerm = nameOverride !== null ? nameOverride : searchName;
+
     if (!isLoadMore) {
       setLoading(true);
-      // Сбрасываем страницу в 0 при новом поиске/переходе в папку
       setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
     } else {
       setPagination(prev => ({ ...prev, loadingMore: true }));
     }
-
-    console.log("fetchFiles called with path:", currentPath || "(root)");
 
     if (!token || token.trim() === "") {
       setError("Требуется авторизация");
@@ -654,14 +648,12 @@ const fetchFiles = async (isLoadMore = false) => {
       return;
     }
 
-    // Определяем текущую страницу для запроса
     const currentPage = isLoadMore ? pagination.page : 0;
 
-    // Выполняем ОДИН запрос к серверу
-    const response = await getFiles(token, currentPath, currentPage, pagination.size);
+    const response = await getFiles(token, currentPath, currentPage, pagination.size, searchTerm, sortBy, sortOrder);
+
     console.log("Raw getFiles response:", response);
 
-    // ПРОВЕРКА: Бэкенд возвращает объект (DTO), а файлы лежат в поле .files
     if (!response || !Array.isArray(response.files)) {
       console.error("Expected response.files to be an array, but got:", response);
       setError("Некорректный формат данных от сервера");
@@ -672,13 +664,10 @@ const fetchFiles = async (isLoadMore = false) => {
       return;
     }
 
-    // Фильтруем данные.
-    // ВНИМАНИЕ: Проверь в консоли, приходят ли типы капсом (DIRECTORY/FILE) или строчными
-    const foldersList = response.files.filter((it) => it.type.toUpperCase() === "DIRECTORY" || it.type.toLowerCase() === "folder");
-    const filesList = response.files.filter((it) => it.type.toUpperCase() === "FILE");
+    const foldersList = response.files.filter((it) => it.type === "folder");
+    const filesList = response.files.filter((it) => it.type === "file");
 
     if (isLoadMore) {
-      // Режим дозагрузки (Infinity Scroll)
       setFolders(prev => {
         const existingIds = new Set(prev.map(f => f.id));
         const newFolders = foldersList.filter(f => !existingIds.has(f.id));
@@ -691,16 +680,16 @@ const fetchFiles = async (isLoadMore = false) => {
         return [...prev, ...newFiles];
       });
     } else {
-      // Обычная загрузка (первая страница или переход в папку)
-      setFolders(foldersList);
-      setFiles(filesList);
+      setFolders([...foldersList]);
+      setFiles([...filesList]);
     }
 
-    // Обновляем состояние пагинации на основе ответа сервера
     setPagination(prev => ({
       ...prev,
       page: currentPage + 1,
-      hasMore: response.files.length === prev.size, // Если пришло меньше, чем просили — значит данных больше нет
+      totalPages: response.pageInfo.totalPages,
+      totalElements: response.pageInfo.totalElements,
+      hasMore: response.pageInfo.hasMore,
       loadingMore: false
     }));
 
@@ -738,6 +727,12 @@ useEffect(() => {
     }
   };
 }, [files, folders, loading, pagination.hasMore, pagination.loadingMore, currentPath]);
+
+
+useEffect(() => {
+  setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
+  fetchFiles(false);
+}, [sortBy, sortOrder]);
 
   const handleLogout = () => {
     logout();
@@ -986,9 +981,7 @@ const handleDeleteSelected = async () => {
       switch (action) {
         case "download":
           if (selectedItem.type === "file") {
-            // Проверяем, является ли файл подозрительным
             if (isSuspiciousVerdict(selectedItem.scanVerdict)) {
-              // Показываем предупреждение
               const confirmed = window.confirm(
                 "Скачивание этого файла может быть небезопасно. Вы уверены, что хотите скачать этот файл?"
               );
@@ -1281,35 +1274,30 @@ const refreshUserInfo = async () => {
       try {
         const result = await uploadFileWithTags(token, file, currentPath, setUploadProgress, [], resumeSessionId);
 
-        // Немедленно получаем информацию о файле
         await new Promise(resolve => setTimeout(resolve, 100));
 
         let fileId = null;
         if (result?.id) {
           fileId = result.id;
         } else {
-          // Если не получили ID, ищем по имени
           const refreshedFiles = await getFiles(token, currentPath, 0, 100);
           const uploadedFile = refreshedFiles.find(f => f.name === file.name);
           fileId = uploadedFile?.id;
         }
 
         if (fileId) {
-          // Активно опрашиваем статус первые несколько секунд
           let attempts = 0;
-          const maxAttempts = 15; // 15 секунд
+          const maxAttempts = 15;
 
           const pollInterval = setInterval(async () => {
             try {
               const status = await apiGetFileInfo(token, fileId);
               console.log(`📊 Статус файла ${file.name}: ${status.scanVerdict}`);
 
-              // Обновляем в списке
               setFiles(prev => prev.map(f =>
                 f.id === fileId ? { ...f, scanVerdict: status.scanVerdict } : f
               ));
 
-              // Если получили финальный статус - останавливаем опрос
               const isFinal = status.scanVerdict === ScanVerdict.CLEAN ||
                               status.scanVerdict === ScanVerdict.INFECTED ||
                               status.scanVerdict === ScanVerdict.CONTENT_MISMATCH ||
@@ -1322,7 +1310,7 @@ const refreshUserInfo = async () => {
             } catch (err) {
               console.error("Poll error:", err);
             }
-          }, 1000); // каждую секунду
+          }, 1000);
         }
 
         await fetchFiles();
@@ -1710,7 +1698,6 @@ const searchFilesByTags = async (tags) => {
   const getFileIconWithStatus = (file) => {
     const baseIcon = getFileIcon(file);
 
-    // Возвращаем отдельно: иконку файла и уголок
     return {
       icon: <div className="text-4xl">{baseIcon}</div>,
       badge: (() => {
@@ -1730,10 +1717,7 @@ const searchFilesByTags = async (tags) => {
             </div>
           );
         }
-        // Для подозрительных - НЕ показываем уголок
-        // if (isSuspiciousVerdict(file.scanVerdict)) {
-        //   return null;  // ← просто не возвращаем badge
-        // }
+
         return null;
       })()
     };
@@ -1953,76 +1937,145 @@ const closePreviewModal = () => {
 
         {renderModernNavigation()}
 
-        {/* Поиск по тегам */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/50 w-4 h-4 flex items-center justify-center">
-                 🔍
-               </span>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={async (e) => {
-                  if (e.key === 'Enter' && searchInput.trim()) {
-                    const newTag = searchInput.trim();
-                    if (!searchTags.includes(newTag)) {
-                      const updatedTags = [...searchTags, newTag];
-                      setSearchTags(updatedTags);
-                      setSearchInput("");
+{/* Единый блок поиска и сортировки */}
+<div className="mb-6 space-y-4">
+  {/* Основная строка поиска */}
+  <div className="flex flex-col md:flex-row gap-3">
+    {/* Поиск по имени файла */}
+    <div className="flex-1">
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50">
+          🔍
+        </span>
+        <input
+          type="text"
+          value={searchNameInput}
+          onChange={(e) => setSearchNameInput(e.target.value)}
+          onKeyDown={async (e) => {
+            if (e.key === 'Enter') {
+              const term = searchNameInput.trim();
+              setSearchName(term);
+              await fetchFiles(false, term);
+            }
+          }}
+          placeholder="Поиск по имени файла (нажмите Enter)"
+          className="w-full p-2 pl-9 pr-8 rounded-lg bg-white/20 text-white text-sm placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+        />
+        {/* Крестик для очистки поиска */}
+        {searchName && (
+          <button
+            onClick={async () => {
+              setSearchName("");
+              setSearchNameInput("");
+              await fetchFiles(false, "");
+            }}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+    </div>
 
-                      await searchFilesByTags(updatedTags);
-                    }
-                  }
-                }}
-                placeholder="Введите тег и нажмите Enter"
-                className="w-full p-2 pl-8 pr-8 rounded-lg bg-white/20 text-white text-sm placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-                disabled={isSearching}
-              />
-              {isSearching && (
-                <div className="absolute right-2 top-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                </div>
-              )}
-            </div>
-
-            {searchTags.length > 0 && (
-              <button
-                onClick={async () => {
-                  setSearchTags([]);
-                  setSearchInput("");
-                  await fetchFiles();
-                }}
-                className="text-sm text-white/50 hover:text-white px-2 whitespace-nowrap"
-                title="Очистить все теги"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Выбранные теги */}
-          {searchTags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {searchTags.map((tag, index) => (
-                <div key={index} className="flex items-center bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full text-xs">
-                  <span>{tag}</span>
-                  <button
-                    onClick={async () => {
-                      const updatedTags = searchTags.filter((_, i) => i !== index);
-                      setSearchTags(updatedTags);
-                        await searchFilesByTags(updatedTags);
-                    }}
-                    className="ml-1 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-full w-4 h-4 flex items-center justify-center"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+    {/* Сортировка */}
+    <div className="flex gap-2">
+      <div className="relative">
+        <select
+          value={sortBy}
+          onChange={(e) => {
+            setSortBy(e.target.value);
+            setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
+            fetchFiles(false);
+          }}
+          className="px-4 py-2 pr-8 rounded-lg bg-white/20 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 appearance-none cursor-pointer"
+        >
+          <option value="name">📝 По имени</option>
+          <option value="type">📄 По типу</option>
+          <option value="size">📊 По размеру</option>
+          <option value="date">🕐 По дате</option>
+        </select>
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/50">
+          ▼
         </div>
+      </div>
+
+      <button
+        onClick={() => {
+          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+          setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
+          fetchFiles(false);
+        }}
+        className="px-3 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-sm transition-colors"
+        title={sortOrder === "asc" ? "По возрастанию ↑" : "По убыванию ↓"}
+      >
+        {sortOrder === "asc" ? "↑" : "↓"}
+      </button>
+    </div>
+  </div>
+
+  {/* Поиск по тегам */}
+  <div>
+    <div className="flex items-center gap-2">
+      <div className="relative flex-1">
+        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/50">
+          🏷️
+        </span>
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyDown={async (e) => {
+            if (e.key === 'Enter' && searchInput.trim()) {
+              const newTag = searchInput.trim();
+              if (!searchTags.includes(newTag)) {
+                const updatedTags = [...searchTags, newTag];
+                setSearchTags(updatedTags);
+                setSearchInput("");
+                await searchFilesByTags(updatedTags);
+              }
+            }
+          }}
+          placeholder="Поиск по тегам (нажмите Enter)"
+          className="w-full p-2 pl-8 pr-8 rounded-lg bg-white/20 text-white text-sm placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+          disabled={isSearching}
+        />
+        {isSearching && (
+          <div className="absolute right-2 top-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Выбранные теги */}
+    {searchTags.length > 0 && (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {searchTags.map((tag, index) => (
+          <div
+            key={index}
+            className="flex items-center gap-1 bg-blue-500/40 text-blue-200 px-2 py-1 rounded-full text-xs"
+          >
+            <span>🏷️ {tag}</span>
+            <button
+              onClick={async () => {
+                const updatedTags = searchTags.filter((_, i) => i !== index);
+                setSearchTags(updatedTags);
+                if (updatedTags.length === 0) {
+                  await fetchFiles(false);
+                } else {
+                  await searchFilesByTags(updatedTags);
+                }
+              }}
+              className="ml-1 text-blue-300 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</div>
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -2866,8 +2919,6 @@ const closePreviewModal = () => {
     <span className="ml-2 text-white/70">Загрузка...</span>
   </div>
 )}
-
-
-      </div>
+ </div>
     );
   }

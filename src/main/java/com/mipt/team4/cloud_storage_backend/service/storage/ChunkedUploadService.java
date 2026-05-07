@@ -188,6 +188,8 @@ public class ChunkedUploadService {
 
       storageRepository.completeMultipartUpload(
           fileEntity, session.getId(), session.getUploadId(), partETags);
+      fileEntity.setStatus(FileStatus.READY);
+      storageRepository.saveFile(fileEntity);
       antivirusService.sendToScan(fileEntity);
       notificationService.checkStorageUsageAndNotify(fileEntity.getUserId());
 

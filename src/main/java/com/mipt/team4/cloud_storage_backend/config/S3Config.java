@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.awscore.retry.AwsRetryStrategy;
 import software.amazon.awssdk.http.SdkHttpConfigurationOption;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
@@ -30,12 +31,18 @@ public class S3Config {
         .forcePathStyle(true)
         .httpClient(
             UrlConnectionHttpClient.builder()
-                .connectionTimeout(Duration.ofSeconds(s3Props.timeoutsSec().connection()))
-                .socketTimeout(Duration.ofSeconds(s3Props.timeoutsSec().socket()))
                 .buildWithDefaults(
                     AttributeMap.builder()
                         .put(SdkHttpConfigurationOption.TRUST_ALL_CERTIFICATES, true)
                         .build()))
+        .overrideConfiguration(
+            conf ->
+                conf.retryStrategy(
+                        AwsRetryStrategy.standardRetryStrategy().toBuilder()
+                            .maxAttempts(s3Props.retryMaxAttempts())
+                            .build())
+                    .apiCallTimeout(Duration.ofSeconds(s3Props.timeoutsSec().call()))
+                    .apiCallAttemptTimeout(Duration.ofSeconds(s3Props.timeoutsSec().callAttempt())))
         .build();
   }
 

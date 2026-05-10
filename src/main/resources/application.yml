@@ -143,8 +143,9 @@ storage:
       max-file-part-size: 33554432 # 32mb
       max-parts-num: 10000
     timeouts-sec:
-      connection: 30
-      socket: 30
+      call: 60
+      call-attempt: 20
+    retry-max-attempts: 3
     path-style-access: true
 
   rest:

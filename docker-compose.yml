@@ -32,17 +32,17 @@ services:
     networks:
       - cloud-network
     volumes:
-      - ./src/main/resources/application.yml:/app/resources/application.yml
+      - ./src/main/resources/application.yml:/app/application.yml
       - ./ssl:/app/ssl:ro
     environment:
       - SPRING_DATA_REDIS_HOST=av_redis
       - SPRING_DATA_REDIS_PORT=6379
       - SPRING_JACKSON_SERIALIZATION_WRITE_DATES_AS_TIMESTAMPS=false
-      - JAVA_TOOL_OPTIONS=-Dcom.amazonaws.sdk.disableCertChecking=true
+      - JAVA_TOOL_OPTIONS=-Dcom.amazonaws.sdk.disableCertChecking=true -Djavax.net.ssl.trustStore=/dev/null -Djavax.net.ssl.trustStorePassword=changeit
       - AWS_S3_DISABLE_CERT_CHECKING=true
       - DISABLE_S3_CERT_CHECKING=true
       - CLOUD_AWS_S3_ENDPOINT=https://cloud-storage-seaweed:8333
-      - CLOUD_AWS_S3_REGION=us-east-1
+      - CLOUD_AWS_S3_REGION=eu-central-1
       - CLOUD_AWS_S3_PATH_STYLE_ACCESS=true
 
   antivirus-service:
@@ -117,7 +117,7 @@ services:
             -s3 -s3.port=8333
             -s3.config=/etc/seaweedfs/s3.json.example
             -master.port=9333 
-            -volume.port=8080
+            -volume.port=8090
             -filer.port=8888
             -s3.cert.file=/ssl/server.crt
             -s3.key.file=/ssl/server.key

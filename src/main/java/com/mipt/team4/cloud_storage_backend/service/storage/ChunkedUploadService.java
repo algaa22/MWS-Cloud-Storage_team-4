@@ -61,7 +61,7 @@ public class ChunkedUploadService {
     }
 
     storageRepository
-        .getIncludeDeleted(userId, parentId)
+        .getIncludeDeleted(userId, parentId, name)
         .ifPresent(
             entity -> {
               throw new FileAlreadyExistsException(parentId, name);

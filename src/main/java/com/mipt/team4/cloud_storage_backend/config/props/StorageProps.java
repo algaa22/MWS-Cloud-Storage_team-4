@@ -30,6 +30,7 @@ public record StorageProps(
 
   public record S3(
       long minFilePartSize,
+      int retryMaxAttempts,
       String url,
       String accessKey,
       String secretKey,
@@ -41,7 +42,7 @@ public record StorageProps(
 
     public record Limits(long minFilePartSize, long maxFilePartSize, int maxPartsNum) {}
 
-    public record TimeoutsSec(int connection, int socket) {}
+    public record TimeoutsSec(int call, int callAttempt) {}
   }
 
   public record HealthCheck(

@@ -3,7 +3,6 @@ export const API_BASE = "https://localhost:8443/api";
 export const PUBLIC_BASE = "https://localhost:8443";
 window.activeUploadAbortFlag = false;
 
-// Добавьте в api.js
 
 export const ScanVerdict = {
   UNKNOWN: 'UNKNOWN',
@@ -18,21 +17,18 @@ export const ScanVerdict = {
   ERROR: 'ERROR'
 };
 
-// Определяем опасные вердикты
 export function isDangerousVerdict(verdict) {
   return verdict === ScanVerdict.INFECTED ||
          verdict === ScanVerdict.RESOURCE_EXHAUSTED ||
          verdict === ScanVerdict.CONTENT_MISMATCH;
 }
 
-// Определяем подозрительные вердикты
 export function isSuspiciousVerdict(verdict) {
   return verdict === ScanVerdict.ERROR ||
          verdict === ScanVerdict.PASSWORD_PROTECTED ||
          verdict === ScanVerdict.TOO_LARGE;
 }
 
-// Определяем, что файл еще сканируется
 export function isScanning(verdict) {
   return verdict === ScanVerdict.SCANNING || verdict === ScanVerdict.UNKNOWN;
 }
@@ -52,7 +48,6 @@ export const getScanStatusText = (verdict) => {
   }
 };
 
-// Получить цвет фона для файла на основе вердикта
 export function getFileBackgroundColor(verdict) {
   if (isDangerousVerdict(verdict)) {
     return 'bg-red-500/20 border-red-500/50 hover:bg-red-500/30';
@@ -334,15 +329,23 @@ export const getUserInfo = async (token) => {
   }
 };
 
-export const getFiles = async (token, currentPath = "", page = 0, size = 20) => {
+export const getFiles = async (token, currentPath = "", page = 0, size = 20, searchName = "", sortBy = "name", sortOrder = "asc") => {
   console.log("=== GET FILES ===");
 
   if (!token) throw new Error("Требуется авторизация");
 
   const params = new URLSearchParams();
-  params.append("includeDirectories", "true");
   params.append("page", page.toString());
   params.append("size", size.toString());
+  params.append("includeDirectories", "true");
+  params.append("recursive", "true");
+
+  if (searchName && searchName.trim() !== "") {
+    params.append("query", searchName.trim());
+  }
+
+  params.append("sortBy", sortBy);
+  params.append("sortOrder", sortOrder);
 
   if (currentPath && currentPath !== "") {
     params.append("parentId", currentPath);
@@ -353,10 +356,7 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20) => 
 
   try {
     const listResponse = await fetchWithTokenRefresh(listUrl, {
-      headers: {
-        "Accept": "application/json"
-      }
-    }, token);
+      headers: { "Accept": "application/json" }    }, token);
 
     if (!listResponse.ok) {
       const errorText = await listResponse.text();
@@ -366,27 +366,18 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20) => 
     const data = await listResponse.json();
     console.log("Raw server response:", data);
 
+    const pageInfo = data.page;
     let filesArray = [];
 
-    if (data.page && Array.isArray(data.page.content)) {
-      filesArray = data.page.content;
-      console.log("Extracted from page.content");
+    if (pageInfo && Array.isArray(pageInfo.content)) {
+      filesArray = pageInfo.content;
     } else if (Array.isArray(data.content)) {
       filesArray = data.content;
-      console.log("Extracted from content");
     } else if (Array.isArray(data.files)) {
       filesArray = data.files;
-      console.log("Extracted from files");
     } else if (Array.isArray(data)) {
       filesArray = data;
-      console.log("Data is already an array");
-    } else {
-      console.warn("Unexpected data structure:", data);
-      filesArray = [];
     }
-
-    console.log(`Found ${filesArray.length} items`);
-    console.log("Raw items:", filesArray);
 
     const result = filesArray.map(item => ({
       name: item.name || "Без имени",
@@ -395,12 +386,21 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20) => 
       id: item.id,
       parentId: item.parentId,
       tags: item.tags,
-      scanVerdict: item.scanVerdict || ScanVerdict.UNKNOWN, // Добавить
+      fileCount: item.fileCount || 0,
+      scanVerdict: item.scanVerdict || ScanVerdict.UNKNOWN,
       _raw: item
     }));
 
-    console.log("Processed result:", result);
-    return result;
+    return {
+      files: result,
+      pageInfo: {
+        currentPage: pageInfo?.page || 0,
+        totalPages: pageInfo?.totalPages || 1,
+        totalElements: pageInfo?.totalElements || result.length,
+        size: pageInfo?.size || size,
+        hasMore: (pageInfo?.page + 1) < (pageInfo?.totalPages || 1)
+      }
+    };
 
   } catch (err) {
     console.error("Error in getFiles:", err);
@@ -458,8 +458,6 @@ export const downloadFile = async (token, id, filename, fileSize) => {
   }
 };
 
-// Добавить в api.js, заменить существующую функцию getTrashFiles
-
 export const getTrashFiles = async (token, parentId = null, recursive = false, page = 0, size = 1000) => {
   console.log("=== GET TRASH FILES ===");
   console.log("Parent ID:", parentId);
@@ -471,12 +469,10 @@ export const getTrashFiles = async (token, parentId = null, recursive = false, p
   params.append("page", page.toString());
   params.append("size", size.toString());
 
-  // Добавляем parentId для иерархического просмотра
   if (parentId && parentId !== "") {
     params.append("parentId", parentId);
   }
 
-  // Добавляем recursive флаг
   if (recursive) {
     params.append("recursive", "true");
   }
@@ -498,6 +494,7 @@ export const getTrashFiles = async (token, parentId = null, recursive = false, p
     }
 
     const data = await response.json();
+
     console.log("=== FULL SERVER RESPONSE ===");
     console.log(JSON.stringify(data, null, 2));
 
@@ -510,7 +507,16 @@ export const getTrashFiles = async (token, parentId = null, recursive = false, p
       console.log("Extracted from content");
     }
 
-    console.log(`Found ${filesArray.length} items in trash`);
+    console.log(`Found ${filesArray.length} files in trash`);
+
+    if (filesArray.length > 0) {
+      console.log("=== FIRST FILE DETAILS ===");
+      console.log("Raw file object:", filesArray[0]);
+      console.log("All keys:", Object.keys(filesArray[0]));
+      console.log("deletedAt:", filesArray[0].deletedAt);
+      console.log("deleted_at:", filesArray[0].deleted_at);
+      console.log("deletedAt type:", typeof filesArray[0].deletedAt);
+    }
 
     return filesArray.map(item => ({
       name: item.name || "Без имени",
@@ -519,7 +525,7 @@ export const getTrashFiles = async (token, parentId = null, recursive = false, p
       size: item.size || 0,
       parentId: item.parentId || null,
       deletedAt: item.updatedAt || item.deletedAt || item.deleted_at,
-      children: [] // Для хранения дочерних элементов в иерархии
+      children: []
     }));
 
   } catch (error) {
@@ -1142,7 +1148,6 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
   console.log("File type:", file.type);
   console.log("Calculating file checksum...");
 
-  // Вычисляем SHA-256 для всего файла
   let checksum = "";
   try {
     checksum = await calculateSHA256(file);
@@ -1156,7 +1161,7 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
       method: "POST",
       headers: {
         'Content-Type': 'application/octet-stream',
-        ...(checksum && { 'Content-SHA256': checksum })  // Добавляем чексумму в заголовок
+        ...(checksum && { 'Content-SHA256': checksum })
       },
       body: file
     }, token);
@@ -1187,7 +1192,6 @@ function decodeBitmask(bitmask, totalParts) {
 
   const uploaded = new Set();
 
-  // Если пришла строка вида "10101"
   if (typeof bitmask === 'string') {
     for (let i = 0; i < bitmask.length && i < totalParts; i++) {
       if (bitmask[i] === '1') {
@@ -1195,7 +1199,6 @@ function decodeBitmask(bitmask, totalParts) {
       }
     }
   }
-  // Если пришел массив
   else if (Array.isArray(bitmask)) {
     bitmask.forEach(part => uploaded.add(part));
   }
@@ -1203,14 +1206,10 @@ function decodeBitmask(bitmask, totalParts) {
   return uploaded;
 }
 
-// Создание Set загруженных частей из missingPartsBitmask
 function getUploadedPartsFromMissingBitmask(missingPartsBitmask, totalParts) {
   if (!missingPartsBitmask) return new Set();
 
   const uploaded = new Set();
-  // missingPartsBitmask - это битмаска НЕдостающих частей
-  // Например: "10101" - недостающие части 1,3,5
-  // Значит загруженные - 2,4
   for (let i = 0; i < missingPartsBitmask.length && i < totalParts; i++) {
     if (missingPartsBitmask[i] === '0') {
       uploaded.add(i + 1);
@@ -1219,7 +1218,6 @@ function getUploadedPartsFromMissingBitmask(missingPartsBitmask, totalParts) {
   return uploaded;
 }
 
-// Получение Set недостающих частей из ответа сервера
 function getMissingPartsFromResponse(responseData, totalParts) {
   if (responseData.missingPartsBitmask) {
     const missing = new Set();
@@ -1239,8 +1237,20 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   console.log("File:", file.name, "size:", file.size);
   console.log("Existing session ID:", existingSessionId);
 
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 1000;
+
+  let fileChecksum = "";
+  try {
+    console.log("Calculating file SHA-256...");
+    fileChecksum = await calculateSHA256(file);
+    console.log("File SHA-256:", fileChecksum);
+  } catch (error) {
+    console.warn("Failed to calculate file checksum:", error);
+  }
+
   window.activeUploadAbortFlag = false;
-  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+  const CHUNK_SIZE = 5 * 1024 * 1024;
   const totalParts = Math.ceil(file.size / CHUNK_SIZE);
   let sessionId = existingSessionId;
 
@@ -1255,50 +1265,52 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
     console.log("Start upload URL:", url);
 
-    const startResponse = await fetchWithTokenRefresh(url, {
-      method: "POST",
-      headers: {
-        "X-Total-Parts": totalParts.toString(),
-        "X-File-Size": file.size.toString(),
-        "Content-Type": "application/json"
-      }
-    }, token);
+    const startResponse = await fetchWithRetry(async () => {
+      const res = await fetchWithTokenRefresh(url, {
+        method: "POST",
+        headers: {
+          "X-Total-Parts": totalParts.toString(),
+          "X-File-Size": file.size.toString(),
+          "X-File-Checksum": fileChecksum,
+          "Content-Type": "application/json"
+        }
+      }, token);
 
-    if (!startResponse.ok) {
-      const error = await startResponse.text();
-      throw new Error(`Failed to start upload: ${error}`);
-    }
+      if (!res.ok) {
+        const error = new Error(`Failed to start upload: ${await res.text()}`);
+        error.status = res.status;
+        throw error;
+      }
+      return res;
+    }, MAX_RETRIES, RETRY_DELAY);
 
     const startData = await startResponse.json();
     sessionId = startData.sessionId;
-
     saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
   } else {
     console.log("Using existing session:", sessionId);
   }
 
-  // Получаем статус загрузки с сервера
-  let uploadedParts = new Set();
+  let startPart = 1;
   try {
     const statusData = await getUploadStatus(token, sessionId);
-    console.log("Upload status from server:", statusData);
+    console.log("Upload status:", statusData);
 
-    if (statusData && statusData.missingPartsBitmask) {
-      // Декодируем битовую маску
-      uploadedParts = getUploadedPartsFromMissingBitmask(statusData.missingPartsBitmask, totalParts);
-      console.log(`✅ Already uploaded parts from bitmask: ${Array.from(uploadedParts).sort((a,b)=>a-b)}`);
-    } else if (statusData && statusData.currentParts > 0) {
-      for (let i = 1; i <= statusData.currentParts; i++) {
-        uploadedParts.add(i);
+    if (statusData && statusData.currentParts && statusData.currentParts > 0) {
+      startPart = statusData.currentParts + 1;
+      console.log(`✅ Resuming from part ${startPart} out of ${totalParts}`);
+      if (onProgress) {
+        const progress = Math.round(((startPart - 1) / totalParts) * 100);
+        onProgress(progress);
       }
-      console.log(`✅ Assuming parts 1-${statusData.currentParts} are uploaded`);
     }
   } catch (err) {
     console.log("Could not get upload status, starting from scratch:", err);
   }
 
-  // Загружаем части
-  for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+  console.log(`Uploading parts from ${startPart} to ${totalParts}...`);
+
+  for (let partNumber = startPart; partNumber <= totalParts; partNumber++) {
     if (window.activeUploadAbortFlag) {
       console.log('❌ Upload cancelled by user, stopping...');
       try {
@@ -1307,45 +1319,42 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
       throw new Error('Upload cancelled by user');
     }
 
-    // Пропускаем уже загруженные части
-    if (uploadedParts.has(partNumber)) {
-      console.log(`⏭️ Skipping already uploaded part ${partNumber}/${totalParts}`);
-      const progress = Math.round((partNumber / totalParts) * 100);
-      if (onProgress) onProgress(progress);
-      continue;
-    }
-
     const start = (partNumber - 1) * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const chunk = file.slice(start, end);
 
-    console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
-    console.log(`Calculating SHA-256 for part ${partNumber}...`);
-
-    // Вычисляем SHA-256 для текущей части
     let partChecksum = "";
     try {
+      console.log(`Calculating SHA-256 for part ${partNumber}...`);
       partChecksum = await calculateSHA256(chunk);
-      console.log(`Part ${partNumber} SHA-256: ${partChecksum.substring(0, 16)}...`);
+      console.log(`Part ${partNumber} checksum: ${partChecksum.substring(0, 16)}...`);
     } catch (error) {
       console.warn(`Failed to calculate checksum for part ${partNumber}:`, error);
     }
 
-    const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
+    console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
 
-    const partResponse = await fetchWithTokenRefresh(partUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        ...(partChecksum && { 'Content-SHA256': partChecksum })  // Добавляем чексумму части
-      },
-      body: chunk
-    }, token);
+    await fetchWithRetry(async () => {
+      const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
 
-    if (!partResponse.ok) {
-      const error = await partResponse.text();
-      throw new Error(`Failed to upload part ${partNumber}: ${error}`);
-    }
+      const partResponse = await fetchWithTokenRefresh(partUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-SHA256": partChecksum
+        },
+        body: chunk
+      }, token);
+
+      if (!partResponse.ok) {
+        const errorText = await partResponse.text();
+        const error = new Error(`Failed to upload part ${partNumber}: ${errorText}`);
+        error.status = partResponse.status;
+        throw error;
+      }
+
+      return partResponse;
+    }, MAX_RETRIES, RETRY_DELAY);
 
     const progress = Math.round((partNumber / totalParts) * 100);
     if (onProgress) onProgress(progress);
@@ -1353,84 +1362,22 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
   console.log("Completing upload...");
 
-  // При завершении можно также отправить общую чексумму, если нужно
-  let totalChecksum = "";
-  try {
-    totalChecksum = await calculateSHA256(file);
-    console.log("Total file SHA-256:", totalChecksum);
-  } catch (error) {
-    console.warn("Failed to calculate total file checksum:", error);
-  }
+  const completeResponse = await fetchWithRetry(async () => {
+    const res = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
+      method: "POST"
+    }, token);
 
-  const completeResponse = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
-    method: "POST",
-    headers: {
-      ...(totalChecksum && { 'Content-SHA256': totalChecksum })  // Можно добавить общую чексумму
+    if (!res.ok) {
+      const error = new Error(`Failed to complete upload: ${await res.text()}`);
+      error.status = res.status;
+      throw error;
     }
-  }, token);
-
-  if (!completeResponse.ok) {
-    // Обработка MissingUploadPartsResponse
-    const errorText = await completeResponse.text();
-    let errorData;
-    try {
-      errorData = JSON.parse(errorText);
-    } catch(e) {
-      errorData = { message: errorText };
-    }
-
-    if (completeResponse.status === 409 && errorData.missingPartsBitmask) {
-      const missingParts = getMissingPartsFromResponse(errorData, totalParts);
-      console.log(`⚠️ Missing parts detected: ${Array.from(missingParts)}`);
-
-      // Загружаем недостающие части с чексуммами
-      for (const missingPart of missingParts) {
-        const start = (missingPart - 1) * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, file.size);
-        const chunk = file.slice(start, end);
-
-        let partChecksum = "";
-        try {
-          partChecksum = await calculateSHA256(chunk);
-        } catch (error) {
-          console.warn(`Failed to calculate checksum for missing part ${missingPart}:`, error);
-        }
-
-        const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${missingPart}`;
-        const partResponse = await fetchWithTokenRefresh(partUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/octet-stream",
-            ...(partChecksum && { 'Content-SHA256': partChecksum })
-          },
-          body: chunk
-        }, token);
-
-        if (!partResponse.ok) {
-          throw new Error(`Failed to upload missing part ${missingPart}`);
-        }
-      }
-
-      // Повторяем завершение
-      const retryCompleteResponse = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
-        method: "POST",
-        headers: {
-          ...(totalChecksum && { 'Content-SHA256': totalChecksum })
-        }
-      }, token);
-
-      if (!retryCompleteResponse.ok) {
-        throw new Error(`Failed to complete upload after retry`);
-      }
-    } else {
-      throw new Error(`Failed to complete upload: ${errorText}`);
-    }
-  }
+    return res;
+  }, MAX_RETRIES, RETRY_DELAY);
 
   removeUploadSession(file.name, parentId);
-
   const result = await completeResponse.json();
-  console.log("✅ Upload completed, fileId:", result.id || result.fileId);
+  console.log("✅ Upload completed, fileId:", result.fileId);
 
   if (onProgress) onProgress(100);
   return result;
@@ -1450,7 +1397,6 @@ export const getUploadStatus = async (token, sessionId) => {
   }, token);
 
   if (!response.ok) {
-    // Если 404 - сессия не найдена, начинаем заново
     if (response.status === 404) {
       console.log("Session not found, starting from scratch");
       return null;
@@ -1938,12 +1884,8 @@ export const getFilePreview = async (token, fileId) => {
   }
 };
 
-// Добавьте в api.js
-
-// Вычисление SHA-256 для Blob/File/ArrayBuffer
 async function calculateSHA256(data) {
   try {
-    // Используем Web Crypto API
     const crypto = window.crypto || window.msCrypto;
 
     let buffer;
@@ -1954,7 +1896,6 @@ async function calculateSHA256(data) {
     } else if (data instanceof Uint8Array) {
       buffer = data.buffer;
     } else {
-      // Если строка или другой тип, конвертируем
       buffer = new TextEncoder().encode(data.toString()).buffer;
     }
 
@@ -1965,42 +1906,57 @@ async function calculateSHA256(data) {
     return hashHex;
   } catch (error) {
     console.error("Failed to calculate SHA-256:", error);
-    // Fallback: возвращаем пустую строку, если вычисление не удалось
     return "";
   }
 }
 
-// Вычисление SHA-256 для части файла с прогрессом
 async function calculateSHA256ForChunk(file, start, end, onProgress) {
   const chunk = file.slice(start, end);
   const hash = await calculateSHA256(chunk);
 
   if (onProgress) {
-    // Можно обновлять прогресс вычисления хэша, если нужно
     onProgress();
   }
 
   return hash;
 }
 
-// Вычисление SHA-256 для всего файла (используется для простой загрузки)
 async function calculateFileSHA256(file, onProgress) {
-  const CHUNK_SIZE = 1024 * 1024; // 1MB chunks for hashing
+  const CHUNK_SIZE = 1024 * 1024;
   const totalSize = file.size;
   let offset = 0;
 
   const crypto = window.crypto || window.msCrypto;
 
-  // Создаем хэш через Web Crypto API с обновлением частями
-  // Заметка: Web Crypto API не поддерживает инкрементальное хэширование напрямую
-  // Поэтому для больших файлов лучше использовать библиотеку или загружать весь файл в память
-
-  // Простой вариант: загружаем весь файл (для файлов до 1GB)
-  if (file.size <= 1024 * 1024 * 100) { // 100MB limit for memory
+  if (file.size <= 1024 * 1024 * 100) {
     return await calculateSHA256(file);
   }
 
-  // Для больших файлов - читаем частями
   const buffer = await file.arrayBuffer();
   return await calculateSHA256(buffer);
+}
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(fetchFn, maxRetries = 3, retryDelay = 1000) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fetchFn();
+    } catch (err) {
+      lastError = err;
+      console.log(`Attempt ${attempt}/${maxRetries} failed:`, err.message);
+
+      if (window.activeUploadAbortFlag) throw err;
+
+      if (err.status === 404) throw err;
+
+      if (attempt < maxRetries) {
+        await delay(retryDelay * attempt);
+      }
+    }
+  }
+
+  throw lastError;
 }

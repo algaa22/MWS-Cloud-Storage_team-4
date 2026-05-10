@@ -56,7 +56,8 @@ public class CorsHandler extends ChannelDuplexHandler {
           "X-Part-Number",
           "Content-Type",
           "Content-SHA256",
-          "Range");
+          "Range",
+          "X-File-Checksum");
 
   private static final String EXPOSE_HEADERS =
       String.join(

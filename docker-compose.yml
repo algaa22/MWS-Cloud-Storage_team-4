@@ -32,7 +32,7 @@ services:
     networks:
       - cloud-network
     volumes:
-      - ./src/main/resources/application.yml:/app/application.yml
+      - ./src/main/resources/application.yml:/app/resources/application.yml
       - ./ssl:/app/ssl:ro
     environment:
       - SPRING_DATA_REDIS_HOST=av_redis
@@ -40,10 +40,14 @@ services:
       - SPRING_JACKSON_SERIALIZATION_WRITE_DATES_AS_TIMESTAMPS=false
       - JAVA_TOOL_OPTIONS=-Dcom.amazonaws.sdk.disableCertChecking=true -Djavax.net.ssl.trustStore=/dev/null -Djavax.net.ssl.trustStorePassword=changeit
       - AWS_S3_DISABLE_CERT_CHECKING=true
+      - AWS_S3_VERIFY_SSL=false
       - DISABLE_S3_CERT_CHECKING=true
       - CLOUD_AWS_S3_ENDPOINT=https://cloud-storage-seaweed:8333
-      - CLOUD_AWS_S3_REGION=eu-central-1
       - CLOUD_AWS_S3_PATH_STYLE_ACCESS=true
+      - com.amazonaws.sdk.disableCertChecking=true
+      - com.amazonaws.services.s3.disableCertChecking=true
+      - com.amazonaws.services.s3.enableV2Signer=true
+      - AWS_S3_V4_SIGNATURE_ENABLED=true
 
   antivirus-service:
     build: ../MWS_Cloud_Storage_antivirus
@@ -113,14 +117,14 @@ services:
       - WEED_S3_SECRET=${S3_SECRET_KEY}
     command: >
       server -dir="/data"
-            -ip.bind=0.0.0.0
             -s3 -s3.port=8333
-            -s3.config=/etc/seaweedfs/s3.json.example
+            -s3.config=/etc/swfs/iam.json
+            -s3.allowEmptyFolder=true
+            -s3.cert.file=/ssl/server.crt
+            -s3.key.file=/ssl/server.key
             -master.port=9333 
             -volume.port=8090
             -filer.port=8888
-            -s3.cert.file=/ssl/server.crt
-            -s3.key.file=/ssl/server.key
     ports:
       - "8333:8333"
       - "9333:9333"
@@ -137,6 +141,7 @@ services:
       - seaweed-data:/data
       - ./etc/seaweedfs:/etc/seaweedfs:ro
       - ./ssl:/ssl:ro
+      - ./iam.json:/etc/swfs/iam.json
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine

@@ -164,6 +164,7 @@ public class S3ContentRepository implements FileContentRepository {
 
   @Override
   public void putObject(String s3Key, byte[] data) {
+
     wrapper.execute(
         () -> {
           s3Client.putObject(

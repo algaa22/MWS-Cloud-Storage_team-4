@@ -1,6 +1,8 @@
 export const BASE = "https://localhost:8443/api";
 export const API_BASE = "https://localhost:8443/api";
 export const PUBLIC_BASE = "https://localhost:8443";
+export const UPLOAD_TIMEOUT = 60000;
+export const REQUEST_TIMEOUT = 30000;
 window.activeUploadAbortFlag = false;
 
 
@@ -338,7 +340,12 @@ export const getFiles = async (token, currentPath = "", page = 0, size = 20, sea
   params.append("page", page.toString());
   params.append("size", size.toString());
   params.append("includeDirectories", "true");
-  params.append("recursive", "true");
+
+  // Убираем "recursive": "true" - оно нужно только для поиска
+  const shouldBeRecursive = searchName && searchName.trim() !== "";
+  if (shouldBeRecursive) {
+    params.append("recursive", "true");
+  }
 
   if (searchName && searchName.trim() !== "") {
     params.append("query", searchName.trim());
@@ -1235,14 +1242,14 @@ function getMissingPartsFromResponse(responseData, totalParts) {
 const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tagsString, existingSessionId = null) => {
   console.log("=== STARTING CHUNKED UPLOAD ===");
   console.log("File:", file.name, "size:", file.size);
-  console.log("Existing session ID:", existingSessionId);
 
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000;
+  const MAX_COMPLETE_RETRIES = 3;
+  const CHUNK_SIZE = 5 * 1024 * 1024;
 
   let fileChecksum = "";
   try {
-    console.log("Calculating file SHA-256...");
     fileChecksum = await calculateSHA256(file);
     console.log("File SHA-256:", fileChecksum);
   } catch (error) {
@@ -1250,7 +1257,6 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   }
 
   window.activeUploadAbortFlag = false;
-  const CHUNK_SIZE = 5 * 1024 * 1024;
   const totalParts = Math.ceil(file.size / CHUNK_SIZE);
   let sessionId = existingSessionId;
 
@@ -1265,122 +1271,142 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
 
     console.log("Start upload URL:", url);
 
-    const startResponse = await fetchWithRetry(async () => {
-      const res = await fetchWithTokenRefresh(url, {
-        method: "POST",
-        headers: {
-          "X-Total-Parts": totalParts.toString(),
-          "X-File-Size": file.size.toString(),
-          "X-File-Checksum": fileChecksum,
-          "Content-Type": "application/json"
-        }
-      }, token);
-
-      if (!res.ok) {
-        const error = new Error(`Failed to start upload: ${await res.text()}`);
-        error.status = res.status;
-        throw error;
+    const startResponse = await fetch(url, {
+      method: "POST",
+      headers: {
+        "X-Total-Parts": totalParts.toString(),
+        "X-File-Size": file.size.toString(),
+        "X-File-Checksum": fileChecksum,
+        "X-Auth-Token": token,
+        "Content-Type": "application/json"
       }
-      return res;
-    }, MAX_RETRIES, RETRY_DELAY);
+    });
+
+    if (!startResponse.ok) {
+      throw new Error(`Failed to start upload: ${await startResponse.text()}`);
+    }
 
     const startData = await startResponse.json();
     sessionId = startData.sessionId;
     saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
-  } else {
-    console.log("Using existing session:", sessionId);
+    console.log("✅ Session started:", sessionId);
   }
 
-  let startPart = 1;
-  try {
-    const statusData = await getUploadStatus(token, sessionId);
-    console.log("Upload status:", statusData);
-
-    if (statusData && statusData.currentParts && statusData.currentParts > 0) {
-      startPart = statusData.currentParts + 1;
-      console.log(`✅ Resuming from part ${startPart} out of ${totalParts}`);
-      if (onProgress) {
-        const progress = Math.round(((startPart - 1) / totalParts) * 100);
-        onProgress(progress);
-      }
-    }
-  } catch (err) {
-    console.log("Could not get upload status, starting from scratch:", err);
-  }
-
-  console.log(`Uploading parts from ${startPart} to ${totalParts}...`);
-
-  for (let partNumber = startPart; partNumber <= totalParts; partNumber++) {
-    if (window.activeUploadAbortFlag) {
-      console.log('❌ Upload cancelled by user, stopping...');
-      try {
-        await abortChunkedUpload(token, sessionId);
-      } catch(e) {}
-      throw new Error('Upload cancelled by user');
-    }
-
+  // ========== ВОЗВРАЩАЕМ ЦИКЛ ЗАГРУЗКИ ЧАСТЕЙ ==========
+  const uploadPart = async (partNumber) => {
     const start = (partNumber - 1) * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const chunk = file.slice(start, end);
 
     let partChecksum = "";
     try {
-      console.log(`Calculating SHA-256 for part ${partNumber}...`);
       partChecksum = await calculateSHA256(chunk);
       console.log(`Part ${partNumber} checksum: ${partChecksum.substring(0, 16)}...`);
     } catch (error) {
       console.warn(`Failed to calculate checksum for part ${partNumber}:`, error);
+      throw new Error(`Checksum calculation failed for part ${partNumber}`);
     }
 
     console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
 
-    await fetchWithRetry(async () => {
-      const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
+    const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
 
-      const partResponse = await fetchWithTokenRefresh(partUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "Content-SHA256": partChecksum
-        },
-        body: chunk
-      }, token);
-
-      if (!partResponse.ok) {
-        const errorText = await partResponse.text();
-        const error = new Error(`Failed to upload part ${partNumber}: ${errorText}`);
-        error.status = partResponse.status;
-        throw error;
+    let lastError;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      if (window.activeUploadAbortFlag) {
+        throw new Error('Upload cancelled');
       }
 
-      return partResponse;
-    }, MAX_RETRIES, RETRY_DELAY);
+      try {
+        const response = await fetch(partUrl, {
+          method: "POST",
+          headers: {
+            "X-Auth-Token": token,
+            "Content-Type": "application/octet-stream",
+            "Content-SHA256": partChecksum
+          },
+          body: chunk  // ← НЕ FormData, а просто chunk
+        });
 
-    const progress = Math.round((partNumber / totalParts) * 100);
-    if (onProgress) onProgress(progress);
+        const responseText = await response.text();
+
+        if (!response.ok) {
+          if (response.status === 409 && responseText.includes('ALREADY_UPLOADED')) {
+            console.log(`Part ${partNumber} already uploaded, skipping`);
+            return true;
+          }
+          throw new Error(`Failed to upload part ${partNumber}: ${responseText}`);
+        }
+
+        console.log(`✅ Part ${partNumber} uploaded`);
+        if (onProgress) {
+          onProgress(Math.round((partNumber / totalParts) * 100));
+        }
+        return true;
+      } catch (error) {
+        lastError = error;
+        console.error(`Part ${partNumber} attempt ${attempt} failed:`, error.message);
+        if (attempt < MAX_RETRIES) {
+          const waitTime = RETRY_DELAY * Math.pow(2, attempt - 1);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    throw lastError;
+  };
+
+  // Загружаем все части
+  for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+    if (window.activeUploadAbortFlag) {
+      try { await abortChunkedUpload(token, sessionId); } catch(e) {}
+      throw new Error('Upload cancelled');
+    }
+    await uploadPart(partNumber);
   }
+  // ========== КОНЕЦ ЦИКЛА ЗАГРУЗКИ ==========
 
   console.log("Completing upload...");
 
-  const completeResponse = await fetchWithRetry(async () => {
-    const res = await fetchWithTokenRefresh(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
-      method: "POST"
-    }, token);
+  for (let attempt = 1; attempt <= MAX_COMPLETE_RETRIES; attempt++) {
+    try {
+      const completeResponse = await fetch(`${BASE}/files/upload/chunked/complete?sessionId=${sessionId}`, {
+        method: "POST",
+        headers: {
+          "X-Auth-Token": token
+        }
+      });
 
-    if (!res.ok) {
-      const error = new Error(`Failed to complete upload: ${await res.text()}`);
-      error.status = res.status;
-      throw error;
+      const responseText = await completeResponse.text();
+
+      if (completeResponse.ok) {
+        removeUploadSession(file.name, parentId);
+        const result = JSON.parse(responseText);
+        console.log("✅ Upload completed, fileId:", result.id);
+        if (onProgress) onProgress(100);
+        return result;
+      }
+
+      if (completeResponse.status === 409) {
+        console.log("Missing parts detected, attempt:", attempt);
+        if (attempt >= MAX_COMPLETE_RETRIES) {
+          saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
+          throw new Error(`Missing parts after ${attempt} attempts`);
+        }
+        continue;
+      }
+
+      throw new Error(`Complete failed: ${responseText}`);
+    } catch (error) {
+      console.error(`Complete attempt ${attempt} failed:`, error.message);
+      if (attempt >= MAX_COMPLETE_RETRIES) {
+        saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
     }
-    return res;
-  }, MAX_RETRIES, RETRY_DELAY);
+  }
 
-  removeUploadSession(file.name, parentId);
-  const result = await completeResponse.json();
-  console.log("✅ Upload completed, fileId:", result.fileId);
-
-  if (onProgress) onProgress(100);
-  return result;
+  throw new Error("Upload completion failed");
 };
 
 export const getUploadStatus = async (token, sessionId) => {
@@ -1950,7 +1976,7 @@ async function fetchWithRetry(fetchFn, maxRetries = 3, retryDelay = 1000) {
 
       if (window.activeUploadAbortFlag) throw err;
 
-      if (err.status === 404) throw err;
+      if (err.status === 404 || err.status === 401 || err.status === 403) throw err;
 
       if (attempt < maxRetries) {
         await delay(retryDelay * attempt);

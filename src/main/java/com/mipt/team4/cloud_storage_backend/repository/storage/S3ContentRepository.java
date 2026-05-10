@@ -1,6 +1,7 @@
 package com.mipt.team4.cloud_storage_backend.repository.storage;
 
 import com.mipt.team4.cloud_storage_backend.config.props.StorageProps;
+import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.Comparator;
@@ -9,8 +10,6 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -51,8 +50,8 @@ public class S3ContentRepository implements FileContentRepository {
     this.s3Presigner = s3Presigner;
   }
 
-  @EventListener(ApplicationReadyEvent.class)
-  public void onApplicationReady() {
+  @PostConstruct
+  public void initialize() {
     if (!bucketExists(bucketName)) {
       createBucket(bucketName);
     }

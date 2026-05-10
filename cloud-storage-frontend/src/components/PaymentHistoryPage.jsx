@@ -36,9 +36,7 @@ export default function PaymentHistoryPage() {
   const formatDateTime = (dateString) => {
     if (!dateString) return '—';
     const date = new Date(dateString);
-    const moscowDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-
-    return moscowDate.toLocaleString('ru-RU', {
+    return date.toLocaleString('ru-RU', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -50,9 +48,7 @@ export default function PaymentHistoryPage() {
   const formatDate = (dateString) => {
     if (!dateString) return '—';
     const date = new Date(dateString);
-    const moscowDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-
-    return moscowDate.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString('ru-RU', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
@@ -63,20 +59,21 @@ export default function PaymentHistoryPage() {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
       currency: 'RUB',
-      minimumFractionDigits: 2
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'COMPLETED':
-        return 'text-green-400 bg-green-500/20';
+        return 'text-green-400';
       case 'PENDING':
-        return 'text-yellow-400 bg-yellow-500/20';
+        return 'text-yellow-400';
       case 'FAILED':
-        return 'text-red-400 bg-red-500/20';
+        return 'text-red-400';
       default:
-        return 'text-gray-400 bg-gray-500/20';
+        return 'text-gray-400';
     }
   };
 
@@ -106,24 +103,10 @@ export default function PaymentHistoryPage() {
     }
   };
 
-  const getTariffIcon = (plan) => {
-    switch (plan) {
-      case 'BASIC':
-        return '⭐';
-      case 'WORK':
-        return '🌟';
-      case 'PREMIUM':
-        return '💎';
-      default:
-        return '📦';
-    }
-  };
-
   const calculateEndDate = (createdAt, durationDays) => {
     if (!createdAt) return null;
     const date = new Date(createdAt);
-    const moscowDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-    const endDate = new Date(moscowDate);
+    const endDate = new Date(date);
     const days = durationDays || 30;
     endDate.setDate(endDate.getDate() + days);
     return endDate;
@@ -132,7 +115,6 @@ export default function PaymentHistoryPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-900">
       <div className="p-6">
-        {/* Header как на странице тарифов */}
         <div className="flex justify-between items-center mb-8">
           <button
             onClick={() => navigate(-1)}
@@ -154,7 +136,6 @@ export default function PaymentHistoryPage() {
           <div className="w-20"></div>
         </div>
 
-        {/* Content */}
         <div className="max-w-4xl mx-auto">
           {loading ? (
             <div className="flex flex-col justify-center items-center py-12">
@@ -190,85 +171,133 @@ export default function PaymentHistoryPage() {
             <div className="space-y-4">
               {transactions.map((transaction) => {
                 const endDate = calculateEndDate(transaction.createdAt, transaction.durationDays);
+                const totalStorage = (transaction.storageLimitGb || 5) + (transaction.paidStorageGb || 0);
+
                 return (
                   <div
                     key={transaction.id}
-                    className="bg-white/10 backdrop-blur-xl rounded-2xl p-5 border border-white/10 hover:border-blue-500/50 transition-all duration-300 hover:scale-[1.02]"
+                    className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-blue-500/50 transition-all duration-300 overflow-hidden"
                   >
-                    <div className="flex flex-wrap justify-between items-start gap-4">
-                      {/* Левая часть */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 flex-wrap mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl">{getTariffIcon(transaction.tariffPlan)}</span>
-                            <h3 className="text-xl font-semibold text-white">
+                    {/* Верхняя часть - Header */}
+                    <div className="p-5 pb-3 border-b border-white/10">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="text-2xl font-bold text-white">
                               {getTariffPlanText(transaction.tariffPlan)}
                             </h3>
+                            <span className={`text-sm font-medium ${getStatusColor(transaction.status)}`}>
+                              {getStatusText(transaction.status)}
+                            </span>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(transaction.status)}`}>
-                            {getStatusText(transaction.status)}
-                          </span>
+                          <p className="text-white/50 text-sm">
+                            {formatDateTime(transaction.createdAt)}
+                          </p>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-white/70">
-                              <span className="text-base">📅</span>
-                              <span>Покупка: <span className="text-white">{formatDateTime(transaction.createdAt)}</span></span>
-                            </div>
-                            <div className="flex items-center gap-2 text-white/70">
-                              <span className="text-base">💾</span>
-                              <span>Объём хранилища:
-                                <span className="text-white font-medium ml-1">
-                                  {transaction.storageLimitGb ? `${transaction.storageLimitGb} ГБ` : '—'}
-                                </span>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-white/70">
-                              <span className="text-base">📆</span>
-                              <span>Длительность:
-                                <span className="text-white ml-1">
-                                  {transaction.durationDays ? `${transaction.durationDays} дней` : '30 дней'}
-                                </span>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-white/70">
-                              <span className="text-base">🔄</span>
-                              <span>Автопродление:
-                                <span className={`ml-1 ${transaction.autoRenew ? 'text-green-400' : 'text-red-400'}`}>
-                                  {transaction.autoRenew !== undefined ? (transaction.autoRenew ? 'Включено' : 'Отключено') : '—'}
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-white/70">
-                              <span className="text-base">⏰</span>
-                              <span>Окончание подписки:
-                                <span className="text-white ml-1">
-                                  {formatDate(endDate?.toISOString())}
-                                </span>
-                              </span>
-                            </div>
-                            {transaction.paymentMethod && (
-                              <div className="flex items-center gap-2 text-white/70">
-                                <span className="text-base">💳</span>
-                                <span>Оплата: <span className="text-white">{transaction.paymentMethod === 'card' ? 'Банковская карта' : transaction.paymentMethod}</span></span>
-                              </div>
-                            )}
-                            {transaction.completedAt && transaction.status === 'COMPLETED' && (
-                              <div className="flex items-center gap-2 text-white/70">
-                              </div>
-                            )}
+                        <div className="text-right">
+                          <div className="text-3xl font-bold text-yellow-300">
+                            {formatAmount(transaction.price || transaction.amount)}
                           </div>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Правая часть - сумма */}
-                      <div className="text-right border-l border-white/20 pl-6">
-                        <div className="text-3xl font-bold text-yellow-300">
-                          {formatAmount(transaction.price || transaction.amount)}
+                    {/* Средняя часть - Характеристики тарифа (2 колонки) */}
+                    <div className="p-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">💾</span>
+                            <div>
+                              <p className="text-white/50 text-xs">Объем хранилища</p>
+                              <p className="text-white font-medium">
+                                +{transaction.paidStorageGb || 0} ГБ
+                                <span className="text-white/50 text-sm ml-1">
+                                  (итого {totalStorage} ГБ)
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">📄</span>
+                            <div>
+                              <p className="text-white/50 text-xs">Макс. размер файла</p>
+                              <p className="text-white font-medium">
+                                {transaction.maxFileSize || '—'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">🗑️</span>
+                            <div>
+                              <p className="text-white/50 text-xs">Хранение в корзине</p>
+                              <p className="text-white font-medium">
+                                {transaction.retentionDays || 7} дней
+                              </p>
+                            </div>
+                          </div>
                         </div>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">🔗</span>
+                            <div>
+                              <p className="text-white/50 text-xs">Тип ссылок</p>
+                              <p className={`font-medium ${transaction.shareType === 'Пароль' ? 'text-yellow-300' : 'text-white'}`}>
+                                {transaction.shareType || 'Публичные'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">📅</span>
+                            <div>
+                              <p className="text-white/50 text-xs">Длительность</p>
+                              <p className="text-white font-medium">
+                                {transaction.durationDays || 30} дней
+                              </p>
+                            </div>
+                          </div>
+                          {endDate && (
+                            <div className="flex items-center gap-3">
+                              <span className="text-xl">⏰</span>
+                              <div>
+                                <p className="text-white/50 text-xs">Истекает</p>
+                                <p className="text-white font-medium">
+                                  {formatDate(endDate.toISOString())}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Нижняя часть - Платежная информация */}
+                    <div className="p-4 bg-white/5 border-t border-white/10">
+                      <div className="flex flex-wrap justify-between items-center gap-3">
+                        <div className="flex items-center gap-6">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">💳</span>
+                            <span className="text-white/70 text-sm">
+                              Метод: <span className="text-white">
+                                {transaction.paymentMethod === 'card' ? 'Банковская карта' : (transaction.paymentMethod || '—')}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">🔄</span>
+                            <span className="text-white/70 text-sm">
+                              Автопродление: {' '}
+                              <span className={transaction.autoRenew ? 'text-green-400' : 'text-red-400'}>
+                                {transaction.autoRenew !== undefined ? (transaction.autoRenew ? 'Включено' : 'Отключено') : '—'}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                        {transaction.completedAt && transaction.status === 'COMPLETED' && (
+                          <div className="text-xs text-white/30">
+                            ID: {transaction.id?.slice(0, 8)}...
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

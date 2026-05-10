@@ -70,7 +70,7 @@ export default function FileBrowser() {
   const [isSavingChanges, setIsSavingChanges] = useState(false);
   const [renameText, setRenameText] = useState("");
   const [searchTags, setSearchTags] = useState([]);
-  const [searchInput, setSearchInput] = useState("");
+  const [searchMode, setSearchMode] = useState("name");
   const [isSearching, setIsSearching] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [trashFiles, setTrashFiles] = useState([]);
@@ -91,6 +91,13 @@ export default function FileBrowser() {
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [searchNameInput, setSearchNameInput] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [uploadFailed, setUploadFailed] = useState(false);
+  const [failedFile, setFailedFile] = useState(null);
+  const [failedSessionId, setFailedSessionId] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const [failedFileData, setFailedFileData] = useState(null);
+  const [retrySessionId, setRetrySessionId] = useState(null);
   const [pagination, setPagination] = useState({
     page: 0,
     size: 8,
@@ -108,6 +115,7 @@ export default function FileBrowser() {
     formattedTotal: '10 GB'
   });
   const [storageLoading, setStorageLoading] = useState(true);
+  const [searchType, setSearchType] = useState("name");
 
   useEffect(() => {
     if (!token || files.length === 0) return;
@@ -1243,177 +1251,46 @@ const refreshUserInfo = async () => {
   };
 
   const handleFileUpload = async (event) => {
-  window.activeUploadAbortFlag = false;
-
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log("=== HANDLE FILE UPLOAD CALLED ===");
-    console.log("File name:", file.name);
-    console.log("File size:", file.size);
-    console.log("Current path:", currentPath);
-
-    const resumeSessionId = sessionStorage.getItem('resumeSessionId');
-    const resumeFileName = sessionStorage.getItem('resumeFileName');
-    const resumeFileSize = sessionStorage.getItem('resumeFileSize');
-
-
-    if (resumeSessionId && resumeFileName) {
-        if (resumeFileName === file.name && resumeFileSize && parseInt(resumeFileSize) === file.size) {
-      sessionStorage.removeItem('resumeSessionId');
-      sessionStorage.removeItem('resumeFileName');
-            sessionStorage.removeItem('resumeFileSize');
-
-
-      console.log("🔄 Resuming upload with session:", resumeSessionId);
-
-      setUploading(true);
-      setUploadProgress(0);
-      setError(null);
-
-      try {
-        const result = await uploadFileWithTags(token, file, currentPath, setUploadProgress, [], resumeSessionId);
-
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        let fileId = null;
-        if (result?.id) {
-          fileId = result.id;
-        } else {
-          const refreshedFiles = await getFiles(token, currentPath, 0, 100);
-          const uploadedFile = refreshedFiles.find(f => f.name === file.name);
-          fileId = uploadedFile?.id;
-        }
-
-        if (fileId) {
-          let attempts = 0;
-          const maxAttempts = 15;
-
-          const pollInterval = setInterval(async () => {
-            try {
-              const status = await apiGetFileInfo(token, fileId);
-              console.log(`📊 Статус файла ${file.name}: ${status.scanVerdict}`);
-
-              setFiles(prev => prev.map(f =>
-                f.id === fileId ? { ...f, scanVerdict: status.scanVerdict } : f
-              ));
-
-              const isFinal = status.scanVerdict === ScanVerdict.CLEAN ||
-                              status.scanVerdict === ScanVerdict.INFECTED ||
-                              status.scanVerdict === ScanVerdict.CONTENT_MISMATCH ||
-                              status.scanVerdict === ScanVerdict.RESOURCE_EXHAUSTED;
-
-              if (isFinal || attempts >= maxAttempts) {
-                clearInterval(pollInterval);
-              }
-              attempts++;
-            } catch (err) {
-              console.error("Poll error:", err);
-            }
-          }, 1000);
-        }
-
-        await fetchFiles();
-        await loadStorageInfo();
-        setSuccess("Файл успешно загружен");
-        setTimeout(() => setSuccess(""), 3000);
-        setShowUploadModal(false);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setUploading(false);
-        setUploadProgress(0);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }
-
-      return;
-    }
-
-else {
-      const errorMessage = `Ошибка: выбран неверный файл.\n\nОжидался: ${resumeFileName}\nВыбран: ${file.name}\n\nПожалуйста, выберите правильный файл для продолжения загрузки.`;
-
-      setError(errorMessage);
-      console.error("File mismatch:", {
-        expected: resumeFileName,
-        expectedSize: resumeFileSize,
-        got: file.name,
-        gotSize: file.size
-      });
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      return;
-    }
-  }
-
     setUploading(true);
     setUploadProgress(0);
-    setError(null);
+    setUploadError(null);
 
-    const parentId = currentPath && currentPath !== "" ? currentPath : null;
+    const parentId = currentPath || null;
     const savedSession = getSavedUploadSession(file.name, parentId);
-    console.log("Saved session from localStorage:", savedSession);
 
-    if (savedSession) {
-      try {
-        const status = await getUploadStatus(token, savedSession.sessionId);
-        console.log("Upload status from server:", status);
-
-        if (status && status.currentParts && status.currentParts > 0) {
-          const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
-          let totalParts = status.totalParts;
-
-          if (!totalParts || totalParts === 0) {
-            totalParts = Math.ceil(file.size / CHUNK_SIZE);
-          }
-
-          if (!totalParts || totalParts === 0) {
-            totalParts = status.currentParts;
-          }
-
-          const percent = Math.round((status.currentParts / totalParts) * 100);
-
-          console.log(`✅ Already uploaded: ${status.currentParts} out of ${totalParts} parts`);
-          console.log(`📊 Progress: ${percent}%`);
-          console.log(`📁 File size: ${file.size}, CHUNK_SIZE: ${CHUNK_SIZE}, totalParts: ${totalParts}`);
-
-          setPendingFile(file);
-          setPendingSession(savedSession.sessionId);
-          setPendingProgress(percent);
-          setShowResumeModal(true);
-          setUploading(false);
-          return;
-        } else {
-          console.log("No uploaded parts found, removing session");
-          removeUploadSession(file.name, parentId);
-        }
-      } catch (err) {
-        console.error("Error checking existing upload:", err);
-        removeUploadSession(file.name, parentId);
-      }
-    }
-
-    console.log("Starting new upload...");
     try {
-      await uploadFileWithTags(token, file, currentPath, setUploadProgress, []);
+      const result = await uploadFileWithTags(token, file, parentId, (progress) => {
+        setUploadProgress(progress);
+      }, uploadTags, savedSession?.sessionId);
+
+      if (result && result.error) {
+        console.error("Upload failed:", result.error);
+        setUploadError(result.error);
+        setFailedFileData(file);
+        setRetrySessionId(result.sessionId);
+        setUploading(false);
+        return;
+      }
+
       await fetchFiles();
       await loadStorageInfo();
       setSuccess("Файл успешно загружен");
-      setTimeout(() => setSuccess(""), 2000);
-        setShowUploadModal(false);
-
-    }
-catch (err) {
-      setError(err.message);
+      setTimeout(() => setSuccess(""), 3000);
+      setShowUploadModal(false);
+      setUploadTags([]);
+      setUploadError(null);
+      setFailedFileData(null);
+      setRetrySessionId(null);
+    } catch (err) {
+      setUploadError(err.message);
+      setFailedFileData(file);
     } finally {
       setUploading(false);
       setUploadProgress(0);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -1939,37 +1816,110 @@ const closePreviewModal = () => {
 
 {/* Единый блок поиска и сортировки */}
 <div className="mb-6 space-y-4">
-  {/* Основная строка поиска */}
-  <div className="flex flex-col md:flex-row gap-3">
-    {/* Поиск по имени файла */}
+  <div className="flex gap-3 items-center">
     <div className="flex-1">
       <div className="relative">
         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50">
           🔍
         </span>
-        <input
-          type="text"
-          value={searchNameInput}
-          onChange={(e) => setSearchNameInput(e.target.value)}
-          onKeyDown={async (e) => {
-            if (e.key === 'Enter') {
-              const term = searchNameInput.trim();
-              setSearchName(term);
-              await fetchFiles(false, term);
+        <div className="w-full min-h-[38px] p-1 pl-9 rounded-lg bg-white/20 text-white text-sm focus-within:ring-1 focus-within:ring-blue-500/50 flex flex-wrap items-center gap-1">
+          {/* Теги-баблы */}
+          {searchTags.map((tag, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-1 bg-blue-500/60 text-blue-100 px-2 py-0.5 rounded-full text-xs"
+            >
+              <span>#</span>
+              <span>{tag}</span>
+              <button
+                onClick={async () => {
+                  const updatedTags = searchTags.filter((_, i) => i !== index);
+                  setSearchTags(updatedTags);
+                  setSearchInput("");
+                  setSearchNameInput(searchName);
+                  setSearchMode('name');
+                  if (updatedTags.length === 0) {
+                    await fetchFiles(false, searchName);
+                  } else {
+                    await searchFilesByTags(updatedTags);
+                  }
+                }}
+                className="ml-0.5 text-blue-200 hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {/* Поле ввода */}
+          <input
+            type="text"
+            // Теперь используем только один стейт для текста в инпуте,
+            // чтобы не путаться в режимах
+            value={searchInput}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearchInput(value);
+
+              // Сценарий 1: У нас уже есть теги.
+              // В этом случае автопоиск по имени НЕ ДЕЛАЕМ, просто ждем ввода следующего тега.
+              if (searchTags.length > 0) {
+                return;
+              }
+
+              // Сценарий 2: Тегов нет, пользователь вводит текст.
+              // Если это не начало ввода тега (#), делаем автопоиск по имени.
+              if (!value.startsWith('#')) {
+                setSearchName(value);
+                fetchFiles(false, value); // Обычный поиск по имени
+              }
+            }}
+            onKeyDown={async (e) => {
+              // Создание тега
+              if ((e.key === 'Enter' || e.key === ' ') && searchInput.startsWith('#')) {
+                e.preventDefault();
+                const newTag = searchInput.substring(1).trim();
+                if (newTag && !searchTags.includes(newTag)) {
+                  const updatedTags = [...searchTags, newTag];
+                  setSearchTags(updatedTags);
+                  setSearchInput('');
+                  // Вызываем твой текущий метод поиска по тегам
+                  await searchFilesByTags(updatedTags);
+                }
+              }
+
+              // Удаление тега через Backspace
+              if (e.key === 'Backspace' && !searchInput && searchTags.length > 0) {
+                const updatedTags = searchTags.slice(0, -1);
+                setSearchTags(updatedTags);
+
+                if (updatedTags.length === 0) {
+                  // Если тегов больше нет, возвращаемся к обычному списку/поиску по имени
+                  await fetchFiles(false, searchName);
+                } else {
+                  await searchFilesByTags(updatedTags);
+                }
+              }
+            }}
+            placeholder={
+              searchTags.length > 0
+                ? "Добавьте еще #тег..."
+                : "Поиск по названию или #тегу..."
             }
-          }}
-          placeholder="Поиск по имени файла (нажмите Enter)"
-          className="w-full p-2 pl-9 pr-8 rounded-lg bg-white/20 text-white text-sm placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-        />
-        {/* Крестик для очистки поиска */}
-        {searchName && (
+            className="flex-1 min-w-[120px] bg-transparent text-white text-sm placeholder-white/50 focus:outline-none py-1.5"
+          />
+        </div>
+        {/* Крестик для очистки */}
+        {((searchMode === 'name' && searchName) || (searchMode === 'tags' && searchTags.length > 0) || searchNameInput || searchInput) && (
           <button
             onClick={async () => {
-              setSearchName("");
-              setSearchNameInput("");
-              await fetchFiles(false, "");
+              setSearchMode('name');
+              setSearchName('');
+              setSearchNameInput('');
+              setSearchTags([]);
+              setSearchInput('');
+              await fetchFiles(false, '');
             }}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
           >
             ✕
           </button>
@@ -1978,7 +1928,7 @@ const closePreviewModal = () => {
     </div>
 
     {/* Сортировка */}
-    <div className="flex gap-2">
+    <div className="flex gap-2 items-center">
       <div className="relative">
         <select
           value={sortBy}
@@ -1987,13 +1937,16 @@ const closePreviewModal = () => {
             setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
             fetchFiles(false);
           }}
-          className="px-4 py-2 pr-8 rounded-lg bg-white/20 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 appearance-none cursor-pointer"
+          className="pl-8 pr-8 py-2 rounded-lg bg-white/20 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 appearance-none cursor-pointer"
         >
-          <option value="name">📝 По имени</option>
-          <option value="type">📄 По типу</option>
-          <option value="size">📊 По размеру</option>
-          <option value="date">🕐 По дате</option>
+          <option value="name">Имя файла</option>
+          <option value="type">Тип файла</option>
+          <option value="size">Размер</option>
+          <option value="date">Дата изменения</option>
         </select>
+        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/60 text-sm">
+
+        </span>
         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/50">
           ▼
         </div>
@@ -2013,68 +1966,31 @@ const closePreviewModal = () => {
     </div>
   </div>
 
-  {/* Поиск по тегам */}
-  <div>
-    <div className="flex items-center gap-2">
-      <div className="relative flex-1">
-        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/50">
-          🏷️
-        </span>
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onKeyDown={async (e) => {
-            if (e.key === 'Enter' && searchInput.trim()) {
-              const newTag = searchInput.trim();
-              if (!searchTags.includes(newTag)) {
-                const updatedTags = [...searchTags, newTag];
+  {/* Подсказка для тегов */}
+  {searchMode === 'tags' && searchInput && availableTags.filter(t => t.toLowerCase().includes(searchInput.toLowerCase()) && !searchTags.includes(t)).length > 0 && (
+    <div className="absolute z-10 mt-1 bg-gray-800/95 backdrop-blur-xl rounded-lg border border-white/10 shadow-xl max-h-48 overflow-y-auto">
+      {availableTags
+        .filter(tag => tag.toLowerCase().includes(searchInput.toLowerCase()) && !searchTags.includes(tag))
+        .slice(0, 8)
+        .map((suggestion, idx) => (
+          <button
+            key={idx}
+            onClick={async () => {
+              if (!searchTags.includes(suggestion)) {
+                const updatedTags = [...searchTags, suggestion];
                 setSearchTags(updatedTags);
-                setSearchInput("");
+                setSearchInput('');
                 await searchFilesByTags(updatedTags);
               }
-            }
-          }}
-          placeholder="Поиск по тегам (нажмите Enter)"
-          className="w-full p-2 pl-8 pr-8 rounded-lg bg-white/20 text-white text-sm placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-          disabled={isSearching}
-        />
-        {isSearching && (
-          <div className="absolute right-2 top-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-          </div>
-        )}
-      </div>
-    </div>
-
-    {/* Выбранные теги */}
-    {searchTags.length > 0 && (
-      <div className="flex flex-wrap gap-2 mt-2">
-        {searchTags.map((tag, index) => (
-          <div
-            key={index}
-            className="flex items-center gap-1 bg-blue-500/40 text-blue-200 px-2 py-1 rounded-full text-xs"
+            }}
+            className="w-full text-left px-4 py-2 hover:bg-white/10 text-white text-sm transition-colors flex items-center gap-2"
           >
-            <span>🏷️ {tag}</span>
-            <button
-              onClick={async () => {
-                const updatedTags = searchTags.filter((_, i) => i !== index);
-                setSearchTags(updatedTags);
-                if (updatedTags.length === 0) {
-                  await fetchFiles(false);
-                } else {
-                  await searchFilesByTags(updatedTags);
-                }
-              }}
-              className="ml-1 text-blue-300 hover:text-white"
-            >
-              ✕
-            </button>
-          </div>
+            <span className="text-blue-400">#</span>
+            {suggestion}
+          </button>
         ))}
-      </div>
-    )}
-  </div>
+    </div>
+  )}
 </div>
 
         {loading ? (
@@ -2282,106 +2198,168 @@ const closePreviewModal = () => {
           <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
             <h3 className="text-xl font-bold mb-4">Загрузить файл</h3>
 
-            <div className="mb-4">
-              <label className="block text-sm text-white/70 mb-2">Теги (через запятую):</label>
-              <input
-                type="text"
-                placeholder="работа, проект, важное"
-                defaultValue={uploadTags.join(', ')}
-                onBlur={(e) => {
-                  const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-                  setUploadTags(tags);
-                }}
-                className="w-full p-3 rounded-xl bg-white/20 mb-2 text-white"
-              />
-              <div className="text-xs text-white/50">
-                Введите теги через запятую
-              </div>
-
-              {uploadTags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {uploadTags.map((tag, index) => (
-                    <div key={index} className="flex items-center bg-blue-500/30 text-blue-300 px-2 py-1 rounded-full text-sm">
-                      <span>{tag}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUploadTags(prev => prev.filter((_, i) => i !== index));
-                        }}
-                        className="ml-1 text-blue-300 hover:text-white"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+            {uploadError ? (
+              <>
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-red-300 font-medium">Ошибка загрузки</span>
+                  </div>
+                  <p className="text-red-200 text-sm">{uploadError}</p>
                 </div>
-              )}
-            </div>
 
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="w-full mb-4 p-3 bg-white/20 rounded-xl cursor-pointer hover:bg-white/30 transition-colors"
-            />
-            {uploading && (
-              <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
-                <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-              </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      setUploadError(null);
+                      setUploading(true);
+                      setUploadProgress(0);
+
+                      try {
+                        const file = failedFileData;
+                        const parentId = currentPath || null;
+
+                        const result = await uploadFileWithTags(token, file, parentId, (progress) => {
+                          setUploadProgress(progress);
+                        }, uploadTags, retrySessionId);
+
+                        if (result?.error) {
+                          setUploadError(result.error);
+                          return;
+                        }
+
+                        await fetchFiles();
+                        await loadStorageInfo();
+                        setSuccess("Файл успешно загружен");
+                        setTimeout(() => setSuccess(""), 3000);
+                        setShowUploadModal(false);
+                        setUploadTags([]);
+                        setUploadError(null);
+                        setFailedFileData(null);
+                        setRetrySessionId(null);
+                      } catch (err) {
+                        setUploadError(err.message);
+                      } finally {
+                        setUploading(false);
+                        setUploadProgress(0);
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-colors text-white"
+                  >
+                    Повторить
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      setUploadError(null);
+                      setFailedFileData(null);
+                      setRetrySessionId(null);
+                      setUploading(false);
+                      setUploadProgress(0);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-xl font-medium transition-colors text-white"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm text-white/70 mb-2">Теги (через запятую):</label>
+                  <input
+                    type="text"
+                    placeholder="работа, проект, важное"
+                    defaultValue={uploadTags.join(', ')}
+                    onBlur={(e) => {
+                      const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+                      setUploadTags(tags);
+                    }}
+                    className="w-full p-3 rounded-xl bg-white/20 mb-2 text-white"
+                  />
+                  <div className="text-xs text-white/50">
+                    Введите теги через запятую
+                  </div>
+
+                  {uploadTags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {uploadTags.map((tag, index) => (
+                        <div key={index} className="flex items-center bg-blue-500/30 text-blue-300 px-2 py-1 rounded-full text-sm">
+                          <span>{tag}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUploadTags(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            className="ml-1 text-blue-300 hover:text-white"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="w-full mb-4 p-3 bg-white/20 rounded-xl cursor-pointer hover:bg-white/30 transition-colors"
+                />
+                {uploading && (
+                  <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
+                    <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                )}
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      if (window.activeUploadAbortFlag) return;
+                      window.activeUploadAbortFlag = true;
+
+                      const resumeSessionId = sessionStorage.getItem('resumeSessionId');
+                      if (resumeSessionId) {
+                        abortChunkedUpload(token, resumeSessionId).catch(() => {});
+                      }
+
+                      sessionStorage.removeItem('resumeSessionId');
+                      sessionStorage.removeItem('resumeFileName');
+                      sessionStorage.removeItem('resumeFileSize');
+
+                      setUploading(false);
+                      setUploadProgress(0);
+                      setShowUploadModal(false);
+                      setUploadError(null);
+                      setFailedFileData(null);
+                      setRetrySessionId(null);
+
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+
+                      setTimeout(() => {
+                        window.activeUploadAbortFlag = false;
+                      }, 1000);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+                    disabled={uploading}
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors"
+                    disabled={uploading || storageLoading}
+                  >
+                    Загрузить
+                  </button>
+                </div>
+              </>
             )}
-            <div className="flex justify-end space-x-3">
-<button
-  onClick={async () => {
-    window.activeUploadAbortFlag = true;
-
-    const resumeSessionId = sessionStorage.getItem('resumeSessionId');
-    if (resumeSessionId) {
-      try {
-        await abortChunkedUpload(token, resumeSessionId);
-      } catch (err) {}
-    }
-
-    if (pendingSession) {
-      try {
-        await abortChunkedUpload(token, pendingSession);
-      } catch (err) {}
-    }
-
-    sessionStorage.removeItem('resumeSessionId');
-    sessionStorage.removeItem('resumeFileName');
-    sessionStorage.removeItem('resumeFileSize');
-
-    if (pendingFile?.name) {
-      removeUploadSession(pendingFile.name, currentPath);
-    }
-
-    setUploading(false);
-    setUploadProgress(0);
-    setPendingFile(null);
-    setPendingSession(null);
-    setPendingProgress(0);
-    setShowUploadModal(false);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-
-    setTimeout(() => {
-      window.activeUploadAbortFlag = false;
-    }, 1000);
-  }}
-  className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
->
-  Отмена
-</button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors"
-                disabled={uploading || storageLoading}
-              >
-                Загрузить
-              </button>
-            </div>
           </div>
         </div>
       )}

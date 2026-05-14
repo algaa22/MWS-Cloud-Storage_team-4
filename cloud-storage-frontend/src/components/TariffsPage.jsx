@@ -25,7 +25,7 @@ export default function TariffsPage() {
       paidStorage: 0,
       maxFileSize: '100 МБ',
       retentionDays: 7,
-      shareType: 'Публичные'
+      shareType: 'Публичный'
     },
     {
       id: 'BASIC',
@@ -35,7 +35,7 @@ export default function TariffsPage() {
       paidStorage: 10 * 1024 * 1024 * 1024,
       maxFileSize: '500 МБ',
       retentionDays: 14,
-      shareType: 'Публичные'
+      shareType: 'Публичный'
     },
     {
       id: 'WORK',
@@ -45,7 +45,7 @@ export default function TariffsPage() {
       paidStorage: 50 * 1024 * 1024 * 1024,
       maxFileSize: '2 ГБ',
       retentionDays: 30,
-      shareType: 'Пароль'
+      shareType: 'С защитой паролем'
     },
     {
       id: 'PREMIUM',
@@ -55,7 +55,7 @@ export default function TariffsPage() {
       paidStorage: 100 * 1024 * 1024 * 1024,
       maxFileSize: 'Без лимита',
       retentionDays: 60,
-      shareType: 'Пароль'
+      shareType: 'С защитой паролем'
     }
   ];
 
@@ -336,19 +336,19 @@ export default function TariffsPage() {
                   <svg className="w-5 h-5 mr-3 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>Макс. файл: {tariff.maxFileSize}</span>
+                  <span>Макс. размер файла: {tariff.maxFileSize}</span>
                 </li>
                 <li className="flex items-center text-white/80">
                   <svg className="w-5 h-5 mr-3 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>Корзина: {tariff.retentionDays} дней</span>
+                  <span>Срок хранения в корзине: {tariff.retentionDays} дней</span>
                 </li>
                 <li className="flex items-center text-white/80">
                   <svg className="w-5 h-5 mr-3 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>Ссылки: {tariff.shareType}</span>
+                  <span>Доступ по ссылке: {tariff.shareType}</span>
                 </li>
               </ul>
 

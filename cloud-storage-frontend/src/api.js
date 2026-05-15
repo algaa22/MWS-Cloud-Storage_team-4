@@ -1109,7 +1109,7 @@ export const getFileShares = async (token, fileId) => {
   return data;
 };
 
-export const uploadFileWithTags = async (token, file, parentId = null, onProgress, tags = []) => {
+export const uploadFileWithTags = async (token, file, parentId = null, onProgress, tags = [], existingSessionId = null) => {
   console.log("=== UPLOAD FILE WITH TAGS ===");
   console.log("Tags:", tags);
 
@@ -1130,7 +1130,7 @@ export const uploadFileWithTags = async (token, file, parentId = null, onProgres
 
   if (useChunkedUpload) {
     console.log("Using chunked upload with tags");
-    return await uploadFileChunkedWithTags(token, file, parentId, onProgress, tagsString);
+     return await uploadFileChunkedWithTags(token, file, parentId, onProgress, tagsString, existingSessionId);
   } else {
     console.log("Using simple upload with tags");
     return await uploadFileSimpleWithTags(token, file, parentId, onProgress, tagsString);
@@ -1194,23 +1194,32 @@ const uploadFileSimpleWithTags = async (token, file, parentId, onProgress, tagsS
   }
 };
 
-function decodeBitmask(bitmask, totalParts) {
-  if (!bitmask) return new Set();
+function decodeBitmask(base64Bitmask, totalParts) {
+  if (!base64Bitmask) return null;
 
-  const uploaded = new Set();
+  try {
+    const binaryString = atob(base64Bitmask);
+    const result = [];
 
-  if (typeof bitmask === 'string') {
-    for (let i = 0; i < bitmask.length && i < totalParts; i++) {
-      if (bitmask[i] === '1') {
-        uploaded.add(i + 1);
+    for (let i = 0; i < binaryString.length; i++) {
+      const byte = binaryString.charCodeAt(i);
+      for (let bit = 0; bit < 8; bit++) {
+        const partIndex = i * 8 + bit;
+        if (partIndex >= totalParts) break;
+
+        // 1 означает, что бит УСТАНОВЛЕН в маске "отсутствующих"
+        const isMissing = (byte & (1 << bit)) !== 0;
+        result.push(isMissing ? '0' : '1');
       }
     }
-  }
-  else if (Array.isArray(bitmask)) {
-    bitmask.forEach(part => uploaded.add(part));
-  }
 
-  return uploaded;
+    const bitmaskString = result.join('');
+    console.log("Decoded Missing Mask (1=MISSING, 0=OK):", bitmaskString);
+    return bitmaskString;
+  } catch (e) {
+    console.error("Failed to decode bitmask:", e);
+    return null;
+  }
 }
 
 function getUploadedPartsFromMissingBitmask(missingPartsBitmask, totalParts) {
@@ -1259,6 +1268,16 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
   window.activeUploadAbortFlag = false;
   const totalParts = Math.ceil(file.size / CHUNK_SIZE);
   let sessionId = existingSessionId;
+  let startPart = 1;
+
+  if (sessionId) {
+    const savedSession = getSavedUploadSession(file.name, parentId);
+    if (savedSession && savedSession.fileSize !== file.size) {
+      console.warn(`File mismatch! Saved size: ${savedSession.fileSize}, Current size: ${file.size}. Starting new upload.`);
+      removeUploadSession(file.name, parentId);
+      sessionId = null;
+    }
+  }
 
   if (!sessionId) {
     let url = `${BASE}/files/upload/chunked/start?name=${encodeURIComponent(file.name)}`;
@@ -1290,10 +1309,42 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
     sessionId = startData.sessionId;
     saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
     console.log("✅ Session started:", sessionId);
+  }  else {
+    try {
+      const status = await getUploadStatus(token, sessionId);
+      console.log("STATUS FROM SERVER:", status);
+
+      if (status && status.missingPartsBitmask) {
+        const bitmaskString = decodeBitmask(status.missingPartsBitmask, totalParts);
+        console.log("Decoded bitmask string:", bitmaskString);
+
+        if (bitmaskString) {
+          const firstMissing = bitmaskString.indexOf('1');
+          if (firstMissing !== -1) {
+            startPart = firstMissing + 1;
+            console.log(`Первая отсутствующая часть: ${startPart}`);
+          } else {
+            console.log("All parts already uploaded");
+            return { status: 'COMPLETED' };
+          }
+        }
+      } else if (status && status.currentParts) {
+        startPart = status.currentParts + 1;
+      }
+
+      console.log(`RESUMING FROM PART: ${startPart}`);
+    } catch (err) {
+      console.error("Status check failed, defaulting to 1:", err);
+      startPart = 1;
+    }
   }
 
-  // ========== ВОЗВРАЩАЕМ ЦИКЛ ЗАГРУЗКИ ЧАСТЕЙ ==========
   const uploadPart = async (partNumber) => {
+    if (existingSessionId && partNumber === startPart) {
+      console.log("Waiting 1 second before retrying first part...");
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
     const start = (partNumber - 1) * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const chunk = file.slice(start, end);
@@ -1304,14 +1355,12 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
       console.log(`Part ${partNumber} checksum: ${partChecksum.substring(0, 16)}...`);
     } catch (error) {
       console.warn(`Failed to calculate checksum for part ${partNumber}:`, error);
-      throw new Error(`Checksum calculation failed for part ${partNumber}`);
     }
 
     console.log(`📤 Uploading part ${partNumber}/${totalParts}, size: ${chunk.size}`);
 
     const partUrl = `${BASE}/files/upload/chunked/part?sessionId=${sessionId}&part=${partNumber}`;
 
-    let lastError;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       if (window.activeUploadAbortFlag) {
         throw new Error('Upload cancelled');
@@ -1325,7 +1374,7 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
             "Content-Type": "application/octet-stream",
             "Content-SHA256": partChecksum
           },
-          body: chunk  // ← НЕ FormData, а просто chunk
+          body: chunk
         });
 
         const responseText = await response.text();
@@ -1344,26 +1393,25 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
         }
         return true;
       } catch (error) {
-        lastError = error;
         console.error(`Part ${partNumber} attempt ${attempt} failed:`, error.message);
         if (attempt < MAX_RETRIES) {
           const waitTime = RETRY_DELAY * Math.pow(2, attempt - 1);
           await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          throw error;
         }
       }
     }
-    throw lastError;
   };
 
-  // Загружаем все части
-  for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+  // Загружаем части начиная с startPart
+  for (let partNumber = startPart; partNumber <= totalParts; partNumber++) {
     if (window.activeUploadAbortFlag) {
       try { await abortChunkedUpload(token, sessionId); } catch(e) {}
       throw new Error('Upload cancelled');
     }
     await uploadPart(partNumber);
   }
-  // ========== КОНЕЦ ЦИКЛА ЗАГРУЗКИ ==========
 
   console.log("Completing upload...");
 
@@ -1400,7 +1448,7 @@ const uploadFileChunkedWithTags = async (token, file, parentId, onProgress, tags
       console.error(`Complete attempt ${attempt} failed:`, error.message);
       if (attempt >= MAX_COMPLETE_RETRIES) {
         saveUploadSession(file.name, parentId, sessionId, totalParts, file.size);
-        throw error;
+        return { error: error.message, sessionId };
       }
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
     }

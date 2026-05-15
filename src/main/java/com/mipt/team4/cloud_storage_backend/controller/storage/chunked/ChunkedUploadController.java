@@ -33,6 +33,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.Attribute;
+import io.netty.util.ReferenceCountUtil;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,8 +71,7 @@ public class ChunkedUploadController {
 
   public void startPartUploading(ChannelHandlerContext ctx, ChunkedUploadPartRequest request) {
     if (uploadService.isPartAlreadyUploaded(request)) {
-      ResponseUtils.send(ctx, new SuccessResponse("Part already uploaded"))
-          .addListener(ChannelFutureListener.CLOSE);
+      ResponseUtils.send(ctx, new SuccessResponse("Part already uploaded"));
       return;
     }
 
@@ -84,6 +84,7 @@ public class ChunkedUploadController {
     ChunkedUploadPartContext currentPart = getPartAttribute(ctx).get();
 
     if (currentPart == null) {
+      ReferenceCountUtil.release(content);
       throw new MissingUploadContextException();
     }
 

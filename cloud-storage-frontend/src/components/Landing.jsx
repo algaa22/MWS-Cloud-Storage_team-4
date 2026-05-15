@@ -6,7 +6,7 @@ export default function Landing() {
       <div className="min-h-screen flex flex-col items-center justify-center text-white text-center p-6">
         <h1 className="text-5xl font-bold mb-4">Облачное хранилище</h1>
         <p className="text-xl opacity-90 mb-8">
-          Храни и управляй своими файлами легко и удобно.
+          Храни файлы и управляй ими легко и удобно.
         </p>
 
         <div className="flex gap-4">

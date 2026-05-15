@@ -44,11 +44,14 @@ public class GlobalErrorHandler extends ChannelDuplexHandler {
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     logError(ctx, cause);
 
-    if (ctx.channel().isActive() && ctx.channel().isOpen()) {
+    if (cause instanceof IllegalStateException && cause.getMessage().contains("Stream")) {
+      log.warn("Stream error during write, closing channel: {}", cause.getMessage());
+    } else if (ctx.channel().isActive() && ctx.channel().isOpen()) {
       sendRawInternalErrorAndClose(ctx);
-    } else {
-      ctx.close();
+      return;
     }
+
+    ctx.close();
   }
 
   private void logError(ChannelHandlerContext ctx, Throwable cause) {

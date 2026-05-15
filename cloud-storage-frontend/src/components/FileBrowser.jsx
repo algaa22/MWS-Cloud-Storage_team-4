@@ -98,6 +98,7 @@ export default function FileBrowser() {
   const [uploadError, setUploadError] = useState(null);
   const [failedFileData, setFailedFileData] = useState(null);
   const [retrySessionId, setRetrySessionId] = useState(null);
+  const [currentFile, setCurrentFile] = useState(null);
   const [pagination, setPagination] = useState({
     page: 0,
     size: 8,
@@ -1250,10 +1251,109 @@ const refreshUserInfo = async () => {
     }
   };
 
+   const handleRetryUpload = async () => {
+     if (!currentFile) {
+       setUploadError("Файл потерян, выберите его заново");
+       return;
+     }
+
+     const parentId = currentPath || null;
+     const savedSession = getSavedUploadSession(currentFile.name, parentId);
+
+     // Проверка: совпадает ли размер файла с сохраненным?
+     if (savedSession && savedSession.fileSize !== currentFile.size) {
+       console.warn("File size mismatch! Saved:", savedSession.fileSize, "Current:", currentFile.size);
+       // Удаляем старую сессию, так как файл другой
+       removeUploadSession(currentFile.name, parentId);
+       setUploadError("Файл был изменен. Начинаем загрузку заново.");
+       // Запускаем новую загрузку без sessionId
+       setUploading(true);
+       setUploadProgress(0);
+       setUploadError(null);
+
+       try {
+         const result = await uploadFileWithTags(
+           token,
+           currentFile,
+           parentId,
+           (progress) => setUploadProgress(progress),
+           uploadTags,
+           null // без sessionId
+         );
+
+         if (result?.error) throw new Error(result.error);
+
+         await fetchFiles();
+         await loadStorageInfo();
+         setSuccess("Файл успешно загружен");
+         setTimeout(() => setSuccess(""), 3000);
+         setShowUploadModal(false);
+         setUploadTags([]);
+         setUploadError(null);
+         setCurrentFile(null);
+         setFailedFileData(null);
+         setRetrySessionId(null);
+       } catch (err) {
+         const msg = err.message === "Failed to fetch"
+           ? "Сеть недоступна. Попробуйте позже."
+           : err.message;
+         setUploadError(msg);
+         setFailedFileData(currentFile);
+       } finally {
+         setUploading(false);
+         setUploadProgress(0);
+       }
+       return;
+     }
+
+     // Если проверка пройдена, продолжаем докачку
+     console.log("Retry with session:", savedSession?.sessionId);
+     console.log("Current file:", currentFile?.name);
+
+     setUploading(true);
+     setUploadProgress(0);
+     setUploadError(null);
+
+     try {
+       const result = await uploadFileWithTags(
+         token,
+         currentFile,
+         parentId,
+         (progress) => setUploadProgress(progress),
+         uploadTags,
+         savedSession?.sessionId
+       );
+
+       if (result?.error) throw new Error(result.error);
+
+       await fetchFiles();
+       await loadStorageInfo();
+       setSuccess("Файл успешно загружен");
+       setTimeout(() => setSuccess(""), 3000);
+       setShowUploadModal(false);
+       setUploadTags([]);
+       setUploadError(null);
+       setCurrentFile(null);
+       setFailedFileData(null);
+       setRetrySessionId(null);
+     } catch (err) {
+       const msg = err.message === "Failed to fetch"
+         ? "Сеть недоступна. Попробуйте позже."
+         : err.message;
+       setUploadError(msg);
+       setFailedFileData(currentFile);
+       setRetrySessionId(null);
+     } finally {
+       setUploading(false);
+       setUploadProgress(0);
+     }
+   };
+
   const handleFileUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setCurrentFile(file);
     setUploading(true);
     setUploadProgress(0);
     setUploadError(null);
@@ -1268,10 +1368,14 @@ const refreshUserInfo = async () => {
 
       if (result && result.error) {
         console.error("Upload failed:", result.error);
-        setUploadError(result.error);
+        const msg = result.error.message === "Failed to fetch"
+                 ? "Сеть недоступна. Попробуйте позже."
+                 : result.error.message;
+        setUploadError(msg);
         setFailedFileData(file);
         setRetrySessionId(result.sessionId);
         setUploading(false);
+        // НЕ ОЧИЩАЙ failedFileData и retrySessionId здесь
         return;
       }
 
@@ -1285,7 +1389,10 @@ const refreshUserInfo = async () => {
       setFailedFileData(null);
       setRetrySessionId(null);
     } catch (err) {
-      setUploadError(err.message);
+      const msg = err.message === "Failed to fetch"
+               ? "Сеть недоступна. Попробуйте позже."
+               : err.message;
+      setUploadError(msg);
       setFailedFileData(file);
     } finally {
       setUploading(false);
@@ -2196,57 +2303,26 @@ const closePreviewModal = () => {
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Загрузить файл</h3>
 
             {uploadError ? (
+              // СОСТОЯНИЕ ОШИБКИ
               <>
-                <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
                     <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="text-red-300 font-medium">Ошибка загрузки</span>
                   </div>
-                  <p className="text-red-200 text-sm">{uploadError}</p>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Ошибка загрузки</h3>
+                    <p className="text-red-300 text-sm">{uploadError}</p>
+                  </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 mt-6">
                   <button
-                    onClick={async () => {
-                      setUploadError(null);
-                      setUploading(true);
-                      setUploadProgress(0);
-
-                      try {
-                        const file = failedFileData;
-                        const parentId = currentPath || null;
-
-                        const result = await uploadFileWithTags(token, file, parentId, (progress) => {
-                          setUploadProgress(progress);
-                        }, uploadTags, retrySessionId);
-
-                        if (result?.error) {
-                          setUploadError(result.error);
-                          return;
-                        }
-
-                        await fetchFiles();
-                        await loadStorageInfo();
-                        setSuccess("Файл успешно загружен");
-                        setTimeout(() => setSuccess(""), 3000);
-                        setShowUploadModal(false);
-                        setUploadTags([]);
-                        setUploadError(null);
-                        setFailedFileData(null);
-                        setRetrySessionId(null);
-                      } catch (err) {
-                        setUploadError(err.message);
-                      } finally {
-                        setUploading(false);
-                        setUploadProgress(0);
-                      }
-                    }}
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-colors text-white"
+                    onClick={handleRetryUpload}
+                    className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-colors text-white"
                   >
                     Повторить
                   </button>
@@ -2258,64 +2334,45 @@ const closePreviewModal = () => {
                       setRetrySessionId(null);
                       setUploading(false);
                       setUploadProgress(0);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
-                    className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-xl font-medium transition-colors text-white"
+                    className="flex-1 px-4 py-2.5 bg-gray-600 hover:bg-gray-700 rounded-xl font-medium transition-colors text-white"
                   >
                     Отмена
                   </button>
                 </div>
               </>
-            ) : (
+            ) : uploading ? (
+              // СОСТОЯНИЕ ПРОЦЕССА ЗАГРУЗКИ
               <>
-                <div className="mb-4">
-                  <label className="block text-sm text-white/70 mb-2">Теги (через запятую):</label>
-                  <input
-                    type="text"
-                    placeholder="работа, проект, важное"
-                    defaultValue={uploadTags.join(', ')}
-                    onBlur={(e) => {
-                      const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-                      setUploadTags(tags);
-                    }}
-                    className="w-full p-3 rounded-xl bg-white/20 mb-2 text-white"
-                  />
-                  <div className="text-xs text-white/50">
-                    Введите теги через запятую
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-white mb-4">Загружаем...</h3>
+
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center text-2xl">
+                      📄
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-medium truncate">
+                        {currentFile?.name || "Файл"}
+                      </p>
+                      <p className="text-white/50 text-xs">
+                        {formatFileSize(currentFile?.size || 0)}
+                      </p>
+                    </div>
                   </div>
 
-                  {uploadTags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {uploadTags.map((tag, index) => (
-                        <div key={index} className="flex items-center bg-blue-500/30 text-blue-300 px-2 py-1 rounded-full text-sm">
-                          <span>{tag}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setUploadTags(prev => prev.filter((_, i) => i !== index));
-                            }}
-                            className="ml-1 text-blue-300 hover:text-white"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                  <div className="mb-2">
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
                     </div>
-                  )}
+                  </div>
+                  <p className="text-white/70 text-sm text-right">{uploadProgress}%</p>
                 </div>
 
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  className="w-full mb-4 p-3 bg-white/20 rounded-xl cursor-pointer hover:bg-white/30 transition-colors"
-                />
-                {uploading && (
-                  <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
-                    <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                  </div>
-                )}
-                <div className="flex justify-end space-x-3">
+                <div className="flex justify-end">
                   <button
                     onClick={() => {
                       if (window.activeUploadAbortFlag) return;
@@ -2337,25 +2394,67 @@ const closePreviewModal = () => {
                       setFailedFileData(null);
                       setRetrySessionId(null);
 
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                      }
-
                       setTimeout(() => {
                         window.activeUploadAbortFlag = false;
                       }, 1000);
                     }}
-                    className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+                    className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-white text-sm"
                     disabled={uploading}
                   >
                     Отмена
                   </button>
+                </div>
+              </>
+            ) : (
+              // СОСТОЯНИЕ ВЫБОРА ФАЙЛА
+              <>
+                <h3 className="text-lg font-bold text-white mb-5">Загрузка файла</h3>
+
+                <div className="mb-5">
+                  <label className="block text-sm text-white/70 mb-2">Теги (через запятую)</label>
+                  <input
+                    type="text"
+                    placeholder="работа, проект, важное"
+                    defaultValue={uploadTags.join(', ')}
+                    onBlur={(e) => {
+                      const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+                      setUploadTags(tags);
+                    }}
+                    className="w-full p-3 rounded-xl bg-gray-700/50 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all"
+                  />
+
+                  {uploadTags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {uploadTags.map((tag, index) => (
+                        <div key={index} className="flex items-center gap-1 bg-blue-500/30 text-blue-300 px-2 py-1 rounded-full text-xs">
+                          <span>{tag}</span>
+                          <button
+                            type="button"
+                            onClick={() => setUploadTags(prev => prev.filter((_, i) => i !== index))}
+                            className="text-blue-300 hover:text-white"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors"
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors text-white font-medium"
                     disabled={uploading || storageLoading}
                   >
-                    Загрузить
+                    Выбрать файл
+                  </button>
+                  <button
+                    onClick={() => setShowUploadModal(false)}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-gray-600 hover:bg-gray-700 transition-colors text-white font-medium"
+                  >
+                    Отмена
                   </button>
                 </div>
               </>

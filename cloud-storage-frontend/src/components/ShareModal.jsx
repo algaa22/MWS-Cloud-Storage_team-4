@@ -240,7 +240,7 @@ export default function ShareModal({ file, token, onClose, onShareCreated }) {
 
         <div className="mb-4">
           <label className="block text-sm text-white/70 mb-2">
-            Лимит скачиваний (оставьте пустым для безлимита):
+            Лимит скачиваний:
           </label>
           <input
             type="number"

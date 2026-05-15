@@ -174,7 +174,7 @@ services:
       - cloud-network
 
   clamav:
-     image: clamav/clamav:1.4.2_base
+     image: clamav/clamav:latest
      container_name: clamav
      expose:
        - "3310"

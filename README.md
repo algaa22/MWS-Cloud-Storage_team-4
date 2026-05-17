@@ -23,19 +23,29 @@ cd MWS-Cloud-Storage_team-4
 ```env
 # Database
 DB_URL=jdbc:postgresql://postgres:5432/cloud_storage_db
+DB_USERNAME=postgres
+DB_NAME=cloud_storage_db
 DB_PASSWORD=super_secret_password_123
 
 # Storage (SeaweedFS)
 S3_URL=https://cloud-storage-seaweed:8333
 S3_ACCESS_KEY=seaweedfs
 S3_SECRET_KEY=seaweedfs
+S3_REGION=eu-central-1
+S3_BUCKET_NAME=user-data
+
+# JWT
+JWT_SECRET_KEY=d8f4a9c3e7b2f6a1d9e4c8b3f7a2e5d1f9c6b4e8a3d7f2c9e1b5f8d3a6c9e4b7
+
+# Notifications Service
+NOTIFICATION_MAIL=your_email@gmail.com
+NOTIFICATION_PASSWORD=your_password
 
 # RabbitMQ
+RABBITMQ_HOST=cloud-storage-mq
+RABBITMQ_PORT=5672
+RABBITMQ_USER=guest
 RABBITMQ_PASS=guest
-
-# Notifications
-NOTIFICATION_MAIL=your_email@example.com
-NOTIFICATION_PASSWORD=your_app_password
 
 ```
 
@@ -50,15 +60,19 @@ docker-compose up --build -d
 
 ## 🛠 Техническая архитектура
 
-### 🧩 Высокопроизводительный маппинг (Netty + Virtual Threads)
+### 🚀 Архитектура на Virtual Threads (Project Loom)
+Вместо классической реактивщины мы используем виртуальные потоки. Это позволяет писать императивный, легко читаемый код, который при этом масштабируется так же эффективно, как асинхронный. Все блокирующие операции (запросы к PostgreSQL через JPA, стриминг данных в SeaweedFS) выполняются в легких потоках, не блокируя системные ресурсы Netty.
 
-Мы реализовали собственный стек обработки запросов поверх Netty, адаптированный под работу с **виртуальными потоками**, что позволило избежать тяжеловесного Spring MVC и достичь минимального оверхеда на Data Plane.
+### 🧩 Инфраструктура маппинга
+Чтобы связать сетевое ядро Netty с бизнес-логикой на виртуальных потоках, мы разработали собственную систему декларативного маппинга. 
 
 * **RequestToDtoDecoder & DtoAssembler:** Обеспечивают автоматическую сборку DTO из `HttpRequest`. Поддерживают внедрение `@UserId` из атрибутов канала, извлечение `@QueryParam` и маппинг `@RequestHeader`.
 * **Zero-Reflection Invoke:** `RouteRegistry` и `DtoMetadataCache` сканируют и кэшируют метаданные рекордов (DTO) при старте. Это позволяет находить обработчик и инстанцировать объекты без использования рефлексии на каждый запрос.
 * **DtoToResponseEncoder:** Выполняет обратную трансформацию Java-рекордов в `FullHttpResponse`.
 * **Авто-заголовки:** Поля DTO автоматически конвертируются в HTTP-заголовки (например, `fileSize` $\to$ `X-File-Size`).
-* **Интеграция статусов:** Поддержка аннотации `@ResponseStatus` для декларативного управления кодами ответа.
+* **Декларативная конфигурация:** Логика обработки запросов и ответов полностью управляется через кастомный набор аннотаций в пакете `netty.mapping.annotations`:
+  * **Request:** `@RequestMapping`, `@UserId`, `@RequestBody`, `@RequestBodyParam`, `@QueryParam`, `@RequestHeader`, `@NestedDto`.
+  * **Response:** `@ResponseStatus`, `@ResponseHeader`, `@ResponseBodyParam`.
 
 
 
@@ -66,7 +80,7 @@ docker-compose up --build -d
 
 Жизненный цикл любого файла в системе жестко контролируется через состояния в PostgreSQL, что гарантирует консистентность в распределенной среде:
 
-* **Система статусов:**
+**Система статусов:**
 * **PENDING:** Начало операции, файл заблокирован для других процессов записи.
 * **READY:** Файл успешно прошел все проверки и доступен для чтения.
 * **ERROR:** Временный сбой, допускающий повторную попытку.
@@ -76,7 +90,7 @@ docker-compose up --build -d
 
 * **Отказоустойчивость (Failsafe):** Логика ретраев инкапсулирована в `StorageRepositoryWrapper`. Для `UPLOAD` и `CHANGE_METADATA` применяется **Client-side retry**, а для `DELETE` — автоматический **Server-side retry** через фоновые задачи.
 * **Resumable Upload:** Механизм докачки реализован в виртуальных потоках. При обрыве сессии сервер сохраняет состояние и позволяет клиенту продолжить загрузку с $n$-го чанка, используя `sessionId` и инкрементальное вычисление хеша SHA-256.
-* **Background Cleanup:** Шедулер очистки автоматически обрабатывает "зависшие" в `PENDING/ERROR` операции, выполняя либо откат (для загрузок), либо принудительное завершение (для удалений).
+* **Background Cleanup:** Шедулер очистки автоматически обрабатывает "зависшие" в `PENDING/ERROR/FATAL` операции, выполняя либо откат (для загрузок), либо принудительное завершение (для удалений).
 
 ---
 
@@ -133,14 +147,14 @@ docker-compose up --build -d
 
 ### 3. Бизнес-слой (Critical Path & FSM)
 
-| **Метрика** | **Тип** | **Описание** |
-| --- | --- | --- |
-| `storage.operation.duration` | Timer | Чистое время бизнес-операций (UPLOAD, DOWNLOAD, DELETE). |
-| `storage.retry.total` | Counter | Количество ретраев **Failsafe**. Рост = нестабильность S3/сети. |
+| **Метрика** | **Тип** | **Описание**                                                      |
+| --- | --- |-------------------------------------------------------------------|
+| `storage.operation.duration` | Timer | Чистое время бизнес-операций (UPLOAD, DOWNLOAD, DELETE).          |
+| `storage.retry.total` | Counter | Количество ретраев. Рост = нестабильность S3/сети.                |
 | `storage.files.status.count` | Gauge | Количественный срез FSM: `PENDING`, `READY`, `FATAL`, `DANGEROUS`. |
-| `storage.payload.size.bytes` | Distribution | Гистограмма размеров файлов для оптимизации чанков. |
-| `storage.upload.chunks.active` | Gauge | Активные сессии многопоточной загрузки (Multipart). |
-| `storage.antivirus.scan.count` | Counter | Результаты сканирования: `CLEAN`, `INFECTED`, `ERROR`. |
+| `storage.payload.size.bytes` | Distribution | Гистограмма размеров файлов для оптимизации чанков.               |
+| `storage.upload.chunks.active` | Gauge | Активные сессии многопоточной загрузки (Multipart).               |
+| `storage.antivirus.scan.count` | Counter | Результаты сканирования: `CLEAN`, `INFECTED`, `ERROR`.            |
 
 ---
 

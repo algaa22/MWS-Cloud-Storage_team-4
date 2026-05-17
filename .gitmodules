@@ -1,0 +1,6 @@
+[submodule "src/main/java/com/mipt/team4/components/antivirus"]
+	path = src/main/java/com/mipt/team4/components/antivirus
+	url = https://github.com/ex1dee/MWS_Cloud_Storage_antivirus
+[submodule "src/main/java/com/mipt/team4/components/notifications"]
+	path = src/main/java/com/mipt/team4/components/notifications
+	url = https://github.com/algaa22/MWS-Cloud-Storage_notification

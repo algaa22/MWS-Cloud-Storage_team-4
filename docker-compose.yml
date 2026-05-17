@@ -50,9 +50,9 @@ services:
       - AWS_S3_V4_SIGNATURE_ENABLED=true
 
   antivirus-service:
-    build: ../MWS_Cloud_Storage_antivirus
+    build: ./components/antivirus
     env_file:
-      - ../MWS_Cloud_Storage_antivirus/.env
+      - ./components/antivirus/.env
     container_name: antivirus-service
     ports:
       - "8083:8083"
@@ -75,7 +75,7 @@ services:
       - ./ssl:/ssl:ro
 
   notification-service:
-    build: ../MWS-Cloud-Storage_notification
+    build: ./components/notifications
     container_name: notification-service
     ports:
       - "8082:8082"

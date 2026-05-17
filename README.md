@@ -1,266 +1,261 @@
 # MWS Cloud Storage ☁️
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**MWS Cloud Storage** — высокопроизводительное распределенное хранилище, построенное на кастомном Netty-ядре. Проект реализует сложную логику управления состояниями файлов, эшелонированную проверку безопасности и отказоустойчивую чанковую загрузку.
 
-**MWS Cloud Storage** — это полнофункциональное облачное хранилище файлов, разработанное на Java.
-Проект представляет собой альтернативу таким сервисам, как Google Drive или Яндекс.Диск,
-предлагающее разработчикам простой API, а пользователям — гибкую организацию файлов через
-теги и надёжное хранилище.
+## 🚀 Быстрый старт
 
-![Главный интерфейс MWS Cloud Storage](screenshots/main-interface.png)
-*Главная страница веб-интерфейса*
+### 1. Подготовка репозитория
 
----
-
-## 🚀 Установка и запуск
-
-Проект состоит из двух частей: **backend** (Java) и **frontend** (React)
-
-1. **Клонируйте репозиторий**
-
-``` bash
-git clone https://github.com/algaa22/MWS-Cloud-Storage_team-4.git
-cd MWS-Cloud-Storage_team-4
-```
-
-2. **Создайте файл с переменными окружения `.env`**
-
-Для запуска через `docker-compose`: в корневой папке проекта создайте `.env`.
-
-Например:
+Склонируйте основной проект и все зависимые микросервисы (антивирус и уведомления) одной командой:
 
 ```bash
+git clone --recursive https://github.com/algaa22/MWS-Cloud-Storage_team-4.git
+cd MWS-Cloud-Storage_team-4
+
+```
+
+### 2. Конфигурация окружения
+
+1. **SSL:** Поместите `server.crt`, `server.key`, `server.p12` в `src/main/resources/ssl`.
+2. **S3:** Создайте `/etc/seaweedfs/s3.json` (см. `s3.json.example`).
+3. **Environment:** Создайте `.env` в корне:
+
+```env
+# Database
 DB_URL=jdbc:postgresql://postgres:5432/cloud_storage_db
-DB_USERNAME=postgres
 DB_PASSWORD=super_secret_password_123
 
-POSTGRES_DB=cloud_storage_db
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=super_secret_password_123
+# Storage (SeaweedFS)
+S3_URL=https://cloud-storage-seaweed:8333
+S3_ACCESS_KEY=seaweedfs
+S3_SECRET_KEY=seaweedfs
 
-S3_URL=http://seaweedfs:8333
-S3_ACCESS_KEY=admin_user
-S3_SECRET_KEY=super_secret_password_123
-S3_REGION=eu-central-1
-S3_BUCKET_NAME=user-data
+# RabbitMQ
+RABBITMQ_PASS=guest
 
-JWT_SECRET_KEY=d8f4a9c3e7b2f6a1d9e4c8b3f7a2e5d1f9c6b4e8a3d7f2c9e1b5f8d3a6c9e4b7
+# Notifications
+NOTIFICATION_MAIL=your_email@example.com
+NOTIFICATION_PASSWORD=your_app_password
+
 ```
 
-3. **Настройте конфигурационный файл `src/main/resources/config.yml`**
-4. **Соберите docker-образ**
-
-В корневой папке проекта запустите:
-
-``` bash
-docker build -t cloud-storage-app .
-```
-
-5. **Запустите всю инфраструктуру через `docker-compose`**
+### 3. Запуск
 
 ```bash
-docker-compose up -d
-```
-
-6. (Дополнительно) **Запустите `frontend` вручную** (для разработки)
-
-В папке `cloud-storage-frontend` введите:
-
-``` bash
-npm run dev
-```
-
----
-
-## 🔐 Настройка HTTPS
-
-Если вы планируете запустить сервер на HTTPS, то перед сборкой добавьте ваши SSL-сертификаты `server.crt`, `server.csr`,
-`server.key`, `server.p12` в папке проекта `src/main/resources/ssl`
-
----
-
-## ✨ Возможности
-
-#### 📁 Работа с файлами
-
-- **Загрузка и скачивание любого размера** — система позволяет использовать чанковую передачу для файлов больших
-  размеров
-
-- **Полноценная файловая система** — создание, перемещение, переименование и удаление папок и файлов через удобный
-  веб-интерфейс
-
-- **Гибкая организация** — поддержка системы тегов для категоризации файлов помимо классической структуры папок
-
-- **Контроль доступа** — настраиваемая видимость файлов (приватные, доступные по ссылке, публичные)
-
-*Техническая деталь:* для соответствия стандартам S3-совместимых хранилищ чанковая передача используется для файлов с
-размером от `5 МБ`
-
-#### 🔐 Безопасность и учётные записи
-
-- **Полный цикл аутентификации** — регистрация, вход и выход
-
-- **Надёжные сессии** — JWT-токены с автоматической ротацией через refresh-токены
-
-- **Управление профилем** — изменение имени пользователя и пароля
-
-**🌐 Веб-интерфейс**
-
-- **Удобный веб-клиент** — интуитивный интерфейс для управления файлами без необходимости использовать API напрямую
-
----
-
-## 🏗️ Архитектура
-
-Система состоит из **независимых модулей**, каждый из которых отвечает за свою задачу. Пользователь может работать как
-через **веб-интерфейс**, так и напрямую через **API**.
-
-```mermaid
-graph TD
-    A[Веб-интерфейс React] --> B[REST API]
-    C[Сторонние клиенты] --> B
-    B --> D[Backend на Java]
-    D --> E[(PostgreSQL<br/>Метаданные)]
-    D --> F[(S3<br/>Файлы-объекты)]
-```
-
-#### Ключевые архитектурные решения:
-
-1. **Разделение логики и данных**
-
-    - **PostgreSQL** хранит всю **логическую структуру**: пользователей, виртуальные пути файлов, теги, права доступа
-
-    - **SeaweedFS (S3-совместимое)** хранит **сами файлы** как объекты. Это обеспечивает отказоустойчивость и эффективность
-      для
-      больших бинарных данных
-
-2. **Двухуровневая система путей**
-
-    - **Для пользователя**: привычные пути (`documents/report.pdf`)
-
-    - **Для системы**: в SeaweedFS файл хранится по ключу`user_id/file_id`, что идеально соответствует объектной модели S3 и
-      обеспечивает высокую производительность
-
-3. **Единая точка входа**
-
-    - Весь доступ к системе происходит **только через REST API** нашего backend
-
-4. **Контейнеризация**
-
-    - Каждый компонент (Backend, PostgreSQL, SeaweedFS) работает в **отдельном Docker-контейнере**. Это гарантирует
-      идентичность окружений на всех машинах и упрощает развёртывание одной командой (`docker-compose up`)
-
----
-
-## 🛠 Технологии
-
-![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
-![Netty](https://img.shields.io/badge/Netty-6DB33F?style=for-the-badge&logo=netty&logoColor=white)
-![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![SeaweedFS](https://img.shields.io/badge/SeaweedFS-41B883?style=for-the-badge&logo=files&logoColor=white)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
-![CSS](https://img.shields.io/badge/CSS-1572B6?style=for-the-badge&logo=css&logoColor=white)
-
----
-
-## 📖 Документация API
-
-Все запросы к API начинаются с префикса `/api`. Почти все операции (кроме register/login/refresh) требуют заголовок:
-`X-Auth-Token: <access_token>`
-
-Опциональные параметры или заголовки обозначены через `*` 
-
-#### 1. Пользователи и Аутентификация (`/api/users`)
-
-| Endpoint | Method | Headers                                              | Description |
-| --- | --- |------------------------------------------------------| --- |
-| `/auth/register` | `POST` | `X-Auth-Email`, `X-Auth-Password`, `X-Auth-Username` | Регистрация нового аккаунта |
-| `/auth/login` | `POST` | `X-Auth-Email`, `X-Auth-Password`                    | Вход и получение пары токенов |
-| `/auth/logout` | `POST` | `X-Auth-Token`                                       | Инвалидация текущей сессии |
-| `/auth/refresh` | `POST` | `X-Refresh-Token`                                    | Обновление Access Token |
-| `/info` | `GET` | `X-Auth-Token`                                       | Получение данных текущего профиля |
-| `/update` | `POST` | `X-Auth-Token`, `X-New-Username*`, `X-New-Password*` | Смена данных пользователя |
-
-#### 2. Работа с файлами (`/api/files`)
-
-| Endpoint                | Method | Query Params                                              | Headers                  | Description                                |
-|-------------------------| --- |-----------------------------------------------------------|--------------------------|--------------------------------------------|
-| `/list`                 | `GET` | `parentId*`, `recursive*`, `includeDirectories*`, `tags*` | —                        | Список объектов в директории               |
-| `/info`                 | `GET` | `id`                                                      | —                        | Детальные метаданные файла                 |
-| `/`                     | `PUT` | `id`, `newName*`, `newParentId*`                          | `X-File-New-Visibility*` | Изменение метаданных                       |
-| `/`                     | `DELETE` | `id`, `permanent*`                                         | —                        | Удаление файла (soft/hard)                 |
-| `/download`             | `GET` | `id`                                                      | —                        | Чанковое скачивание                        |
-| `/upload`               | `POST` | `name`, `parentId*`                                       | `X-File-Tags`            | Обычная загрузка                           |
-| `/upload/chunked`       | `POST` | `name`, `parentId*`                                       | `X-File-Tags`, `X-File-Size` | Чанковая загрузка                          |
-| `/upload/chunked/resume` | `POST` | `name`, `parentId*`                                       |                          | Возобновление прерванной чанковой загрузки |
-
-#### 3. Работа с директориями (`/api/directories`)
-
-| Endpoint | Method | Query Params                     | Description |
-| --- | --- |----------------------------------| --- |
-| `/` | `PUT` | `name`, `parentId*`              | Создать новую папку |
-| `/` | `POST` | `id`, `newName*`, `newParentId*` | Переименовать или переместить папку |
-| `/` | `DELETE` | `id`                             | Рекурсивное удаление папки и всего содержимого |
-
-### 📦 Формат ответов
-
-Большинство успешных операций возвращают JSON следующего вида:
-
-```json
-{
-  "success": true,
-  "message": "Операция выполнена",
-  "data": { ... } 
-}
+docker-compose up --build -d
 
 ```
+
+После запуска инфраструктура будет доступна по адресу `https://localhost:8080`.
+
+## 🛠 Техническая архитектура
+
+### 🧩 Высокопроизводительный маппинг (Netty + Virtual Threads)
+
+Мы реализовали собственный стек обработки запросов поверх Netty, адаптированный под работу с **виртуальными потоками**, что позволило избежать тяжеловесного Spring MVC и достичь минимального оверхеда на Data Plane.
+
+* **RequestToDtoDecoder & DtoAssembler:** Обеспечивают автоматическую сборку DTO из `HttpRequest`. Поддерживают внедрение `@UserId` из атрибутов канала, извлечение `@QueryParam` и маппинг `@RequestHeader`.
+* **Zero-Reflection Invoke:** `RouteRegistry` и `DtoMetadataCache` сканируют и кэшируют метаданные рекордов (DTO) при старте. Это позволяет находить обработчик и инстанцировать объекты без использования рефлексии на каждый запрос.
+* **DtoToResponseEncoder:** Выполняет обратную трансформацию Java-рекордов в `FullHttpResponse`.
+* **Авто-заголовки:** Поля DTO автоматически конвертируются в HTTP-заголовки (например, `fileSize` $\to$ `X-File-Size`).
+* **Интеграция статусов:** Поддержка аннотации `@ResponseStatus` для декларативного управления кодами ответа.
+
+
+
+### 🎛 Стейт-машина (FSM) и Retry-логика
+
+Жизненный цикл любого файла в системе жестко контролируется через состояния в PostgreSQL, что гарантирует консистентность в распределенной среде:
+
+* **Система статусов:**
+* **PENDING:** Начало операции, файл заблокирован для других процессов записи.
+* **READY:** Файл успешно прошел все проверки и доступен для чтения.
+* **ERROR:** Временный сбой, допускающий повторную попытку.
+* **FATAL:** Критическая ошибка или превышение лимита `retry_count`.
+* **DANGEROUS:** Вердикт антивируса о наличии угроз.
+
+
+* **Отказоустойчивость (Failsafe):** Логика ретраев инкапсулирована в `StorageRepositoryWrapper`. Для `UPLOAD` и `CHANGE_METADATA` применяется **Client-side retry**, а для `DELETE` — автоматический **Server-side retry** через фоновые задачи.
+* **Resumable Upload:** Механизм докачки реализован в виртуальных потоках. При обрыве сессии сервер сохраняет состояние и позволяет клиенту продолжить загрузку с $n$-го чанка, используя `sessionId` и инкрементальное вычисление хеша SHA-256.
+* **Background Cleanup:** Шедулер очистки автоматически обрабатывает "зависшие" в `PENDING/ERROR` операции, выполняя либо откат (для загрузок), либо принудительное завершение (для удалений).
+
+---
 
 ### 🔄 Чанковая передача данных
 
-Для работы с файлами сервер использует динамическое переключение стратегии обработки трафика в `ChannelPipeline`.
+Система использует динамическое переключение стратегии обработки трафика в `ChannelPipeline` через `HttpTrafficStrategySelector`.
 
-#### Загрузка (Upload)
+#### Стратегия выбора (Pipeline Selection)
 
-Если **X-File-Size** во входящем запросе превышает лимит **5 МБ** (`maxAggregatedContentLength`), система переключается с агрегированной обработки в памяти на чанковую.
+Сервер анализирует входящий `HttpRequest` и на лету перестраивает пайплайн:
 
-Если возникла временная ошибка записи, сервер вернет статус `409 Conflict` с полем `action` в теле:
+* **CHUNKED:** Активируется для эндпоинтов загрузки частей (`/api/files/upload/chunked/part`) и скачивания (`/api/files/download`). В пайплайн добавляется `ChunkedWriteHandler`, а `HttpObjectAggregator` **исключается**, чтобы не перегружать RAM.
+* **AGGREGATED:** Используется для всех остальных API-запросов. Весь запрос собирается в `FullHttpRequest` с лимитом **5 МБ** (настраивается в `maxAggregatedContentLength`).
 
-* `RETRY_PART`: Ошибка записи чанка. Повторите отправку с той части, что указана в полях `currentFileSize` и `partNum`.
-* `RETRY_COMPLETE`: Ошибка при сборке файла. Повторите финальный `LastHttpContent`.
+#### Загрузка (Upload & Retry)
+
+Процесс загрузки частей контролируется контроллером `ChunkedUploadController`. В случае возникновения `UploadRetriableException` (например, временный сбой S3 или сети), сервер возвращает специальные Retry-ответы:
+
+* **RETRY_PART (`409 Conflict`):** Ошибка при загрузке конкретного чанка. Клиенту необходимо повторно отправить текущую часть. В ответе передается `partNum`.
+* **RETRY_COMPLETE (`409 Conflict`):** Ошибка на этапе финализации (сборки) файла в S3. Клиенту нужно повторно вызвать метод `complete`.
 
 #### Скачивание (Download)
 
-Запросы на `GET /api/files/download` **всегда** обрабатываются в потоковом режиме (`CHUNKED`), независимо от размера файла.
+Запросы на скачивание всегда переводят пайплайн в режим **CHUNKED**.
+
+* Используется кастомный `ChunkedDownloadInput` (на базе Project Loom), который читает `InputStream` из хранилища частями (`fileDownloadChunkSize`) и оборачивает их в `DefaultHttpContent`.
+* Поддерживаются **Range-запросы** (`206 Partial Content`): сервер отправляет только запрашиваемый диапазон байт, что критично для докачки и стриминга видео.
 
 ---
 
-## 🗺️ Roadmap
+## 📊 Мониторинг и инструменты (Observability)
 
-Мы активно развиваем проект и планируем реализовать следующие функции и улучшения:
+Система глубоко инструментирована для отслеживания состояния Data Plane и Control Plane.
 
-- **Система уровней доступа** к файлам и папкам с гибкими правилами для совместной работы
+### 1. Инфраструктурный слой (System Health)
 
-- **Расширенный поиск по файлам** для полнотекстового поиска и фильтрации
+| **Метрика** | **Тип** | **Теги** | **Описание** |
+| --- | --- | --- | --- |
+| `jvm.memory.used` | Gauge | `area`, `id` | Потребление памяти. Мониторинг Heap и Non-heap. |
+| `system.cpu.usage` | Gauge | — | Общая загрузка CPU процессом приложения. |
+| `hikaricp.connections` | Gauge | `pool`, `state` | Состояние пула БД: `active` (в работе), `pending` (очередь). |
+| `rabbitmq.queue.messages` | Gauge | `queue` | Глубина очередей (антивирус, уведомления, cleanup). |
 
-- **Усиление безопасности**: защита от инъекций, улучшение валидации и прочее
+### 2. Слой Netty-ядра (Network & I/O)
 
-- **Готовый фронтенд** с полировкой UI/UX, адаптивным дизайном и улучшенной производительностью
+| **Метрика** | **Тип** | **Описание** |
+| --- | --- | --- |
+| `http.server.requests` | Timer | **RPS** и **Latency** (P95, P99) кастомных контроллеров. |
+| `netty.connections.active` | Gauge | Количество активных TCP-сессий (Concurrent Users). |
+| `netty.eventloop.executor.tasks.pending` | Gauge | Очередь задач в EventLoop. Индикатор блокирующих вызовов. |
+| `netty.allocator.memory.used` | Gauge | Выделенная **Direct Memory**. Рост без падений — признак утечки. |
+| `netty.allocator.memory.pinned` | Gauge | Количество "залоченных" буферов (`refCnt > 0`). Индикатор забытых `release()`. |
+| `netty.allocator.pools.chunks/pages` | Gauge | Уровень фрагментации пулов памяти Netty. |
+
+### 3. Бизнес-слой (Critical Path & FSM)
+
+| **Метрика** | **Тип** | **Описание** |
+| --- | --- | --- |
+| `storage.operation.duration` | Timer | Чистое время бизнес-операций (UPLOAD, DOWNLOAD, DELETE). |
+| `storage.retry.total` | Counter | Количество ретраев **Failsafe**. Рост = нестабильность S3/сети. |
+| `storage.files.status.count` | Gauge | Количественный срез FSM: `PENDING`, `READY`, `FATAL`, `DANGEROUS`. |
+| `storage.payload.size.bytes` | Distribution | Гистограмма размеров файлов для оптимизации чанков. |
+| `storage.upload.chunks.active` | Gauge | Активные сессии многопоточной загрузки (Multipart). |
+| `storage.antivirus.scan.count` | Counter | Результаты сканирования: `CLEAN`, `INFECTED`, `ERROR`. |
+
+---
+
+## 🏗 Технологический стек
+
+### 1. Cloud Storage Backend (Core)
+
+* **Runtime:** Java 21 (Virtual Threads), Spring Boot 3.5.11.
+* **Network:** Netty 4.2.
+* **Data:** PostgreSQL, Flyway, Spring Data JPA.
+* **Storage:** AWS SDK (S3) $\to$ SeaweedFS.
+* **Reliability:** Failsafe, RabbitMQ, Redis.
+
+### 2. Antivirus Scanner Service
+
+* **Logic:** ClamAV Client, Apache Tika (MIME-validation).
+* **Performance:** Redis (Кэширование вердиктов), S3 SDK.
+* **Events:** RabbitMQ.
+
+### 3. Notification Service
+
+* **Engine:** Spring Boot 3.2.4, Jakarta Mail.
+* **UI/UX:** Thymeleaf (HTML-шаблоны писем).
+* **API:** Spring Web.
+
+---
+
+## 📑 API Endpoints
+
+Все запросы к API начинаются с префикса `/api`. Большинство операций требуют авторизации через JWT-токен в заголовке.
+
+### 📂 Работа с файлами (`/api/files`)
+
+| Метод | Эндпоинт | Описание |
+| --- | --- | --- |
+| `POST` | `/files/upload` | Синхронная загрузка файлов (до 5 МБ). |
+| `GET` | `/files/download` | Скачивание файла в поточном режиме. |
+| `GET` | `/files/list` | Получение списка объектов в директории. |
+| `GET` | `/files/info` | Метаданные конкретного файла. |
+| `GET` | `/files/trash` | Список удаленных объектов в корзине. |
+| `POST` | `/files/restore` | Восстановление файла из корзины. |
+| `GET` | `/files/preview/content` | Запрос временной ссылки для предпросмотра медиа. |
+
+### 📦 Чанковая загрузка (Resumable Upload)
+
+| Метод | Эндпоинт | Описание |
+| --- | --- | --- |
+| `POST` | `/files/upload/chunked/start` | Инициализация сессии загрузки. |
+| `POST` | `/files/upload/chunked/part` | Передача конкретного фрагмента (чанка) данных. |
+| `GET` | `/files/upload/chunked/status` | Опрос состояния: список полученных фрагментов. |
+| `POST` | `/files/upload/chunked/complete` | Завершение сборки и запуск антивирусной проверки. |
+| `POST` | `/files/upload/chunked/abort` | Принудительная отмена сессии и очистка S3. |
+
+### 📁 Управление директориями (`/api/directories`)
+
+| Метод | Эндпоинт | Описание |
+| --- | --- | --- |
+| `PUT` | `/directories` | Создание новой виртуальной папки. |
+
+### 🔗 Публичный доступ (Sharing)
+
+| Метод | Эндпоинт | Описание |
+| --- | --- | --- |
+| `POST` | `/shares` | Создание публичной ссылки на файл/папку. |
+| `GET` | `/shares/info` | Получение метаданных расшаренного объекта. |
+| `GET` | `/shares/download` | Прямое скачивание объекта по ссылке. |
+| `POST` | `/shares/validate` | Валидация пароля для защищенных ссылок. |
+| `GET` | `/shares/user` | Список всех активных шар текущего пользователя. |
+| `GET` | `/shares/file` | Информация о доступе к конкретному файлу. |
+
+### 👤 Пользователи и Авторизация (`/api/users`)
+
+| Метод | Эндпоинт | Описание |
+| --- | --- | --- |
+| `POST` | `/users/auth/login` | Аутентификация и получение токенов. |
+| `POST` | `/users/auth/register` | Регистрация нового аккаунта. |
+| `POST` | `/users/auth/logout` | Деавторизация и инвалидация сессии. |
+| `POST` | `/users/auth/refresh` | Обновление пары access/refresh токенов. |
+| `GET` | `/users/info` | Данные текущего профиля. |
+| `POST` | `/users/update` | Обновление данных (пароль, никнейм). |
+
+### 💳 Биллинг и Платежи (`/api/users/tariff`, `/api/payments`)
+
+| Метод | Эндпоинт | Описание |
+| --- | --- | --- |
+| `GET` | `/users/tariff/plans` | Просмотр доступных тарифных планов. |
+| `GET` | `/users/tariff/info` | Текущий объем хранилища и статус квоты. |
+| `POST` | `/users/tariff/purchase` | Покупка подписки. |
+| `POST` | `/users/tariff/set-auto-renew` | Управление автопродлением тарифа. |
+| `POST` | `/users/tariff/update-payment` | Привязка/обновление платежных данных. |
+| `GET` | `/api/payments/history` | История транзакций пользователя. |
 
 ---
 
 ## 👥 Команда / Контакты
 
-**Команда:**
+### **Сергей** (@seregawallapop) — **Lead / System Architect**
 
-* **Сергей** @seregawallapop — Архитектура & Сетевой слой & API
+* **Сетевой стек:** Netty-ядро на виртуальных потоках, кастомный DI/Mapping и докачка файлов.
+* **Security & Reliability:** Микросервис антивируса (ClamAV), State-машина транзакций, SSL/BoringSSL и Failsafe-логика.
+* **Infrastructure:** Настройка Docker-окружения, CI/CD, мониторинг (Prometheus/Micrometer) и «умный» поиск.
 
-* **Анастасия** @alg_aaa — Бизнес логика & Веб-интерфейс
+### **Анастасия** (@alg_aaa) — **Business Logic & Frontend**
 
-* **Павел** @PavelStar899 — Слой данных
+* **Product:** Тарифные планы, квоты, система уведомлений (SMTP) и безопасный шеринг (ссылки + пароли).
+* **Frontend:** React-клиент с пагинацией, превью медиа и управлением чанковыми загрузками.
+* **Auth:** Регистрация, авторизация и механизмы ротации JWT-токенов.
 
-**Обратная связь:**  
+### **Павел** (@PavelStar899) — **Data Infrastructure**
+
+* **Storage:** Интеграция SeaweedFS (S3), реализация древовидной структуры и миграции Flyway.
+* **Persistence:** Проектирование БД (PostgreSQL), Spring Data JPA и логика Soft/Hard delete.
+* **DevOps:** Health Checks системы и автоматическая очистка корзины.
+
+### **Обратная связь:**
 По всем вопросам, связанным с проектом, пожалуйста, создавайте **Issue** в репозитории проекта на GitHub.
 
 _© 2025-2026 Команда MWS Cloud Storage. Все права защищены._
